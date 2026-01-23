@@ -36,7 +36,7 @@
       height: 80px;
     }
     button {
-      margin: 16px 0;
+      margin: 10px 0;
       padding: 12px;
       background: #2e8b57;
       color: white;
@@ -90,21 +90,23 @@
   <label>Примечание</label>
   <textarea id="note" placeholder="Успешно, поведение..."></textarea>
 
-  <!-- Кнопка добавления -->
+  <!-- Кнопки управления -->
   <button onclick="addEntry()">Добавить запись</button>
-
-  <!-- Новая кнопка: экспорт в Excel -->
   <button onclick="exportToExcel()">Экспортировать в Excel</button>
+  <button onclick="loadFromGoogle()">🔄 Обновить из облака</button>
 
   <!-- Список записей -->
   <div class="list">
     <div id="entriesList">Загрузка данных...</div>
   </div>
 
-  <!-- Скрипт с логикой -->
+  <!-- Основной скрипт -->
   <script>
-    // 🔁 Ссылка на Google Таблицу в формате CSV
+    // 🔗 Google Таблица — CSV (для чтения)
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKfT0qrSp0kFLg2VWfHHln2cN1S7syVtotWLQRSp_XJDHq7UDUPd91Ra3XHoXOjgMy6774jC_5VAEO/pub?output=csv';
+
+    // 🔗 Google Apps Script — для отправки (POST)
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrjLUUqS_3yWjLXKqr39VLIahQath8a9oStuBtJzrSygO2JAaZ7xdiYR97Vctchi4/exec';
 
     // 📂 Локальное хранилище
     let entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
@@ -138,15 +140,35 @@
       updateList();
       clearForm();
 
-      alert("✅ Запись добавлена локально!");
+      // 🔼 Отправляем в Google Таблицу
+      saveToGoogle(entry);
+
+      alert("✅ Запись добавлена и отправлена в облако!");
     }
 
-    // 🔄 Загрузить из Google
+    // 📤 Сохранить в Google Таблицу
+    async function saveToGoogle(entry) {
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',  // Обязательно для Google Apps Script
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(entry)
+        });
+        console.log('✅ Запись отправлена в Google Таблицу');
+      } catch (error) {
+        console.error('❌ Ошибка отправки в Google:', error);
+      }
+    }
+
+    // 🔄 Загрузить из Google (CSV)
     async function loadFromGoogle() {
       try {
         const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + new Date().getTime());
         const csv = await response.text();
-        const rows = csv.split('\n').slice(1);
+        const rows = csv.split('\n').slice(1); // Пропустить заголовок
         const remoteEntries = [];
 
         rows.forEach(row => {
@@ -163,17 +185,19 @@
           }
         });
 
+        // Объединяем: новые локальные + данные из Google
         const merged = mergeEntries(remoteEntries, entries);
         entries = merged;
         saveLocally();
         updateList();
-        alert("🔁 Данные загружены из Google Таблицы");
+        alert("✅ Данные обновлены из Google Таблицы");
       } catch (error) {
-        console.error("Не удалось загрузить из Google", error);
+        console.error("❌ Не удалось загрузить из Google", error);
+        alert("⚠️ Не удалось обновить из облака. Проверьте интернет.");
       }
     }
 
-    // 📤 Экспорт в Excel
+    // 📤 Экспорт в Excel (CSV)
     function exportToExcel() {
       if (entries.length === 0) {
         alert("Нет данных для экспорта");
@@ -207,7 +231,7 @@
       document.body.removeChild(link);
     }
 
-    // 🔀 Объединение данных
+    // 🔀 Объединение данных (по корове + дате)
     function mergeEntries(remote, local) {
       const map = new Map();
       [...remote, ...local].forEach(entry => {
@@ -217,7 +241,7 @@
       return Array.from(map.values());
     }
 
-    // 🧹 Разбор CSV
+    // 🧹 Разбор CSV-строки
     function parseCSVRow(row) {
       const result = [];
       let inQuotes = false;
@@ -236,12 +260,12 @@
       return result.map(f => f.trim());
     }
 
-    // 💾 Сохранение в браузер
+    // 💾 Сохранить в браузер
     function saveLocally() {
       localStorage.setItem('cattleEntries', JSON.stringify(entries));
     }
 
-    // 📋 Обновление списка
+    // 📋 Обновить список
     function updateList() {
       const list = document.getElementById("entriesList");
       if (!list) return;
@@ -271,7 +295,7 @@
       return d.toLocaleDateString("ru-RU");
     }
 
-    // 🧼 Очистка формы
+    // 🧼 Очистить форму
     function clearForm() {
       document.getElementById("cattleId").value = "";
       document.getElementById("date").value = "";
