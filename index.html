@@ -1,121 +1,219 @@
-<script>
-  const DATA_URL = 'https://tikqwer-lgtm.github.io/cattle-tracker/data.json';
-  const DATA_FILE = 'data.json';
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Учёт осеменения коров</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f4f8fb;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      font-size: 1.5em;
+    }
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    textarea {
+      height: 80px;
+    }
+    button {
+      margin: 16px 0;
+      padding: 12px;
+      background: #2e8b57;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background: #236b43;
+    }
+    .list {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+    .entry {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Учёт осеменения коров</h1>
 
-  let entries = [];
+  <label>Номер коровы *</label>
+  <input type="text" id="cattleId" placeholder="105" required />
 
-  async function loadFromGitHub() {
-    try {
-      const response = await fetch(DATA_URL + '?t=' + new Date().getTime());
-      if (response.ok) {
-        entries = await response.json();
-      } else {
-        entries = [];
+  <label>Дата осеменения *</label>
+  <input type="date" id="date" required />
+
+  <label>Бык</label>
+  <input type="text" id="bull" placeholder="Бык-23" />
+
+  <label>Попытка</label>
+  <input type="number" id="attempt" placeholder="1" min="1" />
+
+  <label>Схема СИНХ</label>
+  <select id="sync">
+    <option value="">Выберите...</option>
+    <option value="PG6-G">PG6-G</option>
+    <option value="Ovsynch">Ovsynch</option>
+    <option value="Cosynch">Cosynch</option>
+    <option value="Другое">Другое</option>
+  </select>
+
+  <label>Примечание</label>
+  <textarea id="note" placeholder="Успешно, поведение..."></textarea>
+
+  <button onclick="addEntry()">Добавить запись</button>
+
+  <!-- ✅ Вот он — нужный элемент -->
+  <div class="list">
+    <div id="entriesList">Загрузка данных...</div>
+  </div>
+
+  <script>
+    // 🔁 Замени 'твой-логин' на свой логин GitHub
+    const DATA_URL = 'https://твой-логин.github.io/cattle-tracker/data.json';
+
+    let entries = [];
+
+    async function loadFromGitHub() {
+      try {
+        const response = await fetch(DATA_URL + '?t=' + new Date().getTime());
+        if (response.ok) {
+          entries = await response.json();
+        }
+      } catch (error) {
+        console.error('Не удалось загрузить данные:', error);
       }
-    } catch (error) {
-      console.error('Не удалось загрузить данные:', error);
-      entries = [];
-    }
-    updateList();
-  }
-
-  async function addEntry() {
-    const cattleId = document.getElementById("cattleId").value.trim();
-    const date = document.getElementById("date").value;
-    if (!cattleId || !date) {
-      alert("Заполните номер коровы и дату!");
-      return;
+      updateList();
     }
 
-    const entry = {
-      cattleId,
-      date: formatDate(date),
-      bull: document.getElementById("bull").value,
-      attempt: document.getElementById("attempt").value || '',
-      synchronization: document.getElementById("sync").value,
-      note: document.getElementById("note").value,
-    };
-
-    entries.unshift(entry);
-    updateList();
-    clearForm();
-
-    try {
-      // Экспортируем в Excel
-      exportToExcel();
-      alert("✅ Запись добавлена! Excel-файл сохранён.");
-    } catch (e) {
-      alert("✅ Запись добавлена! (Excel не удалось сохранить)");
+    function updateList() {
+      const list = document.getElementById("entriesList");
+      if (!list) {
+        console.error("❌ Элемент с id='entriesList' не найден!");
+        return;
+      }
+      list.innerHTML = `<div><strong>Всего записей: ${entries.length}</strong></div>`;
+      if (entries.length === 0) {
+        list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
+      } else {
+        entries.forEach((entry, i) => {
+          const div = document.createElement("div");
+          div.className = "entry";
+          div.innerHTML = `
+            <strong>Корова:</strong> ${entry.cattleId} | 
+            <strong>Дата:</strong> ${entry.date}<br>
+            <strong>Бык:</strong> ${entry.bull || '—'} | 
+            <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
+            <em style="color: #666;">${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} ${entry.note ? '• ' + entry.note : ''}</em>
+          `;
+          list.appendChild(div);
+        });
+      }
     }
-  }
 
-  function formatDate(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("ru-RU");
-  }
+    async function addEntry() {
+      const cattleId = document.getElementById("cattleId").value.trim();
+      const date = document.getElementById("date").value;
+      if (!cattleId || !date) {
+        alert("Заполните номер коровы и дату!");
+        return;
+      }
 
-  function updateList() {
-    const list = document.getElementById("entriesList");
-    list.innerHTML = `<div><strong>Всего записей: ${entries.length}</strong></div>`;
-    if (entries.length === 0) {
-      list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
-    } else {
-      entries.forEach((entry, i) => {
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.innerHTML = `
-          <strong>Корова:</strong> ${entry.cattleId} | 
-          <strong>Дата:</strong> ${entry.date}<br>
-          <strong>Бык:</strong> ${entry.bull || '—'} | 
-          <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
-          <em style="color: #666;">${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} ${entry.note ? '• ' + entry.note : ''}</em>
-        `;
-        list.appendChild(div);
+      const entry = {
+        cattleId,
+        date: formatDate(date),
+        bull: document.getElementById("bull").value,
+        attempt: document.getElementById("attempt").value || '',
+        synchronization: document.getElementById("sync").value,
+        note: document.getElementById("note").value,
+      };
+
+      entries.unshift(entry);
+      updateList();
+      clearForm();
+
+      try {
+        exportToExcel();
+        alert("✅ Запись добавлена! Файл сохранён.");
+      } catch (e) {
+        alert("✅ Запись добавлена! (Файл не сохранён)");
+      }
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("ru-RU");
+    }
+
+    function clearForm() {
+      document.getElementById("cattleId").value = "";
+      document.getElementById("date").value = "";
+      document.getElementById("bull").value = "";
+      document.getElementById("attempt").value = "";
+      document.getElementById("sync").value = "";
+      document.getElementById("note").value = "";
+    }
+
+    function exportToExcel() {
+      if (entries.length === 0) return;
+
+      let csv = [
+        ["Номер коровы", "Дата осеменения", "Бык", "Попытка", "Схема СИНХ", "Примечание"]
+      ];
+
+      entries.forEach(e => {
+        csv.push([
+          e.cattleId,
+          e.date,
+          e.bull,
+          e.attempt,
+          e.synchronization,
+          e.note
+        ]);
       });
+
+      let csvContent = "data:text/csv;charset=utf-8," + 
+        csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "Учёт_осеменения_коров.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
-  }
 
-  function clearForm() {
-    document.getElementById("cattleId").value = "";
-    document.getElementById("date").value = "";
-    document.getElementById("bull").value = "";
-    document.getElementById("attempt").value = "";
-    document.getElementById("sync").value = "";
-    document.getElementById("note").value = "";
-  }
-
-  function exportToExcel() {
-    if (entries.length === 0) return;
-
-    /* Создаём CSV */
-    let csv = [
-      ["Номер коровы", "Дата осеменения", "Бык", "Попытка", "Схема СИНХ", "Примечание"]
-    ];
-
-    entries.forEach(e => {
-      csv.push([
-        e.cattleId,
-        e.date,
-        e.bull,
-        e.attempt,
-        e.synchronization,
-        e.note
-      ]);
-    });
-
-    let csvContent = "data:text/csv;charset=utf-8," + 
-      csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "Учёт_осеменения_коров.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  document.addEventListener("DOMContentLoaded", loadFromGitHub);
-</script>
-
-
+    document.addEventListener("DOMContentLoaded", loadFromGitHub);
+  </script>
+</body>
+</html>
