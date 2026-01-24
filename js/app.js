@@ -179,3 +179,19 @@ function parseVoiceCommand(command) {
     setTimeout(() => { status.textContent = ''; }, 5000);
   }
 }
+/**
+ * Добавляет запись из голосового помощника
+ * @param {Object} data
+ */
+function addEntryFromVoice(data) {
+  // Заполняем форму
+  document.getElementById('cattleId').value = data.cattleId || '';
+  document.getElementById('date').value = data.date || '';
+  document.getElementById('bull').value = data.bull || '';
+  document.getElementById('attempt').value = data.attempt || '';
+  document.getElementById('sync').value = data.synchronization || '';
+  document.getElementById('note').value = data.note || '';
+
+  // Добавляем как обычную запись
+  addEntry();
+}
