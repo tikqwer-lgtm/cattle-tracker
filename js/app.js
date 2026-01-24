@@ -16,7 +16,7 @@ function addEntry() {
     synchronization: document.getElementById("sync").value || '',
     note: document.getElementById("note").value || '',
     synced: false,
-    dateAdded: nowFormatted()
+    dateAdded: nowFormatted()  // ✅ Должно быть здесь
   };
 
   entries.unshift(entry);
@@ -24,7 +24,7 @@ function addEntry() {
   updateList();
   clearForm();
 
-  saveToGoogle(entry);
+  saveToGoogle(entry); // 👉 отправляет в GAS
 }
 
 function clearForm() {
