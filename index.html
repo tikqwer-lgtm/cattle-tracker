@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Увывфчёт осеменения коров</title>
+  <title>Учёт осеменения коров</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -117,19 +117,19 @@
   </div>
 
   <script>
-    // 🔗 Google Таблица — CSV (чтение)
+    // 🔗 Google Таблица — CSV (для чтения)
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKfT0qrSp0kFLg2VWfHHln2cN1S7syVtotWLQRSp_XJDHq7UDUPd91Ra3XHoXOjgMy6774jC_5VAEO/pub?output=csv';
 
-    // 🔗 Google Apps Script — отправка (POST)
+    // 🔗 Google Apps Script — для отправки (POST)
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrjLUUqS_3yWjLXKqr39VLIahQath8a9oStuBtJzrSygO2JAaZ7xdiYR97Vctchi4/exec';
 
-    // 📂 Локальное хранилище
+    // 📂 Локальные записи
     let entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
 
     // 🚀 При загрузке
     window.onload = function () {
       updateList();
-      loadFromGoogle();
+      // loadFromGoogle(); // Раскомментируйте, если хотите автообновление
     };
 
     // ✅ Добавить запись
@@ -143,12 +143,12 @@
 
       const entry = {
         cattleId,
-        date, // Храним как YYYY-MM-DD
+        date,
         bull: document.getElementById("bull").value || '',
         attempt: document.getElementById("attempt").value || '',
         synchronization: document.getElementById("sync").value || '',
         note: document.getElementById("note").value || '',
-        synced: false // ← Пока не отправлено
+        synced: false
       };
 
       entries.unshift(entry);
@@ -156,19 +156,15 @@
       updateList();
       clearForm();
 
-      // Отправляем в Google
       saveToGoogle(entry);
     }
 
-    // 📤 Отправить в Google Таблицу
+    // 📤 Отправить в Google
     async function saveToGoogle(entry) {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
-          // mode: 'no-cors', // ❌ Убрано — иначе нельзя проверить ответ
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entry)
         });
 
@@ -177,6 +173,7 @@
           saveLocally();
           updateList();
           document.getElementById('status').textContent = '✅ Запись отправлена в облако';
+          setTimeout(() => document.getElementById('status').textContent = '', 3000);
         } else {
           throw new Error('HTTP ' + response.status);
         }
@@ -187,86 +184,108 @@
       }
     }
 
-    // 🔄 Загрузить из Google (CSV)
+    // 🔄 Загрузить из Google Таблицы
     async function loadFromGoogle() {
-      try {
-        const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + new Date().getTime());
-        const csv = await response.text();
-        const rows = csv.split('\n').slice(1); // без заголовка
-        const remoteEntries = [];
+      const status = document.getElementById('status');
+      status.textContent = 'Загрузка...';
 
-        rows.forEach(row => {
-          const cols = parseCSVRow(row);
-          if (cols.length >= 6) {
-            remoteEntries.push({
-              cattleId: cols[0],
-              date: cols[1],
-              bull: cols[2],
-              attempt: cols[3],
-              synchronization: cols[4],
-              note: cols[5],
-              synced: true
-            });
-          }
+      try {
+        const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now(), {
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache' }
         });
 
-        // Слияние: сохраняем локальные неотправленные
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+
+        const text = await response.text();
+        const lines = text.trim().split('\n');
+
+        if (lines.length < 2) {
+          status.textContent = '⚠️ Таблица пуста';
+          setTimeout(() => status.textContent = '', 3000);
+          return;
+        }
+
+        const remoteEntries = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const row = parseCSVLine(line, ';');
+          if (row.length < 6) continue;
+
+          remoteEntries.push({
+            cattleId: row[0] || '',
+            date: row[1] || '',
+            bull: row[2] || '',
+            attempt: row[3] || '',
+            synchronization: row[4] || '',
+            note: row[5] || '',
+            synced: true
+          });
+        }
+
         const merged = mergeEntries(remoteEntries, entries);
         entries = merged;
         saveLocally();
         updateList();
-        document.getElementById('status').textContent = '✅ Данные обновлены из облака';
-        setTimeout(() => document.getElementById('status').textContent = '', 3000);
+        status.textContent = '✅ Данные обновлены из облака';
+        setTimeout(() => status.textContent = '', 3000);
+
       } catch (error) {
-        console.error("❌ Не удалось загрузить из Google", error);
-        document.getElementById('status').textContent = '⚠️ Не удалось обновить из облака';
-        setTimeout(() => document.getElementById('status').textContent = '', 5000);
+        console.error('❌ Ошибка загрузки:', error);
+        status.textContent = '❌ Не удалось загрузить из облака';
+        setTimeout(() => status.textContent = '', 5000);
       }
     }
 
-    // 🔀 Объединение записей (по корове + дате)
+    // 🧹 Универсальный CSV-парсер
+    function parseCSVLine(line, delimiter = ';') {
+      const result = [];
+      let inQuotes = false;
+      let field = '';
+
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          result.push(field.trim());
+          field = '';
+        } else {
+          field += char;
+        }
+      }
+      result.push(field.trim());
+      return result;
+    }
+
+    // 🔀 Слияние: локальные + облако
     function mergeEntries(remote, local) {
       const map = new Map();
-
-      // Приоритет: локальные неотправленные > локальные старые > удалённые
       [...local, ...remote].forEach(entry => {
         const key = entry.cattleId + '|' + entry.date;
-        if (!map.has(key)) {
-          map.set(key, entry);
-        } else {
-          // Если есть локальная неотправленная — оставляем её
-          const existing = map.get(key);
-          if (!existing.synced) return; // не заменяем
+        if (!map.has(key) || !map.get(key).synced) {
           map.set(key, entry);
         }
       });
-
       return Array.from(map.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
-    // 📤 Экспорт в Excel (CSV)
+    // 📤 Экспорт в CSV
     function exportToExcel() {
       if (entries.length === 0) {
         alert("Нет данных для экспорта");
         return;
       }
 
-      let csv = [
-        ["Номер коровы", "Дата осеменения", "Бык", "Попытка", "Схема СИНХ", "Примечание"]
-      ];
-
+      let csv = [['Номер коровы', 'Дата осеменения', 'Бык', 'Попытка', 'Схема СИНХ', 'Примечание']];
       entries.forEach(e => {
-        csv.push([
-          e.cattleId,
-          e.date,
-          e.bull,
-          e.attempt,
-          e.synchronization,
-          e.note
-        ]);
+        csv.push([e.cattleId, e.date, e.bull, e.attempt, e.synchronization, e.note]);
       });
 
-      let csvContent = "data:text/csv;charset=utf-8," + 
+      const csvContent = "data:text/csv;charset=utf-8," + 
         csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
 
       const encodedUri = encodeURI(csvContent);
@@ -278,7 +297,7 @@
       document.body.removeChild(link);
     }
 
-    // 📂 Импорт из CSV-файла
+    // 📂 Импорт из CSV
     function importFromCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -286,19 +305,19 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         const csv = e.target.result;
-        const rows = csv.split('\n').slice(1);
+        const lines = csv.split('\n').slice(1);
         const imported = [];
 
-        rows.forEach(row => {
-          const cols = parseCSVRow(row);
-          if (cols.length >= 6) {
+        lines.forEach(line => {
+          const row = parseCSVLine(line, ';');
+          if (row.length >= 6) {
             imported.push({
-              cattleId: cols[0],
-              date: cols[1],
-              bull: cols[2],
-              attempt: cols[3],
-              synchronization: cols[4],
-              note: cols[5],
+              cattleId: row[0],
+              date: row[1],
+              bull: row[2],
+              attempt: row[3],
+              synchronization: row[4],
+              note: row[5],
               synced: false
             });
           }
@@ -312,25 +331,6 @@
         }
       };
       reader.readAsText(file);
-    }
-
-    // 🧹 Парсинг CSV
-    function parseCSVRow(row) {
-      const result = [];
-      let inQuotes = false;
-      let field = '';
-      for (let char of row) {
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ';' && !inQuotes) {
-          result.push(field.trim());
-          field = '';
-        } else {
-          field += char;
-        }
-      }
-      result.push(field.trim());
-      return result;
     }
 
     // 💾 Сохранить в localStorage
@@ -366,13 +366,13 @@
       }
     }
 
-    // 🗓 Форматировать дату для отображения
+    // 🗓 Формат даты
     function formatDate(dateStr) {
       const d = new Date(dateStr);
       return d.toLocaleDateString("ru-RU");
     }
 
-    // 🧼 Очистка формы + фокус
+    // 🧼 Очистить форму
     function clearForm() {
       document.getElementById("cattleId").value = "";
       document.getElementById("date").value = "";
