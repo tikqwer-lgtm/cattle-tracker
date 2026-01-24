@@ -16,5 +16,7 @@ function formatDate(dateStr) {
 
 // Возвращает объект Date (а не строку)
 function nowFormatted() {
-  return new Date(); // ✅ Возвращает объект
+  const now = new Date();
+  return now.toLocaleDateString("ru-RU") + " " +
+         now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
 }
