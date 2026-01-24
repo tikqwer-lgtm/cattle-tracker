@@ -102,11 +102,13 @@
   <label>Примечание</label>
   <textarea id="note" placeholder="Успешно, поведение..."></textarea>
 
+  <!-- Кнопки -->
   <button onclick="addEntry()">Добавить запись</button>
   <button onclick="exportToExcel()">Экспортировать в Excel</button>
   <button onclick="document.getElementById('importFile').click()">Импорт из CSV</button>
   <input type="file" id="importFile" class="file-input" accept=".csv" onchange="importFromCSV(event)" />
   <button onclick="loadFromGoogle()">🔄 Обновить из облака</button>
+  <button onclick="sendUnsynced()">📤 Отправить неотправленные</button>
 
   <div class="status" id="status"></div>
 
@@ -115,14 +117,16 @@
   </div>
 
   <script>
-    // 🔗 Замените на ваш URL из Google Apps Script (развертывание)
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxttaNc8sgtxgs8ndljPkssoJPyCjZPShh3-_6VecJ0O5EYSePn43Kl1EzAvwO0ds61/exec';
+    // 🔗 URL Google Apps Script (POST)
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrjLUUqS_3yWjLXKqr39VLIahQath8a9oStuBtJzrSygO2JAaZ7xdiYR97Vctchi4/exec';
 
-    // 🔗 Google Таблица — CSV (чтение)
+    // 🔗 Google Таблица — CSV (GET)
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKfT0qrSp0kFLg2VWfHHln2cN1S7syVtotWLQRSp_XJDHq7UDUPd91Ra3XHoXOjgMy6774jC_5VAEO/pub?output=csv';
 
+    // 📂 Локальные записи
     let entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
 
+    // 🚀 При загрузке
     window.onload = function () {
       updateList();
     };
@@ -132,18 +136,23 @@
       const cattleId = document.getElementById("cattleId").value.trim();
       const date = document.getElementById("date").value;
       if (!cattleId || !date) {
-        alert("Заполните номер коровы и дату!");
+        alert("Заполните номер коровы и дату осеменения!");
         return;
       }
 
+      // Текущая дата и время добавления записи
+      const now = new Date();
+      const dateAdded = now.toLocaleDateString("ru-RU") + " " + now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
+
       const entry = {
         cattleId,
-        date,
+        date, // Дата осеменения
         bull: document.getElementById("bull").value || '',
         attempt: document.getElementById("attempt").value || '',
         synchronization: document.getElementById("sync").value || '',
         note: document.getElementById("note").value || '',
-        synced: false
+        synced: false,
+        dateAdded // Локальное поле: когда была введена запись
       };
 
       entries.unshift(entry);
@@ -154,35 +163,67 @@
       saveToGoogle(entry);
     }
 
-    // 📤 Отправить в Google (БЕЗ headers — важно!)
+    // 📤 Отправить одну запись в облако
     async function saveToGoogle(entry) {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
-          // ⚠️ НЕТ headers — браузер отправит как text/plain
           body: JSON.stringify(entry)
         });
 
         const text = await response.text();
-        console.log('Ответ от GAS:', text);
-
         if (response.ok && text.includes('OK')) {
           entry.synced = true;
           saveLocally();
           updateList();
-          document.getElementById('status').textContent = '✅ Отправлено в облако';
+          document.getElementById('status').textContent = '✅ Запись отправлена в облако';
           setTimeout(() => document.getElementById('status').textContent = '', 3000);
         } else {
-          throw new Error('Ошибка: ' + text);
+          throw new Error('Ошибка ответа: ' + text);
         }
       } catch (error) {
         console.error('❌ Ошибка отправки:', error);
-        document.getElementById('status').textContent = '⚠️ Не удалось отправить';
+        document.getElementById('status').textContent = '⚠️ Не удалось отправить (ошибка сети)';
         setTimeout(() => document.getElementById('status').textContent = '', 5000);
       }
     }
 
-    // 🔄 Загрузить из Google (CSV)
+    // 📤 Отправить все неотправленные
+    async function sendUnsynced() {
+      const unsynced = entries.filter(e => !e.synced);
+      if (unsynced.length === 0) {
+        document.getElementById('status').textContent = '✅ Нет неотправленных записей';
+        setTimeout(() => document.getElementById('status').textContent = '', 3000);
+        return;
+      }
+
+      document.getElementById('status').textContent = `Отправка ${unsynced.length} записей...`;
+      let successCount = 0;
+
+      for (const entry of unsynced) {
+        try {
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(entry)
+          });
+
+          const text = await response.text();
+          if (response.ok && text.includes('OK')) {
+            entry.synced = true;
+            successCount++;
+          }
+        } catch (err) {
+          console.error('Сеть:', err);
+        }
+      }
+
+      saveLocally();
+      updateList();
+      document.getElementById('status').textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
+      setTimeout(() => document.getElementById('status').textContent = '', 5000);
+    }
+
+    // 🔄 Загрузить из Google Таблицы
     async function loadFromGoogle() {
       const status = document.getElementById('status');
       status.textContent = 'Загрузка...';
@@ -198,21 +239,24 @@
           return;
         }
 
+        const delimiter = lines[0].includes(';') ? ';' : ',';
         const remoteEntries = [];
+
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
 
-          const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
+          const row = line.split(delimiter).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
           if (row.length >= 6) {
             remoteEntries.push({
-              cattleId: row[0],
-              date: row[1],
-              bull: row[2],
-              attempt: row[3],
-              synchronization: row[4],
-              note: row[5],
+              cattleId: row[0] || '',
+              date: row[1] || '', // Дата осеменения
+              bull: row[2] || '',
+              attempt: row[3] || '',
+              synchronization: row[4] || '',
+              note: row[5] || '',
               synced: true
+              // dateAdded не добавляем — только локально
             });
           }
         }
@@ -221,16 +265,16 @@
         entries = merged;
         saveLocally();
         updateList();
-        status.textContent = '✅ Данные обновлены';
+        status.textContent = '✅ Данные из облака загружены';
         setTimeout(() => status.textContent = '', 3000);
       } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        status.textContent = '❌ Не удалось загрузить';
+        status.textContent = '❌ Не удалось загрузить из облака';
         setTimeout(() => status.textContent = '', 5000);
       }
     }
 
-    // 🔀 Слияние
+    // 🔀 Слияние: облако + локальные
     function mergeEntries(remote, local) {
       const map = new Map();
       [...local, ...remote].forEach(e => {
@@ -242,24 +286,35 @@
       return Array.from(map.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
-    // 📤 Экспорт
+    // 📤 Экспорт в Excel (CSV)
     function exportToExcel() {
       if (entries.length === 0) {
         alert("Нет данных для экспорта");
         return;
       }
 
-      let csv = [['Номер коровы','Дата','Бык','Попытка','Схема СИНХ','Примечание']];
+      let csv = [
+        ["Номер коровы", "Дата осеменения", "Дата записи", "Бык", "Попытка", "Схема СИНХ", "Примечание"]
+      ];
+
       entries.forEach(e => {
-        csv.push([e.cattleId, e.date, e.bull, e.attempt, e.synchronization, e.note]);
+        csv.push([
+          e.cattleId,
+          e.date,
+          e.dateAdded,
+          e.bull,
+          e.attempt,
+          e.synchronization,
+          e.note
+        ]);
       });
 
-      const content = "data:text/csv;charset=utf-8," + 
+      let csvContent = "data:text/csv;charset=utf-8," + 
         csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
 
-      const encoded = encodeURI(content);
+      const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
-      link.setAttribute("href", encoded);
+      link.setAttribute("href", encodedUri);
       link.setAttribute("download", "Учёт_осеменения_коров.csv");
       document.body.appendChild(link);
       link.click();
@@ -277,12 +332,27 @@
         const lines = text.split('\n').slice(1);
         const imported = [];
 
-        lines.forEach(line => {
+        for (const line of lines) {
           const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
-          if (row.length >= 6) {
+          if (row.length >= 7) {
+            // Есть "Дата записи"
             imported.push({
               cattleId: row[0],
               date: row[1],
+              dateAdded: row[2],
+              bull: row[3],
+              attempt: row[4],
+              synchronization: row[5],
+              note: row[6],
+              synced: false
+            });
+          } else if (row.length >= 6) {
+            // Нет "Дата записи" — создаём сейчас
+            const now = new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            imported.push({
+              cattleId: row[0],
+              date: row[1],
+              dateAdded: now,
               bull: row[2],
               attempt: row[3],
               synchronization: row[4],
@@ -290,7 +360,7 @@
               synced: false
             });
           }
-        });
+        }
 
         if (imported.length > 0) {
           entries = [...imported, ...entries];
@@ -302,36 +372,48 @@
       reader.readAsText(file);
     }
 
-    // 💾
+    // 💾 Сохранить в localStorage
     function saveLocally() {
       localStorage.setItem('cattleEntries', JSON.stringify(entries));
     }
 
-    // 📋
+    // 📋 Обновить список
     function updateList() {
       const list = document.getElementById("entriesList");
-      list.innerHTML = `<div><strong>Всего: ${entries.length}</strong></div>`;
+      if (!list) return;
+
+      list.innerHTML = `<div><strong>Всего записей: ${entries.length}</strong></div>`;
       if (entries.length === 0) {
-        list.innerHTML += `<div style="color: #999">Нет данных</div>`;
+        list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
       } else {
-        entries.forEach(e => {
+        entries.forEach(entry => {
           const div = document.createElement("div");
-          div.className = "entry" + (!e.synced ? " unsynced" : "");
+          div.className = "entry" + (!entry.synced ? " unsynced" : "");
           div.innerHTML = `
-            <strong>Корова:</strong> ${e.cattleId} | <strong>Дата:</strong> ${formatDate(e.date)}<br>
-            <strong>Бык:</strong> ${e.bull || '—'} | <strong>Попытка:</strong> ${e.attempt || '—'}<br>
-            <em style="color: #666">${e.synchronization || ''}${e.note ? ' • ' + e.note : ''}</em>
-            ${!e.synced ? '<span style="color: #ff9900; font-size: 12px"> ● Не отправлено</span>' : ''}
+            <strong>Корова:</strong> ${entry.cattleId} | 
+            <strong>Дата осеменения:</strong> ${formatDate(entry.date)}<br>
+            <strong>Дата записи:</strong> ${entry.dateAdded}<br>
+            <strong>Бык:</strong> ${entry.bull || '—'} | 
+            <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
+            <em style="color: #666;">
+              ${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} 
+              ${entry.note ? '• ' + entry.note : ''}
+            </em>
+            ${!entry.synced ? '<span style="color: #ff9900; font-size: 12px;"> ● Не отправлено</span>' : ''}
           `;
           list.appendChild(div);
         });
       }
     }
 
+    // 🗓 Формат даты осеменения
     function formatDate(dateStr) {
-      return new Date(dateStr).toLocaleDateString("ru-RU");
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("ru-RU");
     }
 
+    // 🧼 Очистить форму
     function clearForm() {
       document.getElementById("cattleId").value = "";
       document.getElementById("date").value = "";
