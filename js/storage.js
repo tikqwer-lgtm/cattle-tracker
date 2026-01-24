@@ -8,5 +8,6 @@ function saveLocally() {
 
 function loadLocally() {
   entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
+  console.log("Загружено из localStorage:", entries); // 🔍 дебаг
   updateList();
 }
