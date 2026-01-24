@@ -145,19 +145,30 @@ class VoiceAssistant {
       this.playTone(700, 100);
     }
 
-    const date = lower.match(/(\d{1,2})[^\w]*(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|май[я]?|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
-    if (date) {
-      const day = date[1].padStart(2, '0');
-      const monthNames = {
-        'январь': '01', 'февраль': '02', 'март': '03', 'апрель': '04',
-        'май': '05', 'июнь': '06', 'июль': '07', 'август': '08',
-        'сентябрь': '09', 'октябрь': '10', 'ноябрь': '11', 'декабрь': '12'
-      };
-      const month = monthNames[date[2].toLowerCase()];
-      const year = (command.match(/20\d{2}/) || [new Date().getFullYear()])[0];
-      this.temporaryEntry.date = `${year}-${month}-${day}`;
-      this.playTone(700, 100);
-    }
+    // Поиск даты: число + месяц (с учётом возможного текста до)
+const dateMatch = lower.match(/(?:\bдата осеменения|\b\d{1,2})\D+(\d{1,2})[^\w]*?(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|май[я]?|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
+if (dateMatch) {
+  const day = dateMatch[1].padStart(2, '0');
+  const rawMonth = dateMatch[2].toLowerCase();
+
+  const monthNames = {
+    'январь': '01', 'февраль': '02', 'март': '03', 'апрель': '04',
+    'май': '05', 'июнь': '06', 'июль': '07', 'август': '08',
+    'сентябрь': '09', 'октябрь': '10', 'ноябрь': '11', 'декабрь': '12'
+  };
+
+  // Приведём к полному названию
+  const fullMonth = Object.keys(monthNames).find(m => rawMonth.startsWith(m.substring(0, 3)));
+  if (!fullMonth) return;
+
+  const month = monthNames[fullMonth];
+  const yearMatch = command.match(/20\d{2}/);
+  const year = yearMatch ? yearMatch[0] : new Date().getFullYear();
+
+  this.temporaryEntry.date = `${year}-${month}-${day}`;
+  this.playTone(700, 100);
+  console.log('📅 Дата распознана:', this.temporaryEntry.date);
+}
 
     const bull = lower.match(/бык\s+([^\s,]+)/i);
     if (bull) {
