@@ -60,15 +60,31 @@ class VoiceAssistant {
     setTimeout(() => o.stop(), dur);
   }
 
-  speak(text) {
-    if ('speechSynthesis' in window) {
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'ru-RU';
-      utter.rate = 1;
-      utter.pitch = 1;
-      speechSynthesis.speak(utter);
+    speak(text) {
+    // Проверяем, был ли запуск аудио (через initAudio)
+    if (!this.audioContext) {
+      console.log('🔇 Озвучка отложена: ожидание активации');
+      return;
     }
+
+    // Откладываем на следующий тик — чтобы точно после разрешения
+    setTimeout(() => {
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ru-RU';
+        utter.rate = 1;
+        utter.pitch = 1;
+        utter.volume = 1;
+
+        // Проверим, можно ли говорить
+        utter.onstart = () => console.log('📢 Гена сказал:', text);
+        utter.onerror = (e) => console.warn('❌ Ошибка синтеза:', e);
+
+        speechSynthesis.speak(utter);
+      }
+    }, 100);
   }
+
 
   setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
