@@ -1,9 +1,29 @@
-// sync.js — синхронизация с облаком
+/**
+ * URL веб-приложения Google Apps Script для отправки данных.
+ * Должен указывать на опубликованное веб-приложение.
+ * @type {string}
+ */
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxttaNc8sgtxgs8ndljPkssoJPyCjZPShh3-_6VecJ0O5EYSePn43Kl1EzAvwO0ds61/exec';
 
-// URL из Google Apps Script
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrjLUUqS_3yWjLXKqr39VLIahQath8a9oStuBtJzrSygO2JAaZ7xdiYR97Vctchi4/exec';
+/**
+ * URL CSV-экспорта Google Таблицы для загрузки данных.
+ * @type {string}
+ */
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKfT0qrSp0kFLg2VWfHHln2cN1S7syVtotWLQRSp_XJDHq7UDUPd91Ra3XHoXOjgMy6774jC_5VAEO/pub?output=csv';
 
+/**
+ * Отправляет запись в Google Таблицу.
+ * @async
+ * @param {Object} entry - Данные об осеменении.
+ * @param {string} entry.cattleId - Номер коровы.
+ * @param {string} entry.date - Дата осеменения.
+ * @param {string} [entry.bull] - Бык.
+ * @param {string|number} [entry.attempt] - Попытка.
+ * @param {string} [entry.synchronization] - Схема СИНХ.
+ * @param {string} [entry.note] - Примечание.
+ * @param {string} entry.dateAdded - Дата добавления записи.
+ * @param {boolean} entry.synced - Флаг синхронизации.
+ */
 async function saveToGoogle(entry) {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -13,7 +33,6 @@ async function saveToGoogle(entry) {
 
     const text = await response.text();
     if (response.ok && text.includes('OK')) {
-      // Найдём и обновим в основном массиве
       const index = entries.findIndex(e => 
         e.cattleId === entry.cattleId && 
         e.date === entry.date && 
@@ -27,7 +46,7 @@ async function saveToGoogle(entry) {
         setTimeout(() => document.getElementById('status').textContent = '', 3000);
       }
     } else {
-      throw new Error('Ошибка: ' + text);
+      throw new Error('Ошибка ответа: ' + text);
     }
   } catch (error) {
     console.error('❌ Ошибка отправки:', error);
@@ -36,6 +55,10 @@ async function saveToGoogle(entry) {
   }
 }
 
+/**
+ * Загружает данные из Google Таблицы по CSV-ссылке.
+ * @async
+ */
 async function loadFromGoogle() {
   const status = document.getElementById('status');
   status.textContent = 'Загрузка...';
@@ -68,7 +91,7 @@ async function loadFromGoogle() {
           synchronization: row[4] || '',
           note: row[5] || '',
           synced: true,
-          dateAdded: nowFormatted() // дата записи — момент загрузки
+          dateAdded: nowFormatted()
         });
       }
     }
@@ -86,6 +109,12 @@ async function loadFromGoogle() {
   }
 }
 
+/**
+ * Сливает локальные и удалённые записи.
+ * @param {Array<Object>} remote - Записи из облака.
+ * @param {Array<Object>} local - Локальные записи.
+ * @returns {Array<Object>} — Объединённый массив.
+ */
 function mergeEntries(remote, local) {
   const map = new Map();
   [...local, ...remote].forEach(e => {
@@ -97,6 +126,10 @@ function mergeEntries(remote, local) {
   return Array.from(map.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+/**
+ * Отправляет все неотправленные записи.
+ * @async
+ */
 async function sendUnsynced() {
   const status = document.getElementById('status');
   const unsynced = entries.filter(e => !e.synced);
@@ -139,7 +172,10 @@ async function sendUnsynced() {
   status.textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
   setTimeout(() => status.textContent = '', 5000);
 }
-// --- Обновить список на экране ---
+
+/**
+ * Обновляет отображение списка записей.
+ */
 function updateList() {
   const list = document.getElementById("entriesList");
   if (!list) return;
