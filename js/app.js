@@ -2,12 +2,6 @@
 // Совместим с voice.js
 
 /**
- * Глобальный массив записей
- * @type {Array<Object>}
- */
-let entries = [];
-
-/**
  * Загружает записи из localStorage при запуске
  */
 function loadLocally() {
