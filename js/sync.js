@@ -56,12 +56,14 @@ async function saveToGoogle(entry) {
 }
 
 /**
- * Загружает данные из Google Таблицы по CSV-ссылке.
+ * Загружает данные из Google Таблицы и синхронизирует с локальными записями.
+ * Сохраняет: все записи из облака + локальные неотправленные (если их нет в облаке).
+ * Удаляет локальные записи, удалённые в облаке.
  * @async
  */
 async function loadFromGoogle() {
   const status = document.getElementById('status');
-  status.textContent = 'Загрузка...';
+  status.textContent = 'Синхронизация...';
 
   try {
     const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now());
@@ -71,11 +73,16 @@ async function loadFromGoogle() {
     if (lines.length < 2) {
       status.textContent = '⚠️ Таблица пуста';
       setTimeout(() => status.textContent = '', 3000);
+
+      // Очищаем локальные синхронизированные, оставляем только неотправленные
+      entries = entries.filter(e => !e.synced);
+      saveLocally();
+      updateList();
       return;
     }
 
     const delimiter = lines[0].includes(';') ? ';' : ',';
-    const remoteEntries = [];
+    const cloudEntries = [];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -83,7 +90,7 @@ async function loadFromGoogle() {
 
       const row = line.split(delimiter).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
       if (row.length >= 6) {
-        remoteEntries.push({
+        cloudEntries.push({
           cattleId: row[0] || '',
           date: row[1] || '',
           bull: row[2] || '',
@@ -91,43 +98,35 @@ async function loadFromGoogle() {
           synchronization: row[4] || '',
           note: row[5] || '',
           synced: true,
-          dateAdded: nowFormatted()
+          dateAdded: nowFormatted() // дата загрузки
         });
       }
     }
 
-    const merged = mergeEntries(remoteEntries, entries);
-    entries = merged;
+    // Создаём множество ключей из облака: "cattleId|date"
+    const cloudKeys = new Set(cloudEntries.map(e => e.cattleId + '|' + e.date));
+
+    // Оставляем только неотправленные записи, которых нет в облаке
+    const unsyncedNew = entries
+      .filter(e => !e.synced)
+      .filter(e => !cloudKeys.has(e.cattleId + '|' + e.date));
+
+    // Объединяем: все записи из облака + новые локальные
+    entries = [...cloudEntries, ...unsyncedNew];
+
     saveLocally();
     updateList();
-    status.textContent = '✅ Данные из облака загружены';
+    status.textContent = '✅ Синхронизация завершена';
     setTimeout(() => status.textContent = '', 3000);
   } catch (error) {
-    console.error('❌ Ошибка загрузки:', error);
-    status.textContent = '❌ Не удалось загрузить из облака';
+    console.error('❌ Ошибка синхронизации:', error);
+    status.textContent = '❌ Не удалось синхронизировать';
     setTimeout(() => status.textContent = '', 5000);
   }
 }
 
 /**
- * Сливает локальные и удалённые записи.
- * @param {Array<Object>} remote - Записи из облака.
- * @param {Array<Object>} local - Локальные записи.
- * @returns {Array<Object>} — Объединённый массив.
- */
-function mergeEntries(remote, local) {
-  const map = new Map();
-  [...local, ...remote].forEach(e => {
-    const key = e.cattleId + '|' + e.date + '|' + e.dateAdded;
-    if (!map.has(key) || !map.get(key).synced) {
-      map.set(key, e);
-    }
-  });
-  return Array.from(map.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
-}
-
-/**
- * Отправляет все неотправленные записи.
+ * Отправляет все неотправленные записи в Google Таблицу.
  * @async
  */
 async function sendUnsynced() {
