@@ -189,39 +189,51 @@
     }
 
     // 📤 Отправить все неотправленные
-    async function sendUnsynced() {
-      const unsynced = entries.filter(e => !e.synced);
-      if (unsynced.length === 0) {
-        document.getElementById('status').textContent = '✅ Нет неотправленных записей';
-        setTimeout(() => document.getElementById('status').textContent = '', 3000);
-        return;
-      }
+async function sendUnsynced() {
+  const status = document.getElementById('status');
+  const unsynced = entries.filter(e => !e.synced);
 
-      document.getElementById('status').textContent = `Отправка ${unsynced.length} записей...`;
-      let successCount = 0;
+  if (unsynced.length === 0) {
+    status.textContent = '✅ Нет неотправленных записей';
+    setTimeout(() => status.textContent = '', 3000);
+    return;
+  }
 
-      for (const entry of unsynced) {
-        try {
-          const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(entry)
-          });
+  status.textContent = `Отправка ${unsynced.length} записей...`;
+  let successCount = 0;
 
-          const text = await response.text();
-          if (response.ok && text.includes('OK')) {
-            entry.synced = true;
-            successCount++;
-          }
-        } catch (err) {
-          console.error('Сеть:', err);
+  for (const entry of unsynced) {
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(entry)
+      });
+
+      const text = await response.text();
+      if (response.ok && text.includes('OK')) {
+        // ✅ Правильно обновляем в основном массиве
+        const index = entries.findIndex(e => 
+          e.cattleId === entry.cattleId && 
+          e.date === entry.date && 
+          e.dateAdded === entry.dateAdded
+        );
+        if (index !== -1) {
+          entries[index].synced = true; // ✅ Теперь точно обновится
+          successCount++;
         }
+      } else {
+        console.error('Ошибка ответа:', text);
       }
-
-      saveLocally();
-      updateList();
-      document.getElementById('status').textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
-      setTimeout(() => document.getElementById('status').textContent = '', 5000);
+    } catch (err) {
+      console.error('Ошибка сети:', err);
     }
+  }
+
+  saveLocally();
+  updateList();
+  status.textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
+  setTimeout(() => status.textContent = '', 5000);
+}
 
     // 🔄 Загрузить из Google Таблицы
     async function loadFromGoogle() {
