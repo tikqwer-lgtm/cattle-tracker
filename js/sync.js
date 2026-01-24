@@ -12,6 +12,12 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxttaNc8sgtxg
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKfT0qrSp0kFLg2VWfHHln2cN1S7syVtotWLQRSp_XJDHq7UDUPd91Ra3XHoXOjgMy6774jC_5VAEO/pub?output=csv';
 
 /**
+ * Флаг, предотвращающий параллельный запуск отправки неотправленных записей.
+ * @type {boolean}
+ */
+let isSendingUnsynced = false;
+
+/**
  * Отправляет запись в Google Таблицу.
  * @async
  * @param {Object} entry - Данные об осеменении.
@@ -127,10 +133,20 @@ async function loadFromGoogle() {
 
 /**
  * Отправляет все неотправленные записи в Google Таблицу.
+ * Защищает от повторного нажатия и дублирования.
+ * Блокирует кнопку на время отправки.
  * @async
  */
 async function sendUnsynced() {
+  // Защита от повторного запуска
+  if (isSendingUnsynced) {
+    document.getElementById('status').textContent = '⏳ Уже идёт отправка...';
+    setTimeout(() => document.getElementById('status').textContent = '', 2000);
+    return;
+  }
+
   const status = document.getElementById('status');
+  const button = document.querySelector('button[onclick="sendUnsynced()"]');
   const unsynced = entries.filter(e => !e.synced);
 
   if (unsynced.length === 0) {
@@ -139,37 +155,50 @@ async function sendUnsynced() {
     return;
   }
 
+  // Блокируем кнопку
+  isSendingUnsynced = true;
+  button.disabled = true;
+  button.style.opacity = '0.6';
   status.textContent = `Отправка ${unsynced.length}...`;
+
   let successCount = 0;
 
-  for (const entry of unsynced) {
-    try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(entry)
-      });
+  try {
+    for (const entry of unsynced) {
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(entry)
+        });
 
-      const text = await response.text();
-      if (response.ok && text.includes('OK')) {
-        const index = entries.findIndex(e => 
-          e.cattleId === entry.cattleId && 
-          e.date === entry.date && 
-          e.dateAdded === entry.dateAdded
-        );
-        if (index !== -1) {
-          entries[index].synced = true;
-          successCount++;
+        const text = await response.text();
+        if (response.ok && text.includes('OK')) {
+          // Обновляем synced в основном массиве
+          const index = entries.findIndex(e => 
+            e.cattleId === entry.cattleId && 
+            e.date === entry.date && 
+            e.dateAdded === entry.dateAdded
+          );
+          if (index !== -1) {
+            entries[index].synced = true;
+            successCount++;
+          }
         }
+      } catch (err) {
+        console.error('Ошибка отправки:', err);
       }
-    } catch (err) {
-      console.error('Сеть:', err);
     }
-  }
 
-  saveLocally();
-  updateList();
-  status.textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
-  setTimeout(() => status.textContent = '', 5000);
+    saveLocally();
+    updateList();
+    status.textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
+  } finally {
+    // Всегда разблокируем
+    isSendingUnsynced = false;
+    button.disabled = false;
+    button.style.opacity = '1';
+    setTimeout(() => status.textContent = '', 5000);
+  }
 }
 
 /**
