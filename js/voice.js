@@ -155,6 +155,81 @@ class VoiceAssistant {
   parseAndStore(command) {
   const lower = command.toLowerCase();
 
+  // Сохраняем временный год, если услышали
+  const yearMatch = command.match(/(20\d{2})/);
+  if (yearMatch) {
+    this.temporaryEntry.yearHint = yearMatch[1]; // запоминаем как подсказку
+    this.playTone(600, 100);
+  }
+
+  // Корова
+  const cattle = lower.match(/(?:корова|номер)\D+(\d+)/i);
+  if (cattle) {
+    this.temporaryEntry.cattleId = cattle[1];
+    this.playTone(700, 100);
+  }
+
+  // Дата: число + месяц
+  const dateMatch = lower.match(/(\d{1,2})[^\w]+(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|ма[яй]|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
+  if (dateMatch) {
+    const day = dateMatch[1].padStart(2, '0');
+    const rawMonth = dateMatch[2].toLowerCase();
+    const monthNames = {
+      'янв': '01', 'фев': '02', 'мар': '03', 'апр': '04',
+      'май': '05', 'июн': '06', 'июл': '07', 'авг': '08',
+      'сен': '09', 'окт': '10', 'ноя': '11', 'дек': '12'
+    };
+    const shortMonth = rawMonth.slice(0, 3);
+    const month = monthNames[shortMonth];
+
+    if (month) {
+      // Год: из hint или текущий
+      const year = this.temporaryEntry.yearHint || new Date().getFullYear();
+      this.temporaryEntry.date = `${year}-${month}-${day}`;
+      this.playTone(700, 100);
+      console.log('📅 Дата распознана:', this.temporaryEntry.date);
+    }
+  }
+
+  // Бык
+  const bull = lower.match(/бык\s+([^\s,]+)/i);
+  if (bull) {
+    this.temporaryEntry.bull = bull[1];
+    this.playTone(700, 100);
+  }
+
+  // Попытка
+  const attempt = lower.match(/попытка\s+(\d+)/i);
+  if (attempt) {
+    this.temporaryEntry.attempt = attempt[1];
+    this.playTone(700, 100);
+  }
+
+  // СИНХ
+  if (lower.includes('пг') && lower.includes('шесть') && (lower.includes('же') || lower.includes('джи'))) {
+    this.temporaryEntry.synchronization = 'PG6-G';
+    this.playTone(700, 100);
+  } else if (lower.includes('овсинх') || lower.includes('ов-синх')) {
+    this.temporaryEntry.synchronization = 'Ovsynch';
+    this.playTone(700, 100);
+  } else if (lower.includes('косинх') || lower.includes('ко-синх')) {
+    this.temporaryEntry.synchronization = 'Cosynch';
+    this.playTone(700, 100);
+  } else if (lower.includes('другое')) {
+    this.temporaryEntry.synchronization = 'Другое';
+    this.playTone(700, 100);
+  }
+
+  // Примечание
+  const note = lower.match(/примечание\s+(.+)/i) || lower.match(/заметка\s+(.+)/i);
+  if (note) {
+    this.temporaryEntry.note = note[1];
+    this.playTone(700, 100);
+  }
+}
+
+  const lower = command.toLowerCase();
+
   // Корова
   const cattle = lower.match(/(?:корова|номер)\s+(\d+)/i);
   if (cattle) {
