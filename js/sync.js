@@ -139,3 +139,31 @@ async function sendUnsynced() {
   status.textContent = `✅ Отправлено: ${successCount} из ${unsynced.length}`;
   setTimeout(() => status.textContent = '', 5000);
 }
+// --- Обновить список на экране ---
+function updateList() {
+  const list = document.getElementById("entriesList");
+  if (!list) return;
+
+  list.innerHTML = `<div><strong>Всего: ${entries.length}</strong></div>`;
+  if (entries.length === 0) {
+    list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
+  } else {
+    entries.forEach(entry => {
+      const div = document.createElement("div");
+      div.className = "entry" + (!entry.synced ? " unsynced" : "");
+      div.innerHTML = `
+        <strong>Корова:</strong> ${entry.cattleId} | 
+        <strong>Дата осеменения:</strong> ${formatDate(entry.date)}<br>
+        <strong>Дата записи:</strong> ${entry.dateAdded}<br>
+        <strong>Бык:</strong> ${entry.bull || '—'} | 
+        <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
+        <em style="color: #666;">
+          ${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} 
+          ${entry.note ? '• ' + entry.note : ''}
+        </em>
+        ${!entry.synced ? '<span style="color: #ff9900; font-size: 12px;"> ● Не отправлено</span>' : ''}
+      `;
+      list.appendChild(div);
+    });
+  }
+}
