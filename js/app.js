@@ -1,5 +1,6 @@
 // app.js — основная логика приложения
 
+// app.js
 function addEntry() {
   const cattleId = document.getElementById("cattleId").value.trim();
   const date = document.getElementById("date").value;
@@ -15,8 +16,8 @@ function addEntry() {
     attempt: document.getElementById("attempt").value || '',
     synchronization: document.getElementById("sync").value || '',
     note: document.getElementById("note").value || '',
-    synced: false,
-    dateAdded: nowFormatted()  // ✅ Должно быть здесь
+    synced: false,              // ❌ Ещё не отправлено
+    dateAdded: nowFormatted()   // Дата и время добавления
   };
 
   entries.unshift(entry);
@@ -24,8 +25,9 @@ function addEntry() {
   updateList();
   clearForm();
 
-  saveToGoogle(entry); // 👉 отправляет в GAS
+  // ✅ УБРАНО: saveToGoogle(entry) — больше не отправляем автоматически
 }
+
 
 function clearForm() {
   document.getElementById("cattleId").value = "";
