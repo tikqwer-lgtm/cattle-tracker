@@ -72,7 +72,15 @@ async function loadFromGoogle() {
   status.textContent = '🔄 Синхронизация...';
 
   try {
-    const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now());
+    const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now(), {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/csv',
+      },
+      redirect: 'follow'
+    });
     const text = await response.text();
     const lines = text.trim().split('\n');
 
@@ -163,6 +171,11 @@ async function sendUnsynced() {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
+          mode: 'cors',
+          cache: 'no-cache',
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(entry)
         });
 
