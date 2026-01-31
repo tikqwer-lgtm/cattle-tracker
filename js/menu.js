@@ -34,11 +34,14 @@ function updateViewList() {
 
   container.innerHTML = entries.map(entry => `
     <div class="entry ${entry.synced ? '' : 'unsynced'}">
-      <strong>Корова: ${entry.cattleId}</strong>
-      <em>Дата: ${entry.date}</em>
+      <strong>Корова: ${entry.cattleId}</strong> (${entry.nickname || '—'})
+      <em>Лактация: ${entry.lactation}</em>
+      <em>Дата осеменения: ${formatDate(entry.inseminationDate)}</em>
       ${entry.bull ? `<em>Бык: ${entry.bull}</em>` : ''}
-      ${entry.attempt ? `<em>Попытка: ${entry.attempt}</em>` : ''}
-      ${entry.synchronization ? `<em>СИНХ: ${entry.synchronization}</em>` : ''}
+      ${entry.attemptNumber ? `<em>Попытка: ${entry.attemptNumber}</em>` : ''}
+      ${entry.status ? `<em>Статус: ${entry.status}</em>` : ''}
+      ${entry.calvingDate ? `<em>Отёл: ${formatDate(entry.calvingDate)}</em>` : ''}
+      ${entry.dryStartDate ? `<em>Сухостой: ${formatDate(entry.dryStartDate)}</em>` : ''}
       ${entry.note ? `<em>Примечание: ${entry.note}</em>` : ''}
       <small>${entry.synced ? '✅ Синхронизировано' : '🟡 Не отправлено'}</small>
     </div>
