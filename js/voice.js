@@ -1,9 +1,9 @@
-// voice.js — Голосовой помощник "Гена" с подтверждением, очисткой и отменой
+// voice.js — Голосовой помощник "Гена" с поддержкой кнопки вкл/выкл
 
 class VoiceAssistant {
   constructor() {
-    this.isListening = false;        // Ждём "Гена"
-    this.isRecording = false;        // После "Гена" — режим записи
+    this.isListening = false;        // Устаревшее, можно удалить (не используется)
+    this.isRecording = false;        // Режим записи после "Гена"
     this.temporaryEntry = {};        // Временные данные
     this.audioContext = null;
     this.status = document.getElementById('status');
@@ -30,13 +30,14 @@ class VoiceAssistant {
     }
 
     if (!'speechSynthesis' in window) {
-      console.warn('📢 Синтез: не поддерживается');
+      console.warn('📢 Синтез речи: не поддерживается');
     }
 
     return true;
   }
 
   setupAudio() {
+    // Активация аудио по клику или касанию
     document.body.addEventListener('click', () => this.initAudio(), { once: true });
     document.body.addEventListener('touchstart', () => this.initAudio(), { once: true });
   }
@@ -60,14 +61,12 @@ class VoiceAssistant {
     setTimeout(() => o.stop(), dur);
   }
 
-    speak(text) {
-    // Проверяем, был ли запуск аудио (через initAudio)
+  speak(text) {
     if (!this.audioContext) {
       console.log('🔇 Озвучка отложена: ожидание активации');
       return;
     }
 
-    // Откладываем на следующий тик — чтобы точно после разрешения
     setTimeout(() => {
       if ('speechSynthesis' in window) {
         const utter = new SpeechSynthesisUtterance(text);
@@ -76,7 +75,6 @@ class VoiceAssistant {
         utter.pitch = 1;
         utter.volume = 1;
 
-        // Проверим, можно ли говорить
         utter.onstart = () => console.log('📢 Гена сказал:', text);
         utter.onerror = (e) => console.warn('❌ Ошибка синтеза:', e);
 
@@ -84,7 +82,6 @@ class VoiceAssistant {
       }
     }, 100);
   }
-
 
   setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -113,7 +110,6 @@ class VoiceAssistant {
           this.updateStatus('🎙 Гена: Слушаю…');
         }
       } else {
-        // Новые команды
         if (lower.includes('запиши')) {
           this.finalizeEntry();
           return;
@@ -134,7 +130,6 @@ class VoiceAssistant {
           return;
         }
 
-        // Обычные данные
         this.parseAndStore(transcript);
       }
     };
@@ -148,85 +143,86 @@ class VoiceAssistant {
     };
 
     this.recognition.onend = () => {
-      setTimeout(() => this.restart(), 1000);
+      if (this.isRecording) {
+        setTimeout(() => this.restart(), 1000);
+      }
     };
   }
 
   parseAndStore(command) {
-  const lower = command.toLowerCase();
+    const lower = command.toLowerCase();
 
-  // Сохраняем временный год, если услышали
-  const yearMatch = command.match(/(20\d{2})/);
-  if (yearMatch) {
-    this.temporaryEntry.yearHint = yearMatch[1]; // запоминаем как подсказку
-    this.playTone(600, 100);
-  }
+    // Сохраняем год, если услышали
+    const yearMatch = command.match(/(20\d{2})/);
+    if (yearMatch) {
+      this.temporaryEntry.yearHint = yearMatch[1];
+      this.playTone(600, 100);
+    }
 
-  // Корова
-  const cattle = lower.match(/(?:корова|номер)\D+(\d+)/i);
-  if (cattle) {
-    this.temporaryEntry.cattleId = cattle[1];
-    this.playTone(700, 100);
-  }
-
-  // Дата: число + месяц
-  const dateMatch = lower.match(/(\d{1,2})[^\w]+(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|ма[яй]|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
-  if (dateMatch) {
-    const day = dateMatch[1].padStart(2, '0');
-    const rawMonth = dateMatch[2].toLowerCase();
-    const monthNames = {
-      'янв': '01', 'фев': '02', 'мар': '03', 'апр': '04',
-      'май': '05', 'июн': '06', 'июл': '07', 'авг': '08',
-      'сен': '09', 'окт': '10', 'ноя': '11', 'дек': '12'
-    };
-    const shortMonth = rawMonth.slice(0, 3);
-    const month = monthNames[shortMonth];
-
-    if (month) {
-      // Год: из hint или текущий
-      const year = this.temporaryEntry.yearHint || new Date().getFullYear();
-      this.temporaryEntry.date = `${year}-${month}-${day}`;
+    // Номер коровы
+    const cattle = lower.match(/(?:корова|номер)\D+(\d+)/i);
+    if (cattle) {
+      this.temporaryEntry.cattleId = cattle[1];
       this.playTone(700, 100);
-      console.log('📅 Дата распознана:', this.temporaryEntry.date);
+    }
+
+    // Дата: число + месяц
+    const dateMatch = lower.match(/(\d{1,2})[^\w]+(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|ма[яй]|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const rawMonth = dateMatch[2].toLowerCase();
+      const monthNames = {
+        'янв': '01', 'фев': '02', 'мар': '03', 'апр': '04',
+        'май': '05', 'июн': '06', 'июл': '07', 'авг': '08',
+        'сен': '09', 'окт': '10', 'ноя': '11', 'дек': '12'
+      };
+      const shortMonth = rawMonth.slice(0, 3);
+      const month = monthNames[shortMonth];
+
+      if (month) {
+        const year = this.temporaryEntry.yearHint || new Date().getFullYear();
+        this.temporaryEntry.date = `${year}-${month}-${day}`;
+        this.playTone(700, 100);
+        console.log('📅 Дата распознана:', this.temporaryEntry.date);
+      }
+    }
+
+    // Бык
+    const bull = lower.match(/бык\s+([^\s,]+)/i);
+    if (bull) {
+      this.temporaryEntry.bull = bull[1];
+      this.playTone(700, 100);
+    }
+
+    // Попытка
+    const attempt = lower.match(/попытка\s+(\d+)/i);
+    if (attempt) {
+      this.temporaryEntry.attempt = attempt[1];
+      this.playTone(700, 100);
+    }
+
+    // СИНХ
+    if (lower.includes('пг') && lower.includes('шесть') && (lower.includes('же') || lower.includes('джи'))) {
+      this.temporaryEntry.synchronization = 'PG6-G';
+      this.playTone(700, 100);
+    } else if (lower.includes('овсинх') || lower.includes('ов-синх')) {
+      this.temporaryEntry.synchronization = 'Ovsynch';
+      this.playTone(700, 100);
+    } else if (lower.includes('косинх') || lower.includes('ко-синх')) {
+      this.temporaryEntry.synchronization = 'Cosynch';
+      this.playTone(700, 100);
+    } else if (lower.includes('другое')) {
+      this.temporaryEntry.synchronization = 'Другое';
+      this.playTone(700, 100);
+    }
+
+    // Примечание
+    const note = lower.match(/примечание\s+(.+)/i) || lower.match(/заметка\s+(.+)/i);
+    if (note) {
+      this.temporaryEntry.note = note[1];
+      this.playTone(700, 100);
     }
   }
-
-  // Бык
-  const bull = lower.match(/бык\s+([^\s,]+)/i);
-  if (bull) {
-    this.temporaryEntry.bull = bull[1];
-    this.playTone(700, 100);
-  }
-
-  // Попытка
-  const attempt = lower.match(/попытка\s+(\d+)/i);
-  if (attempt) {
-    this.temporaryEntry.attempt = attempt[1];
-    this.playTone(700, 100);
-  }
-
-  // СИНХ
-  if (lower.includes('пг') && lower.includes('шесть') && (lower.includes('же') || lower.includes('джи'))) {
-    this.temporaryEntry.synchronization = 'PG6-G';
-    this.playTone(700, 100);
-  } else if (lower.includes('овсинх') || lower.includes('ов-синх')) {
-    this.temporaryEntry.synchronization = 'Ovsynch';
-    this.playTone(700, 100);
-  } else if (lower.includes('косинх') || lower.includes('ко-синх')) {
-    this.temporaryEntry.synchronization = 'Cosynch';
-    this.playTone(700, 100);
-  } else if (lower.includes('другое')) {
-    this.temporaryEntry.synchronization = 'Другое';
-    this.playTone(700, 100);
-  }
-
-  // Примечание
-  const note = lower.match(/примечание\s+(.+)/i) || lower.match(/заметка\s+(.+)/i);
-  if (note) {
-    this.temporaryEntry.note = note[1];
-    this.playTone(700, 100);
-  }
-}
 
   confirmEntry() {
     let text = 'Записано: ';
@@ -285,7 +281,6 @@ class VoiceAssistant {
     this.updateStatus('✅ Записано');
     console.log('✅ Запись добавлена:', this.temporaryEntry);
 
-    // Сброс
     this.isRecording = false;
     this.temporaryEntry = {};
   }
@@ -300,7 +295,7 @@ class VoiceAssistant {
   }
 
   restart() {
-    if (this.recognition) {
+    if (this.recognition && this.isRecording) {
       this.recognition.start();
     }
   }
@@ -316,6 +311,7 @@ class VoiceAssistant {
       }, 4000);
     }
   }
+
   toggle() {
     if (this.isRecording) {
       this.forceStop();
@@ -323,66 +319,52 @@ class VoiceAssistant {
       this.resume();
     }
   }
-  /**
- * Принудительно останавливает распознавание
- */
-forceStop() {
-  try {
-    this.recognition.abort(); // немедленно останавливает
-  } catch (e) {}
 
-  this.isRecording = false;
-  this.isListening = false;
-  this.updateStatus('🔴 Голос выключен');
-  this.playTone(400, 300);
+  forceStop() {
+    try {
+      this.recognition.abort();
+    } catch (e) {}
 
-  // Обновляем кнопку
-  this.updateToggleButton('🎤 Голос: Вкл');
-}
-
-/**
- * Возобновляет прослушивание
- */
-resume() {
-  this.isRecording = true;
-  this.isListening = true;
-  this.speak('Готов слушать');
-  this.updateStatus('🟢 Голос включён');
-  this.playTone(800, 200);
-
-  // Перезапускаем, если остановлено
-  if (this.recognition) {
-    this.recognition.start();
+    this.isRecording = false;
+    this.updateStatus('🔴 Голос выключен');
+    this.playTone(400, 300);
+    this.updateToggleButton('🎤 Голос: Вкл');
   }
 
-  // Обновляем кнопку
-  this.updateToggleButton('🎤 Голос: Выкл');
-}
+  resume() {
+    this.isRecording = true;
+    this.speak('Готов слушать');
+    this.updateStatus('🟢 Голос включён');
+    this.playTone(800, 200);
 
-/**
- * Обновляет текст кнопки
- */
-updateToggleButton(text) {
-  const button = document.querySelector('button[onclick="toggleVoice()"]');
-  if (button) {
-    button.textContent = text;
+    if (this.recognition) {
+      this.recognition.start();
+    }
+
+    this.updateToggleButton('🎤 Голос: Выкл');
+  }
+
+  updateToggleButton(text) {
+    const button = document.querySelector('button[onclick="toggleVoice()"]');
+    if (button) {
+      button.textContent = text;
+    }
   }
 }
+
+// === ГЛОБАЛЬНЫЕ ОБЪЕКТЫ (вне класса) ===
+
 let voiceAssistant = null;
 
-// Запускаем при загрузке
-document.addEventListener('DOMContentLoaded', () => {
-  voiceAssistant = new VoiceAssistant();
-});
-
-// Глобальная функция для кнопки
 function toggleVoice() {
-  if (voiceAssistant && voiceAssistant.toggle) {
+  if (voiceAssistant && typeof voiceAssistant.toggle === 'function') {
     voiceAssistant.toggle();
+  } else {
+    console.warn('voiceAssistant ещё не готов');
   }
 }
 
-// Запуск
+// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', () => {
-  new VoiceAssistant();
+  voiceAssistant = new VoiceAssistant();
 });
