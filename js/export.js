@@ -40,14 +40,13 @@ function exportToExcel() {
     ]);
   });
 
-  // Формируем CSV-контент с разделителем ;
-  let csvContent = "data:text/csv;charset=utf-8," + 
-    csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+  // Формируем CSV-контент с разделителем ; и BOM для корректного отображения кириллицы в Excel
+  let csvContent = "\uFEFF" + csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
 
   // Создаем ссылку для скачивания
-  const encodedUri = encodeURI(csvContent);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
+  link.href = URL.createObjectURL(blob);
   link.setAttribute("download", `Учёт_коров_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
