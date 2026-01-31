@@ -1,0 +1,51 @@
+/**
+ * Навигация между экранами
+ * @param {string} screenId — id экрана: 'menu', 'add', 'view', 'analytics'
+ */
+function navigate(screenId) {
+  // Скрыть все экраны
+  document.querySelectorAll('.screen').forEach(el => {
+    el.classList.remove('active');
+  });
+
+  // Показать нужный
+  const screen = document.getElementById(screenId + '-screen');
+  if (screen) {
+    screen.classList.add('active');
+  }
+
+  // Обновить список при открытии "Просмотр"
+  if (screenId === 'view') {
+    updateViewList();
+  }
+}
+
+/**
+ * Обновляет список на экране просмотра
+ */
+function updateViewList() {
+  const container = document.getElementById('viewEntriesList');
+  if (!container) return;
+
+  if (entries.length === 0) {
+    container.innerHTML = '<p>Нет записей</p>';
+    return;
+  }
+
+  container.innerHTML = entries.map(entry => `
+    <div class="entry ${entry.synced ? '' : 'unsynced'}">
+      <strong>Корова: ${entry.cattleId}</strong>
+      <em>Дата: ${entry.date}</em>
+      ${entry.bull ? `<em>Бык: ${entry.bull}</em>` : ''}
+      ${entry.attempt ? `<em>Попытка: ${entry.attempt}</em>` : ''}
+      ${entry.synchronization ? `<em>СИНХ: ${entry.synchronization}</em>` : ''}
+      ${entry.note ? `<em>Примечание: ${entry.note}</em>` : ''}
+      <small>${entry.synced ? '✅ Синхронизировано' : '🟡 Не отправлено'}</small>
+    </div>
+  `).join('');
+}
+
+// При загрузке сразу открываем меню
+document.addEventListener('DOMContentLoaded', () => {
+  navigate('menu');
+});

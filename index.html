@@ -8,17 +8,31 @@
 </head>
 <body>
 
-  <!-- 🔊 Экран активации -->
-  <div id="activationScreen">
-    <h2>🎙 Гена — голосовой помощник</h2>
-    <p>Нажмите кнопку, чтобы разрешить микрофон и звук. Это нужно один раз при первом открытии.</p>
-    <button onclick="document.getElementById('activationScreen').style.display='none';">Понятно, начать</button>
-  </div>
+ <!-- 🔊 Экран активации -->
+<div id="activationScreen">
+  <h2>🎙 Гена — голосовой помощник</h2>
+  <p>Нажмите кнопку, чтобы разрешить микрофон и звук.</p>
+  <button onclick="document.getElementById('activationScreen').style.display='none';">Понятно, начать</button>
+</div>
 
-  <!-- Основной контент -->
+<!-- 🏠 Главное меню -->
+<div id="menu-screen" class="screen active">
   <div class="container">
-    <h1>Учёт осеменения коров</h1>
+    <h1>🐄 Ферма — главное меню</h1>
+    <div class="menu-buttons">
+      <button onclick="navigate('view')">📋 Просмотр описи</button>
+      <button onclick="navigate('add')">➕ Добавить событие</button>
+      <button onclick="navigate('analytics')">📊 Аналитика</button>
+    </div>
+  </div>
+</div>
 
+<!-- ➕ Экран добавления -->
+<div id="add-screen" class="screen">
+  <div class="container">
+    <button onclick="navigate('menu')" class="back-button">← Назад</button>
+    <h1>➕ Добавить событие</h1>
+    <!-- Ваша текущая форма -->
     <div class="form">
       <label>Номер коровы *</label>
       <input type="text" id="cattleId" placeholder="105" />
@@ -56,11 +70,33 @@
 
     <div id="entriesList"></div>
   </div>
+</div>
+
+<!-- 📋 Просмотр описи -->
+<div id="view-screen" class="screen">
+  <div class="container">
+    <button onclick="navigate('menu')" class="back-button">← Назад</button>
+    <h1>📋 Просмотр всех записей</h1>
+    <div id="viewEntriesList"></div>
+  </div>
+</div>
+
+<!-- 📊 Аналитика -->
+<div id="analytics-screen" class="screen">
+  <div class="container">
+    <button onclick="navigate('menu')" class="back-button">← Назад</button>
+    <h1>📊 Аналитика</h1>
+    <p>Пока в разработке...</p>
+    <!-- Сюда можно добавить графики позже -->
+  </div>
+</div>
+
 
   <!-- Подключение скриптов -->
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/menu.js"></script>
   <script src="js/voice.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/export.js"></script>
