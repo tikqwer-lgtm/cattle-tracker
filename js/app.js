@@ -210,6 +210,7 @@ function updateList() {
       list.appendChild(div);
     });
   }
+  alert('Запись удалена');
 }
 
 /**
@@ -300,6 +301,7 @@ function parseVoiceCommand(command) {
     status.textContent = `✅ Обработано: ${command}`;
     setTimeout(() => { status.textContent = ''; }, 5000);
   }
+  alert('Запись удалена');
 }
 
 /**
@@ -364,6 +366,7 @@ function editEntry(cattleId) {
   if (typeof navigate === 'function') {
     navigate('add');
   }
+  alert('Запись удалена');
 }
 
 /**
