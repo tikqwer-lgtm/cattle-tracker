@@ -104,7 +104,7 @@ async function loadFromGoogle() {
           synchronization: row[4] || '',
           note: row[5] || '',
           synced: true,
-          dateAdded: nowFormatted() // дата загрузки
+          dateAdded: nowFormatted()
         });
       }
     }
@@ -173,7 +173,6 @@ async function sendUnsynced() {
 
         const text = await response.text();
         if (response.ok && text.includes('OK')) {
-          // Обновляем synced в основном массиве
           const index = entries.findIndex(e => 
             e.cattleId === entry.cattleId && 
             e.date === entry.date && 
