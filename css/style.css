@@ -150,3 +150,41 @@ button[onclick="toggleVoice()"] {
 button[onclick="toggleVoice()"]:hover {
   background: #219653;
 }
+/* === Меню и экраны === */
+
+.screen {
+  display: none;
+}
+
+.screen.active {
+  display: block;
+}
+
+.menu-buttons {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.menu-buttons button {
+  padding: 16px;
+  font-size: 18px;
+  background: #1a5fb4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.menu-buttons button:hover {
+  background: #154a8a;
+}
+
+.back-button {
+  background: #777;
+  margin-bottom: 10px;
+}
+
+.back-button:hover {
+  background: #555;
+}
