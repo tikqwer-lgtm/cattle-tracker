@@ -7,7 +7,106 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <!-- (остальная разметка без изменений) -->
+  <!-- Экран меню -->
+  <div id="menu-screen" class="screen active">
+    <h1>Меню</h1>
+    <div class="menu-buttons">
+      <button onclick="navigate('add')">Добавить корову</button>
+      <button onclick="navigate('view')">Просмотр записей</button>
+      <button onclick="navigate('sync')">Синхронизация</button>
+    </div>
+  </div>
+
+  <!-- Экран добавления/редактирования -->
+  <div id="add-screen" class="screen">
+    <h1 id="addScreenTitle">➕ Добавить корову</h1>
+    <form class="form" onsubmit="saveCurrentEntry(); return false;">
+      <label for="cattleId">Номер коровы *</label>
+      <input type="text" id="cattleId" required />
+
+      <label for="nickname">Кличка</label>
+      <input type="text" id="nickname" />
+
+      <label for="birthDate">Дата рождения</label>
+      <input type="date" id="birthDate" />
+
+      <label for="lactation">Лактация</label>
+      <input type="number" id="lactation" value="1" />
+
+      <label for="calvingDate">Дата отёла</label>
+      <input type="date" id="calvingDate" />
+
+      <label for="inseminationDate">Дата осеменения *</label>
+      <input type="date" id="inseminationDate" required />
+
+      <label for="attemptNumber">Номер попытки</label>
+      <input type="number" id="attemptNumber" value="1" />
+
+      <label for="bull">Бык</label>
+      <input type="text" id="bull" />
+
+      <label for="inseminator">Осеменитель</label>
+      <input type="text" id="inseminator" />
+
+      <label for="code">Код</label>
+      <input type="text" id="code" />
+
+      <label for="status">Статус</label>
+      <select id="status">
+        <option>Охота</option>
+        <option>Сухостой</option>
+        <option>Отёл</option>
+        <option>Сухостой (вынужд.)</option>
+        <option>Отёл (вынужд.)</option>
+      </select>
+
+      <label for="exitDate">Дата выбытия</label>
+      <input type="date" id="exitDate" />
+
+      <label for="dryStartDate">Начало сухостоя</label>
+      <input type="date" id="dryStartDate" />
+
+      <label for="vwp">ВСП (дни)</label>
+      <input type="number" id="vwp" value="60" />
+
+      <label for="protocolName">Протокол</label>
+      <input type="text" id="protocolName" />
+
+      <label for="protocolStartDate">Начало протокола</label>
+      <input type="date" id="protocolStartDate" />
+
+      <label for="note">Примечание</label>
+      <textarea id="note"></textarea>
+
+      <div class="form-actions">
+        <button type="button" onclick="cancelEdit()" id="cancelButton">Отмена</button>
+        <button type="submit" id="saveButton">Сохранить</button>
+      </div>
+    </form>
+
+    <div id="entriesList"></div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран просмотра записей -->
+  <div id="view-screen" class="screen">
+    <h1>📋 Просмотр записей</h1>
+    <div id="viewEntriesList"></div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран синхронизации -->
+  <div id="sync-screen" class="screen">
+    <h1>🔄 Синхронизация</h1>
+    <div class="sync-controls">
+      <button onclick="exportData()">Экспорт данных</button>
+      <label for="importFile">Импорт данных
+        <input type="file" id="importFile" accept=".json" onchange="importData()" />
+      </label>
+      <div id="syncStatus" class="sync-status"></div>
+    </div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
 
   <!-- Подключение скриптов в правильном порядке -->
   <script src="js/utils.js"></script>
