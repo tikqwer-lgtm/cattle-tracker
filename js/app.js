@@ -60,7 +60,8 @@ function addEntry() {
     updateViewList();
   }
   clearForm();
-}
+  // После добавления или редактирования переключаемся на просмотр
+  navigate('view');}
 
 /**
  * Очищает форму после добавления
@@ -212,4 +213,59 @@ function addEntryFromVoice(data) {
 
   // Добавляем как обычную запись
   addEntry();
+}
+
+/**
+ * Редактирует существующую запись
+ * @param {string} cattleId - Номер коровы
+ */
+function editEntry(cattleId) {
+  const entry = entries.find(e => e.cattleId === cattleId);
+  if (!entry) {
+    alert('Запись не найдена!');
+    return;
+  }
+
+  // Заполняем форму данными из записи
+  document.getElementById('cattleId').value = entry.cattleId;
+  document.getElementById('nickname').value = entry.nickname || '';
+  document.getElementById('birthDate').value = entry.birthDate || '';
+  document.getElementById('lactation').value = entry.lactation || 1;
+  document.getElementById('calvingDate').value = entry.calvingDate || '';
+  document.getElementById('inseminationDate').value = entry.inseminationDate || '';
+  document.getElementById('attemptNumber').value = entry.attemptNumber || 1;
+  document.getElementById('bull').value = entry.bull || '';
+  document.getElementById('inseminator').value = entry.inseminator || '';
+  document.getElementById('code').value = entry.code || '';
+  document.getElementById('status').value = entry.status || 'Охота';
+  document.getElementById('exitDate').value = entry.exitDate || '';
+  document.getElementById('dryStartDate').value = entry.dryStartDate || '';
+  document.getElementById('vwp').value = entry.vwp || 60;
+  document.getElementById('protocolName').value = entry.protocol.name || '';
+  document.getElementById('protocolStartDate').value = entry.protocol.startDate || '';
+  document.getElementById('note').value = entry.note || '';
+
+  // Переключаемся на экран добавления/редактирования
+  navigate('add');
+}
+
+/**
+ * Удаляет запись
+ * @param {string} cattleId - Номер коровы
+ */
+function deleteEntry(cattleId) {
+  if (!confirm(`Удалить запись о корове ${cattleId}?`)) {
+    return;
+  }
+
+  const index = entries.findIndex(e => e.cattleId === cattleId);
+  if (index !== -1) {
+    entries.splice(index, 1);
+    saveLocally();
+    updateList();
+    updateViewList();
+    alert('Запись удалена');
+  } else {
+    alert('Запись не найдена!');
+  }
 }
