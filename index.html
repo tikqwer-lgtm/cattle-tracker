@@ -155,6 +155,11 @@
       <button onclick="sendUnsynced()">Отправить неотправленные</button>
       <button onclick="loadFromGoogle()">🔄 Синхронизировать с облаком</button>
       <button onclick="exportToExcel()">📤 Экспорт в Excel</button>
+      <label class="file-upload">
+        <input type="file" id="importFile" accept=".csv,.xlsx" onchange="importFromCSV(event)">
+        📥 Импорт из файла
+      </label>
+      <button onclick="downloadTemplate()">📄 Скачать шаблон</button>
       <div class="sync-status" id="status"></div>
     </div>
     <div id="viewEntriesList"></div>
