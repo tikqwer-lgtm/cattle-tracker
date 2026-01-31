@@ -18,6 +18,7 @@
     <div class="menu-buttons">
       <button onclick="navigate('view')">📋 Просмотр описи</button>
       <button onclick="navigate('add')">➕ Добавить корову</button>
+      <button onclick="navigate('insemination')">🧬 Ввод осеменения</button>
       <button onclick="navigate('analytics')">📊 Аналитика</button>
     </div>
   </div>
@@ -25,6 +26,44 @@
 
 <!-- ➕ Экран добавления -->
 <div id="add-screen" class="screen">
+
+  <!-- 🧬 Экран ввода осеменения -->
+  <div id="insemination-screen" class="screen">
+    <div class="container">
+      <button onclick="navigate('menu')" class="back-button">← Назад</button>
+      <h1>🧬 Ввод осеменения</h1>
+      <div class="form">
+        <label>Номер коровы *</label>
+        <input type="text" id="cattleIdInsem" placeholder="105" required />
+
+        <label>Дата осеменения *</label>
+        <input type="date" id="inseminationDateInsem" required />
+
+        <label>Номер попытки</label>
+        <input type="number" id="attemptNumberInsem" value="1" min="1" />
+
+        <label>Бык</label>
+        <input type="text" id="bullInsem" placeholder="Бык-23" />
+
+        <label>Осеменатор</label>
+        <input type="text" id="inseminatorInsem" placeholder="Иванов" />
+
+        <label>Код осеменения</label>
+        <select id="codeInsem">
+          <option value="">Выберите...</option>
+          <option value="Охота">Охота</option>
+          <option value="РеСИНХ">РеСИНХ</option>
+          <option value="ОВСИНХ">ОВСИНХ</option>
+          <option value="ДаблОВСИНХ">ДаблОВСИНХ</option>
+          <option value="ПРЕСИНХ">ПРЕСИНХ</option>
+          <option value="КоСИНХ">КоСИНХ</option>
+          <option value="Датчик">Датчик</option>
+        </select>
+
+        <button onclick="addInseminationEntry()">Добавить осеменение</button>
+      </div>
+    </div>
+  </div>
   <div class="container">
     <button onclick="navigate('menu')" class="back-button">← Назад</button>
     <h1>➕ Добавить корову</h1>
@@ -137,5 +176,6 @@
   <script src="js/menu.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/insemination.js"></script>
 </body>
 </html>
