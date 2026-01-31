@@ -3,21 +3,21 @@
  * @param {string} screenId — id экрана: 'menu', 'add', 'view', 'analytics'
  */
 function navigate(screenId) {
-// Скрыть все экраны
-document.querySelectorAll('.screen').forEach(el => {
-el.classList.remove('active');
-});
+  // Скрыть все экраны
+  document.querySelectorAll('.screen').forEach(el => {
+    el.classList.remove('active');
+  });
 
-// Показать нужный
-const screen = document.getElementById(screenId + '-screen');
-if (screen) {
-screen.classList.add('active');
-}
+  // Показать нужный
+  const screen = document.getElementById(screenId + '-screen');
+  if (screen) {
+    screen.classList.add('active');
+  }
 
-// Обновить список при открытии "Просмотр"
-if (screenId === 'view') {
-updateViewList();
-}
+  // Обновить список при открытии "Просмотр"
+  if (screenId === 'view') {
+    updateViewList();
+  }
 }
 
 /**
@@ -32,27 +32,50 @@ function updateViewList() {
     return;
   }
 
-  container.innerHTML = entries.map(entry => `
-    <div class="entry ${entry.synced ? '' : 'unsynced'}">
-      <strong>Корова: ${entry.cattleId}</strong> (${entry.nickname || '—'})
-      <em>Лактация: ${entry.lactation}</em>
-      <em>Дата осеменения: ${formatDate(entry.inseminationDate)}</em>
-      ${entry.bull ? `<em>Бык: ${entry.bull}</em>` : ''}
-      ${entry.attemptNumber ? `<em>Попытка: ${entry.attemptNumber}</em>` : ''}
-      ${entry.status ? `<em>Статус: ${entry.status}</em>` : ''}
-      ${entry.calvingDate ? `<em>Отёл: ${formatDate(entry.calvingDate)}</em>` : ''}
-      ${entry.dryStartDate ? `<em>Сухостой: ${formatDate(entry.dryStartDate)}</em>` : ''}
-      ${entry.note ? `<em>Примечание: ${entry.note}</em>` : ''}
-      <small>${entry.synced ? '✅ Синхронизировано' : '🟡 Не отправлено'}</small>
-    </div>
-    <div class="entry-actions">
-      <button onclick="editEntry('${entry.cattleId}')" class="small-btn edit">✏️</button>
-      <button onclick="deleteEntry('${entry.cattleId}')" class="small-btn delete">🗑️</button>
-    </div>
-  `).join('');
+  container.innerHTML = `
+    <table class="entries-table">
+      <thead>
+        <tr>
+          <th>Корова</th>
+          <th>Кличка</th>
+          <th>Лактация</th>
+          <th>Дата осеменения</th>
+          <th>Бык</th>
+          <th>Попытка</th>
+          <th>Статус</th>
+          <th>Отёл</th>
+          <th>Сухостой</th>
+          <th>Примечание</th>
+          <th>Синхронизация</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${entries.map(entry => `
+          <tr class="${entry.synced ? '' : 'unsynced'}">
+            <td>${entry.cattleId}</td>
+            <td>${entry.nickname || '—'}</td>
+            <td>${entry.lactation}</td>
+            <td>${formatDate(entry.inseminationDate)}</td>
+            <td>${entry.bull || '—'}</td>
+            <td>${entry.attemptNumber || '—'}</td>
+            <td>${entry.status || '—'}</td>
+            <td>${formatDate(entry.calvingDate) || '—'}</td>
+            <td>${formatDate(entry.dryStartDate) || '—'}</td>
+            <td>${entry.note || '—'}</td>
+            <td>${entry.synced ? '✅' : '🟡'}</td>
+            <td class="actions-cell">
+              <button onclick="editEntry('${entry.cattleId}')" class="small-btn edit">✏️</button>
+              <button onclick="deleteEntry('${entry.cattleId}')" class="small-btn delete">🗑️</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 // При загрузке сразу открываем меню
 document.addEventListener('DOMContentLoaded', () => {
-navigate('menu');
+  navigate('menu');
 });
