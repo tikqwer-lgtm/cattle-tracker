@@ -3,21 +3,21 @@
  * @param {string} screenId — id экрана: 'menu', 'add', 'view', 'analytics'
  */
 function navigate(screenId) {
-  // Скрыть все экраны
-  document.querySelectorAll('.screen').forEach(el => {
-    el.classList.remove('active');
-  });
+// Скрыть все экраны
+document.querySelectorAll('.screen').forEach(el => {
+el.classList.remove('active');
+});
 
-  // Показать нужный
-  const screen = document.getElementById(screenId + '-screen');
-  if (screen) {
-    screen.classList.add('active');
-  }
+// Показать нужный
+const screen = document.getElementById(screenId + '-screen');
+if (screen) {
+screen.classList.add('active');
+}
 
-  // Обновить список при открытии "Просмотр"
-  if (screenId === 'view') {
-    updateViewList();
-  }
+// Обновить список при открытии "Просмотр"
+if (screenId === 'view') {
+updateViewList();
+}
 }
 
 /**
@@ -45,10 +45,14 @@ function updateViewList() {
       ${entry.note ? `<em>Примечание: ${entry.note}</em>` : ''}
       <small>${entry.synced ? '✅ Синхронизировано' : '🟡 Не отправлено'}</small>
     </div>
+    <div class="entry-actions">
+      <button onclick="editEntry('${entry.cattleId}')" class="small-btn edit">✏️</button>
+      <button onclick="deleteEntry('${entry.cattleId}')" class="small-btn delete">🗑️</button>
+    </div>
   `).join('');
 }
 
 // При загрузке сразу открываем меню
 document.addEventListener('DOMContentLoaded', () => {
-  navigate('menu');
+navigate('menu');
 });

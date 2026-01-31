@@ -56,6 +56,9 @@ function addEntry() {
   entries.unshift(entry);
   saveLocally();
   updateList();
+  if (typeof updateViewList === 'function') {
+    updateViewList();
+  }
   clearForm();
 }
 
