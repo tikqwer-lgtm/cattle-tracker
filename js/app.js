@@ -60,7 +60,81 @@ function addEntry() {
     updateViewList();
   }
   clearForm();
-  // После добавления или редактирования переключаемся на просмотр
+  // Сохраняет текущую запись
+function saveCurrentEntry() {
+  const cattleId = document.getElementById('cattleId').value.trim();
+  const inseminationDate = document.getElementById('inseminationDate').value;
+
+  if (!cattleId || !inseminationDate) {
+    alert('Заполните номер коровы и дату осеменения!');
+    return;
+  }
+
+  const entry = getDefaultCowEntry();
+
+  // Основные поля
+  entry.cattleId = cattleId;
+  entry.nickname = document.getElementById('nickname').value || '';
+  entry.birthDate = document.getElementById('birthDate').value || '';
+  entry.lactation = parseInt(document.getElementById('lactation').value) || 1;
+  entry.calvingDate = document.getElementById('calvingDate').value || '';
+  entry.inseminationDate = inseminationDate;
+  entry.attemptNumber = parseInt(document.getElementById('attemptNumber').value) || 1;
+  entry.bull = document.getElementById('bull').value || '';
+  entry.inseminator = document.getElementById('inseminator').value || '';
+  entry.code = document.getElementById('code').value || '';
+  entry.status = document.getElementById('status').value || 'Охота';
+  entry.exitDate = document.getElementById('exitDate').value || '';
+  entry.dryStartDate = document.getElementById('dryStartDate').value || '';
+  entry.vwp = parseInt(document.getElementById('vwp').value) || 60;
+
+  // Протокол синхронизации
+  entry.protocol.name = document.getElementById('protocolName').value || '';
+  entry.protocol.startDate = document.getElementById('protocolStartDate').value || '';
+
+  // Примечание
+  entry.note = document.getElementById('note').value || '';
+
+  // Если редактируем существующую запись
+  if (window.currentEditingId) {
+    const index = entries.findIndex(e => e.cattleId === window.currentEditingId);
+    if (index !== -1) {
+      // Сохраняем дату добавления и synced
+      entry.dateAdded = entries[index].dateAdded;
+      entry.synced = entries[index].synced;
+      entries[index] = entry;
+    }
+    // Сбрасываем режим редактирования
+    delete window.currentEditingId;
+  } else {
+    // Новая запись
+    entry.dateAdded = nowFormatted();
+    entry.synced = false;
+    entries.unshift(entry);
+  }
+
+  saveLocally();
+  updateList();
+  if (typeof updateViewList === 'function') {
+    updateViewList();
+  }
+  clearForm();
+  // После сохранения переключаемся на просмотр
+  navigate('view');
+}
+
+// Очищает форму и возвращается к просмотру
+function cancelEdit() {
+  if (window.currentEditingId) {
+    // Если редактирование, сбрасываем ID и возвращаем заголовок
+    delete window.currentEditingId;
+    document.getElementById('addScreenTitle').textContent = '➕ Добавить корову';
+  }
+  clearForm();
+  navigate('view');
+}
+
+// После добавления или редактирования переключаемся на просмотр
   navigate('view');}
 
 /**
@@ -225,6 +299,13 @@ function editEntry(cattleId) {
     alert('Запись не найдена!');
     return;
   }
+
+  // Устанавливаем режим редактирования
+  window.currentEditingId = entry.cattleId;
+
+  // Обновляем заголовок экрана
+  document.getElementById('addScreenTitle').textContent = '✏️ Редактирование коровы ' + entry.cattleId;
+
 
   // Заполняем форму данными из записи
   document.getElementById('cattleId').value = entry.cattleId;
