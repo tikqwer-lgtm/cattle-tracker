@@ -188,3 +188,89 @@ button[onclick="toggleVoice()"]:hover {
 .back-button:hover {
   background: #555;
 }
+/* === Адаптивность для мобильных устройств === */
+
+/* Общая настройка шрифтов */
+body {
+  font-size: 14px;
+}
+
+/* На маленьких экранах */
+@media (max-width: 768px) {
+  body {
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .container {
+    padding: 10px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Кнопки меню — одна под другой */
+  .menu-buttons {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .menu-buttons button {
+    padding: 14px 10px;
+    font-size: 16px;
+  }
+
+  /* Форма — уменьшаем поля */
+  .form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form label,
+  .form input,
+  .form select,
+  .form textarea {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  /* Контроли внизу — тоже стек */
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .controls button {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  /* Список записей — прокрутка или компактно */
+  #entriesList .entry,
+  #viewEntriesList .entry {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  #entriesList .entry em,
+  #viewEntriesList .entry em {
+    display: block;
+    font-size: 11px;
+  }
+
+  /* Назад — меньше */
+  .back-button {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+
+  /* Заголовки */
+  h1 {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  h2 {
+    font-size: 16px;
+  }
+}
