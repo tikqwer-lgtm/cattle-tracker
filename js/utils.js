@@ -7,13 +7,6 @@ function formatDate(dateStr) {
   return d.toLocaleDateString("ru-RU");
 }
 
-// Формат для отображения
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("ru-RU");
-}
-
 // Возвращает объект Date (а не строку)
 function nowFormatted() {
   const now = new Date();

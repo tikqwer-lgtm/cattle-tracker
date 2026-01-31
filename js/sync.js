@@ -203,43 +203,5 @@ async function sendUnsynced() {
 
 /**
  * Обновляет отображение списка записей.
+ * Определена в app.js для доступности при инициализации.
  */
-// sync.js или app.js
-function updateList() {
-  const list = document.getElementById("entriesList");
-  if (!list) return;
-
-  list.innerHTML = `<div><strong>Всего: ${entries.length}</strong></div>`;
-  if (entries.length === 0) {
-    list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
-  } else {
-    entries.forEach(entry => {
-      // Форматируем дату записи только при отображении
-      const dateAddedFormatted = entry.dateAdded instanceof Date
-        ? entry.dateAdded.toLocaleString("ru-RU", {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        : entry.dateAdded;
-
-      const div = document.createElement("div");
-      div.className = "entry" + (!entry.synced ? " unsynced" : "");
-      div.innerHTML = `
-        <strong>Корова:</strong> ${entry.cattleId} | 
-        <strong>Дата осеменения:</strong> ${formatDate(entry.date)}<br>
-        <strong>Дата записи:</strong> ${dateAddedFormatted}<br>
-        <strong>Бык:</strong> ${entry.bull || '—'} | 
-        <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
-        <em style="color: #666;">
-          ${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} 
-          ${entry.note ? '• ' + entry.note : ''}
-        </em>
-        ${!entry.synced ? '<span style="color: #ff9900; font-size: 12px;"> ● Не отправлено</span>' : ''}
-      `;
-      list.appendChild(div);
-    });
-  }
-}

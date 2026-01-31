@@ -84,12 +84,23 @@ function updateList() {
     list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
   } else {
     entries.forEach(entry => {
+      // Форматируем дату записи только при отображении
+      const dateAddedFormatted = entry.dateAdded instanceof Date
+        ? entry.dateAdded.toLocaleString("ru-RU", {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : entry.dateAdded;
+
       const div = document.createElement("div");
       div.className = "entry" + (!entry.synced ? " unsynced" : "");
       div.innerHTML = `
         <strong>Корова:</strong> ${entry.cattleId} | 
         <strong>Дата осеменения:</strong> ${formatDate(entry.date)}<br>
-        <strong>Дата записи:</strong> ${entry.dateAdded}<br>
+        <strong>Дата записи:</strong> ${dateAddedFormatted}<br>
         <strong>Бык:</strong> ${entry.bull || '—'} | 
         <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
         <em style="color: #666;">
