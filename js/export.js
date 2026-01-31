@@ -62,11 +62,13 @@ function importFromCSV(event) {
     const text = e.target.result;
     const lines = text.split('\n').slice(1);
     const imported = [];
+    let duplicates = 0;
+    let newEntries = 0;
 
     for (const line of lines) {
       const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
       if (row.length >= 17) {
-        imported.push({
+        const newEntry = {
           cattleId: row[0],
           nickname: row[1],
           birthDate: row[2],
@@ -86,18 +88,70 @@ function importFromCSV(event) {
           dryStartDate: row[14],
           vwp: parseInt(row[15]) || 60,
           note: row[16],
-          synced: row[17] === 'Да'
-        });
+          synced: row[17] === 'Да',
+          dateAdded: nowFormatted()
+        };
+
+        // Поиск существующей записи по номеру коровы
+        const existingEntry = entries.find(e => e.cattleId === newEntry.cattleId);
+
+        if (existingEntry) {
+          // Обновляем только пустые или старые значения
+          for (const key in newEntry) {
+            if (newEntry[key]) {
+              if (typeof newEntry[key] === 'object') {
+                for (const subKey in newEntry[key]) {
+                  if (newEntry[key][subKey] && !existingEntry[key][subKey]) {
+                    existingEntry[key][subKey] = newEntry[key][subKey];
+                  }
+                }
+              } else if (!existingEntry[key]) {
+                existingEntry[key] = newEntry[key];
+              }
+            }
+          }
+          duplicates++;
+        } else {
+          // Новая запись
+          entries.unshift(newEntry);
+          newEntries++;
+        }
       }
     }
 
-    if (imported.length > 0) {
-      entries = [...imported, ...entries];
+    if (newEntries > 0 || duplicates > 0) {
       saveLocally();
       updateList();
       updateViewList();
-      alert(`✅ Импортировано ${imported.length} записей`);
+      alert(`✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`);
+    } else {
+      alert('❌ Нет данных для импорта');
     }
   };
   reader.readAsText(file);
+}
+
+function downloadTemplate() {
+  // Создаем CSV с заголовками
+  let csv = [
+    [
+      "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
+      "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
+      "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
+      "Синхронизировано"
+    ]
+  ];
+  
+  // Пустая строка для заполнения
+  csv.push(Array(18).fill(''));
+  
+  let csvContent = "\uFEFF" + csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", "Шаблон_импорта_коров.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
