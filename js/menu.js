@@ -1,6 +1,7 @@
+// menu.js — Навигация между экранами
+
 /**
  * Навигация между экранами
- * @param {string} screenId — id экрана: 'menu', 'add', 'view', 'analytics'
  */
 function navigate(screenId) {
   // Скрыть все экраны
@@ -27,7 +28,8 @@ function updateViewList() {
   const container = document.getElementById('viewEntriesList');
   if (!container) return;
 
-  if (entries.length === 0) {
+  // Проверяем что entries существует
+  if (!entries || entries.length === 0) {
     container.innerHTML = '<p>Нет записей</p>';
     return;
   }

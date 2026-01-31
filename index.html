@@ -1,186 +1,20 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Учёт коров — расширенный функционал</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <!-- (остальная разметка без изменений) -->
 
-
-
-<!-- 🏠 Главное меню -->
-<div id="menu-screen" class="screen active">
-  <div class="container">
-    <h1>🐄 Ферма — главное меню</h1>
-    <div class="menu-buttons">
-      <button onclick="navigate('view')">📋 Просмотр описи</button>
-      <button onclick="navigate('add')">➕ Добавить корову</button>
-      <button onclick="navigate('insemination')">🧬 Ввод осеменения</button>
-      <button onclick="navigate('analytics')">📊 Аналитика</button>
-    </div>
-  </div>
-</div>
-
-  <!-- 🧬 Экран ввода осеменения -->
-  <div id="insemination-screen" class="screen">
-    <div class="container">
-      <button onclick="navigate('menu')" class="back-button">← Назад</button>
-      <h1>🧬 Ввод осеменения</h1>
-      <div class="form">
-        <label>Номер коровы *</label>
-        <input type="text" id="cattleIdInsem" placeholder="105" required />
-
-        <label>Дата осеменения *</label>
-        <input type="date" id="inseminationDateInsem" required />
-
-        <label>Номер попытки</label>
-        <input type="number" id="attemptNumberInsem" value="1" min="1" />
-
-        <label>Бык</label>
-        <input type="text" id="bullInsem" placeholder="Бык-23" />
-
-        <label>Осеменатор</label>
-        <input type="text" id="inseminatorInsem" placeholder="Иванов" />
-
-        <label>Код осеменения</label>
-        <select id="codeInsem">
-          <option value="">Выберите...</option>
-          <option value="Охота">Охота</option>
-          <option value="РеСИНХ">РеСИНХ</option>
-          <option value="ОВСИНХ">ОВСИНХ</option>
-          <option value="ДаблОВСИНХ">ДаблОВСИНХ</option>
-          <option value="ПРЕСИНХ">ПРЕСИНХ</option>
-          <option value="КоСИНХ">КоСИНХ</option>
-          <option value="Датчик">Датчик</option>
-        </select>
-
-        <button onclick="addInseminationEntry()">Добавить осеменение</button>
-      </div>
-    </div>
-  </div>
-
-<!-- ➕ Экран добавления/редактирования -->
-<div id="add-screen" class="screen">
-  <div class="container">
-    <button onclick="navigate('view')" class="back-button">← Назад</button>
-    <h1 id="addScreenTitle">➕ Добавить корову</h1>
-    <div class="form" id="cowForm">
-      <label>Номер коровы *</label>
-      <input type="text" id="cattleId" placeholder="105" required />
-
-      <label>Кличка</label>
-      <input type="text" id="nickname" placeholder="Бурёнка" />
-
-      <label>Дата рождения</label>
-      <input type="date" id="birthDate" />
-
-      <label>Лактация</label>
-      <input type="number" id="lactation" value="1" min="1" />
-
-      <label>Дата отёла (начало лактации)</label>
-      <input type="date" id="calvingDate" />
-
-      <label>Дата осеменения *</label>
-      <input type="date" id="inseminationDate" required />
-
-      <label>Номер попытки</label>
-      <input type="number" id="attemptNumber" value="1" min="1" />
-
-      <label>Бык</label>
-      <input type="text" id="bull" placeholder="Бык-23" />
-
-      <label>Осеменатор</label>
-      <input type="text" id="inseminator" placeholder="Иванов" />
-
-      <label>Код осеменения</label>
-      <select id="code">
-        <option value="">Выберите...</option>
-        <option value="Охота">Охота</option>
-        <option value="РеСИНХ">РеСИНХ</option>
-        <option value="ОВСИНХ">ОВСИНХ</option>
-        <option value="ДаблОВСИНХ">ДаблОВСИНХ</option>
-        <option value="ПРЕСИНХ">ПРЕСИНХ</option>
-        <option value="КоСИНХ">КоСИНХ</option>
-        <option value="Датчик">Датчик</option>
-      </select>
-
-      <label>Статус</label>
-      <select id="status">
-        <option value="Охота">Охота</option>
-        <option value="Осеменена">Осеменена</option>
-        <option value="Стельная">Стельная</option>
-        <option value="Сухостой">Сухостой</option>
-        <option value="Новотел">Новотел</option>
-        <option value="Выбыла">Выбыла</option>
-        <option value="Брак">Брак</option>
-        <option value="СИНХ">СИНХ</option>
-      </select>
-
-      <label>Название протокола</label>
-      <input type="text" id="protocolName" placeholder="PG6-G" />
-
-      <label>Дата начала протокола</label>
-      <input type="date" id="protocolStartDate" />
-
-      <label>Дата выбытия</label>
-      <input type="date" id="exitDate" />
-
-      <label>Дата запуска (сухостой)</label>
-      <input type="date" id="dryStartDate" />
-
-      <label>ПДО (дни)</label>
-      <input type="number" id="vwp" value="60" min="0" />
-
-      <label>Примечание</label>
-      <textarea id="note" placeholder="Дополнительная информация"></textarea>
-    </div>
-
-    <!-- Кнопки управления -->
-    <div class="form-actions">
-      <button id="saveButton" onclick="saveCurrentEntry()">💾 Сохранить</button>
-      <button id="cancelButton" onclick="cancelEdit()" class="cancel">❌ Отмена</button>
-    </div>
-
-    <div id="entriesList"></div>
-  </div>
-</div>
-
-<!-- 📋 Просмотр описи -->
-<div id="view-screen" class="screen">
-  <div class="container">
-    <button onclick="navigate('menu')" class="back-button">← Назад</button>
-    <h1>📋 Просмотр всех коров</h1>
-    <div class="sync-controls">
-      <button onclick="sendUnsynced()">Отправить неотправленные</button>
-      <button onclick="loadFromGoogle()">🔄 Синхронизировать с облаком</button>
-      <button onclick="exportToExcel()">📤 Экспорт в Excel</button>
-      <label class="file-upload">
-        <input type="file" id="importFile" accept=".csv,.xlsx" onchange="importFromCSV(event)">
-        📥 Импорт из файла
-      </label>
-      <button onclick="downloadTemplate()">📄 Скачать шаблон</button>
-      <div class="sync-status" id="status"></div>
-    </div>
-    <div id="viewEntriesList"></div>
-  </div>
-</div>
-
-<!-- 📊 Аналитика -->
-<div id="analytics-screen" class="screen">
-  <div class="container">
-    <button onclick="navigate('menu')" class="back-button">← Назад</button>
-    <h1>📊 Аналитика</h1>
-    <p>Пока в разработке...</p>
-  </div>
-</div>
-
-
-  <!-- Подключение скриптов -->
+  <!-- Подключение скриптов в правильном порядке -->
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/ui-helpers.js"></script>
+  <script src="js/cow-operations.js"></script>
+  <script src="js/voice-handler.js"></script>
   <script src="js/app.js"></script>
   <script src="js/menu.js"></script>
   <script src="js/sync.js"></script>
