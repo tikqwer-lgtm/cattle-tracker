@@ -69,7 +69,7 @@ async function saveToGoogle(entry) {
  */
 async function loadFromGoogle() {
   const status = document.getElementById('status');
-  status.textContent = 'Синхронизация...';
+  status.textContent = '🔄 Синхронизация...';
 
   try {
     const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now());
@@ -79,9 +79,7 @@ async function loadFromGoogle() {
     if (lines.length < 2) {
       status.textContent = '⚠️ Таблица пуста';
       setTimeout(() => status.textContent = '', 3000);
-
-      // Очищаем локальные синхронизированные, оставляем только неотправленные
-      entries = entries.filter(e => !e.synced);
+      entries = entries.filter(e => !e.synced); // оставляем только неотправленные
       saveLocally();
       updateList();
       return;
@@ -109,27 +107,24 @@ async function loadFromGoogle() {
       }
     }
 
-    // Создаём множество ключей из облака: "cattleId|date"
     const cloudKeys = new Set(cloudEntries.map(e => e.cattleId + '|' + e.date));
-
-    // Оставляем только неотправленные записи, которых нет в облаке
     const unsyncedNew = entries
       .filter(e => !e.synced)
       .filter(e => !cloudKeys.has(e.cattleId + '|' + e.date));
 
-    // Объединяем: все записи из облака + новые локальные
     entries = [...cloudEntries, ...unsyncedNew];
-
     saveLocally();
     updateList();
-    status.textContent = '✅ Синхронизация завершена';
-    setTimeout(() => status.textContent = '', 3000);
+
+    status.textContent = `✅ Синхронизация: ${cloudEntries.length} из облака`;
+    setTimeout(() => status.textContent = '', 5000);
   } catch (error) {
     console.error('❌ Ошибка синхронизации:', error);
     status.textContent = '❌ Не удалось синхронизировать';
     setTimeout(() => status.textContent = '', 5000);
   }
 }
+
 
 /**
  * Отправляет все неотправленные записи в Google Таблицу.
