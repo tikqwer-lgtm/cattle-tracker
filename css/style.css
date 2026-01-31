@@ -142,3 +142,11 @@ button:hover {
 #activationScreen button:hover {
   background: #f0f0f0;
 }
+button[onclick="toggleVoice()"] {
+  background: #27ae60;
+  font-weight: bold;
+}
+
+button[onclick="toggleVoice()"]:hover {
+  background: #219653;
+}

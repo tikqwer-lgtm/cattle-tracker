@@ -316,6 +316,70 @@ class VoiceAssistant {
       }, 4000);
     }
   }
+  toggle() {
+    if (this.isRecording) {
+      this.forceStop();
+    } else {
+      this.resume();
+    }
+  }
+  /**
+ * Принудительно останавливает распознавание
+ */
+forceStop() {
+  try {
+    this.recognition.abort(); // немедленно останавливает
+  } catch (e) {}
+
+  this.isRecording = false;
+  this.isListening = false;
+  this.updateStatus('🔴 Голос выключен');
+  this.playTone(400, 300);
+
+  // Обновляем кнопку
+  this.updateToggleButton('🎤 Голос: Вкл');
+}
+
+/**
+ * Возобновляет прослушивание
+ */
+resume() {
+  this.isRecording = true;
+  this.isListening = true;
+  this.speak('Готов слушать');
+  this.updateStatus('🟢 Голос включён');
+  this.playTone(800, 200);
+
+  // Перезапускаем, если остановлено
+  if (this.recognition) {
+    this.recognition.start();
+  }
+
+  // Обновляем кнопку
+  this.updateToggleButton('🎤 Голос: Выкл');
+}
+
+/**
+ * Обновляет текст кнопки
+ */
+updateToggleButton(text) {
+  const button = document.querySelector('button[onclick="toggleVoice()"]');
+  if (button) {
+    button.textContent = text;
+  }
+}
+let voiceAssistant = null;
+
+// Запускаем при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+  voiceAssistant = new VoiceAssistant();
+});
+
+// Глобальная функция для кнопки
+function toggleVoice() {
+  if (voiceAssistant && voiceAssistant.toggle) {
+    voiceAssistant.toggle();
+  }
 }
 
 // Запуск
