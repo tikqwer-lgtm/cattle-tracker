@@ -121,7 +121,6 @@ function saveCurrentEntry() {
   clearForm();
   // После сохранения переключаемся на просмотр
   navigate('view');
-}
 
 // Очищает форму и возвращается к просмотру
 function cancelEdit() {
@@ -134,11 +133,8 @@ function cancelEdit() {
   navigate('view');
 }
 
-// После добавления или редактирования переключаемся на просмотр
-  navigate('view');}
-
 /**
- * Очищает форму после добавления
+ * Обновляет отображение списка записей
  */
 function clearForm() {
   document.getElementById("cattleId").value = '';
