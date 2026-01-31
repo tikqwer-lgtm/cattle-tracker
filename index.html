@@ -62,12 +62,12 @@
     </div>
   </div>
 
-<!-- ➕ Экран добавления -->
+<!-- ➕ Экран добавления/редактирования -->
 <div id="add-screen" class="screen">
   <div class="container">
-    <button onclick="navigate('menu')" class="back-button">← Назад</button>
-    <h1>➕ Добавить корову</h1>
-    <div class="form">
+    <button onclick="navigate('view')" class="back-button">← Назад</button>
+    <h1 id="addScreenTitle">➕ Добавить корову</h1>
+    <div class="form" id="cowForm">
       <label>Номер коровы *</label>
       <input type="text" id="cattleId" placeholder="105" required />
 
@@ -136,11 +136,13 @@
 
       <label>Примечание</label>
       <textarea id="note" placeholder="Дополнительная информация"></textarea>
-
-      <button onclick="addEntry()">Добавить запись</button>
     </div>
 
-
+    <!-- Кнопки управления -->
+    <div class="form-actions">
+      <button id="saveButton" onclick="saveCurrentEntry()">💾 Сохранить</button>
+      <button id="cancelButton" onclick="cancelEdit()" class="cancel">❌ Отмена</button>
+    </div>
 
     <div id="entriesList"></div>
   </div>

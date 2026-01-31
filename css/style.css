@@ -84,7 +84,7 @@ h1 {
   resize: vertical;
 }
 
-.form button {
+.form-button {
   margin-top: 20px;
   padding: 15px;
   font-size: 1.1em;
@@ -93,6 +93,40 @@ h1 {
   background: #4a90e2;
   color: white;
   cursor: pointer;
+}
+
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.form-actions button {
+  padding: 12px 20px;
+  font-size: 1em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#saveButton {
+  background: #4a90e2;
+  color: white;
+}
+
+#cancelButton {
+  background: #999;
+  color: white;
+}
+
+#cancelButton:hover,
+.back-button:hover {
+  background: #777;
+}
+
+#saveButton:hover {
+  background: #357abd;
 }
 
 .form button:hover {
