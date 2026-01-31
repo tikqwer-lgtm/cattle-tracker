@@ -6,29 +6,49 @@ function exportToExcel() {
     return;
   }
 
+  // Создаем массив для CSV с заголовками
   let csv = [
-    ["Номер коровы", "Дата осеменения", "Дата записи", "Бык", "Попытка", "Схема СИНХ", "Примечание"]
+    [
+      "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
+      "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
+      "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
+      "Синхронизировано"
+    ]
   ];
 
+  // Добавляем данные из записей
   entries.forEach(e => {
     csv.push([
       e.cattleId,
-      e.date,
-      e.dateAdded,
-      e.bull,
-      e.attempt,
-      e.synchronization,
-      e.note
+      e.nickname || '',
+      e.birthDate || '',
+      e.lactation || '',
+      e.calvingDate || '',
+      e.inseminationDate || '',
+      e.attemptNumber || '',
+      e.bull || '',
+      e.inseminator || '',
+      e.code || '',
+      e.status || '',
+      e.protocol?.name || '',
+      e.protocol?.startDate || '',
+      e.exitDate || '',
+      e.dryStartDate || '',
+      e.vwp || '',
+      e.note || '',
+      e.synced ? 'Да' : 'Нет'
     ]);
   });
 
+  // Формируем CSV-контент с разделителем ;
   let csvContent = "data:text/csv;charset=utf-8," + 
     csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
 
+  // Создаем ссылку для скачивания
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "Учёт_осеменения_коров.csv");
+  link.setAttribute("download", `Учёт_коров_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -46,28 +66,28 @@ function importFromCSV(event) {
 
     for (const line of lines) {
       const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
-      if (row.length >= 7) {
+      if (row.length >= 17) {
         imported.push({
           cattleId: row[0],
-          date: row[1],
-          dateAdded: row[2],
-          bull: row[3],
-          attempt: row[4],
-          synchronization: row[5],
-          note: row[6],
-          synced: false
-        });
-      } else if (row.length >= 6) {
-        const now = nowFormatted();
-        imported.push({
-          cattleId: row[0],
-          date: row[1],
-          dateAdded: now,
-          bull: row[2],
-          attempt: row[3],
-          synchronization: row[4],
-          note: row[5],
-          synced: false
+          nickname: row[1],
+          birthDate: row[2],
+          lactation: parseInt(row[3]) || 1,
+          calvingDate: row[4],
+          inseminationDate: row[5],
+          attemptNumber: parseInt(row[6]) || 1,
+          bull: row[7],
+          inseminator: row[8],
+          code: row[9],
+          status: row[10],
+          protocol: {
+            name: row[11],
+            startDate: row[12]
+          },
+          exitDate: row[13],
+          dryStartDate: row[14],
+          vwp: parseInt(row[15]) || 60,
+          note: row[16],
+          synced: row[17] === 'Да'
         });
       }
     }
@@ -76,6 +96,7 @@ function importFromCSV(event) {
       entries = [...imported, ...entries];
       saveLocally();
       updateList();
+      updateViewList();
       alert(`✅ Импортировано ${imported.length} записей`);
     }
   };
