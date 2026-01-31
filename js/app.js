@@ -1,24 +1,19 @@
-// app.js — Учёт осеменения коров
+// app.js — Учёт коров с расширенным функционалом
 // Совместим с voice.js
 
-/**
- * Загружает записи из localStorage при запуске
- */
-function loadLocally() {
-  const saved = localStorage.getItem('cattleEntries');
-  if (saved) {
-    entries = JSON.parse(saved);
-    updateList();
-  } else {
-    entries = [];
-  }
+// Объявление entries, если не определено в storage.js
+if (typeof entries === 'undefined') {
+  let entries = [];
 }
 
 /**
- * Сохраняет записи в localStorage
+ * Возвращает текущую дату и время в формате строки "дд.мм.гггг чч:мм"
+ * @returns {string}
  */
-function saveLocally() {
-  localStorage.setItem('cattleEntries', JSON.stringify(entries));
+function nowFormatted() {
+  const now = new Date();
+  return now.toLocaleDateString("ru-RU") + " " +
+         now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -26,23 +21,37 @@ function saveLocally() {
  */
 function addEntry() {
   const cattleId = document.getElementById("cattleId").value.trim();
-  const date = document.getElementById("date").value;
+  const inseminationDate = document.getElementById("inseminationDate").value;
 
-  if (!cattleId || !date) {
+  if (!cattleId || !inseminationDate) {
     alert("Заполните номер коровы и дату осеменения!");
     return;
   }
 
-  const entry = {
-    cattleId,
-    date,
-    bull: document.getElementById("bull").value || '',
-    attempt: document.getElementById("attempt").value || '',
-    synchronization: document.getElementById("sync").value || '',
-    note: document.getElementById("note").value || '',
-    synced: false,
-    dateAdded: nowFormatted()
-  };
+  const entry = getDefaultCowEntry();
+
+  // Основные поля
+  entry.cattleId = cattleId;
+  entry.nickname = document.getElementById("nickname").value || '';
+  entry.birthDate = document.getElementById("birthDate").value || '';
+  entry.lactation = parseInt(document.getElementById("lactation").value) || 1;
+  entry.calvingDate = document.getElementById("calvingDate").value || '';
+  entry.inseminationDate = inseminationDate;
+  entry.attemptNumber = parseInt(document.getElementById("attemptNumber").value) || 1;
+  entry.bull = document.getElementById("bull").value || '';
+  entry.inseminator = document.getElementById("inseminator").value || '';
+  entry.code = document.getElementById("code").value || '';
+  entry.status = document.getElementById("status").value || 'Охота';
+  entry.exitDate = document.getElementById("exitDate").value || '';
+  entry.dryStartDate = document.getElementById("dryStartDate").value || '';
+  entry.vwp = parseInt(document.getElementById("vwp").value) || 60;
+
+  // Протокол синхронизации
+  entry.protocol.name = document.getElementById("protocolName").value || '';
+  entry.protocol.startDate = document.getElementById("protocolStartDate").value || '';
+
+  // Вычисляемые поля (пока 0, позже можно реализовать логику)
+  // lactationDay, dryDays, ageAtFirstCalving, servicePeriod, calvingInterval, pr, cr, hdr
 
   entries.unshift(entry);
   saveLocally();
@@ -55,21 +64,21 @@ function addEntry() {
  */
 function clearForm() {
   document.getElementById("cattleId").value = '';
-  document.getElementById("date").value = '';
+  document.getElementById("nickname").value = '';
+  document.getElementById("birthDate").value = '';
+  document.getElementById("lactation").value = '1';
+  document.getElementById("calvingDate").value = '';
+  document.getElementById("inseminationDate").value = '';
+  document.getElementById("attemptNumber").value = '1';
   document.getElementById("bull").value = '';
-  document.getElementById("attempt").value = '';
-  document.getElementById("sync").value = '';
-  document.getElementById("note").value = '';
-}
-
-/**
- * Возвращает текущую дату и время в формате строки "дд.мм.гггг чч:мм"
- * @returns {string}
- */
-function nowFormatted() {
-  const now = new Date();
-  return now.toLocaleDateString("ru-RU") + " " +
-         now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
+  document.getElementById("inseminator").value = '';
+  document.getElementById("code").value = '';
+  document.getElementById("status").value = 'Охота';
+  document.getElementById("protocolName").value = '';
+  document.getElementById("protocolStartDate").value = '';
+  document.getElementById("exitDate").value = '';
+  document.getElementById("dryStartDate").value = '';
+  document.getElementById("vwp").value = '60';
 }
 
 /**
@@ -84,7 +93,7 @@ function updateList() {
     list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
   } else {
     entries.forEach(entry => {
-      // Форматируем дату записи только при отображении
+      // Форматируем дату записи
       const dateAddedFormatted = entry.dateAdded instanceof Date
         ? entry.dateAdded.toLocaleString("ru-RU", {
             day: '2-digit',
@@ -99,13 +108,17 @@ function updateList() {
       div.className = "entry" + (!entry.synced ? " unsynced" : "");
       div.innerHTML = `
         <strong>Корова:</strong> ${entry.cattleId} | 
-        <strong>Дата осеменения:</strong> ${formatDate(entry.date)}<br>
-        <strong>Дата записи:</strong> ${dateAddedFormatted}<br>
+        <strong>Кличка:</strong> ${entry.nickname || '—'}<br>
+        <strong>Дата осеменения:</strong> ${formatDate(entry.inseminationDate)} | 
+        <strong>Лактация:</strong> ${entry.lactation}<br>
         <strong>Бык:</strong> ${entry.bull || '—'} | 
-        <strong>Попытка:</strong> ${entry.attempt || '—'}<br>
+        <strong>Попытка:</strong> ${entry.attemptNumber || '—'} | 
+        <strong>Статус:</strong> ${entry.status}<br>
         <em style="color: #666;">
-          ${entry.synchronization ? 'СИНХ: ' + entry.synchronization : ''} 
-          ${entry.note ? '• ' + entry.note : ''}
+          ${entry.code ? 'Код: ' + entry.code + ' • ' : ''}
+          ${entry.calvingDate ? 'Отёл: ' + formatDate(entry.calvingDate) + ' • ' : ''}
+          ${entry.dryStartDate ? 'Сухостой: ' + formatDate(entry.dryStartDate) + ' • ' : ''}
+          ${entry.note ? entry.note : ''}
         </em>
         ${!entry.synced ? '<span style="color: #ff9900; font-size: 12px;"> ● Не отправлено</span>' : ''}
       `;
@@ -128,23 +141,26 @@ function formatDate(dateStr) {
 /**
  * Обрабатывает распознанную голосовую команду
  * Вызывается из voice.js
- * Пример: "корова 105, дата 10 марта 2025, бык Бык-3, попытка 1, СИНХ Пи-Джи-шесть-же, примечание первая"
+ * Пример: "корова 105, кличка Машка, дата 10 марта 2025, бык Бык-3, попытка 1, статус Осеменена"
  * @param {string} command
  */
 function parseVoiceCommand(command) {
   // Поиск номера коровы
   const cattleMatch = command.match(/(?:корова|номер)\s+(\d+)/i);
+  // Поиск клички
+  const nicknameMatch = command.match(/кличка\s+([^\s,]+)/i);
   // Поиск быка
   const bullMatch = command.match(/бык\s+([^\s,]+)/i);
   // Поиск попытки
   const attemptMatch = command.match(/попытка\s+(\d+)/i);
-  // Поиск схемы СИНХ
-  const syncMatch = command.match(/синх\s+(.+)/i);
-  // Поиск примечания
-  const noteMatch = command.match(/примечание\s+(.+)/i);
-
-  // Разбор даты
-  let dateValue = '';
+  // Поиск статуса
+  const statusMatch = command.match(/статус\s+([^\s,]+)/i);
+  // Поиск кода осеменения
+  const codeMatch = command.match(/код\s+([^\s,]+)/i);
+  // Поиск осеменатора
+  const inseminatorMatch = command.match(/осеменатор\s+([^\s,]+)/i);
+  // Поиск даты осеменения
+  let inseminationDate = '';
   const dateMatch = command.match(/(\d{1,2})[^\w]*(январ[яь]|феврал[яь]|март[а]?|апрел[яь]|май[я]?|июн[яь]?|июл[яь]?|август[а]?|сентябр[яь]|октябр[яь]|ноябр[яь]|декабр[яь])/i);
   if (dateMatch) {
     const day = dateMatch[1].padStart(2, '0');
@@ -156,26 +172,18 @@ function parseVoiceCommand(command) {
     const month = monthNames[dateMatch[2].toLowerCase()];
     const yearMatch = command.match(/(20\d{2})/);
     const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
-    dateValue = `${year}-${month}-${day}`;
-  }
-
-  // Обработка СИНХ
-  let syncValue = '';
-  if (syncMatch) {
-    const raw = syncMatch[1].toLowerCase();
-    if (/пи-джи-шесть-же|пджи-шесть-же|пг6-г|pg6-g/.test(raw)) syncValue = 'PG6-G';
-    else if (/овсинх|ов-синх/.test(raw)) syncValue = 'Ovsynch';
-    else if (/косинх|ко-синх/.test(raw)) syncValue = 'Cosynch';
-    else if (/другое/.test(raw)) syncValue = 'Другое';
+    inseminationDate = `${year}-${month}-${day}`;
   }
 
   // Заполняем поля
   if (cattleMatch) document.getElementById('cattleId').value = cattleMatch[1];
-  if (dateValue) document.getElementById('date').value = dateValue;
+  if (nicknameMatch) document.getElementById('nickname').value = nicknameMatch[1];
+  if (inseminationDate) document.getElementById('inseminationDate').value = inseminationDate;
   if (bullMatch) document.getElementById('bull').value = bullMatch[1];
-  if (attemptMatch) document.getElementById('attempt').value = attemptMatch[1];
-  if (syncValue) document.getElementById('sync').value = syncValue;
-  if (noteMatch) document.getElementById('note').value = noteMatch[1];
+  if (attemptMatch) document.getElementById('attemptNumber').value = attemptMatch[1];
+  if (statusMatch) document.getElementById('status').value = statusMatch[1];
+  if (codeMatch) document.getElementById('code').value = codeMatch[1];
+  if (inseminatorMatch) document.getElementById('inseminator').value = inseminatorMatch[1];
 
   // Обратная связь
   const status = document.getElementById('status');
@@ -191,11 +199,13 @@ function parseVoiceCommand(command) {
 function addEntryFromVoice(data) {
   // Заполняем форму
   document.getElementById('cattleId').value = data.cattleId || '';
-  document.getElementById('date').value = data.date || '';
+  document.getElementById('nickname').value = data.nickname || '';
+  document.getElementById('inseminationDate').value = data.inseminationDate || '';
   document.getElementById('bull').value = data.bull || '';
-  document.getElementById('attempt').value = data.attempt || '';
-  document.getElementById('sync').value = data.synchronization || '';
-  document.getElementById('note').value = data.note || '';
+  document.getElementById('attemptNumber').value = data.attemptNumber || '';
+  document.getElementById('status').value = data.status || '';
+  document.getElementById('code').value = data.code || '';
+  document.getElementById('inseminator').value = data.inseminator || '';
 
   // Добавляем как обычную запись
   addEntry();

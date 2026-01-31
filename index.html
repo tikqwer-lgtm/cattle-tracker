@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Учёт осеменения коров</title>
+  <title>Учёт коров — расширенный функционал</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -22,7 +22,7 @@
     <h1>🐄 Ферма — главное меню</h1>
     <div class="menu-buttons">
       <button onclick="navigate('view')">📋 Просмотр описи</button>
-      <button onclick="navigate('add')">➕ Добавить событие</button>
+      <button onclick="navigate('add')">➕ Добавить корову</button>
       <button onclick="navigate('analytics')">📊 Аналитика</button>
     </div>
   </div>
@@ -32,29 +32,73 @@
 <div id="add-screen" class="screen">
   <div class="container">
     <button onclick="navigate('menu')" class="back-button">← Назад</button>
-    <h1>➕ Добавить событие</h1>
-    <!-- Ваша текущая форма -->
+    <h1>➕ Добавить корову</h1>
     <div class="form">
       <label>Номер коровы *</label>
-      <input type="text" id="cattleId" placeholder="105" />
+      <input type="text" id="cattleId" placeholder="105" required />
+
+      <label>Кличка</label>
+      <input type="text" id="nickname" placeholder="Бурёнка" />
+
+      <label>Дата рождения</label>
+      <input type="date" id="birthDate" />
+
+      <label>Лактация</label>
+      <input type="number" id="lactation" value="1" min="1" />
+
+      <label>Дата отёла (начало лактации)</label>
+      <input type="date" id="calvingDate" />
 
       <label>Дата осеменения *</label>
-      <input type="date" id="date" />
+      <input type="date" id="inseminationDate" required />
+
+      <label>Номер попытки</label>
+      <input type="number" id="attemptNumber" value="1" min="1" />
 
       <label>Бык</label>
       <input type="text" id="bull" placeholder="Бык-23" />
 
-      <label>Попытка</label>
-      <input type="number" id="attempt" placeholder="1" />
+      <label>Осеменатор</label>
+      <input type="text" id="inseminator" placeholder="Иванов" />
 
-      <label>СИНХ</label>
-      <select id="sync">
+      <label>Код осеменения</label>
+      <select id="code">
         <option value="">Выберите...</option>
-        <option value="PG6-G">PG6-G</option>
-        <option value="Ovsynch">Ovsynch</option>
-        <option value="Cosynch">Cosynch</option>
-        <option value="Другое">Другое</option>
+        <option value="Охота">Охота</option>
+        <option value="РеСИНХ">РеСИНХ</option>
+        <option value="ОВСИНХ">ОВСИНХ</option>
+        <option value="ДаблОВСИНХ">ДаблОВСИНХ</option>
+        <option value="ПРЕСИНХ">ПРЕСИНХ</option>
+        <option value="КоСИНХ">КоСИНХ</option>
+        <option value="Датчик">Датчик</option>
       </select>
+
+      <label>Статус</label>
+      <select id="status">
+        <option value="Охота">Охота</option>
+        <option value="Осеменена">Осеменена</option>
+        <option value="Стельная">Стельная</option>
+        <option value="Сухостой">Сухостой</option>
+        <option value="Новотел">Новотел</option>
+        <option value="Выбыла">Выбыла</option>
+        <option value="Брак">Брак</option>
+        <option value="СИНХ">СИНХ</option>
+      </select>
+
+      <label>Название протокола</label>
+      <input type="text" id="protocolName" placeholder="PG6-G" />
+
+      <label>Дата начала протокола</label>
+      <input type="date" id="protocolStartDate" />
+
+      <label>Дата выбытия</label>
+      <input type="date" id="exitDate" />
+
+      <label>Дата запуска (сухостой)</label>
+      <input type="date" id="dryStartDate" />
+
+      <label>ПДО (дни)</label>
+      <input type="number" id="vwp" value="60" min="0" />
 
       <label>Примечание</label>
       <textarea id="note" placeholder="Дополнительная информация"></textarea>
@@ -77,7 +121,7 @@
 <div id="view-screen" class="screen">
   <div class="container">
     <button onclick="navigate('menu')" class="back-button">← Назад</button>
-    <h1>📋 Просмотр всех записей</h1>
+    <h1>📋 Просмотр всех коров</h1>
     <div id="viewEntriesList"></div>
   </div>
 </div>
@@ -88,7 +132,6 @@
     <button onclick="navigate('menu')" class="back-button">← Назад</button>
     <h1>📊 Аналитика</h1>
     <p>Пока в разработке...</p>
-    <!-- Сюда можно добавить графики позже -->
   </div>
 </div>
 
