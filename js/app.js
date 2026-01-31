@@ -3,7 +3,7 @@
 
 // Объявление entries, если не определено в storage.js
 if (typeof entries === 'undefined') {
-  let entries = [];
+  var entries = []; // Используем var вместо let для глобальной области видимости
 }
 
 /**
@@ -14,6 +14,36 @@ function nowFormatted() {
   const now = new Date();
   return now.toLocaleDateString("ru-RU") + " " +
          now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Создает и возвращает объект записи коровы с дефолтными значениями
+ * @returns {Object}
+ */
+function getDefaultCowEntry() {
+  return {
+    cattleId: '',
+    nickname: '',
+    birthDate: '',
+    lactation: 1,
+    calvingDate: '',
+    inseminationDate: '',
+    attemptNumber: 1,
+    bull: '',
+    inseminator: '',
+    code: '',
+    status: 'Охота',
+    exitDate: '',
+    dryStartDate: '',
+    vwp: 60,
+    protocol: {
+      name: '',
+      startDate: ''
+    },
+    note: '',
+    dateAdded: nowFormatted(),
+    synced: false
+  };
 }
 
 /**
@@ -60,7 +90,9 @@ function addEntry() {
     updateViewList();
   }
   clearForm();
-  // Сохраняет текущую запись
+}
+
+// Сохраняет текущую запись
 function saveCurrentEntry() {
   const cattleId = document.getElementById('cattleId').value.trim();
   const inseminationDate = document.getElementById('inseminationDate').value;
@@ -121,6 +153,7 @@ function saveCurrentEntry() {
   clearForm();
   // После сохранения переключаемся на просмотр
   navigate('view');
+}
 
 // Очищает форму и возвращается к просмотру
 function cancelEdit() {
@@ -131,28 +164,6 @@ function cancelEdit() {
   }
   clearForm();
   navigate('view');
-}
-
-/**
- * Обновляет отображение списка записей
- */
-function clearForm() {
-  document.getElementById("cattleId").value = '';
-  document.getElementById("nickname").value = '';
-  document.getElementById("birthDate").value = '';
-  document.getElementById("lactation").value = '1';
-  document.getElementById("calvingDate").value = '';
-  document.getElementById("inseminationDate").value = '';
-  document.getElementById("attemptNumber").value = '1';
-  document.getElementById("bull").value = '';
-  document.getElementById("inseminator").value = '';
-  document.getElementById("code").value = '';
-  document.getElementById("status").value = 'Охота';
-  document.getElementById("protocolName").value = '';
-  document.getElementById("protocolStartDate").value = '';
-  document.getElementById("exitDate").value = '';
-  document.getElementById("dryStartDate").value = '';
-  document.getElementById("vwp").value = '60';
 }
 
 /**
@@ -209,7 +220,31 @@ function updateList() {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr; // Если дата некорректна, вернуть исходную строку
   return d.toLocaleDateString("ru-RU");
+}
+
+/**
+ * Очищает форму
+ */
+function clearForm() {
+  document.getElementById("cattleId").value = '';
+  document.getElementById("nickname").value = '';
+  document.getElementById("birthDate").value = '';
+  document.getElementById("lactation").value = '1';
+  document.getElementById("calvingDate").value = '';
+  document.getElementById("inseminationDate").value = '';
+  document.getElementById("attemptNumber").value = '1';
+  document.getElementById("bull").value = '';
+  document.getElementById("inseminator").value = '';
+  document.getElementById("code").value = '';
+  document.getElementById("status").value = 'Охота';
+  document.getElementById("protocolName").value = '';
+  document.getElementById("protocolStartDate").value = '';
+  document.getElementById("exitDate").value = '';
+  document.getElementById("dryStartDate").value = '';
+  document.getElementById("vwp").value = '60';
+  document.getElementById("note").value = '';
 }
 
 /**
@@ -266,6 +301,7 @@ function parseVoiceCommand(command) {
     setTimeout(() => { status.textContent = ''; }, 5000);
   }
 }
+
 /**
  * Добавляет запись из голосового помощника
  * @param {Object} data
@@ -300,8 +336,10 @@ function editEntry(cattleId) {
   window.currentEditingId = entry.cattleId;
 
   // Обновляем заголовок экрана
-  document.getElementById('addScreenTitle').textContent = '✏️ Редактирование коровы ' + entry.cattleId;
-
+  const titleElement = document.getElementById('addScreenTitle');
+  if (titleElement) {
+    titleElement.textContent = '✏️ Редактирование коровы ' + entry.cattleId;
+  }
 
   // Заполняем форму данными из записи
   document.getElementById('cattleId').value = entry.cattleId;
@@ -323,7 +361,9 @@ function editEntry(cattleId) {
   document.getElementById('note').value = entry.note || '';
 
   // Переключаемся на экран добавления/редактирования
-  navigate('add');
+  if (typeof navigate === 'function') {
+    navigate('add');
+  }
 }
 
 /**
@@ -340,7 +380,9 @@ function deleteEntry(cattleId) {
     entries.splice(index, 1);
     saveLocally();
     updateList();
-    updateViewList();
+    if (typeof updateViewList === 'function') {
+      updateViewList();
+    }
     alert('Запись удалена');
   } else {
     alert('Запись не найдена!');
