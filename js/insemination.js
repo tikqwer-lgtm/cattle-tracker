@@ -13,7 +13,8 @@
  * @returns {number} - следующий номер попытки
  */
 function getInseminationAttempt(cattleId, currentLactation) {
-  // Фильтруем все записи коровы в текущей лактации
+  if (!Array.isArray(entries)) return 1;
+
   const attemptsInLactation = entries
     .filter(entry => 
       entry.cattleId === cattleId && 
@@ -22,13 +23,7 @@ function getInseminationAttempt(cattleId, currentLactation) {
     )
     .sort((a, b) => new Date(a.inseminationDate) - new Date(b.inseminationDate));
 
-  // Если есть предыдущие попытки, возвращаем следующий номер
-  if (attemptsInLactation.length > 0) {
-    return attemptsInLactation.length + 1;
-  }
-  
-  // Иначе начинаем с 1
-  return 1;
+  return attemptsInLactation.length + 1;
 }
 
 /**
@@ -166,13 +161,14 @@ document.addEventListener('click', (e) => {
 
 // Дополнительная инициализация при показе экрана осеменения
 document.addEventListener('click', (e) => {
-  if (e.target.matches('[onclick*="navigate(\\'insemination\\')"]')) {
+  const target = e.target;
+  if (
+    target.matches('[onclick*="navigate(\'insemination\'"]') ||
+    target.closest('[onclick*="navigate(\'insemination\'"]')
+  ) {
     setTimeout(() => {
-      const screen = document.getElementById('insemination-screen');
-      if (screen && screen.classList.contains('active')) {
-        populateCattleSelect();
-        autoFillInseminationAttempt();
-      }
+      populateCattleSelect();
+      autoFillInseminationAttempt();
     }, 150);
   }
 });
