@@ -19,6 +19,11 @@ function navigate(screenId) {
   if (screenId === 'view') {
     updateViewList();
   }
+  
+  // Обновить статистику при открытии меню
+  if (screenId === 'menu') {
+    updateHerdStats();
+  }
 }
 
 /**
@@ -77,7 +82,40 @@ function updateViewList() {
   `;
 }
 
+/**
+ * Обновляет статистику стада на главном экране
+ */
+function updateHerdStats() {
+  if (!entries || entries.length === 0) {
+    document.getElementById('totalCows').textContent = '0';
+    document.getElementById('pregnantCows').textContent = '0';
+    document.getElementById('dryCows').textContent = '0';
+    document.getElementById('inseminatedCows').textContent = '0';
+    document.getElementById('cullCows').textContent = '0';
+    return;
+  }
+
+  const totalCows = entries.length;
+  const pregnantCows = entries.filter(e => e.status.includes('Отёл')).length;
+  const dryCows = entries.filter(e => e.status.includes('Сухостой')).length;
+  const inseminatedCows = entries.filter(e => e.inseminationDate).length;
+  const cullCows = entries.filter(e => e.status.includes('брак')).length;
+
+  document.getElementById('totalCows').textContent = totalCows;
+  document.getElementById('pregnantCows').textContent = pregnantCows;
+  document.getElementById('dryCows').textContent = dryCows;
+  document.getElementById('inseminatedCows').textContent = inseminatedCows;
+  document.getElementById('cullCows').textContent = cullCows;
+}
+
 // При загрузке сразу открываем меню
 document.addEventListener('DOMContentLoaded', () => {
   navigate('menu');
+});
+
+// Обновить статистику при загрузке
+window.addEventListener('load', () => {
+  if (document.getElementById('menu-screen').classList.contains('active')) {
+    updateHerdStats();
+  }
 });

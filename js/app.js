@@ -4,6 +4,14 @@
 // Глобальная переменная для записей
 // entries уже объявлено в storage.js
 
+// Импортируем getDefaultCowEntry из storage.js, если доступно
+if (typeof getDefaultCowEntry === 'undefined' && typeof module !== 'undefined' && module.exports) {
+  // В Node.js окружении
+} else if (typeof getDefaultCowEntry === 'undefined') {
+  // В браузере, если не загружено — пытаемся получить из storage.js
+  console.warn('getDefaultCowEntry не найдена. Убедитесь, что storage.js загружен.');
+}
+
 /**
  * Возвращает текущую дату и время в формате строки "дд.мм.гггг чч:мм"
  * @returns {string}
@@ -23,6 +31,8 @@ function initApp() {
   // Загрузка данных из localStorage
   if (typeof loadLocally === 'function') {
     loadLocally();
+  } else {
+    console.error('Функция loadLocally не найдена. Проверьте подключение storage.js');
   }
   
   // Инициализация голосового помощника
