@@ -57,6 +57,38 @@
     </div>
   </div>
 
+  <!-- Экран ввода осеменения -->
+  <div id="insemination-screen" class="screen">
+    <h1>➕ Ввести осеменение</h1>
+    <form class="form" onsubmit="addInseminationEntry(); return false;">
+      <label for="cattleIdInsem">Номер коровы *</label>
+      <select id="cattleIdInsem" required>
+        <option value="">Выберите корову</option>
+      </select>
+
+      <label for="inseminationDateInsem">Дата осеменения *</label>
+      <input type="date" id="inseminationDateInsem" required />
+
+      <label for="attemptNumberInsem">Номер попытки</label>
+      <input type="number" id="attemptNumberInsem" value="1" />
+
+      <label for="bullInsem">Бык</label>
+      <input type="text" id="bullInsem" />
+
+      <label for="inseminatorInsem">Осеменитель</label>
+      <input type="text" id="inseminatorInsem" />
+
+      <label for="codeInsem">Код осеменения</label>
+      <input type="text" id="codeInsem" />
+
+      <div class="form-actions">
+        <button type="button" onclick="navigate('menu')" id="cancelButtonInsem">Отмена</button>
+        <button type="submit" id="saveButtonInsem">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
   <!-- Экран добавления/редактирования -->
   <div id="add-screen" class="screen">
     <h1 id="addScreenTitle">➕ Добавить корову</h1>

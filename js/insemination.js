@@ -52,14 +52,36 @@ if (document.getElementById('cattleId') && document.getElementById('insemination
 }
 
 /**
+ * Заполняет список коров в селекторе
+ */
+function populateCattleSelect() {
+  const select = document.getElementById('cattleIdInsem');
+  if (!select) return;
+
+  // Очищаем текущие опции, кроме первой
+  select.innerHTML = '<option value="">Выберите корову</option>';
+
+  // Добавляем коров из базы
+  entries.forEach(entry => {
+    const option = document.createElement('option');
+    option.value = entry.cattleId;
+    option.textContent = `${entry.cattleId} (${entry.nickname || '—'})`;
+    select.appendChild(option);
+  });
+}
+
+/**
  * Автоматически заполняет номер попытки на экране ввода осеменения
  */
 function autoFillInseminationAttempt() {
   const cattleId = document.getElementById('cattleIdInsem')?.value.trim();
-  const lactation = parseInt(document.getElementById('lactationInsem')?.value) || 1;
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
 
   if (cattleId && inseminationDate) {
+    // Получаем текущую лактацию коровы
+    const entry = entries.find(e => e.cattleId === cattleId);
+    const lactation = entry?.lactation || 1;
+    
     const attempt = getInseminationAttempt(cattleId, lactation);
     document.getElementById('attemptNumberInsem').value = attempt;
   }
@@ -67,8 +89,12 @@ function autoFillInseminationAttempt() {
 
 // Добавляем слушатели для автоматического заполнения на экране ввода осеменения
 if (document.getElementById('cattleIdInsem') && document.getElementById('inseminationDateInsem')) {
-  document.getElementById('cattleIdInsem').addEventListener('change', autoFillInseminationAttempt);
-  document.getElementById('inseminationDateInsem').addEventListener('change', autoFillInseminationAttempt);
+  document.getElementById('cattleIdInsem').addEventListener('change', () => {
+    autoFillInseminationAttempt();
+  });
+  document.getElementById('inseminationDateInsem').addEventListener('change', () => {
+    autoFillInseminationAttempt();
+  });
 }
 
 /**
@@ -118,11 +144,15 @@ function addInseminationEntry() {
  * Инициализация модуля осеменения
  */
 function initInseminationModule() {
-  // Проверяем, находимся ли мы на экране добавления или осеменения
+  // Проверяем, находимся ли мы на экране добавления
   if (document.getElementById('add-screen')?.classList.contains('active')) {
     autoFillAttempt();
   }
-  if (document.getElementById('insemination-screen')?.classList.contains('active')) {
+  
+  // Проверяем, находимся ли мы на экране ввода осеменения
+  const inseminationScreen = document.getElementById('insemination-screen');
+  if (inseminationScreen?.classList.contains('active')) {
+    populateCattleSelect();
     autoFillInseminationAttempt();
   }
 }
@@ -132,6 +162,19 @@ document.addEventListener('DOMContentLoaded', initInseminationModule);
 document.addEventListener('click', (e) => {
   // Если клик был по кнопке навигации, подождем и инициализируем
   setTimeout(initInseminationModule, 100);
+});
+
+// Дополнительная инициализация при показе экрана осеменения
+document.addEventListener('click', (e) => {
+  if (e.target.matches('[onclick*="navigate(\\'insemination\\')"]')) {
+    setTimeout(() => {
+      const screen = document.getElementById('insemination-screen');
+      if (screen && screen.classList.contains('active')) {
+        populateCattleSelect();
+        autoFillInseminationAttempt();
+      }
+    }, 150);
+  }
 });
 
 // Экспортируем функции, если используется модульная система
