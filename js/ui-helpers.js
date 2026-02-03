@@ -49,8 +49,16 @@ function formatDate(dateStr) {
  * Обновляет отображение списка записей на экране добавления
  */
 function updateList() {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ui-helpers.js:51',message:'updateList called',data:{entriesCount:entries?.length,listElementExists:!!document.getElementById('entriesList')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const list = document.getElementById("entriesList");
-  if (!list) return;
+  if (!list) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ui-helpers.js:56',message:'updateList: list element not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    return;
+  }
 
   list.innerHTML = `<div><strong>Всего: ${entries.length}</strong></div>`;
   
@@ -79,6 +87,9 @@ function updateList() {
       list.appendChild(div);
     });
   }
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ui-helpers.js:81',message:'updateList completed',data:{entriesDisplayed:entries?.length,listInnerHTMLLength:list.innerHTML?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
 }
 
 // Экспорт функций

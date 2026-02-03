@@ -13,7 +13,15 @@
  * @returns {number} - следующий номер попытки
  */
 function getInseminationAttempt(cattleId, currentLactation) {
-  if (!Array.isArray(entries)) return 1;
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:15',message:'getInseminationAttempt called',data:{cattleId,currentLactation,entriesCount:entries?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+  if (!Array.isArray(entries)) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:19',message:'getInseminationAttempt: entries is not array',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    return 1;
+  }
 
   const attemptsInLactation = entries
     .filter(entry => 
@@ -23,7 +31,11 @@ function getInseminationAttempt(cattleId, currentLactation) {
     )
     .sort((a, b) => new Date(a.inseminationDate) - new Date(b.inseminationDate));
 
-  return attemptsInLactation.length + 1;
+  const attemptNumber = attemptsInLactation.length + 1;
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:30',message:'getInseminationAttempt result',data:{cattleId,currentLactation,attemptsFound:attemptsInLactation.length,attemptNumber,attemptsDates:attemptsInLactation.map(a=>a.inseminationDate)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+  return attemptNumber;
 }
 
 /**
@@ -74,10 +86,9 @@ function populateCattleAutocomplete(inputId, listId) {
       const select = document.getElementById('cattleIdInsem');
       if (select) {
         select.value = entry.cattleId;
-        // Вызываем change событие для авто-заполнения попытки
-        const event = new Event('change');
-        select.dispatchEvent(event);
       }
+      // Вызываем авто-заполнение попытки напрямую
+      autoFillInseminationAttempt();
     });
     list.appendChild(li);
   });
@@ -114,27 +125,83 @@ function populateCattleSelect() {
  * Автоматически заполняет номер попытки на экране ввода осеменения
  */
 function autoFillInseminationAttempt() {
-  const cattleId = document.getElementById('cattleIdInsem')?.value.trim();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:116',message:'autoFillInseminationAttempt called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+  
+  // Пробуем получить ID из обоих полей (input и select)
+  const cattleIdInput = document.getElementById('cattleIdInsemInput');
+  const cattleIdSelect = document.getElementById('cattleIdInsem');
+  const cattleId = (cattleIdInput?.value.trim() || cattleIdSelect?.value.trim()) || '';
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:125',message:'autoFillInseminationAttempt: form values',data:{cattleId,cattleIdInputValue:cattleIdInput?.value,cattleIdSelectValue:cattleIdSelect?.value,inseminationDate,attemptNumberInsemExists:!!document.getElementById('attemptNumberInsem')},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
 
   if (cattleId && inseminationDate) {
     // Получаем текущую лактацию коровы
     const entry = entries.find(e => e.cattleId === cattleId);
     const lactation = entry?.lactation || 1;
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:133',message:'autoFillInseminationAttempt: entry found',data:{cattleId,entryFound:!!entry,lactation},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
     const attempt = getInseminationAttempt(cattleId, lactation);
-    document.getElementById('attemptNumberInsem').value = attempt;
+    const attemptField = document.getElementById('attemptNumberInsem');
+    if (attemptField) {
+      attemptField.value = attempt;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:140',message:'autoFillInseminationAttempt: attempt set',data:{cattleId,lactation,attempt,attemptFieldValue:attemptField.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+    } else {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:144',message:'autoFillInseminationAttempt: attemptNumberInsem field not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+    }
+  } else {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:149',message:'autoFillInseminationAttempt: missing data',data:{cattleId:!!cattleId,inseminationDate:!!inseminationDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
   }
 }
 
-// Добавляем слушатели для автоматического заполнения на экране ввода осеменения
-if (document.getElementById('cattleIdInsem') && document.getElementById('inseminationDateInsem')) {
-  document.getElementById('cattleIdInsem').addEventListener('change', () => {
-    autoFillInseminationAttempt();
-  });
-  document.getElementById('inseminationDateInsem').addEventListener('change', () => {
-    autoFillInseminationAttempt();
-  });
+/**
+ * Инициализирует слушатели событий для автоматического заполнения попытки
+ * Вызывается при открытии экрана осеменения
+ */
+function initInseminationAttemptListeners() {
+  const cattleIdInput = document.getElementById('cattleIdInsemInput');
+  const cattleIdSelect = document.getElementById('cattleIdInsem');
+  const inseminationDateField = document.getElementById('inseminationDateInsem');
+  
+  // Удаляем старые слушатели, если они есть
+  if (cattleIdInput) {
+    cattleIdInput.removeEventListener('input', autoFillInseminationAttempt);
+    cattleIdInput.removeEventListener('change', autoFillInseminationAttempt);
+    cattleIdInput.addEventListener('input', autoFillInseminationAttempt);
+    cattleIdInput.addEventListener('change', autoFillInseminationAttempt);
+  }
+  
+  if (cattleIdSelect) {
+    cattleIdSelect.removeEventListener('change', autoFillInseminationAttempt);
+    cattleIdSelect.addEventListener('change', autoFillInseminationAttempt);
+  }
+  
+  if (inseminationDateField) {
+    inseminationDateField.removeEventListener('change', autoFillInseminationAttempt);
+    inseminationDateField.addEventListener('change', autoFillInseminationAttempt);
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:168',message:'initInseminationAttemptListeners completed',data:{cattleIdInputExists:!!cattleIdInput,cattleIdSelectExists:!!cattleIdSelect,inseminationDateFieldExists:!!inseminationDateField},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+}
+
+// Инициализация слушателей при загрузке (если элементы уже есть)
+if (document.getElementById('cattleIdInsemInput') || document.getElementById('cattleIdInsem')) {
+  initInseminationAttemptListeners();
 }
 
 /**
@@ -259,7 +326,8 @@ function initInseminationModule() {
   const inseminationScreen = document.getElementById('insemination-screen');
   if (inseminationScreen?.classList.contains('active')) {
     initCattleAutocomplete();
-    autoFillInseminationAttempt();
+    initInseminationAttemptListeners(); // Инициализируем слушатели
+    autoFillInseminationAttempt(); // Пробуем заполнить сразу, если поля уже заполнены
   }
 }
 
@@ -279,6 +347,7 @@ document.addEventListener('click', (e) => {
   ) {
     setTimeout(() => {
       populateCattleSelect();
+      initInseminationAttemptListeners(); // Инициализируем слушатели при открытии экрана
       autoFillInseminationAttempt();
     }, 150);
   }

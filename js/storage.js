@@ -28,12 +28,27 @@ function saveLocally() {
  * Загружает записи из localStorage при запуске
  */
 function loadLocally() {
-  entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
-  console.log("Загружено из localStorage:", entries.length, "записей");
-  
-  // Вызываем updateList если она существует
-  if (typeof updateList === 'function') {
-    updateList();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storage.js:15',message:'loadLocally called',data:{localStorageExists:!!localStorage.getItem('cattleEntries'),localStorageLength:localStorage.getItem('cattleEntries')?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
+  try {
+    const stored = localStorage.getItem('cattleEntries');
+    entries = stored ? JSON.parse(stored) : [];
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storage.js:21',message:'loadLocally completed',data:{entriesCount:entries?.length,entriesSample:entries?.slice(0,2)?.map(e=>({cattleId:e.cattleId,inseminationDate:e.inseminationDate}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    console.log("Загружено из localStorage:", entries.length, "записей");
+    
+    // Вызываем updateList если она существует
+    if (typeof updateList === 'function') {
+      updateList();
+    }
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storage.js:30',message:'loadLocally error',data:{error:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    console.error('Ошибка загрузки из localStorage:', error);
+    entries = [];
   }
 }
 
