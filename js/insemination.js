@@ -141,22 +141,45 @@ if (document.getElementById('cattleIdInsem') && document.getElementById('insemin
  * Добавляет запись осеменения для существующей коровы
  */
 function addInseminationEntry() {
-  const cattleId = document.getElementById('cattleIdInsem')?.value.trim();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:143',message:'addInseminationEntry called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  // Пробуем получить ID из обоих полей (для совместимости)
+  const cattleIdInput = document.getElementById('cattleIdInsemInput');
+  const cattleIdSelect = document.getElementById('cattleIdInsem');
+  const cattleId = (cattleIdInput?.value.trim() || cattleIdSelect?.value.trim()) || '';
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:150',message:'Form values extracted',data:{cattleId,cattleIdInputValue:cattleIdInput?.value,cattleIdSelectValue:cattleIdSelect?.value,inseminationDate,entriesCount:entries?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+
   if (!cattleId || !inseminationDate) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:155',message:'Validation failed',data:{cattleId:!!cattleId,inseminationDate:!!inseminationDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     alert('Заполните номер коровы и дату осеменения!');
     return;
   }
 
   // Ищем корову в списке записей
   const entry = entries.find(e => e.cattleId === cattleId);
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:163',message:'Entry search result',data:{cattleId,entryFound:!!entry,entryBefore:entry?JSON.stringify(entry):null,entriesCount:entries?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
   if (!entry) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:168',message:'Entry not found - returning',data:{cattleId,entriesCount:entries?.length,allCattleIds:entries?.map(e=>e.cattleId)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     alert('Корова с таким номером не найдена!');
     return;
   }
 
   // Заполняем поля осеменения
+  const entryBefore = JSON.parse(JSON.stringify(entry));
   entry.inseminationDate = inseminationDate;
   entry.attemptNumber = parseInt(document.getElementById('attemptNumberInsem')?.value) || 1;
   entry.bull = document.getElementById('bullInsem')?.value || '';
@@ -164,18 +187,61 @@ function addInseminationEntry() {
   entry.code = document.getElementById('codeInsem')?.value || '';
   entry.status = 'Осеменена'; // Обновляем статус
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:182',message:'Entry updated before save',data:{entryBefore,entryAfter:JSON.stringify(entry)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+
   // Сохраняем изменения
-  saveLocally();
-  updateList(); // Обновляем список на экране добавления
-  updateViewList(); // Обновляем список на экране просмотра
+  try {
+    saveLocally();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:189',message:'saveLocally called',data:{entriesCount:entries?.length,localStorageCheck:localStorage.getItem('cattleEntries')?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:193',message:'saveLocally error',data:{error:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    console.error('Ошибка сохранения:', error);
+  }
+  
+  try {
+    updateList(); // Обновляем список на экране добавления
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:200',message:'updateList called',data:{updateListExists:typeof updateList === 'function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:204',message:'updateList error',data:{error:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    console.error('Ошибка обновления списка:', error);
+  }
+  
+  if (typeof updateViewList === 'function') {
+    try {
+      updateViewList(); // Обновляем список на экране просмотра
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:211',message:'updateViewList called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:215',message:'updateViewList error',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      console.error('Ошибка обновления списка просмотра:', error);
+    }
+  }
 
   // Очищаем форму
-  document.getElementById('cattleIdInsem').value = '';
+  if (cattleIdInput) cattleIdInput.value = '';
+  if (cattleIdSelect) cattleIdSelect.value = '';
   document.getElementById('inseminationDateInsem').value = '';
   document.getElementById('attemptNumberInsem').value = '1';
   document.getElementById('bullInsem').value = '';
   document.getElementById('inseminatorInsem').value = '';
   document.getElementById('codeInsem').value = '';
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'insemination.js:230',message:'addInseminationEntry completed',data:{entrySaved:JSON.stringify(entry),entriesCount:entries?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
 
   alert('Данные осеменения добавлены!');
 }
