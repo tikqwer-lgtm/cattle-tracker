@@ -30,23 +30,12 @@ function navigate(screenId) {
  * Обновляет список на экране просмотра
  */
 function updateViewList() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'menu.js:32',message:'updateViewList called',data:{entriesCount:entries?.length,containerExists:!!document.getElementById('viewEntriesList')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   const container = document.getElementById('viewEntriesList');
-  if (!container) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'menu.js:36',message:'updateViewList: container not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
-    return;
-  }
+  if (!container) return;
 
   // Проверяем что entries существует
   if (!entries || entries.length === 0) {
     container.innerHTML = '<p>Нет записей</p>';
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/86c9a476-9b52-4c72-882a-524ec24c8a0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'menu.js:42',message:'updateViewList: no entries',data:{entriesExists:!!entries,entriesLength:entries?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     return;
   }
 
