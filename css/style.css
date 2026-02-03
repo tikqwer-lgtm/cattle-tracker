@@ -369,3 +369,42 @@ h1 {
     text-align: center;
   }
 }
+
+/* Стили для автодополнения */
+.autocomplete {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 0 5px 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.autocomplete-list li {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.autocomplete-list li:hover {
+  background-color: #f0f0f0;
+}
+
+.autocomplete-list li:last-child {
+  border-bottom: none;
+}

@@ -65,10 +65,14 @@
   <div id="insemination-screen" class="screen">
     <h1>➕ Ввести осеменение</h1>
     <form class="form" onsubmit="addInseminationEntry(); return false;">
-      <label for="cattleIdInsem">Номер коровы *</label>
-      <select id="cattleIdInsem" required>
-        <option value="">Выберите корову</option>
-      </select>
+      <label for="cattleIdInsemInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdInsemInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdInsemList" class="autocomplete-list"></ul>
+        <select id="cattleIdInsem" style="display: none;" required>
+          <option value="">Выберите корову</option>
+        </select>
+      </div>
 
       <label for="inseminationDateInsem">Дата осеменения *</label>
       <input type="date" id="inseminationDateInsem" required />

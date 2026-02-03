@@ -47,30 +47,67 @@ if (document.getElementById('cattleId') && document.getElementById('insemination
 }
 
 /**
- * Заполняет список коров в селекторе
+ * Заполняет список коров для автодополнения
  */
-function populateCattleSelect() {
-  const select = document.getElementById('cattleIdInsem');
-  if (!select) return;
+function populateCattleAutocomplete(inputId, listId) {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  if (!input || !list) return;
 
-  // Очищаем текущие опции, кроме первой
-  const currentValue = select.value; // Сохраняем текущее выбранное значение
-  select.innerHTML = '<option value="">Выберите корову</option>';
-  // Восстанавливаем выбранное значение, если оно было
-  if (currentValue) {
-    const options = Array.from(select.options).map(opt => opt.value);
-    if (options.includes(currentValue)) {
-      select.value = currentValue;
-    }
-  }
+  // Очищаем список
+  list.innerHTML = '';
 
-  // Добавляем коров из базы
-  entries.forEach(entry => {
-    const option = document.createElement('option');
-    option.value = entry.cattleId;
-    option.textContent = `${entry.cattleId} (${entry.nickname || '—'})`;
-    select.appendChild(option);
+  const filter = input.value.toLowerCase();
+  const matchingEntries = entries.filter(entry => 
+    entry.cattleId.toLowerCase().includes(filter) || 
+    (entry.nickname && entry.nickname.toLowerCase().includes(filter))
+  ).slice(0, 10); // Ограничиваем 10 результатами
+
+  matchingEntries.forEach(entry => {
+    const li = document.createElement('li');
+    li.textContent = `${entry.cattleId} (${entry.nickname || '—'})`;
+    li.dataset.value = entry.cattleId;
+    li.addEventListener('click', () => {
+      input.value = entry.cattleId;
+      list.innerHTML = '';
+      // Синхронизируем со скрытым селектором
+      const select = document.getElementById('cattleIdInsem');
+      if (select) {
+        select.value = entry.cattleId;
+        // Вызываем change событие для авто-заполнения попытки
+        const event = new Event('change');
+        select.dispatchEvent(event);
+      }
+    });
+    list.appendChild(li);
   });
+}
+
+/**
+ * Инициализирует автодополнение для ввода номера коровы
+ */
+function initCattleAutocomplete() {
+  const input = document.getElementById('cattleIdInsemInput');
+  if (!input) return;
+
+  // Обновляем список при вводе
+  input.addEventListener('input', () => {
+    populateCattleAutocomplete('cattleIdInsemInput', 'cattleIdInsemList');
+  });
+
+  // Скрываем список при клике вне поля
+  document.addEventListener('click', (e) => {
+    const list = document.getElementById('cattleIdInsemList');
+    if (list && input !== e.target && !list.contains(e.target)) {
+      list.innerHTML = '';
+    }
+  });
+}
+
+// Заменяем populateCattleSelect на использование автодополнения
+function populateCattleSelect() {
+  // Теперь используем автодополнение, оставляем для обратной совместимости
+  initCattleAutocomplete();
 }
 
 /**
@@ -155,7 +192,7 @@ function initInseminationModule() {
   // Проверяем, находимся ли мы на экране ввода осеменения
   const inseminationScreen = document.getElementById('insemination-screen');
   if (inseminationScreen?.classList.contains('active')) {
-    populateCattleSelect();
+    initCattleAutocomplete();
     autoFillInseminationAttempt();
   }
 }
