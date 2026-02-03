@@ -10,10 +10,49 @@
   <!-- Экран меню -->
   <div id="menu-screen" class="screen active">
     <h1>Меню</h1>
-    <div class="menu-buttons">
-      <button onclick="navigate('add')">Добавить корову</button>
-      <button onclick="navigate('view')">Просмотр записей</button>
-      <button onclick="navigate('sync')">Синхронизация</button>
+
+    <!-- Статистика стада -->
+    <div class="herd-stats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalCows">0</div>
+        <div class="stat-label">Всего коров</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="pregnantCows">0</div>
+        <div class="stat-label">Стельных</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="dryCows">0</div>
+        <div class="stat-label">В сухостое</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="inseminatedCows">0</div>
+        <div class="stat-label">Осеменённых</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="cullCows">0</div>
+        <div class="stat-label">На брак</div>
+      </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="action-buttons">
+      <button onclick="navigate('add')" class="action-btn">
+        <span>➕</span>
+        <span>Добавить животное</span>
+      </button>
+      <button onclick="navigate('insemination')" class="action-btn">
+        <span>🐄</span>
+        <span>Ввести осеменение</span>
+      </button>
+      <button onclick="navigate('export')" class="action-btn">
+        <span>📤</span>
+        <span>Экспорт</span>
+      </button>
+      <button onclick="navigate('import')" class="action-btn">
+        <span>📥</span>
+        <span>Импорт</span>
+      </button>
     </div>
   </div>
 

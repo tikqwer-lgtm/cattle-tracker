@@ -22,5 +22,43 @@ function loadLocally() {
   }
 }
 
-// getDefaultCowEntry теперь определена только в storage.js
-// И удалена из app.js чтобы избежать дублирования
+
+/**
+ * Возвращает новую запись коровы с полями по умолчанию
+ * @returns {Object}
+ */
+function getDefaultCowEntry() {
+  return {
+    cattleId: '',
+    nickname: '',
+    birthDate: '',
+    lactation: 1,
+    calvingDate: '',
+    inseminationDate: '',
+    attemptNumber: 1,
+    bull: '',
+    inseminator: '',
+    code: '',
+    status: 'Охота',
+    exitDate: '',
+    dryStartDate: '',
+    vwp: 60,
+    note: '',
+    protocol: {
+      name: '',
+      startDate: ''
+    },
+    dateAdded: nowFormatted(),
+    synced: false
+  };
+}
+
+// Экспорт функций
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    entries,
+    saveLocally,
+    loadLocally,
+    getDefaultCowEntry
+  };
+}
