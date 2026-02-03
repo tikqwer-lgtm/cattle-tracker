@@ -96,10 +96,10 @@ function updateHerdStats() {
   }
 
   const totalCows = entries.length;
-  const pregnantCows = entries.filter(e => e.status.includes('Отёл')).length;
-  const dryCows = entries.filter(e => e.status.includes('Сухостой')).length;
+  const pregnantCows = entries.filter(e => e.status && e.status.includes('Отёл')).length;
+  const dryCows = entries.filter(e => e.status && e.status.includes('Сухостой')).length;
   const inseminatedCows = entries.filter(e => e.inseminationDate).length;
-  const cullCows = entries.filter(e => e.status.includes('брак')).length;
+  const cullCows = entries.filter(e => e.status && e.status.includes('брак')).length;
 
   document.getElementById('totalCows').textContent = totalCows;
   document.getElementById('pregnantCows').textContent = pregnantCows;
