@@ -54,7 +54,15 @@ function populateCattleSelect() {
   if (!select) return;
 
   // Очищаем текущие опции, кроме первой
+  const currentValue = select.value; // Сохраняем текущее выбранное значение
   select.innerHTML = '<option value="">Выберите корову</option>';
+  // Восстанавливаем выбранное значение, если оно было
+  if (currentValue) {
+    const options = Array.from(select.options).map(opt => opt.value);
+    if (options.includes(currentValue)) {
+      select.value = currentValue;
+    }
+  }
 
   // Добавляем коров из базы
   entries.forEach(entry => {
