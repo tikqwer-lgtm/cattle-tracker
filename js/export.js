@@ -1,5 +1,8 @@
 // export.js — экспорт и импорт
 
+/**
+ * Экспортирует данные в Excel (CSV с разделителем ; и поддержкой кириллицы)
+ */
 function exportToExcel() {
   if (entries.length === 0) {
     alert("Нет данных для экспорта");
@@ -53,6 +56,13 @@ function exportToExcel() {
   document.body.removeChild(link);
 }
 
+/**
+ * Импортирует данные из CSV-файла
+ * @param {Event} event Событие выбора файла
+ * Алгоритм:
+ * - Если коровы нет в базе — добавляет новую запись
+ * - Если корова есть — обновляет только пустые или отсутствующие поля
+ */
 function importFromCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -131,6 +141,9 @@ function importFromCSV(event) {
   reader.readAsText(file);
 }
 
+/**
+ * Скачивает шаблон для импорта
+ */
 function downloadTemplate() {
   // Создаем CSV с заголовками
   let csv = [

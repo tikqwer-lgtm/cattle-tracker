@@ -45,14 +45,15 @@
         <span>🐄</span>
         <span>Ввести осеменение</span>
       </button>
-      <button onclick="navigate('export')" class="action-btn">
+      <button onclick="exportToExcel()" class="action-btn">
         <span>📤</span>
-        <span>Экспорт</span>
+        <span>Экспорт в Excel</span>
       </button>
-      <button onclick="navigate('import')" class="action-btn">
+      <button onclick="document.getElementById('importFile').click()" class="action-btn">
         <span>📥</span>
-        <span>Импорт</span>
+        <span>Импорт из Excel</span>
       </button>
+      <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importFromCSV(event)">
     </div>
   </div>
 
