@@ -46,6 +46,7 @@ function viewCow(cattleId) {
       </div>
 
       <div class="cow-card-actions">
+        <button onclick="editEntry('${entry.cattleId}');" class="small-btn edit">✏️ Редактировать</button>
         <button onclick="navigate('view')" class="back-button">Назад к списку</button>
       </div>
     </div>
@@ -95,8 +96,7 @@ function updateViewListWithClick() {
             <td>${entry.note || '—'}</td>
             <td>${entry.synced ? '✅' : '🟡'}</td>
             <td class="actions-cell">
-              <button onclick="editEntry('${entry.cattleId}'); event.stopPropagation();" class="small-btn edit">✏️</button>
-              <button onclick="deleteEntry('${entry.cattleId}'); event.stopPropagation();" class="small-btn delete">🗑️</button>
+              <button onclick="deleteEntry('${entry.cattleId}'); event.stopPropagation();" class="small-btn delete">🗑️ Удалить</button>
             </td>
           </tr>
         `).join('')}
