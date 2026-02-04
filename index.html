@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Учёт коров — расширенный функционал</title>
+  <!-- Подключение основных стилей -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -172,7 +173,14 @@
   <div id="view-screen" class="screen">
     <h1>📋 Просмотр записей</h1>
     <div id="viewEntriesList"></div>
-    <button onclick="navigate('menu')" class="back-button">Назад</button>
+    <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
+  </div>
+
+  <!-- Экран просмотра карточки животного -->
+  <div id="view-cow-screen" class="screen">
+    <h1>🔍 Просмотр животного</h1>
+    <div id="viewCowCard"></div>
+    <button onclick="navigate('view')" class="back-button">Назад к списку</button>
   </div>
 
   <!-- Экран синхронизации -->
@@ -199,5 +207,6 @@
   <script src="js/sync.js"></script>
   <script src="js/export.js"></script>
   <script src="js/insemination.js"></script>
+  <script src="js/view-cow.js"></script>
 </body>
 </html>
