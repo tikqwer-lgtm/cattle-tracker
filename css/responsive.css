@@ -1,0 +1,38 @@
+/* responsive.css - Адаптивные стили */
+
+/* Адаптивность таблицы */
+@media (max-width: 768px) {
+  .entries-table {
+    font-size: 0.85em;
+  }
+
+  .entries-table th,
+  .entries-table td {
+    padding: 8px;
+  }
+
+  .entries-table .actions-cell {
+    text-align: center;
+  }
+}
+
+/* Адаптивность при необходимости */
+@media (max-width: 480px) {
+  .container {
+    padding: 10px;
+  }
+
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .herd-stats {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .stat-item {
+    width: 100%;
+    max-width: 300px;
+  }
+}
