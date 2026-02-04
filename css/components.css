@@ -1,0 +1,245 @@
+/* components.css - Стили компонентов */
+
+/* Кнопки действий */
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  font-size: 1em;
+  border: none;
+  border-radius: 10px;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.action-btn:hover {
+  background: #357abd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.action-btn span:first-child {
+  font-size: 1.5em;
+  margin-bottom: 8px;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.menu-buttons button {
+  padding: 15px;
+  font-size: 1.2em;
+  border: none;
+  border-radius: 10px;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.menu-buttons button:hover {
+  background: #357abd;
+}
+
+.back-button {
+  background: #999;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.form {
+  display: grid;
+  gap: 15px;
+}
+
+.form label {
+  font-weight: bold;
+}
+
+.form input[type="text"],
+.form input[type="date"],
+.form input[type="number"],
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.controls {
+  margin-top: 30px;
+  padding: 15px;
+  background: #eee;
+  border-radius: 10px;
+}
+
+.controls button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.controls button:hover {
+  background: #357abd;
+}
+
+#status {
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Стили для списка записей */
+.entry {
+  background: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #4a90e2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.entry.unsynced {
+  border-left-color: #ff9900;
+}
+
+.entry-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 5px;
+}
+
+.small-btn {
+  padding: 5px 10px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.small-btn.edit {
+  background: #4a90e2;
+  color: white;
+}
+
+.small-btn.delete {
+  background: #e74c3c;
+  color: white;
+}
+
+/* Таблица записей */
+.entries-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.entries-table th,
+.entries-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.entries-table th {
+  background-color: #4a90e2;
+  color: white;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 0.5px;
+}
+
+.entries-table tr:hover {
+  background-color: #f5f5f5;
+}
+
+.entries-table .unsynced {
+  background-color: #fff9f0;
+}
+
+.entries-table .unsynced td {
+  border-left: 4px solid #ff9900;
+}
+
+.entries-table .actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.entries-table .small-btn {
+  margin-left: 5px;
+  padding: 6px 10px;
+  font-size: 0.85em;
+}
+
+/* Стили для автодополнения */
+.autocomplete {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 0 5px 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.autocomplete-list li {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.autocomplete-list li:hover {
+  background-color: #f0f0f0;
+}
+
+.autocomplete-list li:last-child {
+  border-bottom: none;
+}

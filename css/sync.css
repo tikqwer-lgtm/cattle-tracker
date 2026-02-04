@@ -1,0 +1,43 @@
+/* sync.css - Стили синхронизации */
+
+/* Стили для синхронизации */
+.sync-controls {
+  margin-top: 20px;
+  padding: 15px;
+  background: #e8f4fd;
+  border-radius: 8px;
+  border: 1px solid #b3d9ff;
+}
+
+.sync-controls button,
+.sync-controls label {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 0.9em;
+}
+
+.sync-controls input[type="file"] {
+  display: none;
+}
+
+.sync-controls label {
+  display: inline-block;
+  cursor: pointer;
+  padding: 8px 12px;
+  width: auto;
+}
+
+.sync-controls button:hover {
+  background: #357abd;
+}
+
+.sync-status {
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: #666;
+}
