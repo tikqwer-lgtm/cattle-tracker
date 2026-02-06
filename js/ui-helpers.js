@@ -57,22 +57,41 @@ function updateList() {
   if (entries.length === 0) {
     list.innerHTML += `<div style="color: #999; margin-top: 10px;">Нет данных</div>`;
   } else {
+    // Функция для очистки и экранирования данных
+    const cleanAndEscape = (text) => {
+      if (!text) return '—';
+      if (typeof text !== 'string') {
+        try {
+          text = String(text);
+        } catch (e) {
+          return '—';
+        }
+      }
+      // Удаляем бинарные и невидимые символы
+      text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+      if (!text) return '—';
+      // Экранируем HTML
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
     entries.forEach(entry => {
       const div = document.createElement("div");
       div.className = "entry" + (!entry.synced ? " unsynced" : "");
       div.innerHTML = `
-        <strong>Корова:</strong> ${entry.cattleId} | 
-        <strong>Кличка:</strong> ${entry.nickname || '—'}<br>
+        <strong>Корова:</strong> ${cleanAndEscape(entry.cattleId)} | 
+        <strong>Кличка:</strong> ${cleanAndEscape(entry.nickname)}<br>
         <strong>Дата осеменения:</strong> ${formatDate(entry.inseminationDate)} | 
-        <strong>Лактация:</strong> ${entry.lactation}<br>
-        <strong>Бык:</strong> ${entry.bull || '—'} | 
+        <strong>Лактация:</strong> ${entry.lactation || '—'}<br>
+        <strong>Бык:</strong> ${cleanAndEscape(entry.bull)} | 
         <strong>Попытка:</strong> ${entry.attemptNumber || '—'} | 
-        <strong>Статус:</strong> ${entry.status}<br>
+        <strong>Статус:</strong> ${cleanAndEscape(entry.status)}<br>
         <em style="color: #666;">
-          ${entry.code ? 'Код: ' + entry.code + ' • ' : ''}
+          ${entry.code ? 'Код: ' + cleanAndEscape(entry.code) + ' • ' : ''}
           ${entry.calvingDate ? 'Отёл: ' + formatDate(entry.calvingDate) + ' • ' : ''}
           ${entry.dryStartDate ? 'Сухостой: ' + formatDate(entry.dryStartDate) + ' • ' : ''}
-          ${entry.note ? entry.note : ''}
+          ${entry.note ? cleanAndEscape(entry.note) : ''}
         </em>
         ${!entry.synced ? '<span style="color: #ff9900; font-size: 12px;"> ● Не отправлено</span>' : ''}
       `;
