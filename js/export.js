@@ -61,7 +61,7 @@ function exportToExcel() {
  * @param {Event} event Событие выбора файла
  * Алгоритм:
  * - Если коровы нет в базе — добавляет новую запись
- * - Если корова есть — обновляет только пустые или отсутствующие поля
+ * - Если корова есть — обновляет поля из импорта (приоритет у новых данных)
  */
 function importFromCSV(event) {
   const file = event.target.files[0];
@@ -70,35 +70,70 @@ function importFromCSV(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
-    const lines = text.split('\n').slice(1);
-    const imported = [];
+    // Определяем разделитель (проверяем первую строку)
+    const firstLine = text.split('\n')[0];
+    const delimiter = firstLine.includes(';') ? ';' : (firstLine.includes(',') ? ',' : ';');
+    
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+    if (lines.length <= 1) {
+      alert('❌ Файл пуст или содержит только заголовки');
+      event.target.value = '';
+      return;
+    }
+    
+    // Пропускаем заголовок
+    const dataLines = lines.slice(1);
     let duplicates = 0;
     let newEntries = 0;
+    let skipped = 0;
+    let errors = [];
 
-    for (const line of lines) {
-      const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
-      if (row.length >= 17 && row[0].trim() !== '') {
+    for (let i = 0; i < dataLines.length; i++) {
+      const line = dataLines[i].trim();
+      if (!line) {
+        skipped++;
+        continue;
+      }
+
+      // Парсим строку с учетом кавычек
+      const row = line.split(delimiter).map(cell => {
+        let cleaned = cell.trim();
+        // Убираем кавычки если есть
+        if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+            (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+          cleaned = cleaned.slice(1, -1);
+        }
+        return cleaned;
+      });
+
+      // Минимум нужен номер коровы (первая колонка)
+      if (row.length < 1 || !row[0] || row[0].trim() === '') {
+        skipped++;
+        continue;
+      }
+
+      try {
         const newEntry = {
-          cattleId: row[0],
-          nickname: row[1],
-          birthDate: row[2],
+          cattleId: row[0] || '',
+          nickname: row[1] || '',
+          birthDate: row[2] || '',
           lactation: parseInt(row[3]) || 1,
-          calvingDate: row[4],
-          inseminationDate: row[5],
+          calvingDate: row[4] || '',
+          inseminationDate: row[5] || '',
           attemptNumber: parseInt(row[6]) || 1,
-          bull: row[7],
-          inseminator: row[8],
-          code: row[9],
-          status: row[10],
+          bull: row[7] || '',
+          inseminator: row[8] || '',
+          code: row[9] || '',
+          status: row[10] || 'Охота',
           protocol: {
-            name: row[11],
-            startDate: row[12]
+            name: row[11] || '',
+            startDate: row[12] || ''
           },
-          exitDate: row[13],
-          dryStartDate: row[14],
+          exitDate: row[13] || '',
+          dryStartDate: row[14] || '',
           vwp: parseInt(row[15]) || 60,
-          note: row[16],
-          synced: row[17] === 'Да',
+          note: row[16] || '',
+          synced: row[17] === 'Да' || row[17] === 'да' || row[17] === '1',
           dateAdded: nowFormatted()
         };
 
@@ -106,41 +141,80 @@ function importFromCSV(event) {
         const existingEntry = entries.find(e => e.cattleId === newEntry.cattleId);
 
         if (existingEntry) {
-          // Обновляем только пустые или старые значения
+          // Обновляем существующую запись - приоритет у данных из импорта
+          let updated = false;
           for (const key in newEntry) {
-            if (newEntry[key]) {
-              if (typeof newEntry[key] === 'object') {
-                for (const subKey in newEntry[key]) {
-                  if (newEntry[key][subKey] && !existingEntry[key][subKey]) {
-                    existingEntry[key][subKey] = newEntry[key][subKey];
-                  }
+            if (key === 'dateAdded' || key === 'synced') continue; // Не обновляем эти поля
+            if (typeof newEntry[key] === 'object' && newEntry[key] !== null) {
+              // Для объектов (protocol) обновляем вложенные поля
+              if (!existingEntry[key]) existingEntry[key] = {};
+              for (const subKey in newEntry[key]) {
+                if (newEntry[key][subKey]) {
+                  existingEntry[key][subKey] = newEntry[key][subKey];
+                  updated = true;
                 }
-              } else if (!existingEntry[key]) {
-                existingEntry[key] = newEntry[key];
               }
+            } else if (newEntry[key] && newEntry[key] !== '') {
+              // Обновляем если в импорте есть значение
+              existingEntry[key] = newEntry[key];
+              updated = true;
             }
           }
-          duplicates++;
+          if (updated) {
+            duplicates++;
+          } else {
+            skipped++;
+          }
         } else {
           // Новая запись
           entries.unshift(newEntry);
           newEntries++;
         }
+      } catch (error) {
+        errors.push(`Строка ${i + 2}: ${error.message}`);
+        skipped++;
       }
     }
 
+    // Формируем сообщение
+    let message = '';
     if (newEntries > 0 || duplicates > 0) {
       saveLocally();
       updateList();
-      updateViewList();
-      alert(`✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`);
-    } else if (lines.length > 1) {
-      alert(`⚠️ Файл содержит ${lines.length} строк, но не найдено новых или обновляемых записей. Возможно, все данные уже есть в базе, номера коров дублируются или строки пустые.`);
+      if (typeof updateViewList === 'function') {
+        updateViewList();
+      }
+      message = `✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`;
+      if (skipped > 0) {
+        message += `, пропущено: ${skipped}`;
+      }
+      if (errors.length > 0) {
+        message += `\n⚠️ Ошибок: ${errors.length}`;
+        console.warn('Ошибки импорта:', errors);
+      }
     } else {
-      alert('❌ Нет данных для импорта');
+      message = `⚠️ Файл содержит ${dataLines.length} строк данных, но:\n`;
+      message += `- Новых записей: 0\n`;
+      message += `- Обновлено записей: 0\n`;
+      message += `- Пропущено строк: ${skipped}\n\n`;
+      message += `Возможные причины:\n`;
+      message += `- Все номера коров уже есть в базе и данные не изменились\n`;
+      message += `- Строки пустые или не содержат номер коровы\n`;
+      message += `- Неверный формат файла (ожидается разделитель ${delimiter})`;
+      if (errors.length > 0) {
+        message += `\n\nОшибки:\n${errors.slice(0, 5).join('\n')}`;
+        if (errors.length > 5) {
+          message += `\n... и еще ${errors.length - 5} ошибок`;
+        }
+      }
     }
+    
+    alert(message);
+    
+    // Сброс input для возможности повторного импорта того же файла
+    event.target.value = '';
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
 }
 
 /**
