@@ -99,10 +99,9 @@ function saveCurrentEntry() {
   console.log("Сохранение записи...");
   
   const cattleId = document.getElementById('cattleId').value.trim();
-  const inseminationDate = document.getElementById('inseminationDate').value;
 
-  if (!cattleId || !inseminationDate) {
-    alert('Заполните номер коровы и дату осеменения!');
+  if (!cattleId) {
+    alert('Заполните номер коровы!');
     return;
   }
 
