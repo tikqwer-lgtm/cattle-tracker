@@ -165,11 +165,15 @@ function cancelEdit() {
   }
 }
 
+// Делаем функцию массового удаления доступной глобально
+window.deleteSelectedEntries = deleteSelectedEntries;
+
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     editEntry,
     deleteEntry,
+    deleteSelectedEntries,
     fillFormFromCowEntry,
     fillCowEntryFromForm,
     cancelEdit

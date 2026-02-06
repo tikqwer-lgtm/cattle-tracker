@@ -120,6 +120,11 @@ function updateViewList() {
       </tbody>
     </table>
   `;
+  
+  // Инициализируем счетчик выделенных записей после рендеринга
+  setTimeout(() => {
+    updateSelectedCount();
+  }, 0);
 }
 
 /**
@@ -202,22 +207,6 @@ function toggleSelectAll(checked) {
 }
 
 /**
- * Переключает выделение строки при клике на неё
- */
-function toggleRowSelection(event, checkboxId) {
-  // Не переключаем, если клик был на кнопке или ссылке
-  if (event.target.tagName === 'BUTTON' || event.target.closest('button') || event.target.closest('.actions-cell')) {
-    return;
-  }
-  
-  const checkbox = document.getElementById(checkboxId);
-  if (checkbox) {
-    checkbox.checked = !checkbox.checked;
-    updateSelectedCount();
-  }
-}
-
-/**
  * Обновляет счетчик выделенных записей и состояние кнопки удаления
  */
 function updateSelectedCount() {
@@ -252,3 +241,26 @@ function updateSelectedCount() {
     }
   });
 }
+
+/**
+ * Переключает выделение строки при клике на неё
+ */
+function toggleRowSelection(event, checkboxId) {
+  // Не переключаем, если клик был на кнопке или ссылке
+  if (event.target.tagName === 'BUTTON' || event.target.closest('button') || event.target.closest('.actions-cell')) {
+    return;
+  }
+  
+  const checkbox = document.getElementById(checkboxId);
+  if (checkbox) {
+    checkbox.checked = !checkbox.checked;
+    updateSelectedCount();
+  }
+}
+
+// Делаем функции доступными глобально
+window.selectAllEntries = selectAllEntries;
+window.deselectAllEntries = deselectAllEntries;
+window.toggleSelectAll = toggleSelectAll;
+window.toggleRowSelection = toggleRowSelection;
+window.updateSelectedCount = updateSelectedCount;
