@@ -69,7 +69,19 @@ function importFromCSV(event) {
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const text = e.target.result;
+    let text = e.target.result;
+    
+    // Обработка BOM (Byte Order Mark) для UTF-8
+    if (text.charCodeAt(0) === 0xFEFF) {
+      text = text.slice(1);
+    }
+    
+    // Проверка на бинарные данные
+    if (text.includes('\0') || /[\x00-\x08\x0E-\x1F]/.test(text)) {
+      alert('❌ Файл содержит бинарные данные. Убедитесь, что файл сохранен в формате CSV (текстовый формат).');
+      event.target.value = '';
+      return;
+    }
     // Определяем разделитель (проверяем первую строку)
     const firstLine = text.split('\n')[0];
     const delimiter = firstLine.includes(';') ? ';' : (firstLine.includes(',') ? ',' : ';');
@@ -113,29 +125,42 @@ function importFromCSV(event) {
       }
 
       try {
+        // Валидация и очистка данных
+        const cleanString = (str) => {
+          if (!str || typeof str !== 'string') return '';
+          // Удаляем невидимые и бинарные символы, оставляем только печатные
+          return str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+        };
+
         const newEntry = {
-          cattleId: row[0] || '',
-          nickname: row[1] || '',
-          birthDate: row[2] || '',
+          cattleId: cleanString(row[0]) || '',
+          nickname: cleanString(row[1]) || '',
+          birthDate: cleanString(row[2]) || '',
           lactation: parseInt(row[3]) || 1,
-          calvingDate: row[4] || '',
-          inseminationDate: row[5] || '',
+          calvingDate: cleanString(row[4]) || '',
+          inseminationDate: cleanString(row[5]) || '',
           attemptNumber: parseInt(row[6]) || 1,
-          bull: row[7] || '',
-          inseminator: row[8] || '',
-          code: row[9] || '',
-          status: row[10] || 'Охота',
+          bull: cleanString(row[7]) || '',
+          inseminator: cleanString(row[8]) || '',
+          code: cleanString(row[9]) || '',
+          status: cleanString(row[10]) || 'Охота',
           protocol: {
-            name: row[11] || '',
-            startDate: row[12] || ''
+            name: cleanString(row[11]) || '',
+            startDate: cleanString(row[12]) || ''
           },
-          exitDate: row[13] || '',
-          dryStartDate: row[14] || '',
+          exitDate: cleanString(row[13]) || '',
+          dryStartDate: cleanString(row[14]) || '',
           vwp: parseInt(row[15]) || 60,
-          note: row[16] || '',
+          note: cleanString(row[16]) || '',
           synced: row[17] === 'Да' || row[17] === 'да' || row[17] === '1',
           dateAdded: nowFormatted()
         };
+
+        // Проверка на валидность записи
+        if (!newEntry.cattleId || newEntry.cattleId.length === 0) {
+          skipped++;
+          continue;
+        }
 
         // Поиск существующей записи по номеру коровы
         const existingEntry = entries.find(e => e.cattleId === newEntry.cattleId);

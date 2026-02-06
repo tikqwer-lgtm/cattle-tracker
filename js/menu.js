@@ -58,25 +58,48 @@ function updateViewList() {
         </tr>
       </thead>
       <tbody>
-        ${entries.map(entry => `
+        ${entries.map(entry => {
+          // Функция для экранирования HTML и очистки данных
+          const escapeHtml = (text) => {
+            if (!text) return '—';
+            if (typeof text !== 'string') {
+              // Если это не строка, пытаемся преобразовать
+              try {
+                text = String(text);
+              } catch (e) {
+                return '—';
+              }
+            }
+            // Удаляем бинарные и невидимые символы
+            text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+            if (!text) return '—';
+            // Экранируем HTML
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+          };
+
+          const safeCattleId = escapeHtml(entry.cattleId);
+          return `
           <tr class="${entry.synced ? '' : 'unsynced'}">
-            <td>${entry.cattleId}</td>
-            <td>${entry.nickname || '—'}</td>
-            <td>${entry.lactation}</td>
-            <td>${formatDate(entry.inseminationDate)}</td>
-            <td>${entry.bull || '—'}</td>
+            <td>${safeCattleId}</td>
+            <td>${escapeHtml(entry.nickname)}</td>
+            <td>${entry.lactation || '—'}</td>
+            <td>${formatDate(entry.inseminationDate) || '—'}</td>
+            <td>${escapeHtml(entry.bull)}</td>
             <td>${entry.attemptNumber || '—'}</td>
-            <td>${entry.status || '—'}</td>
+            <td>${escapeHtml(entry.status)}</td>
             <td>${formatDate(entry.calvingDate) || '—'}</td>
             <td>${formatDate(entry.dryStartDate) || '—'}</td>
-            <td>${entry.note || '—'}</td>
+            <td>${escapeHtml(entry.note)}</td>
             <td>${entry.synced ? '✅' : '🟡'}</td>
             <td class="actions-cell">
-              <button onclick="editEntry('${entry.cattleId}')" class="small-btn edit">✏️</button>
-              <button onclick="deleteEntry('${entry.cattleId}')" class="small-btn delete">🗑️</button>
+              <button onclick="editEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn edit">✏️</button>
+              <button onclick="deleteEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn delete">🗑️</button>
             </td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
   `;
