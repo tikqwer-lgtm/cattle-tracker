@@ -77,7 +77,7 @@ function importFromCSV(event) {
 
     for (const line of lines) {
       const row = line.split(';').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
-      if (row.length >= 17) {
+      if (row.length >= 17 && row[0].trim() !== '') {
         const newEntry = {
           cattleId: row[0],
           nickname: row[1],
@@ -135,7 +135,7 @@ function importFromCSV(event) {
       updateViewList();
       alert(`✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`);
     } else if (lines.length > 1) {
-      alert('⚠️ Файл импортирован, но не найдено новых или обновляемых записей. Возможно, все данные уже есть в базе или номера коров дублируются.');
+      alert(`⚠️ Файл содержит ${lines.length} строк, но не найдено новых или обновляемых записей. Возможно, все данные уже есть в базе, номера коров дублируются или строки пустые.`);
     } else {
       alert('❌ Нет данных для импорта');
     }

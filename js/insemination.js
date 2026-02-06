@@ -177,8 +177,8 @@ function addInseminationEntry() {
   const cattleId = (cattleIdInput?.value.trim() || cattleIdSelect?.value.trim()) || '';
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
 
-  if (!cattleId || !inseminationDate) {
-    alert('Заполните номер коровы и дату осеменения!');
+  if (!cattleId) {
+    alert('Заполните номер коровы!');
     return;
   }
 
