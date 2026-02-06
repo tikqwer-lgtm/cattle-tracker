@@ -72,6 +72,10 @@ function addEntry() {
 
   // Заполнение полей
   fillCowEntryFromForm(entry);
+  if (typeof getCurrentUser === 'function' && getCurrentUser()) {
+    entry.userId = getCurrentUser().id;
+    entry.lastModifiedBy = getCurrentUser().username;
+  }
   
   // Проверка на уникальность номера коровы
   if (entries.some(e => e.cattleId === cattleId)) {
@@ -112,6 +116,10 @@ function saveCurrentEntry() {
 
   const entry = getDefaultCowEntry();
   fillCowEntryFromForm(entry);
+  if (typeof getCurrentUser === 'function' && getCurrentUser()) {
+    entry.userId = getCurrentUser().id;
+    entry.lastModifiedBy = getCurrentUser().username;
+  }
 
   // Обработка редактирования существующей записи
   if (window.currentEditingId) {
@@ -148,6 +156,13 @@ function saveCurrentEntry() {
 
 // Запуск приложения при загрузке
 document.addEventListener('DOMContentLoaded', initApp);
+
+// PWA: регистрация Service Worker
+if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
 
 // Экспорт для других модулей
 if (typeof module !== 'undefined' && module.exports) {

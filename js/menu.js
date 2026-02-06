@@ -19,10 +19,20 @@ function navigate(screenId) {
   if (screenId === 'view') {
     updateViewList();
   }
+  if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
+    renderNotificationCenter('notification-center-container');
+  }
+  if (screenId === 'analytics' && typeof renderAnalyticsScreen === 'function') {
+    renderAnalyticsScreen();
+  }
+  if (screenId === 'backup' && typeof renderBackupUI === 'function') {
+    renderBackupUI('backup-container');
+  }
   
-  // Обновить статистику при открытии меню
+  // Обновить статистику и панель пользователя при открытии меню
   if (screenId === 'menu') {
     updateHerdStats();
+    if (typeof updateAuthBar === 'function') updateAuthBar();
   }
 }
 
@@ -33,9 +43,11 @@ function updateViewList() {
   const container = document.getElementById('viewEntriesList');
   if (!container) return;
 
-  // Проверяем что entries существует
-  if (!entries || entries.length === 0) {
-    container.innerHTML = '<p>Нет записей</p>';
+  var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
+  var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
+  if (!listToShow || listToShow.length === 0) {
+    var noResultsHint = (baseList.length === 0 && entries && entries.length > 0) ? ' (поиск/фильтр не дали результатов)' : ((entries && entries.length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
+    container.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
     return;
   }
 
@@ -91,7 +103,7 @@ function updateViewList() {
         </tr>
       </thead>
       <tbody>
-        ${entries.map((entry, index) => {
+        ${listToShow.map((entry, index) => {
           const safeCattleId = escapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
           return `
@@ -131,20 +143,26 @@ function updateViewList() {
  * Обновляет статистику стада на главном экране
  */
 function updateHerdStats() {
-  if (!entries || entries.length === 0) {
-    document.getElementById('totalCows').textContent = '0';
-    document.getElementById('pregnantCows').textContent = '0';
-    document.getElementById('dryCows').textContent = '0';
-    document.getElementById('inseminatedCows').textContent = '0';
-    document.getElementById('cullCows').textContent = '0';
+  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(entries || []) : (entries || []);
+  if (!list || list.length === 0) {
+    var totalEl = document.getElementById('totalCows');
+    if (totalEl) totalEl.textContent = '0';
+    var pEl = document.getElementById('pregnantCows');
+    if (pEl) pEl.textContent = '0';
+    var dEl = document.getElementById('dryCows');
+    if (dEl) dEl.textContent = '0';
+    var iEl = document.getElementById('inseminatedCows');
+    if (iEl) iEl.textContent = '0';
+    var cEl = document.getElementById('cullCows');
+    if (cEl) cEl.textContent = '0';
     return;
   }
 
-  const totalCows = entries.length;
-  const pregnantCows = entries.filter(e => e.status && e.status.includes('Отёл')).length;
-  const dryCows = entries.filter(e => e.status && e.status.includes('Сухостой')).length;
-  const inseminatedCows = entries.filter(e => e.inseminationDate).length;
-  const cullCows = entries.filter(e => e.status && e.status.includes('брак')).length;
+  const totalCows = list.length;
+  const pregnantCows = list.filter(e => e.status && e.status.includes('Отёл')).length;
+  const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
+  const inseminatedCows = list.filter(e => e.inseminationDate).length;
+  const cullCows = list.filter(e => e.status && e.status.includes('брак')).length;
 
   document.getElementById('totalCows').textContent = totalCows;
   document.getElementById('pregnantCows').textContent = pregnantCows;

@@ -4,13 +4,53 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Учёт коров — расширенный функционал</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4a90e2" />
   <!-- Подключение основных стилей -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <!-- Экран входа / регистрации -->
+  <div id="auth-screen" class="screen">
+    <h1>Вход</h1>
+    <div id="auth-form-container" class="auth-form-container">
+      <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
+        <label for="authUsername">Логин</label>
+        <input type="text" id="authUsername" required />
+        <label for="authPassword">Пароль</label>
+        <input type="password" id="authPassword" required />
+        <div class="form-actions">
+          <button type="submit">Войти</button>
+          <button type="button" onclick="showAuthRegister()">Регистрация</button>
+        </div>
+      </form>
+      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="handleRegister(event)">
+        <label for="regUsername">Логин</label>
+        <input type="text" id="regUsername" required />
+        <label for="regPassword">Пароль</label>
+        <input type="password" id="regPassword" required />
+        <label for="regRole">Роль</label>
+        <select id="regRole">
+          <option value="operator">Оператор</option>
+          <option value="admin">Администратор</option>
+          <option value="viewer">Только просмотр</option>
+        </select>
+        <div class="form-actions">
+          <button type="submit">Зарегистрироваться</button>
+          <button type="button" onclick="showAuthLogin()">Назад к входу</button>
+        </div>
+      </form>
+    </div>
+    <button type="button" class="back-button" onclick="skipAuth()">Продолжить без входа</button>
+  </div>
+
   <!-- Экран меню -->
   <div id="menu-screen" class="screen active">
     <h1>Меню</h1>
+    <div id="auth-bar" class="auth-bar" style="display: none;">
+      <span id="authBarUser"></span>
+      <button type="button" class="small-btn" onclick="handleLogout()">Выйти</button>
+    </div>
 
     <!-- Статистика стада -->
     <div class="herd-stats">
@@ -62,6 +102,22 @@
       <button onclick="navigate('view')" class="action-btn">
         <span>📋</span>
         <span>Просмотр описи</span>
+      </button>
+      <button onclick="navigate('notifications')" class="action-btn">
+        <span>🔔</span>
+        <span>Уведомления</span>
+      </button>
+      <button onclick="navigate('analytics')" class="action-btn">
+        <span>📊</span>
+        <span>Аналитика</span>
+      </button>
+      <button onclick="navigate('auth')" class="action-btn">
+        <span>👤</span>
+        <span>Войти / Пользователи</span>
+      </button>
+      <button onclick="navigate('backup')" class="action-btn">
+        <span>💾</span>
+        <span>Резервные копии</span>
       </button>
       <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #ffc107;">
         <span>🧹</span>
@@ -184,6 +240,7 @@
   <!-- Экран просмотра записей -->
   <div id="view-screen" class="screen view-screen">
     <h1>📋 Просмотр описи</h1>
+    <div id="search-filter-container" class="search-filter-container"></div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
     <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
   </div>
@@ -193,6 +250,36 @@
     <h1>🔍 Просмотр животного</h1>
     <div id="viewCowCard"></div>
     <button onclick="navigate('view')" class="back-button">Назад к списку</button>
+  </div>
+
+  <!-- Экран уведомлений -->
+  <div id="notifications-screen" class="screen">
+    <h1>🔔 Уведомления</h1>
+    <div id="notification-center-container"></div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран аналитики -->
+  <div id="analytics-screen" class="screen">
+    <h1>📊 Аналитика</h1>
+    <div class="analytics-controls">
+      <label>Период: <select id="analyticsPeriod">
+        <option value="month">Месяц</option>
+        <option value="quarter">Квартал</option>
+        <option value="year">Год</option>
+      </select></label>
+      <button type="button" id="analyticsRefreshBtn" class="small-btn">Обновить</button>
+    </div>
+    <div id="analyticsIndicators" class="analytics-indicators"></div>
+    <div id="analyticsCharts" class="analytics-charts"></div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран резервного копирования -->
+  <div id="backup-screen" class="screen">
+    <h1>💾 Резервные копии</h1>
+    <div id="backup-container"></div>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран синхронизации -->
@@ -209,10 +296,14 @@
   </div>
 
    <!-- Подключение скриптов в правильном порядке -->
-  <!-- PapaParse для парсинга CSV -->
+  <!-- PapaParse для парсинга CSV, Chart.js для графиков -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/events.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/users.js"></script>
   <script src="js/ui-helpers.js"></script>
   <script src="js/cow-operations.js"></script>
   <script src="js/voice-handler.js"></script>
@@ -222,5 +313,9 @@
   <script src="js/export.js"></script>
   <script src="js/insemination.js"></script>
   <script src="js/view-cow.js"></script>
+  <script src="js/search-filter.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/backup.js"></script>
 </body>
 </html>

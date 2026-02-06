@@ -1,0 +1,19 @@
+{
+  "name": "Учёт коров",
+  "short_name": "Коровы",
+  "description": "Учёт коров на ферме: осеменение, отёл, аналитика",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f5f5",
+  "theme_color": "#4a90e2",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐄</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
