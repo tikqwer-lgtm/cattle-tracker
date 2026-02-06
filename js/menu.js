@@ -39,10 +39,43 @@ function updateViewList() {
     return;
   }
 
+  // Функция для экранирования HTML и очистки данных
+  const escapeHtml = (text) => {
+    if (!text) return '—';
+    if (typeof text !== 'string') {
+      // Если это не строка, пытаемся преобразовать
+      try {
+        text = String(text);
+      } catch (e) {
+        return '—';
+      }
+    }
+    // Удаляем бинарные и невидимые символы
+    text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+    if (!text) return '—';
+    // Экранируем HTML
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
   container.innerHTML = `
+    <div class="bulk-actions-bar">
+      <div class="bulk-actions-left">
+        <button onclick="selectAllEntries()" class="bulk-action-btn">✓ Выделить все</button>
+        <button onclick="deselectAllEntries()" class="bulk-action-btn">✗ Снять выделение</button>
+        <span id="selectedCount" class="selected-count">Выделено: 0</span>
+      </div>
+      <div class="bulk-actions-right">
+        <button onclick="deleteSelectedEntries()" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>
+      </div>
+    </div>
     <table class="entries-table">
       <thead>
         <tr>
+          <th class="checkbox-column">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)">
+          </th>
           <th>Корова</th>
           <th>Кличка</th>
           <th>Лактация</th>
@@ -58,30 +91,14 @@ function updateViewList() {
         </tr>
       </thead>
       <tbody>
-        ${entries.map(entry => {
-          // Функция для экранирования HTML и очистки данных
-          const escapeHtml = (text) => {
-            if (!text) return '—';
-            if (typeof text !== 'string') {
-              // Если это не строка, пытаемся преобразовать
-              try {
-                text = String(text);
-              } catch (e) {
-                return '—';
-              }
-            }
-            // Удаляем бинарные и невидимые символы
-            text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
-            if (!text) return '—';
-            // Экранируем HTML
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-          };
-
+        ${entries.map((entry, index) => {
           const safeCattleId = escapeHtml(entry.cattleId);
+          const checkboxId = `entry-checkbox-${index}`;
           return `
-          <tr class="${entry.synced ? '' : 'unsynced'}">
+          <tr class="${entry.synced ? '' : 'unsynced'}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" onclick="toggleRowSelection(event, '${checkboxId}')">
+            <td class="checkbox-column" onclick="event.stopPropagation()">
+              <input type="checkbox" id="${checkboxId}" class="entry-checkbox" onchange="updateSelectedCount()" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">
+            </td>
             <td>${safeCattleId}</td>
             <td>${escapeHtml(entry.nickname)}</td>
             <td>${entry.lactation || '—'}</td>
@@ -142,3 +159,96 @@ window.addEventListener('load', () => {
     updateHerdStats();
   }
 });
+
+/**
+ * Выделяет все записи
+ */
+function selectAllEntries() {
+  const checkboxes = document.querySelectorAll('.entry-checkbox');
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = true;
+  }
+  updateSelectedCount();
+}
+
+/**
+ * Снимает выделение со всех записей
+ */
+function deselectAllEntries() {
+  const checkboxes = document.querySelectorAll('.entry-checkbox');
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = false;
+  }
+  updateSelectedCount();
+}
+
+/**
+ * Переключает выделение всех записей
+ */
+function toggleSelectAll(checked) {
+  const checkboxes = document.querySelectorAll('.entry-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = checked;
+  });
+  updateSelectedCount();
+}
+
+/**
+ * Переключает выделение строки при клике на неё
+ */
+function toggleRowSelection(event, checkboxId) {
+  // Не переключаем, если клик был на кнопке или ссылке
+  if (event.target.tagName === 'BUTTON' || event.target.closest('button') || event.target.closest('.actions-cell')) {
+    return;
+  }
+  
+  const checkbox = document.getElementById(checkboxId);
+  if (checkbox) {
+    checkbox.checked = !checkbox.checked;
+    updateSelectedCount();
+  }
+}
+
+/**
+ * Обновляет счетчик выделенных записей и состояние кнопки удаления
+ */
+function updateSelectedCount() {
+  const checkboxes = document.querySelectorAll('.entry-checkbox:checked');
+  const count = checkboxes.length;
+  const countElement = document.getElementById('selectedCount');
+  const deleteBtn = document.getElementById('deleteSelectedBtn');
+  
+  if (countElement) {
+    countElement.textContent = `Выделено: ${count}`;
+  }
+  
+  if (deleteBtn) {
+    deleteBtn.disabled = count === 0;
+  }
+  
+  // Обновляем состояние чекбокса "Выделить все"
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  const allCheckboxes = document.querySelectorAll('.entry-checkbox');
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = count === allCheckboxes.length;
+  }
+  
+  // Обновляем визуальное выделение строк
+  const allRows = document.querySelectorAll('.entries-table tbody tr');
+  allRows.forEach(row => {
+    const checkbox = row.querySelector('.entry-checkbox');
+    if (checkbox && checkbox.checked) {
+      row.classList.add('selected-row');
+    } else {
+      row.classList.remove('selected-row');
+    }
+  });
+}

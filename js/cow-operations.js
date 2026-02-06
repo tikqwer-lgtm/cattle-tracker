@@ -53,6 +53,51 @@ function deleteEntry(cattleId) {
 }
 
 /**
+ * Удаляет выделенные записи
+ */
+function deleteSelectedEntries() {
+  const checkboxes = document.querySelectorAll('.entry-checkbox:checked');
+  if (checkboxes.length === 0) {
+    alert('Нет выделенных записей для удаления');
+    return;
+  }
+
+  const selectedCattleIds = Array.from(checkboxes).map(checkbox => 
+    checkbox.getAttribute('data-cattle-id')
+  );
+
+  const count = selectedCattleIds.length;
+  const confirmMessage = `Вы уверены, что хотите удалить ${count} ${count === 1 ? 'запись' : count < 5 ? 'записи' : 'записей'}?`;
+  
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  let deletedCount = 0;
+  selectedCattleIds.forEach(cattleId => {
+    const index = entries.findIndex(e => e.cattleId === cattleId);
+    if (index !== -1) {
+      entries.splice(index, 1);
+      deletedCount++;
+    }
+  });
+
+  if (deletedCount > 0) {
+    saveLocally();
+    updateList();
+    if (typeof updateViewList === 'function') {
+      updateViewList();
+    }
+    if (typeof updateHerdStats === 'function') {
+      updateHerdStats();
+    }
+    alert(`Удалено записей: ${deletedCount}`);
+  } else {
+    alert('Не удалось найти записи для удаления');
+  }
+}
+
+/**
  * Заполняет форму данными из записи коровы
  * @param {Object} entry - Запись коровы
  */
