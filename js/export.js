@@ -44,7 +44,14 @@ function exportToExcel() {
   });
 
   // Формируем CSV-контент с разделителем ; и BOM для корректного отображения кириллицы в Excel
-  let csvContent = "\uFEFF" + csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+  // Используем \r\n для лучшей совместимости с Excel
+  let csvContent = "\uFEFF" + csv.map(row => 
+    row.map(cell => {
+      // Экранируем кавычки в ячейках
+      const escaped = String(cell).replace(/"/g, '""');
+      return `"${escaped}"`;
+    }).join(";")
+  ).join("\r\n");
 
   // Создаем ссылку для скачивания
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -247,19 +254,28 @@ function importFromCSV(event) {
  */
 function downloadTemplate() {
   // Создаем CSV с заголовками
-  let csv = [
-    [
-      "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
-      "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
-      "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
-      "Синхронизировано"
-    ]
+  const headers = [
+    "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
+    "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
+    "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
+    "Синхронизировано"
   ];
   
-  // Пустая строка для заполнения
-  csv.push(Array(18).fill(''));
+  // Создаем несколько пустых строк для удобства заполнения
+  const rows = [headers];
+  for (let i = 0; i < 5; i++) {
+    rows.push(Array(18).fill(''));
+  }
   
-  let csvContent = "\uFEFF" + csv.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+  // Формируем CSV-контент с разделителем ; и BOM для корректного отображения кириллицы в Excel
+  // Каждая ячейка в кавычках, разделитель - точка с запятой
+  let csvContent = "\uFEFF" + rows.map(row => 
+    row.map(cell => {
+      // Экранируем кавычки в ячейках
+      const escaped = String(cell).replace(/"/g, '""');
+      return `"${escaped}"`;
+    }).join(";")
+  ).join("\r\n"); // Используем \r\n для лучшей совместимости с Excel
   
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
@@ -268,4 +284,6 @@ function downloadTemplate() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  
+  alert('✅ Шаблон скачан!\n\nОткройте файл в Excel или другой программе для работы с таблицами.\nЗаполните данные в строках под заголовками и сохраните файл.');
 }
