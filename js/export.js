@@ -1,75 +1,5 @@
-// export.js — экспорт и импорт
+// ... existing code ...
 
-/**
- * Экспортирует данные в Excel (CSV с разделителем ; и поддержкой кириллицы)
- */
-function exportToExcel() {
-  if (entries.length === 0) {
-    alert("Нет данных для экспорта");
-    return;
-  }
-
-  // Создаем массив для CSV с заголовками
-  let csv = [
-    [
-      "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
-      "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
-      "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
-      "Синхронизировано"
-    ]
-  ];
-
-  // Добавляем данные из записей
-  entries.forEach(e => {
-    csv.push([
-      e.cattleId,
-      e.nickname || '',
-      e.birthDate || '',
-      e.lactation || '',
-      e.calvingDate || '',
-      e.inseminationDate || '',
-      e.attemptNumber || '',
-      e.bull || '',
-      e.inseminator || '',
-      e.code || '',
-      e.status || '',
-      e.protocol?.name || '',
-      e.protocol?.startDate || '',
-      e.exitDate || '',
-      e.dryStartDate || '',
-      e.vwp || '',
-      e.note || '',
-      e.synced ? 'Да' : 'Нет'
-    ]);
-  });
-
-  // Формируем CSV-контент с разделителем ; и BOM для корректного отображения кириллицы в Excel
-  // Используем \r\n для лучшей совместимости с Excel
-  let csvContent = "\uFEFF" + csv.map(row => 
-    row.map(cell => {
-      // Экранируем кавычки в ячейках
-      const escaped = String(cell).replace(/"/g, '""');
-      return `"${escaped}"`;
-    }).join(";")
-  ).join("\r\n");
-
-  // Создаем ссылку для скачивания
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `Учёт_коров_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-/**
- * Импортирует данные из CSV-файла
- * @param {Event} event Событие выбора файла
- * Алгоритм:
- * - Если коровы нет в базе — добавляет новую запись
- * - Если корова есть — обновляет поля из импорта (приоритет у новых данных)
- */
 function importFromCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -89,6 +19,7 @@ function importFromCSV(event) {
       event.target.value = '';
       return;
     }
+    
     // Определяем разделитель (проверяем первую строку)
     const firstLine = text.split(/\r?\n/)[0];
     const delimiter = firstLine.includes(';') ? ';' : (firstLine.includes(',') ? ',' : ';');
@@ -126,6 +57,60 @@ function importFromCSV(event) {
       return result;
     }
     
+    /**
+     * Разделяет номер животного и дату, если они слиты
+     * Например: "6634021.08.2025" -> {cattleId: "66340", date: "21.08.2025"}
+     */
+    function separateCattleIdAndDate(value) {
+      if (!value || typeof value !== 'string') return { cattleId: value || '', date: '' };
+      
+      // Паттерны для дат: DD.MM.YYYY или DD/MM/YYYY
+      const datePatterns = [
+        /(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/,  // DD.MM.YYYY или DD/MM/YYYY
+        /(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/  // YYYY-MM-DD или YYYY.MM.DD
+      ];
+      
+      for (const pattern of datePatterns) {
+        const match = value.match(pattern);
+        if (match) {
+          const dateStart = match.index;
+          const dateEnd = match.index + match[0].length;
+          
+          // Извлекаем номер животного (часть до даты)
+          const cattleId = value.substring(0, dateStart).trim();
+          
+          // Извлекаем дату
+          let dateStr = match[0];
+          
+          // Нормализуем формат даты к DD.MM.YYYY
+          if (match[0].includes('-')) {
+            // Формат YYYY-MM-DD -> DD.MM.YYYY
+            const parts = match[0].split(/[.\/-]/);
+            if (parts.length === 3) {
+              if (parts[0].length === 4) {
+                // YYYY-MM-DD
+                dateStr = `${parts[2]}.${parts[1]}.${parts[0]}`;
+              } else {
+                // DD-MM-YYYY
+                dateStr = `${parts[0]}.${parts[1]}.${parts[2]}`;
+              }
+            }
+          } else if (match[0].includes('/')) {
+            // Заменяем / на .
+            dateStr = match[0].replace(/\//g, '.');
+          }
+          
+          // Проверяем, что номер животного не пустой
+          if (cattleId && cattleId.length > 0) {
+            return { cattleId, date: dateStr };
+          }
+        }
+      }
+      
+      // Если дата не найдена, возвращаем исходное значение как номер
+      return { cattleId: value, date: '' };
+    }
+    
     // Разделяем на строки с учетом \r\n и \n
     const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
     if (lines.length <= 1) {
@@ -140,6 +125,7 @@ function importFromCSV(event) {
     let newEntries = 0;
     let skipped = 0;
     let errors = [];
+    let fixedCount = 0; // Счетчик исправленных записей
 
     for (let i = 0; i < dataLines.length; i++) {
       const line = dataLines[i].trim();
@@ -182,8 +168,23 @@ function importFromCSV(event) {
           return str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
         };
 
+        // Проверяем и разделяем номер коровы и дату, если они слиты
+        let cattleIdRaw = cleanString(row[0]);
+        let separated = separateCattleIdAndDate(cattleIdRaw);
+        
+        // Если дата была найдена и отделена, используем разделенные значения
+        if (separated.date && separated.cattleId !== cattleIdRaw) {
+          fixedCount++;
+          console.log(`Строка ${i + 2}: Разделено "${cattleIdRaw}" -> номер: "${separated.cattleId}", дата: "${separated.date}"`);
+          
+          // Если в row[5] (дата осеменения) пусто, используем извлеченную дату
+          if (!row[5] || row[5].trim() === '') {
+            row[5] = separated.date;
+          }
+        }
+        
         const newEntry = {
-          cattleId: cleanString(row[0]) || '',
+          cattleId: separated.cattleId || '',
           nickname: cleanString(row[1]) || '',
           birthDate: cleanString(row[2]) || '',
           lactation: parseInt(row[3]) || 1,
@@ -260,6 +261,9 @@ function importFromCSV(event) {
         updateViewList();
       }
       message = `✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`;
+      if (fixedCount > 0) {
+        message += `\n🔧 Автоматически исправлено записей с объединенными данными: ${fixedCount}`;
+      }
       if (skipped > 0) {
         message += `, пропущено: ${skipped}`;
       }
@@ -292,41 +296,4 @@ function importFromCSV(event) {
   reader.readAsText(file, 'UTF-8');
 }
 
-/**
- * Скачивает шаблон для импорта
- */
-function downloadTemplate() {
-  // Создаем CSV с заголовками
-  const headers = [
-    "Номер коровы", "Кличка", "Дата рождения", "Лактация", "Дата отёла", "Дата осеменения",
-    "Номер попытки", "Бык", "Осеменатор", "Код осеменения", "Статус", "Название протокола",
-    "Дата начала протокола", "Дата выбытия", "Дата запуска", "ПДО (дни)", "Примечание",
-    "Синхронизировано"
-  ];
-  
-  // Создаем несколько пустых строк для удобства заполнения
-  const rows = [headers];
-  for (let i = 0; i < 5; i++) {
-    rows.push(Array(18).fill(''));
-  }
-  
-  // Формируем CSV-контент с разделителем ; и BOM для корректного отображения кириллицы в Excel
-  // Каждая ячейка в кавычках, разделитель - точка с запятой
-  let csvContent = "\uFEFF" + rows.map(row => 
-    row.map(cell => {
-      // Экранируем кавычки в ячейках
-      const escaped = String(cell).replace(/"/g, '""');
-      return `"${escaped}"`;
-    }).join(";")
-  ).join("\r\n"); // Используем \r\n для лучшей совместимости с Excel
-  
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "Шаблон_импорта_коров.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  alert('✅ Шаблон скачан!\n\nОткройте файл в Excel или другой программе для работы с таблицами.\nЗаполните данные в строках под заголовками и сохраните файл.');
-}
+// ... existing code ...
