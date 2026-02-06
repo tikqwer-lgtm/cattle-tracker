@@ -8,7 +8,11 @@ let entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
 function cleanString(str) {
   if (!str || typeof str !== 'string') return str || '';
   // Удаляем бинарные и невидимые символы, оставляем только печатные
-  return str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  // Также удаляем подозрительные нечитаемые символы
+  let cleaned = str.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+  // Удаляем последовательности нечитаемых символов (3 и более подряд)
+  cleaned = cleaned.replace(/[^\x20-\x7E\u0400-\u04FF\u0410-\u044F\u0451\u0401\s]{3,}/g, '');
+  return cleaned.trim();
 }
 
 /**
@@ -59,7 +63,11 @@ function saveLocally() {
 function hasBinaryChars(str) {
   if (!str || typeof str !== 'string') return false;
   // Проверяем на бинарные и невидимые символы (кроме пробелов, табуляции, переноса строки)
-  return /[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/.test(str);
+  // Также проверяем на нечитаемые символы Unicode (иероглифы, мусор)
+  const hasControlChars = /[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/.test(str);
+  // Проверяем на подозрительные последовательности (много нечитаемых символов подряд)
+  const hasGarbage = /[^\x20-\x7E\u0400-\u04FF\u0410-\u044F\u0451\u0401\s]{3,}/.test(str);
+  return hasControlChars || hasGarbage;
 }
 
 /**
@@ -109,8 +117,11 @@ function cleanAllEntries() {
       continue;
     }
     
-    // Проверяем на бинарные символы ДО очистки
+    // Проверяем на бинарные символы и мусор ДО очистки
     const hasBinary = entryHasBinaryChars(entry);
+    const hasGarbage = isGarbageString(entry.cattleId) || 
+                       (entry.nickname && isGarbageString(entry.nickname)) ||
+                       (entry.note && isGarbageString(entry.note));
     
     // Очищаем запись
     const cleaned = cleanEntry(entry);
@@ -122,8 +133,15 @@ function cleanAllEntries() {
       continue;
     }
     
-    // Если были бинарные символы, считаем что запись была очищена
-    if (hasBinary) {
+    // Проверяем, что cattleId не является мусором после очистки
+    if (isGarbageString(cleaned.cattleId) || cleaned.cattleId.length > 100) {
+      console.warn(`Пропущена запись ${i} с мусорным cattleId:`, cleaned.cattleId.substring(0, 50));
+      removedCount++;
+      continue;
+    }
+    
+    // Если были бинарные символы или мусор, считаем что запись была очищена
+    if (hasBinary || hasGarbage) {
       cleanedCount++;
       console.log(`Очищена запись ${i} (cattleId: ${cleaned.cattleId})`);
     }
@@ -172,16 +190,36 @@ function loadLocally() {
       return;
     }
     
-    entries = JSON.parse(stored);
+    const rawEntries = JSON.parse(stored);
     
-    // Очищаем все записи от бинарных символов
-    entries = entries.map(entry => cleanEntry(entry)).filter(entry => {
-      // Удаляем записи с невалидными данными
-      return entry && entry.cattleId && typeof entry.cattleId === 'string' && entry.cattleId.trim().length > 0;
-    });
+    // Очищаем все записи от бинарных символов и мусора
+    const cleanedEntries = [];
+    for (let i = 0; i < rawEntries.length; i++) {
+      const entry = rawEntries[i];
+      if (!entry || typeof entry !== 'object') continue;
+      
+      const cleaned = cleanEntry(entry);
+      
+      // Проверяем валидность
+      if (!cleaned.cattleId || typeof cleaned.cattleId !== 'string' || cleaned.cattleId.trim().length === 0) {
+        console.warn(`При загрузке пропущена запись ${i} без валидного cattleId`);
+        continue;
+      }
+      
+      // Проверяем на мусор
+      if (isGarbageString(cleaned.cattleId) || cleaned.cattleId.length > 100) {
+        console.warn(`При загрузке пропущена запись ${i} с мусорным cattleId`);
+        continue;
+      }
+      
+      cleanedEntries.push(cleaned);
+    }
     
-    // Сохраняем очищенные данные обратно
-    if (entries.length > 0) {
+    entries = cleanedEntries;
+    
+    // Сохраняем очищенные данные обратно, если были изменения
+    if (entries.length !== rawEntries.length) {
+      console.log(`При загрузке очищено записей: ${rawEntries.length - entries.length}`);
       saveLocally();
     }
     
@@ -235,6 +273,18 @@ function getDefaultCowEntry() {
 }
 
 /**
+ * Проверяет, является ли строка "мусорной" (содержит нечитаемые символы)
+ */
+function isGarbageString(str) {
+  if (!str || typeof str !== 'string') return false;
+  // Проверяем на наличие множества нечитаемых символов
+  // Если больше 30% символов нечитаемые - это мусор
+  const readableChars = str.match(/[\x20-\x7E\u0400-\u04FF\u0410-\u044F\u0451\u0401\s]/g);
+  const readableRatio = readableChars ? readableChars.length / str.length : 0;
+  return readableRatio < 0.7 || str.length > 100; // Если меньше 70% читаемых или очень длинная строка
+}
+
+/**
  * Проверяет данные на повреждения (для использования в консоли)
  * Вызывайте: checkDataIntegrity()
  */
@@ -273,10 +323,14 @@ function checkDataIntegrity() {
     
     let entryHasIssues = false;
     for (const key in entry) {
-      if (typeof entry[key] === 'string' && hasBinaryChars(entry[key])) {
-        issues.push(`Запись ${i} (cattleId: ${entry.cattleId || 'нет'}), поле "${key}": содержит бинарные символы`);
-        damagedFields++;
-        entryHasIssues = true;
+      if (typeof entry[key] === 'string') {
+        const value = entry[key];
+        if (hasBinaryChars(value) || isGarbageString(value)) {
+          const preview = value.length > 50 ? value.substring(0, 50) + '...' : value;
+          issues.push(`Запись ${i} (cattleId: ${entry.cattleId || 'нет'}), поле "${key}": содержит мусор/бинарные символы. Значение: "${preview}"`);
+          damagedFields++;
+          entryHasIssues = true;
+        }
       }
     }
     
@@ -287,6 +341,9 @@ function checkDataIntegrity() {
     if (!entry.cattleId || typeof entry.cattleId !== 'string' || entry.cattleId.trim().length === 0) {
       issues.push(`Запись ${i}: отсутствует или невалидный cattleId`);
       damagedEntries++;
+    } else if (isGarbageString(entry.cattleId) || hasBinaryChars(entry.cattleId)) {
+      issues.push(`Запись ${i}: cattleId содержит мусор: "${entry.cattleId.substring(0, 50)}"`);
+      damagedEntries++;
     }
   });
   
@@ -294,7 +351,7 @@ function checkDataIntegrity() {
     console.warn(`⚠️ Найдено проблем:`);
     console.warn(`- Поврежденных записей: ${damagedEntries}`);
     console.warn(`- Поврежденных полей: ${damagedFields}`);
-    console.warn('Детали:');
+    console.warn('Детали (первые 10):');
     issues.slice(0, 10).forEach(issue => console.warn('  ' + issue));
     if (issues.length > 10) {
       console.warn(`  ... и еще ${issues.length - 10} проблем`);
@@ -312,9 +369,89 @@ function checkDataIntegrity() {
   };
 }
 
-// Делаем функцию доступной глобально для использования в консоли
+/**
+ * Принудительная очистка всех поврежденных записей (удаляет их полностью)
+ * Используйте осторожно!
+ */
+function forceCleanDamagedEntries() {
+  if (!entries || entries.length === 0) {
+    alert('Нет данных для очистки');
+    return;
+  }
+  
+  const beforeCount = entries.length;
+  const validEntries = [];
+  let removedCount = 0;
+  
+  console.log('Начало принудительной очистки...');
+  
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    
+    // Пропускаем невалидные записи
+    if (!entry || typeof entry !== 'object') {
+      console.warn(`Удалена невалидная запись ${i}`);
+      removedCount++;
+      continue;
+    }
+    
+    // Очищаем запись
+    const cleaned = cleanEntry(entry);
+    
+    // Проверяем валидность cattleId
+    if (!cleaned.cattleId || typeof cleaned.cattleId !== 'string' || cleaned.cattleId.trim().length === 0) {
+      console.warn(`Удалена запись ${i} без валидного cattleId`);
+      removedCount++;
+      continue;
+    }
+    
+    // Проверяем на мусор в cattleId
+    if (isGarbageString(cleaned.cattleId) || hasBinaryChars(cleaned.cattleId) || cleaned.cattleId.length > 100) {
+      console.warn(`Удалена запись ${i} с мусорным cattleId:`, cleaned.cattleId.substring(0, 50));
+      removedCount++;
+      continue;
+    }
+    
+    // Проверяем, что cattleId содержит только допустимые символы (цифры, буквы, дефисы)
+    if (!/^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$/.test(cleaned.cattleId)) {
+      console.warn(`Удалена запись ${i} с недопустимыми символами в cattleId:`, cleaned.cattleId);
+      removedCount++;
+      continue;
+    }
+    
+    validEntries.push(cleaned);
+  }
+  
+  // Присваиваем валидные записи
+  entries = validEntries;
+  const afterCount = entries.length;
+  
+  // Сохраняем
+  try {
+    saveLocally();
+  } catch (error) {
+    console.error('Ошибка сохранения:', error);
+    alert('Ошибка сохранения данных. Проверьте консоль.');
+    return;
+  }
+  
+  // Обновляем UI
+  if (typeof updateList === 'function') {
+    updateList();
+  }
+  if (typeof updateViewList === 'function') {
+    updateViewList();
+  }
+  
+  console.log(`Принудительная очистка завершена. Было: ${beforeCount}, стало: ${afterCount}, удалено: ${removedCount}`);
+  
+  alert(`✅ Принудительная очистка завершена.\nУдалено поврежденных записей: ${removedCount}\nОсталось валидных: ${afterCount}`);
+}
+
+// Делаем функции доступными глобально для использования в консоли
 window.checkDataIntegrity = checkDataIntegrity;
 window.cleanAllEntries = cleanAllEntries;
+window.forceCleanDamagedEntries = forceCleanDamagedEntries;
 
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {
