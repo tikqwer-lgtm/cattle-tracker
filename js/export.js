@@ -134,6 +134,8 @@ function importFromCSV(event) {
       updateList();
       updateViewList();
       alert(`✅ Импортировано: ${newEntries} новых, обновлено: ${duplicates} существующих`);
+    } else if (lines.length > 1) {
+      alert('⚠️ Файл импортирован, но не найдено новых или обновляемых записей. Возможно, все данные уже есть в базе или номера коров дублируются.');
     } else {
       alert('❌ Нет данных для импорта');
     }
