@@ -63,24 +63,62 @@ function cleanAllEntries() {
   }
   
   const beforeCount = entries.length;
-  entries = entries.map(entry => cleanEntry(entry)).filter(entry => {
-    // Удаляем записи с невалидными данными
-    return entry && entry.cattleId && typeof entry.cattleId === 'string' && entry.cattleId.trim().length > 0;
-  });
+  const cleanedEntries = [];
   
-  const afterCount = entries.length;
-  
-  if (beforeCount !== afterCount) {
-    console.warn(`Очищено записей: ${beforeCount - afterCount} поврежденных записей удалено`);
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    
+    // Пропускаем невалидные записи
+    if (!entry || typeof entry !== 'object') {
+      console.warn(`Пропущена невалидная запись ${i}:`, entry);
+      continue;
+    }
+    
+    // Очищаем запись
+    const cleaned = cleanEntry(entry);
+    
+    // Проверяем, что cattleId валиден
+    if (!cleaned.cattleId || typeof cleaned.cattleId !== 'string' || cleaned.cattleId.trim().length === 0) {
+      console.warn(`Пропущена запись без валидного cattleId:`, cleaned);
+      continue;
+    }
+    
+    // Проверяем на бинарные символы в cattleId
+    if (/[\x00-\x1F\x7F-\x9F]/.test(cleaned.cattleId)) {
+      console.warn(`Пропущена запись с бинарными символами в cattleId:`, cleaned.cattleId);
+      continue;
+    }
+    
+    cleanedEntries.push(cleaned);
   }
   
-  saveLocally();
-  updateList();
+  // Присваиваем очищенные записи
+  entries = cleanedEntries;
+  const afterCount = entries.length;
+  
+  // Сохраняем очищенные данные
+  try {
+    saveLocally();
+  } catch (error) {
+    console.error('Ошибка сохранения после очистки:', error);
+    alert('Ошибка сохранения данных после очистки. Проверьте консоль.');
+    return;
+  }
+  
+  // Обновляем UI
+  if (typeof updateList === 'function') {
+    updateList();
+  }
   if (typeof updateViewList === 'function') {
     updateViewList();
   }
   
-  alert(`✅ Очистка завершена. Записей: ${afterCount} (было: ${beforeCount})`);
+  const removedCount = beforeCount - afterCount;
+  if (removedCount > 0) {
+    alert(`✅ Очистка завершена.\nУдалено поврежденных записей: ${removedCount}\nОсталось валидных: ${afterCount}`);
+  } else {
+    alert(`✅ Очистка завершена.\nВсе записи валидны: ${afterCount}`);
+  }
 }
 
 /**
