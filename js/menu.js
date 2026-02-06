@@ -74,19 +74,19 @@ function updateViewList() {
   container.innerHTML = `
     <div class="bulk-actions-bar">
       <div class="bulk-actions-left">
-        <button onclick="selectAllEntries()" class="bulk-action-btn">✓ Выделить все</button>
-        <button onclick="deselectAllEntries()" class="bulk-action-btn">✗ Снять выделение</button>
+        <button type="button" data-bulk-action="select-all" class="bulk-action-btn">✓ Выделить все</button>
+        <button type="button" data-bulk-action="deselect-all" class="bulk-action-btn">✗ Снять выделение</button>
         <span id="selectedCount" class="selected-count">Выделено: 0</span>
       </div>
       <div class="bulk-actions-right">
-        <button onclick="deleteSelectedEntries()" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>
+        <button type="button" data-bulk-action="delete-selected" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>
       </div>
     </div>
     <table class="entries-table">
       <thead>
         <tr>
           <th class="checkbox-column">
-            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)">
+            <input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все">
           </th>
           <th>Корова</th>
           <th>Кличка</th>
@@ -107,9 +107,9 @@ function updateViewList() {
           const safeCattleId = escapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
           return `
-          <tr class="${entry.synced ? '' : 'unsynced'}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" onclick="toggleRowSelection(event, '${checkboxId}')">
-            <td class="checkbox-column" onclick="event.stopPropagation()">
-              <input type="checkbox" id="${checkboxId}" class="entry-checkbox" onchange="updateSelectedCount()" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">
+          <tr class="${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">
+            <td class="checkbox-column">
+              <input type="checkbox" id="${checkboxId}" class="entry-checkbox" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" aria-label="Выделить">
             </td>
             <td>${safeCattleId}</td>
             <td>${escapeHtml(entry.nickname)}</td>
@@ -123,9 +123,9 @@ function updateViewList() {
             <td>${escapeHtml(entry.note)}</td>
             <td>${entry.synced ? '✅' : '🟡'}</td>
             <td class="actions-cell">
-              <button onclick="event.stopPropagation(); viewCow('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn view" title="Карточка">👁</button>
-              <button onclick="event.stopPropagation(); editEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn edit">✏️</button>
-              <button onclick="event.stopPropagation(); deleteEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn delete">🗑️</button>
+              <button type="button" class="small-btn view" title="Карточка" data-action="view" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">👁</button>
+              <button type="button" class="small-btn edit" data-action="edit" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">✏️</button>
+              <button type="button" class="small-btn delete" data-action="delete-one" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">🗑️</button>
             </td>
           </tr>
         `;
@@ -133,11 +133,73 @@ function updateViewList() {
       </tbody>
     </table>
   `;
-  
-  // Инициализируем счетчик выделенных записей после рендеринга
-  setTimeout(() => {
+
+  // Один обработчик на контейнер — не зависим от глобальных onclick
+  container.removeEventListener('click', _handleViewListClick);
+  container.addEventListener('click', _handleViewListClick);
+
+  setTimeout(function () {
     updateSelectedCount();
   }, 0);
+}
+
+function _handleViewListClick(ev) {
+  var target = ev.target;
+  var container = ev.currentTarget;
+
+  // Кнопки панели массовых действий
+  var bulkBtn = target.closest('[data-bulk-action]');
+  if (bulkBtn) {
+    ev.preventDefault();
+    var action = bulkBtn.getAttribute('data-bulk-action');
+    if (action === 'select-all') {
+      selectAllEntries();
+      return;
+    }
+    if (action === 'deselect-all') {
+      deselectAllEntries();
+      return;
+    }
+    if (action === 'delete-selected') {
+      if (typeof deleteSelectedEntries === 'function') deleteSelectedEntries();
+      return;
+    }
+    if (action === 'toggle-all') {
+      var cb = container.querySelector('#selectAllCheckbox');
+      if (cb) toggleSelectAll(cb.checked);
+      return;
+    }
+  }
+
+  // Чекбокс строки
+  if (target.classList && target.classList.contains('entry-checkbox')) {
+    ev.stopPropagation();
+    setTimeout(updateSelectedCount, 0);
+    return;
+  }
+
+  // Кнопки в ячейке «Действия»
+  var actionBtn = target.closest('.actions-cell [data-action]');
+  if (actionBtn) {
+    ev.stopPropagation();
+    var cattleId = actionBtn.getAttribute('data-cattle-id');
+    if (!cattleId) return;
+    var act = actionBtn.getAttribute('data-action');
+    if (act === 'view' && typeof viewCow === 'function') viewCow(cattleId);
+    if (act === 'edit' && typeof editEntry === 'function') editEntry(cattleId);
+    if (act === 'delete-one' && typeof deleteEntry === 'function') deleteEntry(cattleId);
+    return;
+  }
+
+  // Клик по строке (не по чекбоксу и не по кнопкам) — переключить выделение
+  var row = target.closest('tbody tr');
+  if (row && !target.closest('.actions-cell')) {
+    var checkbox = row.querySelector('.entry-checkbox');
+    if (checkbox) {
+      checkbox.checked = !checkbox.checked;
+      updateSelectedCount();
+    }
+  }
 }
 
 /**
