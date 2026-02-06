@@ -146,6 +146,11 @@
   cursor: pointer;
 }
 
+.small-btn.view {
+  background: #5a9b5a;
+  color: white;
+}
+
 .small-btn.edit {
   background: #4a90e2;
   color: white;
