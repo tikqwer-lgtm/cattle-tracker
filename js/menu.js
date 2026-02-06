@@ -123,8 +123,9 @@ function updateViewList() {
             <td>${escapeHtml(entry.note)}</td>
             <td>${entry.synced ? '✅' : '🟡'}</td>
             <td class="actions-cell">
-              <button onclick="editEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn edit">✏️</button>
-              <button onclick="deleteEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn delete">🗑️</button>
+              <button onclick="event.stopPropagation(); viewCow('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn view" title="Карточка">👁</button>
+              <button onclick="event.stopPropagation(); editEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn edit">✏️</button>
+              <button onclick="event.stopPropagation(); deleteEntry('${safeCattleId.replace(/'/g, "\\'")}')" class="small-btn delete">🗑️</button>
             </td>
           </tr>
         `;
