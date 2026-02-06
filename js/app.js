@@ -61,10 +61,9 @@ function addEntry() {
   
   // Валидация
   const cattleId = document.getElementById("cattleId").value.trim();
-  const inseminationDate = document.getElementById("inseminationDate").value;
 
-  if (!cattleId || !inseminationDate) {
-    alert("Заполните номер коровы и дату осеменения!");
+  if (!cattleId) {
+    alert("Заполните номер коровы!");
     return;
   }
 
@@ -74,6 +73,12 @@ function addEntry() {
   // Заполнение полей
   fillCowEntryFromForm(entry);
   
+  // Проверка на уникальность номера коровы
+  if (entries.some(e => e.cattleId === cattleId)) {
+    alert("Корова с таким номером уже существует!");
+    return;
+  }
+
   // Добавление в массив
   entries.unshift(entry);
   
