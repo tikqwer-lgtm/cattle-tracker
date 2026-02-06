@@ -40,48 +40,50 @@ function navigate(screenId) {
  * Обновляет список на экране просмотра
  */
 function updateViewList() {
-  const container = document.getElementById('viewEntriesList');
-  if (!container) return;
+  var bulkContainer = document.getElementById('viewBulkActions');
+  var tableContainer = document.getElementById('viewEntriesList');
+  if (!tableContainer) return;
 
   var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
   var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
+
+  var bulkBarHtml = '<div class="bulk-actions-bar">' +
+    '<div class="bulk-actions-left">' +
+    '<button type="button" data-bulk-action="select-all" class="bulk-action-btn">✓ Выделить все</button>' +
+    '<button type="button" data-bulk-action="deselect-all" class="bulk-action-btn">✗ Снять выделение</button>' +
+    '<span id="selectedCount" class="selected-count">Выделено: 0</span>' +
+    '</div>' +
+    '<div class="bulk-actions-right">' +
+    '<button type="button" data-bulk-action="delete-selected" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>' +
+    '</div></div>';
+
   if (!listToShow || listToShow.length === 0) {
     var noResultsHint = (baseList.length === 0 && entries && entries.length > 0) ? ' (поиск/фильтр не дали результатов)' : ((entries && entries.length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
-    container.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
+    if (bulkContainer) bulkContainer.innerHTML = '';
+    tableContainer.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
     return;
   }
+
+  if (bulkContainer) bulkContainer.innerHTML = bulkBarHtml;
 
   // Функция для экранирования HTML и очистки данных
   const escapeHtml = (text) => {
     if (!text) return '—';
     if (typeof text !== 'string') {
-      // Если это не строка, пытаемся преобразовать
       try {
         text = String(text);
       } catch (e) {
         return '—';
       }
     }
-    // Удаляем бинарные и невидимые символы
     text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
     if (!text) return '—';
-    // Экранируем HTML
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   };
 
-  container.innerHTML = `
-    <div class="bulk-actions-bar">
-      <div class="bulk-actions-left">
-        <button type="button" data-bulk-action="select-all" class="bulk-action-btn">✓ Выделить все</button>
-        <button type="button" data-bulk-action="deselect-all" class="bulk-action-btn">✗ Снять выделение</button>
-        <span id="selectedCount" class="selected-count">Выделено: 0</span>
-      </div>
-      <div class="bulk-actions-right">
-        <button type="button" data-bulk-action="delete-selected" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>
-      </div>
-    </div>
+  tableContainer.innerHTML = `
     <table class="entries-table">
       <thead>
         <tr>
@@ -134,9 +136,12 @@ function updateViewList() {
     </table>
   `;
 
-  // Один обработчик на контейнер — не зависим от глобальных onclick
-  container.removeEventListener('click', _handleViewListClick);
-  container.addEventListener('click', _handleViewListClick);
+  // Обработчик на экран просмотра — обрабатываем и панель, и таблицу
+  var viewScreen = document.getElementById('view-screen');
+  if (viewScreen) {
+    viewScreen.removeEventListener('click', _handleViewListClick);
+    viewScreen.addEventListener('click', _handleViewListClick);
+  }
 
   setTimeout(function () {
     updateSelectedCount();
@@ -145,11 +150,12 @@ function updateViewList() {
 
 function _handleViewListClick(ev) {
   var target = ev.target;
-  var container = ev.currentTarget;
+  var bulkContainer = document.getElementById('viewBulkActions');
+  var tableContainer = document.getElementById('viewEntriesList');
 
-  // Кнопки панели массовых действий
+  // Кнопки панели массовых действий (панель вынесена в viewBulkActions)
   var bulkBtn = target.closest('[data-bulk-action]');
-  if (bulkBtn) {
+  if (bulkBtn && bulkContainer && bulkContainer.contains(bulkBtn)) {
     ev.preventDefault();
     var action = bulkBtn.getAttribute('data-bulk-action');
     if (action === 'select-all') {
@@ -164,12 +170,17 @@ function _handleViewListClick(ev) {
       if (typeof deleteSelectedEntries === 'function') deleteSelectedEntries();
       return;
     }
-    if (action === 'toggle-all') {
-      var cb = container.querySelector('#selectAllCheckbox');
-      if (cb) toggleSelectAll(cb.checked);
-      return;
-    }
   }
+
+  // Чекбокс «Выделить все» в шапке таблицы (он в viewEntriesList)
+  if (bulkBtn && bulkBtn.getAttribute('data-bulk-action') === 'toggle-all') {
+    ev.preventDefault();
+    var cb = document.getElementById('selectAllCheckbox');
+    if (cb) toggleSelectAll(cb.checked);
+    return;
+  }
+
+  if (!tableContainer || !tableContainer.contains(target)) return;
 
   // Чекбокс строки
   if (target.classList && target.classList.contains('entry-checkbox')) {

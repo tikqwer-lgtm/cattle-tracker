@@ -239,6 +239,12 @@
   margin-top: 10px;
 }
 
+/* Контейнер панели выделения — вне скролла, всегда виден */
+.view-bulk-actions {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
 .view-entries-wrapper {
   flex: 1;
   min-height: 0;
@@ -246,10 +252,8 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Стили для группового выделения — панель всегда видна сверху списка */
+/* Стили для группового выделения */
 .bulk-actions-bar {
-  position: sticky;
-  top: 0;
   z-index: 10;
   display: flex;
   justify-content: space-between;
@@ -316,8 +320,23 @@
 
 .entries-table .checkbox-column {
   width: 40px;
+  min-width: 40px;
   text-align: center;
   padding: 12px 8px !important;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+
+.entries-table thead .checkbox-column {
+  background-color: #4a90e2;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.15);
+}
+
+.entries-table tr.unsynced .checkbox-column {
+  background-color: #fff9f0;
 }
 
 .entries-table .checkbox-column input[type="checkbox"] {
