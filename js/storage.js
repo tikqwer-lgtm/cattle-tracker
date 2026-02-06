@@ -51,6 +51,9 @@ function saveLocally() {
     const cleanedEntries = entries.map(entry => cleanEntry(entry));
     const jsonData = JSON.stringify(cleanedEntries);
     localStorage.setItem('cattleEntries', jsonData);
+    if (typeof window.CattleTrackerEvents !== 'undefined') {
+      window.CattleTrackerEvents.emit('entries:updated', entries);
+    }
   } catch (error) {
     console.error('Ошибка сохранения в localStorage:', error);
     throw error;
@@ -215,8 +218,8 @@ function loadLocally() {
       cleanedEntries.push(cleaned);
     }
     
-    entries = cleanedEntries;
-    
+entries = cleanedEntries;
+
     // Сохраняем очищенные данные обратно, если были изменения
     if (entries.length !== rawEntries.length) {
       console.log(`При загрузке очищено записей: ${rawEntries.length - entries.length}`);
@@ -224,7 +227,9 @@ function loadLocally() {
     }
     
     console.log("Загружено из localStorage:", entries.length, "записей");
-    
+    if (typeof window.CattleTrackerEvents !== 'undefined') {
+      window.CattleTrackerEvents.emit('entries:updated', entries);
+    }
     // Вызываем updateList если она существует
     if (typeof updateList === 'function') {
       updateList();
@@ -268,7 +273,9 @@ function getDefaultCowEntry() {
       startDate: ''
     },
     dateAdded: nowFormatted(),
-    synced: false
+    synced: false,
+    userId: '',
+    lastModifiedBy: ''
   };
 }
 

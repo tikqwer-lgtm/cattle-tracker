@@ -38,8 +38,8 @@ function viewCow(cattleId) {
         <div><strong>Начало сухостоя:</strong> ${formatDate(entry.dryStartDate) || '—'}</div>
         
         <div><strong>ВСП (дни):</strong> ${entry.vwp || '—'}</div>
-        <div><strong>Протокол:</strong> ${entry.protocolName || '—'}</div>
-        <div><strong>Начало протокола:</strong> ${formatDate(entry.protocolStartDate) || '—'}</div>
+        <div><strong>Протокол:</strong> ${(entry.protocol && entry.protocol.name) || entry.protocolName || '—'}</div>
+        <div><strong>Начало протокола:</strong> ${formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—'}</div>
         <div><strong>Примечание:</strong> ${entry.note || '—'}</div>
 
         <div><strong>Синхронизация:</strong> ${entry.synced ? '✅' : '🟡'}</div>
@@ -58,8 +58,11 @@ function updateViewListWithClick() {
   const container = document.getElementById('viewEntriesList');
   if (!container) return;
 
-  if (!entries || entries.length === 0) {
-    container.innerHTML = '<p>Нет записей</p>';
+  var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
+  var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
+  if (!listToShow || listToShow.length === 0) {
+    const msg = (entries && entries.length > 0) ? 'Нет записей (поиск/фильтр не дали результатов)' : 'Нет записей';
+    container.innerHTML = '<p>' + msg + '</p>';
     return;
   }
 
@@ -82,7 +85,7 @@ function updateViewListWithClick() {
         </tr>
       </thead>
       <tbody>
-        ${entries.map(entry => `
+        ${listToShow.map(entry => `
           <tr class="${entry.synced ? '' : 'unsynced'}" onclick="viewCow('${entry.cattleId}')" style="cursor: pointer;">
             <td>${entry.cattleId}</td>
             <td>${entry.nickname || '—'}</td>

@@ -1,6 +1,57 @@
 // ui-helpers.js — Вспомогательные функции для UI
 
 /**
+ * Показывает индикатор загрузки поверх контейнера
+ * @param {HTMLElement|string} container - Элемент или id
+ * @returns {function} - Функция для скрытия индикатора
+ */
+function showLoading(container) {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!el) return function () {};
+  const overlay = document.createElement('div');
+  overlay.className = 'loading-overlay';
+  overlay.innerHTML = '<div class="loading-spinner"></div><span class="loading-text">Загрузка...</span>';
+  el.style.position = el.style.position || 'relative';
+  el.appendChild(overlay);
+  return function () {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+}
+
+/**
+ * Показывает всплывающее сообщение (тост)
+ * @param {string} text - Текст сообщения
+ * @param {string} type - 'success' | 'error' | 'info'
+ * @param {number} duration - Длительность в мс
+ */
+function showToast(text, type, duration) {
+  if (typeof type !== 'string') type = 'info';
+  if (typeof duration !== 'number') duration = 3000;
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  requestAnimationFrame(function () {
+    toast.classList.add('toast-visible');
+  });
+  setTimeout(function () {
+    toast.classList.remove('toast-visible');
+    setTimeout(function () {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, duration);
+}
+
+/**
+ * Подтверждение действия с кастомным текстом
+ * @param {string} message
+ * @returns {boolean}
+ */
+function confirmAction(message) {
+  return confirm(message || 'Продолжить?');
+}
+
+/**
  * Очищает форму ввода
  */
 function clearForm() {
