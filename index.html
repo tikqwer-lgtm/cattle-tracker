@@ -63,9 +63,13 @@
         <span>📋</span>
         <span>Просмотр описи</span>
       </button>
-      <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #dc3545;">
+      <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #ffc107;">
         <span>🧹</span>
         <span>Очистить поврежденные данные</span>
+      </button>
+      <button onclick="if(confirm('ВНИМАНИЕ! Это удалит все поврежденные записи без возможности восстановления. Продолжить?')) forceCleanDamagedEntries()" class="action-btn" style="background-color: #dc3545;">
+        <span>🗑️</span>
+        <span>Удалить поврежденные записи</span>
       </button>
     </div>
   </div>

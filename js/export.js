@@ -90,10 +90,44 @@ function importFromCSV(event) {
       return;
     }
     // Определяем разделитель (проверяем первую строку)
-    const firstLine = text.split('\n')[0];
+    const firstLine = text.split(/\r?\n/)[0];
     const delimiter = firstLine.includes(';') ? ';' : (firstLine.includes(',') ? ',' : ';');
     
-    const lines = text.split('\n').filter(line => line.trim() !== '');
+    // Правильный парсер CSV с учетом кавычек
+    function parseCSVLine(line, delimiter) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            // Двойная кавычка - экранированная кавычка
+            current += '"';
+            i++; // Пропускаем следующую кавычку
+          } else {
+            // Переключаем режим кавычек
+            inQuotes = !inQuotes;
+          }
+        } else if (char === delimiter && !inQuotes) {
+          // Разделитель вне кавычек - новая ячейка
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      
+      // Добавляем последнюю ячейку
+      result.push(current.trim());
+      return result;
+    }
+    
+    // Разделяем на строки с учетом \r\n и \n
+    const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
     if (lines.length <= 1) {
       alert('❌ Файл пуст или содержит только заголовки');
       event.target.value = '';
@@ -114,16 +148,25 @@ function importFromCSV(event) {
         continue;
       }
 
-      // Парсим строку с учетом кавычек
-      const row = line.split(delimiter).map(cell => {
-        let cleaned = cell.trim();
-        // Убираем кавычки если есть
-        if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
-            (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
-          cleaned = cleaned.slice(1, -1);
-        }
-        return cleaned;
-      });
+      // Парсим строку с правильным учетом кавычек
+      let row;
+      try {
+        row = parseCSVLine(line, delimiter);
+        // Убираем внешние кавычки из каждой ячейки
+        row = row.map(cell => {
+          // Убираем кавычки если они есть с обеих сторон
+          if ((cell.startsWith('"') && cell.endsWith('"')) || 
+              (cell.startsWith("'") && cell.endsWith("'"))) {
+            return cell.slice(1, -1);
+          }
+          return cell;
+        });
+      } catch (error) {
+        console.error(`Ошибка парсинга строки ${i + 2}:`, error);
+        errors.push(`Строка ${i + 2}: ошибка парсинга`);
+        skipped++;
+        continue;
+      }
 
       // Минимум нужен номер коровы (первая колонка)
       if (row.length < 1 || !row[0] || row[0].trim() === '') {
