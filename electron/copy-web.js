@@ -8,6 +8,13 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const dest = __dirname;
 
+// Удаляем старую папку icons (если осталась от прошлой сборки), чтобы electron-builder не падал
+const iconsDir = path.join(dest, 'icons');
+if (fs.existsSync(iconsDir)) {
+  fs.rmSync(iconsDir, { recursive: true });
+  console.log('  (удалена старая electron/icons)');
+}
+
 const copyFile = (src, d) => {
   const target = path.join(dest, d || path.basename(src));
   fs.mkdirSync(path.dirname(target), { recursive: true });
