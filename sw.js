@@ -1,5 +1,5 @@
-/* Service Worker — оффлайн и кэширование */
-var CACHE_NAME = 'cattle-tracker-v1';
+/* Service Worker — оффлайн и кэширование. При релизе увеличивайте версию в CACHE_NAME. */
+var CACHE_NAME = 'cattle-tracker-v2';
 var urlsToCache = [
   './',
   './index.html',
@@ -55,17 +55,19 @@ self.addEventListener('fetch', function (event) {
   if (event.request.url.indexOf(self.location.origin) !== 0) return;
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(event.request).then(function (res) {
+    fetch(event.request)
+      .then(function (res) {
         var clone = res.clone();
         caches.open(CACHE_NAME).then(function (cache) {
           cache.put(event.request, clone);
         });
         return res;
-      }).catch(function () {
-        return caches.match('./index.html') || caches.match('./');
-      });
-    })
+      })
+      .catch(function () {
+        return caches.match(event.request).then(function (cached) {
+          if (cached) return cached;
+          return caches.match('./index.html') || caches.match('./');
+        });
+      })
   );
 });
