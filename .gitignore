@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Electron binary (too large for GitHub)
+electron/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+.cursor/debug.log
+
+# Env / secrets (optional)
+.env
+.env.local
