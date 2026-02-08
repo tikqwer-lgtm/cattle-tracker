@@ -18,7 +18,7 @@
         <label for="authUsername">Логин</label>
         <input type="text" id="authUsername" required />
         <label for="authPassword">Пароль</label>
-        <input type="password" id="authPassword" required />
+        <input type="password" id="authPassword" autocomplete="current-password" required />
         <div class="form-actions">
           <button type="submit">Войти</button>
           <button type="button" onclick="showAuthRegister()">Регистрация</button>
@@ -28,7 +28,7 @@
         <label for="regUsername">Логин</label>
         <input type="text" id="regUsername" required />
         <label for="regPassword">Пароль</label>
-        <input type="password" id="regPassword" required />
+        <input type="password" id="regPassword" autocomplete="new-password" required />
         <label for="regRole">Роль</label>
         <select id="regRole">
           <option value="operator">Оператор</option>
@@ -123,9 +123,9 @@
         <span>🧹</span>
         <span>Очистить поврежденные данные</span>
       </button>
-      <button onclick="if(confirm('ВНИМАНИЕ! Это удалит все поврежденные записи без возможности восстановления. Продолжить?')) forceCleanDamagedEntries()" class="action-btn" style="background-color: #dc3545;">
+      <button onclick="if(confirm('ВНИМАНИЕ! Это удалит ВСЕ данные программы (записи, пользователи, копии) без возможности восстановления. Продолжить?')) deleteAllData()" class="action-btn" style="background-color: #dc3545;">
         <span>🗑️</span>
-        <span>Удалить поврежденные записи</span>
+        <span>Удалить все</span>
       </button>
     </div>
   </div>
