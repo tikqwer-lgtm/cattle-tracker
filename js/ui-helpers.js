@@ -68,7 +68,7 @@ function clearForm() {
       if (element.type === 'select-one') {
         element.selectedIndex = 0;
       } else if (element.type === 'number') {
-        element.value = fieldId === 'lactation' ? '1' : 
+        element.value = fieldId === 'lactation' ? '' : 
                        fieldId === 'attemptNumber' ? '1' :
                        fieldId === 'vwp' ? '60' : '';
       } else {
@@ -77,10 +77,10 @@ function clearForm() {
     }
   });
   
-  // Устанавливаем статус по умолчанию
+  // Статус без значения по умолчанию (поле может быть пустым)
   const statusElement = document.getElementById('status');
   if (statusElement) {
-    statusElement.value = 'Охота';
+    statusElement.value = '';
   }
 }
 

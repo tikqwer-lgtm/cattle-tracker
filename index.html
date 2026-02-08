@@ -180,7 +180,7 @@
       <input type="date" id="birthDate" />
 
       <label for="lactation">Лактация</label>
-      <input type="number" id="lactation" value="1" />
+      <input type="number" id="lactation" min="1" max="20" placeholder="—" />
 
       <label for="calvingDate">Дата отёла</label>
       <input type="date" id="calvingDate" />
@@ -202,11 +202,13 @@
 
       <label for="status">Статус</label>
       <select id="status">
-        <option>Охота</option>
+        <option value="">—</option>
+        <option>Осемененная</option>
+        <option>Холостая</option>
+        <option>Стельная</option>
         <option>Сухостой</option>
         <option>Отёл</option>
-        <option>Сухостой (вынужд.)</option>
-        <option>Отёл (вынужд.)</option>
+        <option>Брак</option>
       </select>
 
       <label for="exitDate">Дата выбытия</label>

@@ -18,6 +18,11 @@ body {
   display: none;
 }
 
+/* Строго скрывать неактивные экраны (иначе view-cow-screen и др. видны внизу меню/описи) */
+.screen:not(.active) {
+  display: none !important;
+}
+
 .screen.active {
   display: block;
 }
