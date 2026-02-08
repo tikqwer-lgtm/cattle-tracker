@@ -1,0 +1,139 @@
+/* view-cow.css — Стили карточки просмотра животного */
+
+/* Экран карточки: верхняя панель закреплена, контент прокручивается */
+.view-cow-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.view-cow-screen.active {
+  display: flex !important;
+}
+
+.view-cow-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f5f5f5;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-cow-back {
+  flex-shrink: 0;
+}
+
+.view-cow-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.view-cow-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.cow-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  max-width: 800px;
+  margin: 20px auto;
+}
+
+.cow-card h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
+  border-bottom: 2px solid #4a90e2;
+  padding-bottom: 10px;
+}
+
+.cow-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cow-details-grid strong {
+  color: #4a90e2;
+}
+
+.cow-card-actions {
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Ячейка с кнопкой «Все осеменения» */
+.cow-details-cell-with-button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cow-insemination-toggle {
+  margin-left: 4px;
+}
+
+/* Блок таблицы истории осеменений в карточке */
+.cow-insemination-history {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.cow-insemination-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cow-insemination-table th,
+.cow-insemination-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.cow-insemination-table th {
+  background: #4a90e2;
+  color: white;
+  font-weight: 600;
+}
+
+.cow-insemination-table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.cow-insemination-empty {
+  margin: 12px 0;
+  color: #666;
+  font-style: italic;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+  .cow-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cow-card {
+    margin: 10px;
+    padding: 15px;
+  }
+}

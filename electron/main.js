@@ -13,10 +13,8 @@ const indexPath = isDev
   ? path.join(rootDir, 'index.html')
   : path.join(__dirname, 'index.html');
 
-// В режиме file:// отключаем Service Worker — он ломает загрузку и даёт "Not allowed to load local resource"
-if (isDev) {
-  app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
-}
+// Отключаем Service Worker — с file:// и в сборке он ломает загрузку (пустое окно, "Not allowed to load local resource")
+app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
 
 let mainWindow;
 
@@ -32,7 +30,7 @@ function createWindow() {
       webSecurity: false
     },
     title: 'Учёт коров',
-    icon: path.join(rootDir, 'favicon.ico')
+    icon: path.join(isDev ? rootDir : __dirname, 'favicon.ico')
   });
 
   const ses = mainWindow.webContents.session;
