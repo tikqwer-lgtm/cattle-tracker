@@ -161,11 +161,17 @@ function saveCurrentEntry() {
 // Запуск приложения при загрузке
 document.addEventListener('DOMContentLoaded', initApp);
 
-// PWA: регистрация Service Worker
+// PWA: регистрация Service Worker (только для http/https; в Electron file:// не регистрируем)
 if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js').catch(function () {});
-  });
+  if (location.protocol === 'file:') {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) { r.unregister(); });
+    });
+  } else {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    });
+  }
 }
 
 // Экспорт для других модулей
