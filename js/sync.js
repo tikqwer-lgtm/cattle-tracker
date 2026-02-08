@@ -88,6 +88,7 @@ async function loadFromGoogle() {
       status.textContent = '⚠️ Таблица пуста';
       setTimeout(() => status.textContent = '', 3000);
       entries = entries.filter(e => !e.synced); // оставляем только неотправленные
+      if (typeof window !== 'undefined') window.entries = entries;
       saveLocally();
       updateList();
       return;
@@ -121,6 +122,7 @@ async function loadFromGoogle() {
       .filter(e => !cloudKeys.has(e.cattleId + '|' + e.date));
 
     entries = [...cloudEntries, ...unsyncedNew];
+    if (typeof window !== 'undefined') window.entries = entries;
     saveLocally();
     updateList();
 

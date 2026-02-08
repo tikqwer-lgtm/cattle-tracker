@@ -4,6 +4,8 @@ var OBJECTS_KEY = 'cattleTracker_objects';
 var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
 
 let entries = [];
+// Резервное копирование (backup.js) читает window.entries — держим одну ссылку на массив
+if (typeof window !== 'undefined') window.entries = entries;
 
 function getCurrentObjectId() {
   try {
@@ -234,8 +236,9 @@ function cleanAllEntries() {
   
   // Присваиваем очищенные записи
   entries = cleanedEntries;
+  if (typeof window !== 'undefined') window.entries = entries;
   const afterCount = entries.length;
-  
+
   // Сохраняем очищенные данные
   try {
     saveLocally();
@@ -271,6 +274,7 @@ function loadLocally() {
     const stored = localStorage.getItem(getStorageKey());
     if (!stored) {
       entries = [];
+      if (typeof window !== 'undefined') window.entries = entries;
       if (typeof window.CattleTrackerEvents !== 'undefined') {
         window.CattleTrackerEvents.emit('entries:updated', entries);
       }
@@ -322,6 +326,7 @@ function loadLocally() {
     }
 
     entries = cleanedEntries;
+    if (typeof window !== 'undefined') window.entries = entries;
 
     // Сохраняем очищенные данные обратно, если были изменения или миграция
     if (entries.length !== rawEntries.length || migrated) {
@@ -340,6 +345,7 @@ function loadLocally() {
   } catch (error) {
     console.error('Ошибка загрузки из localStorage:', error);
     entries = [];
+    if (typeof window !== 'undefined') window.entries = entries;
     // Пытаемся очистить поврежденные данные
     try {
       localStorage.removeItem(getStorageKey());
@@ -537,8 +543,9 @@ function forceCleanDamagedEntries() {
   
   // Присваиваем валидные записи
   entries = validEntries;
+  if (typeof window !== 'undefined') window.entries = entries;
   const afterCount = entries.length;
-  
+
   // Сохраняем
   try {
     saveLocally();
@@ -568,6 +575,7 @@ function forceCleanDamagedEntries() {
 function deleteAllData() {
   const beforeCount = entries.length;
   entries = [];
+  if (typeof window !== 'undefined') window.entries = entries;
   try {
     var keysToRemove = [];
     for (var i = 0; i < localStorage.length; i++) {
