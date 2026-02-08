@@ -1,6 +1,86 @@
 // storage.js — работа с localStorage
 
-let entries = JSON.parse(localStorage.getItem('cattleEntries')) || [];
+var OBJECTS_KEY = 'cattleTracker_objects';
+var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
+
+let entries = [];
+
+function getCurrentObjectId() {
+  try {
+    var id = localStorage.getItem(CURRENT_OBJECT_KEY);
+    return id && id.trim() ? id : 'default';
+  } catch (e) {
+    return 'default';
+  }
+}
+
+function setCurrentObjectId(id) {
+  if (!id || !id.trim()) id = 'default';
+  try {
+    localStorage.setItem(CURRENT_OBJECT_KEY, id.trim());
+  } catch (e) {
+    console.warn('setCurrentObjectId:', e);
+  }
+}
+
+function getStorageKey() {
+  return 'cattleEntries_' + getCurrentObjectId();
+}
+
+function getObjectsList() {
+  try {
+    var raw = localStorage.getItem(OBJECTS_KEY);
+    if (raw) {
+      var list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function saveObjectsList(list) {
+  try {
+    localStorage.setItem(OBJECTS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('saveObjectsList:', e);
+  }
+}
+
+function ensureObjectsAndMigration() {
+  var list = getObjectsList();
+  if (list && list.length > 0) return;
+  var legacyKey = 'cattleEntries';
+  var legacyData = localStorage.getItem(legacyKey);
+  var defaultId = 'default';
+  var newList = [{ id: defaultId, name: 'Основная база' }];
+  if (legacyData) {
+    try {
+      localStorage.setItem('cattleEntries_' + defaultId, legacyData);
+    } catch (e) {}
+  }
+  saveObjectsList(newList);
+  setCurrentObjectId(defaultId);
+}
+
+function switchToObject(objectId) {
+  setCurrentObjectId(objectId);
+  if (typeof loadLocally === 'function') loadLocally();
+  if (typeof updateHerdStats === 'function') updateHerdStats();
+  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof window.CattleTrackerEvents !== 'undefined') {
+    window.CattleTrackerEvents.emit('entries:updated', entries);
+  }
+}
+
+function addObject(name) {
+  var list = getObjectsList();
+  if (!list) list = [{ id: 'default', name: 'Основная база' }];
+  var id = 'obj_' + Date.now();
+  list.push({ id: id, name: (name || 'Новая база').trim() });
+  saveObjectsList(list);
+  switchToObject(id);
+  return id;
+}
 
 /**
  * Очищает строку от бинарных и невидимых символов
@@ -50,7 +130,7 @@ function saveLocally() {
     // Очищаем все записи перед сохранением
     const cleanedEntries = entries.map(entry => cleanEntry(entry));
     const jsonData = JSON.stringify(cleanedEntries);
-    localStorage.setItem('cattleEntries', jsonData);
+    localStorage.setItem(getStorageKey(), jsonData);
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('entries:updated', entries);
     }
@@ -187,9 +267,14 @@ function cleanAllEntries() {
  */
 function loadLocally() {
   try {
-    const stored = localStorage.getItem('cattleEntries');
+    ensureObjectsAndMigration();
+    const stored = localStorage.getItem(getStorageKey());
     if (!stored) {
       entries = [];
+      if (typeof window.CattleTrackerEvents !== 'undefined') {
+        window.CattleTrackerEvents.emit('entries:updated', entries);
+      }
+      if (typeof updateList === 'function') updateList();
       return;
     }
     
@@ -233,6 +318,7 @@ function loadLocally() {
         migrated = true;
       }
       if (!entry.inseminationHistory) entry.inseminationHistory = [];
+      if (entry.group === undefined) entry.group = '';
     }
 
     entries = cleanedEntries;
@@ -256,7 +342,7 @@ function loadLocally() {
     entries = [];
     // Пытаемся очистить поврежденные данные
     try {
-      localStorage.removeItem('cattleEntries');
+      localStorage.removeItem(getStorageKey());
     } catch (e) {
       console.error('Не удалось очистить localStorage:', e);
     }
@@ -272,6 +358,7 @@ function getDefaultCowEntry() {
   return {
     cattleId: '',
     nickname: '',
+    group: '',
     birthDate: '',
     lactation: '',
     calvingDate: '',
@@ -314,7 +401,8 @@ function isGarbageString(str) {
  * Вызывайте: checkDataIntegrity()
  */
 function checkDataIntegrity() {
-  const stored = localStorage.getItem('cattleEntries');
+  var key = typeof getStorageKey === 'function' ? getStorageKey() : 'cattleEntries';
+  const stored = localStorage.getItem(key);
   if (!stored) {
     console.log('❌ Данные не найдены в localStorage');
     return;
@@ -481,12 +569,10 @@ function deleteAllData() {
   const beforeCount = entries.length;
   entries = [];
   try {
-    localStorage.removeItem('cattleEntries');
-    // Очищаем все ключи приложения
     var keysToRemove = [];
     for (var i = 0; i < localStorage.length; i++) {
       var key = localStorage.key(i);
-      if (key && (key === 'cattleEntries' || key.indexOf('cattleTracker_') === 0)) {
+      if (key && (key === 'cattleEntries' || key.indexOf('cattleEntries_') === 0 || key.indexOf('cattleTracker_') === 0)) {
         keysToRemove.push(key);
       }
     }
@@ -504,11 +590,16 @@ function deleteAllData() {
   alert('✅ Все данные удалены.\nУдалено записей: ' + beforeCount);
 }
 
-// Делаем функции доступными глобально для использования в консоли
+// Делаем функции доступными глобально для использования в консоли и UI
 window.checkDataIntegrity = checkDataIntegrity;
 window.cleanAllEntries = cleanAllEntries;
 window.forceCleanDamagedEntries = forceCleanDamagedEntries;
 window.deleteAllData = deleteAllData;
+window.getCurrentObjectId = getCurrentObjectId;
+window.getObjectsList = getObjectsList;
+window.switchToObject = switchToObject;
+window.addObject = addObject;
+window.ensureObjectsAndMigration = ensureObjectsAndMigration;
 
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {

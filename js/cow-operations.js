@@ -104,6 +104,7 @@ function deleteSelectedEntries() {
 function fillFormFromCowEntry(entry) {
   document.getElementById('cattleId').value = entry.cattleId || '';
   document.getElementById('nickname').value = entry.nickname || '';
+  document.getElementById('group').value = entry.group || '';
   document.getElementById('birthDate').value = entry.birthDate || '';
   document.getElementById('lactation').value = entry.lactation !== undefined && entry.lactation !== '' ? entry.lactation : '';
   document.getElementById('calvingDate').value = entry.calvingDate || '';
@@ -128,6 +129,7 @@ function fillFormFromCowEntry(entry) {
 function fillCowEntryFromForm(entry) {
   entry.cattleId = document.getElementById('cattleId').value.trim();
   entry.nickname = document.getElementById('nickname').value || '';
+  entry.group = document.getElementById('group').value || '';
   entry.birthDate = document.getElementById('birthDate').value || '';
   var lactationVal = document.getElementById('lactation').value.trim();
   entry.lactation = lactationVal === '' ? '' : (parseInt(lactationVal, 10) || '');

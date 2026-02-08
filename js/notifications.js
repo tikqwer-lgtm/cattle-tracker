@@ -44,13 +44,33 @@
     } catch (e) {}
   }
 
+  var CATEGORY_LABELS = {
+    calving: 'Предстоящий отёл',
+    insemination: 'Осеменение',
+    dry: 'Сухостой',
+    sync: 'Синхронизация',
+    other: 'Прочее'
+  };
+
+  function inferCategory(n) {
+    if (n.category) return n.category;
+    var msg = (n.message || '').toLowerCase();
+    if (msg.indexOf('отёл') !== -1 || msg.indexOf('отел') !== -1) return 'calving';
+    if (msg.indexOf('осеменен') !== -1) return 'insemination';
+    if (msg.indexOf('сухостой') !== -1) return 'dry';
+    if (msg.indexOf('синхрониз') !== -1) return 'sync';
+    return 'other';
+  }
+
   function createNotification(type, message, cowId, meta) {
+    meta = meta || {};
     var item = {
       id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
       type: type || 'info',
       message: message || '',
       cattleId: cowId || '',
-      meta: meta || {},
+      meta: meta,
+      category: meta.category || 'other',
       createdAt: new Date().toISOString()
     };
     var history = loadHistory();
@@ -92,7 +112,7 @@
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
-            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving }));
+            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving' }));
           }
         }
       }
@@ -104,7 +124,7 @@
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
             notified[key2] = true;
-            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving }));
+            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination' }));
           }
         }
       }
@@ -115,7 +135,7 @@
           var key3 = 'dry_' + cattleId;
           if (!notified[key3]) {
             notified[key3] = true;
-            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue }));
+            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }));
           }
         }
       }
@@ -126,7 +146,7 @@
       var key4 = 'unsynced_count';
       if (!notified[key4]) {
         notified[key4] = true;
-        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length }));
+        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync' }));
       }
     }
     return out;
@@ -160,6 +180,30 @@
     var container = document.getElementById(containerId);
     if (!container) return;
     var history = getNotificationHistory().slice().reverse().slice(0, 50);
+    var order = ['calving', 'insemination', 'dry', 'sync', 'other'];
+    var byCategory = {};
+    order.forEach(function (cat) { byCategory[cat] = []; });
+    history.forEach(function (n) {
+      var cat = inferCategory(n);
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(n);
+    });
+    var listHtml = '';
+    order.forEach(function (cat) {
+      var items = byCategory[cat] || [];
+      if (items.length === 0) return;
+      listHtml += '<div class="notification-group">';
+      listHtml += '<h4 class="notification-group-title">' + (CATEGORY_LABELS[cat] || cat).replace(/</g, '&lt;') + '</h4>';
+      listHtml += '<ul class="notification-list">';
+      items.forEach(function (n) {
+        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
+          '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
+          '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
+          '</li>';
+      });
+      listHtml += '</ul></div>';
+    });
+    if (!listHtml) listHtml = '<ul class="notification-list"><li class="notification-item notification-empty">Нет уведомлений</li></ul>';
     container.innerHTML =
       '<div class="notification-center">' +
         '<div class="notification-center-header">' +
@@ -167,16 +211,7 @@
           '<button type="button" class="small-btn" id="notifCheckNow">Проверить сейчас</button>' +
           '<button type="button" class="small-btn" id="notifClearHistory">Очистить историю</button>' +
         '</div>' +
-        '<ul class="notification-list">' +
-          (history.length === 0
-            ? '<li class="notification-item notification-empty">Нет уведомлений</li>'
-            : history.map(function (n) {
-                return '<li class="notification-item notification-' + (n.type || 'info') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
-                  '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
-                  '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
-                  '</li>';
-              }).join('')) +
-        '</ul>' +
+        '<div class="notification-groups">' + listHtml + '</div>' +
       '</div>';
     var checkBtn = document.getElementById('notifCheckNow');
     var clearBtn = document.getElementById('notifClearHistory');

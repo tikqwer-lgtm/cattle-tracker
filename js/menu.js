@@ -32,10 +32,42 @@ function navigate(screenId) {
     renderBackupUI('backup-container');
   }
   
-  // Обновить статистику и панель пользователя при открытии меню
+  // Обновить статистику, переключатель объектов и панель пользователя при открытии меню
   if (screenId === 'menu') {
+    updateObjectSwitcher();
     updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
+  }
+}
+
+/**
+ * Обновляет переключатель объектов (баз) на экране меню
+ */
+function updateObjectSwitcher() {
+  var select = document.getElementById('currentObjectSelect');
+  var addBtn = document.getElementById('addObjectBtn');
+  if (!select) return;
+  var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
+  if (!list || list.length === 0) {
+    if (typeof ensureObjectsAndMigration === 'function') ensureObjectsAndMigration();
+    list = typeof getObjectsList === 'function' ? getObjectsList() : [{ id: 'default', name: 'Основная база' }];
+  }
+  var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
+  select.innerHTML = list.map(function (obj) {
+    var name = (obj.name || obj.id || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + (obj.id === currentId ? ' selected' : '') + '>' + name + '</option>';
+  }).join('');
+  select.onchange = function () {
+    var id = select.value;
+    if (id && typeof switchToObject === 'function') switchToObject(id);
+  };
+  if (addBtn) {
+    addBtn.onclick = function () {
+      var name = prompt('Название новой базы (объекта):', 'Новая база');
+      if (name === null) return;
+      if (typeof addObject === 'function') addObject(name);
+      updateObjectSwitcher();
+    };
   }
 }
 
@@ -95,6 +127,7 @@ function updateViewList() {
           </th>
           <th>Корова</th>
           <th>Кличка</th>
+          <th>Группа</th>
           <th>Лактация</th>
           <th>Дата осеменения</th>
           <th>Бык</th>
@@ -117,6 +150,7 @@ function updateViewList() {
             </td>
             <td>${safeCattleId}</td>
             <td>${escapeHtml(entry.nickname)}</td>
+            <td>${escapeHtml(entry.group || '') || '—'}</td>
             <td>${entry.lactation || '—'}</td>
             <td>${formatDate(entry.inseminationDate) || '—'}</td>
             <td>${escapeHtml(entry.bull)}</td>
@@ -254,10 +288,10 @@ function updateHerdStats() {
   }
 
   const totalCows = list.length;
-  const pregnantCows = list.filter(e => e.status && e.status.includes('Отёл')).length;
+  const pregnantCows = list.filter(e => e.status && (e.status.includes('Стельная') || e.status.includes('Отёл'))).length;
   const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
   const inseminatedCows = list.filter(e => e.inseminationDate).length;
-  const cullCows = list.filter(e => e.status && e.status.includes('брак')).length;
+  const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
 
   document.getElementById('totalCows').textContent = totalCows;
   document.getElementById('pregnantCows').textContent = pregnantCows;

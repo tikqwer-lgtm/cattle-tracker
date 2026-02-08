@@ -113,6 +113,7 @@ function viewCow(cattleId) {
     '<h2>Карточка животного №' + escapeHtmlCard(entry.cattleId) + '</h2>' +
     '<div class="cow-details-grid">' +
     '<div><strong>Кличка:</strong> ' + escapeHtmlCard(entry.nickname) + '</div>' +
+    '<div><strong>Группа:</strong> ' + escapeHtmlCard(entry.group || '') + '</div>' +
     '<div><strong>Дата рождения:</strong> ' + (formatDate(entry.birthDate) || '—') + '</div>' +
     '<div><strong>Лактация:</strong> ' + escapeHtmlCard(entry.lactation) + '</div>' +
     '<div><strong>Дата отёла:</strong> ' + (formatDate(entry.calvingDate) || '—') + '</div>' +
