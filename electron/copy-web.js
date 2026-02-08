@@ -42,10 +42,44 @@ for (const f of files) {
     console.log('  ', f);
   }
 }
-['css', 'js', 'lib', 'icons'].forEach(dir => {
+// Копируем icons как app-icons, чтобы electron-builder не принимал папку "icons" за иконки приложения (.ico)
+['css', 'js', 'lib'].forEach(dir => {
   if (fs.existsSync(path.join(root, dir))) {
     copyDir(dir);
     console.log('  ', dir + '/');
   }
 });
+if (fs.existsSync(path.join(root, 'icons'))) {
+  copyDirTo('icons', 'app-icons');
+  console.log('  ', 'app-icons/ (из icons/)');
+  // Обновляем ссылки в скопированных файлах
+  const replaceIcons = (file) => {
+    const p = path.join(dest, file);
+    if (fs.existsSync(p)) {
+      let s = fs.readFileSync(p, 'utf8');
+      s = s.replace(/icons\//g, 'app-icons/');
+      fs.writeFileSync(p, s);
+    }
+  };
+  replaceIcons('index.html');
+  replaceIcons('manifest.json');
+  replaceIcons('sw.js');
+}
+
+function copyDirTo(srcSubdir, destSubdir) {
+  const srcDir = path.join(root, srcSubdir);
+  const destDir = path.join(dest, destSubdir);
+  if (!fs.existsSync(srcDir)) return;
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const name of fs.readdirSync(srcDir)) {
+    const srcPath = path.join(srcDir, name);
+    const destPath = path.join(destDir, name);
+    if (fs.statSync(srcPath).isDirectory()) {
+      copyDirTo(path.join(srcSubdir, name), path.join(destSubdir, name));
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 console.log('Готово.');
