@@ -141,7 +141,30 @@ function handleImportFile(event) {
 }
 
 /**
- * Импортирует данные из CSV-файла с использованием PapaParse
+ * Декодирует содержимое файла с учётом кодировки (UTF-8 или Windows-1251).
+ * Если при чтении как UTF-8 появляются замены символов — пробуем Windows-1251 (типично для Excel в Windows).
+ */
+function decodeCsvFileContent(buffer) {
+  var utf8 = '';
+  try {
+    utf8 = new TextDecoder('utf-8').decode(buffer);
+  } catch (e) {
+    utf8 = '';
+  }
+  // Символ замены U+FFFD — признак неверной кодировки (файл в Windows-1251, а не в UTF-8)
+  if (utf8.indexOf('\uFFFD') !== -1) {
+    try {
+      return new TextDecoder('windows-1251').decode(buffer);
+    } catch (e2) {
+      return utf8;
+    }
+  }
+  return utf8;
+}
+
+/**
+ * Импортирует данные из CSV-файла с использованием PapaParse.
+ * Поддерживаются кодировки UTF-8 и Windows-1251 (кириллица из Excel).
  * @param {Event} event Событие выбора файла
  * Алгоритм:
  * - Если коровы нет в базе — добавляет новую запись
@@ -151,76 +174,79 @@ function importFromCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  // Проверяем наличие PapaParse
   if (typeof Papa === 'undefined') {
     alert('❌ Библиотека PapaParse не загружена. Пожалуйста, проверьте подключение к интернету или обновите страницу.');
     event.target.value = '';
     return;
   }
 
-  Papa.parse(file, {
-    encoding: 'UTF-8',
-    header: false,
-    skipEmptyLines: true,
-    delimiter: '', // Автоопределение
-    newline: '', // Автоопределение
-    quoteChar: '"',
-    escapeChar: '"',
-    complete: function(results) {
-      if (results.errors && results.errors.length > 0) {
-        console.warn('Предупреждения при парсинге CSV:', results.errors);
-      }
-
-      const data = results.data;
-      
-      if (!data || data.length <= 1) {
-        alert('❌ Файл пуст или содержит только заголовки');
-        event.target.value = '';
-        return;
-      }
-
-      // Определяем разделитель из первой строки
-      const firstLine = data[0];
-      let delimiter = ';';
-      if (firstLine && firstLine.length > 0) {
-        const firstLineStr = Array.isArray(firstLine) ? firstLine.join('') : String(firstLine[0] || '');
-        if (firstLineStr.includes(';')) {
-          delimiter = ';';
-        } else if (firstLineStr.includes(',')) {
-          delimiter = ',';
-        }
-      }
-
-      // Если данные не были правильно разделены, парсим заново с правильным разделителем
-      let parsedData = data;
-      if (data[0].length === 1 && typeof data[0][0] === 'string' && data[0][0].includes(delimiter)) {
-        // Данные не были разделены, парсим вручную
-        Papa.parse(file, {
-          encoding: 'UTF-8',
-          header: false,
-          skipEmptyLines: true,
-          delimiter: delimiter,
-          newline: '',
-          quoteChar: '"',
-          escapeChar: '"',
-          complete: function(results2) {
-            processImportData(results2.data, delimiter, event);
-          },
-          error: function(error) {
-            alert('❌ Ошибка при чтении файла: ' + error.message);
-            event.target.value = '';
-          }
-        });
-        return;
-      }
-
-      processImportData(parsedData, delimiter, event);
-    },
-    error: function(error) {
-      alert('❌ Ошибка при чтении файла: ' + error.message);
+  var reader = new FileReader();
+  reader.onload = function () {
+    var buffer = reader.result;
+    if (!buffer || !(buffer instanceof ArrayBuffer)) {
+      alert('❌ Не удалось прочитать файл');
       event.target.value = '';
+      return;
     }
-  });
+    var csvString = decodeCsvFileContent(buffer);
+
+    Papa.parse(csvString, {
+      encoding: 'UTF-8',
+      header: false,
+      skipEmptyLines: true,
+      delimiter: '',
+      newline: '',
+      quoteChar: '"',
+      escapeChar: '"',
+      complete: function (results) {
+        if (results.errors && results.errors.length > 0) {
+          console.warn('Предупреждения при парсинге CSV:', results.errors);
+        }
+        var data = results.data;
+        if (!data || data.length <= 1) {
+          alert('❌ Файл пуст или содержит только заголовки');
+          event.target.value = '';
+          return;
+        }
+        var firstLine = data[0];
+        var delimiter = ';';
+        if (firstLine && firstLine.length > 0) {
+          var firstLineStr = Array.isArray(firstLine) ? firstLine.join('') : String(firstLine[0] || '');
+          if (firstLineStr.indexOf(';') !== -1) delimiter = ';';
+          else if (firstLineStr.indexOf(',') !== -1) delimiter = ',';
+        }
+        if (data[0].length === 1 && typeof data[0][0] === 'string' && data[0][0].indexOf(delimiter) !== -1) {
+          Papa.parse(csvString, {
+            encoding: 'UTF-8',
+            header: false,
+            skipEmptyLines: true,
+            delimiter: delimiter,
+            newline: '',
+            quoteChar: '"',
+            escapeChar: '"',
+            complete: function (results2) {
+              processImportData(results2.data, delimiter, event);
+            },
+            error: function (error) {
+              alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : ''));
+              event.target.value = '';
+            }
+          });
+          return;
+        }
+        processImportData(data, delimiter, event);
+      },
+      error: function (error) {
+        alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : ''));
+        event.target.value = '';
+      }
+    });
+  };
+  reader.onerror = function () {
+    alert('❌ Ошибка при чтении файла');
+    event.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 /**
