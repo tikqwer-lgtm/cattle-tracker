@@ -103,6 +103,10 @@
         <span>📋</span>
         <span>Просмотр описи</span>
       </button>
+      <button onclick="navigate('all-inseminations')" class="action-btn">
+        <span>📑</span>
+        <span>Все осеменения</span>
+      </button>
       <button onclick="navigate('notifications')" class="action-btn">
         <span>🔔</span>
         <span>Уведомления</span>
@@ -217,8 +221,8 @@
       <label for="dryStartDate">Начало сухостоя</label>
       <input type="date" id="dryStartDate" />
 
-      <label for="vwp">ВСП (дни)</label>
-      <input type="number" id="vwp" value="60" />
+      <label for="vwp">ПДО (дней от отёла до 1-го осеменения)</label>
+      <input type="text" id="vwp" readonly placeholder="—" title="Рассчитывается автоматически" />
 
       <label for="protocolName">Протокол</label>
       <input type="text" id="protocolName" />
@@ -258,6 +262,15 @@
       <h1>🔍 Просмотр животного</h1>
     </div>
     <div id="viewCowCard" class="view-cow-body"></div>
+  </div>
+
+  <!-- Экран «Все осеменения» -->
+  <div id="all-inseminations-screen" class="screen">
+    <div class="view-screen-header" style="position: sticky; top: 0; background: #f5f5f5; padding: 10px 12px; z-index: 10;">
+      <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
+      <h1>📑 Все осеменения</h1>
+    </div>
+    <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
   </div>
 
   <!-- Экран уведомлений -->
@@ -304,9 +317,10 @@
   </div>
 
    <!-- Подключение скриптов в правильном порядке -->
-  <!-- PapaParse для парсинга CSV, Chart.js для графиков -->
+  <!-- PapaParse для парсинга CSV, Chart.js для графиков, SheetJS для экспорта xlsx -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/events.js"></script>
   <script src="js/storage.js"></script>

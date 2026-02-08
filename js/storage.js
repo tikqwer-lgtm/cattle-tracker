@@ -217,11 +217,28 @@ function loadLocally() {
       
       cleanedEntries.push(cleaned);
     }
-    
-entries = cleanedEntries;
 
-    // Сохраняем очищенные данные обратно, если были изменения
-    if (entries.length !== rawEntries.length) {
+    // Миграция: заполнить inseminationHistory из текущих полей осеменения, если истории ещё нет
+    let migrated = false;
+    for (let i = 0; i < cleanedEntries.length; i++) {
+      const entry = cleanedEntries[i];
+      if (entry.inseminationDate && (!entry.inseminationHistory || entry.inseminationHistory.length === 0)) {
+        entry.inseminationHistory = [{
+          date: entry.inseminationDate,
+          attemptNumber: entry.attemptNumber ?? 1,
+          bull: entry.bull ?? '',
+          inseminator: entry.inseminator ?? '',
+          code: entry.code ?? ''
+        }];
+        migrated = true;
+      }
+      if (!entry.inseminationHistory) entry.inseminationHistory = [];
+    }
+
+    entries = cleanedEntries;
+
+    // Сохраняем очищенные данные обратно, если были изменения или миграция
+    if (entries.length !== rawEntries.length || migrated) {
       console.log(`При загрузке очищено записей: ${rawEntries.length - entries.length}`);
       saveLocally();
     }
@@ -275,7 +292,8 @@ function getDefaultCowEntry() {
     dateAdded: nowFormatted(),
     synced: false,
     userId: '',
-    lastModifiedBy: ''
+    lastModifiedBy: '',
+    inseminationHistory: []
   };
 }
 
