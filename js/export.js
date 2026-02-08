@@ -380,11 +380,11 @@ function processImportData(data, delimiter, event) {
   event.target.value = '';
 }
 
-/** Порядок колонок CSV (для шаблона и экспорта). Разделитель — точка с запятой. */
+/** Порядок колонок CSV (для шаблона и экспорта). Разделитель — точка с запятой. ПДО — расчётное поле. */
 var CSV_HEADERS = [
   'Номер', 'Кличка', 'Дата рождения', 'Лактация', 'Дата отёла', 'Дата осеменения',
   'Номер попытки', 'Бык', 'Осеменитель', 'Код', 'Статус', 'Протокол', 'Начало протокола',
-  'Дата выбытия', 'Начало сухостоя', 'ВСП', 'Примечание', 'Синхронизировано'
+  'Дата выбытия', 'Начало сухостоя', 'ПДО', 'Примечание', 'Синхронизировано'
 ];
 var CSV_DELIMITER = ';';
 
@@ -422,17 +422,87 @@ function escapeCsvCell(val) {
 }
 
 /**
- * Экспорт текущих записей в CSV (Excel-совместимый файл)
+ * Возвращает значение ПДО для экспорта (дней от отёла до первого осеменения). Использует getPDO из view-cow.js при наличии.
+ */
+function getPDOForExport(entry) {
+  if (typeof getPDO === 'function') return getPDO(entry);
+  return entry.vwp !== undefined ? String(entry.vwp) : '';
+}
+
+/**
+ * Экспорт текущих записей: при наличии SheetJS — один .xlsx с двумя листами (Коровы, Осеменения), иначе CSV.
  */
 function exportToExcel() {
   if (typeof entries === 'undefined' || !Array.isArray(entries) || entries.length === 0) {
     alert('Нет данных для экспорта.');
     return;
   }
+  var dateStr = new Date().toISOString().slice(0, 10);
+
+  if (typeof XLSX !== 'undefined') {
+    // Лист 1 — Коровы
+    var cowHeaders = [CSV_HEADERS];
+    var cowRows = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var pdoVal = getPDOForExport(e);
+      cowRows.push([
+        e.cattleId || '',
+        e.nickname || '',
+        formatDateForExport(e.birthDate),
+        e.lactation !== undefined && e.lactation !== '' ? String(e.lactation) : '',
+        formatDateForExport(e.calvingDate),
+        formatDateForExport(e.inseminationDate),
+        e.attemptNumber !== undefined ? String(e.attemptNumber) : '1',
+        e.bull || '',
+        e.inseminator || '',
+        e.code || '',
+        e.status || '',
+        (e.protocol && e.protocol.name) || '',
+        formatDateForExport(e.protocol && e.protocol.startDate ? e.protocol.startDate : ''),
+        formatDateForExport(e.exitDate),
+        formatDateForExport(e.dryStartDate),
+        pdoVal === '—' || pdoVal === '' ? '' : String(pdoVal),
+        e.note || '',
+        e.synced ? 'Да' : 'Нет'
+      ]);
+    }
+    var wsCows = XLSX.utils.aoa_to_sheet(cowHeaders.concat(cowRows));
+
+    // Лист 2 — Осеменения
+    var insemHeaders = [['Номер коровы', 'Кличка', 'Дата осеменения', 'Попытка', 'Бык', 'Осеменитель', 'Дней от предыдущего', 'Код']];
+    var insemRows = [];
+    if (typeof getAllInseminationsFlat === 'function') {
+      var flat = getAllInseminationsFlat();
+      for (var j = 0; j < flat.length; j++) {
+        var r = flat[j];
+        insemRows.push([
+          r.cattleId || '',
+          r.nickname || '',
+          formatDateForExport(r.date),
+          r.attemptNumber !== undefined ? String(r.attemptNumber) : '',
+          r.bull || '',
+          r.inseminator || '',
+          r.daysFromPrevious !== undefined && r.daysFromPrevious !== '—' ? String(r.daysFromPrevious) : '',
+          r.code || ''
+        ]);
+      }
+    }
+    var wsInsem = XLSX.utils.aoa_to_sheet(insemHeaders.concat(insemRows));
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsCows, 'Коровы');
+    XLSX.utils.book_append_sheet(wb, wsInsem, 'Осеменения');
+    XLSX.writeFile(wb, 'коровы_' + dateStr + '.xlsx');
+    return;
+  }
+
+  // Fallback: CSV (один лист)
   var BOM = '\uFEFF';
   var lines = [CSV_HEADERS.join(CSV_DELIMITER)];
-  for (var i = 0; i < entries.length; i++) {
-    var e = entries[i];
+  for (var k = 0; k < entries.length; k++) {
+    var e = entries[k];
+    var pdoVal = getPDOForExport(e);
     var row = [
       escapeCsvCell(e.cattleId),
       escapeCsvCell(e.nickname),
@@ -449,7 +519,7 @@ function exportToExcel() {
       escapeCsvCell(formatDateForExport(e.protocol && e.protocol.startDate ? e.protocol.startDate : '')),
       escapeCsvCell(formatDateForExport(e.exitDate)),
       escapeCsvCell(formatDateForExport(e.dryStartDate)),
-      (e.vwp !== undefined ? String(e.vwp) : '60'),
+      (pdoVal === '—' || pdoVal === '' ? '' : String(pdoVal)),
       escapeCsvCell(e.note),
       (e.synced ? 'Да' : 'Нет')
     ];
@@ -460,7 +530,7 @@ function exportToExcel() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'коровы_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.download = 'коровы_' + dateStr + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -115,7 +115,7 @@ function fillFormFromCowEntry(entry) {
   document.getElementById('status').value = entry.status || '';
   document.getElementById('exitDate').value = entry.exitDate || '';
   document.getElementById('dryStartDate').value = entry.dryStartDate || '';
-  document.getElementById('vwp').value = entry.vwp || 60;
+  document.getElementById('vwp').value = (typeof getPDO === 'function' ? getPDO(entry) : entry.vwp) || '—';
   document.getElementById('protocolName').value = entry.protocol?.name || '';
   document.getElementById('protocolStartDate').value = entry.protocol?.startDate || '';
   document.getElementById('note').value = entry.note || '';
@@ -140,13 +140,23 @@ function fillCowEntryFromForm(entry) {
   entry.status = document.getElementById('status').value || '';
   entry.exitDate = document.getElementById('exitDate').value || '';
   entry.dryStartDate = document.getElementById('dryStartDate').value || '';
-  entry.vwp = parseInt(document.getElementById('vwp').value) || 60;
+  // ПДО не сохраняем — рассчитывается автоматически; vwp оставляем для совместимости импорта
   entry.note = document.getElementById('note').value || '';
   
   // Протокол синхронизации
   if (!entry.protocol) entry.protocol = {};
   entry.protocol.name = document.getElementById('protocolName').value || '';
   entry.protocol.startDate = document.getElementById('protocolStartDate').value || '';
+
+  // Синхронизация последней записи в истории осеменений с полями формы
+  if (entry.inseminationHistory && entry.inseminationHistory.length > 0) {
+    var last = entry.inseminationHistory[entry.inseminationHistory.length - 1];
+    last.date = entry.inseminationDate || '';
+    last.attemptNumber = entry.attemptNumber;
+    last.bull = entry.bull || '';
+    last.inseminator = entry.inseminator || '';
+    last.code = entry.code || '';
+  }
 }
 
 /**

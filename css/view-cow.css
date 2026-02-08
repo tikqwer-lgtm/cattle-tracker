@@ -78,6 +78,54 @@
   margin-top: 20px;
 }
 
+/* Ячейка с кнопкой «Все осеменения» */
+.cow-details-cell-with-button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cow-insemination-toggle {
+  margin-left: 4px;
+}
+
+/* Блок таблицы истории осеменений в карточке */
+.cow-insemination-history {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.cow-insemination-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cow-insemination-table th,
+.cow-insemination-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.cow-insemination-table th {
+  background: #4a90e2;
+  color: white;
+  font-weight: 600;
+}
+
+.cow-insemination-table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.cow-insemination-empty {
+  margin: 12px 0;
+  color: #666;
+  font-style: italic;
+}
+
 /* Адаптивность */
 @media (max-width: 600px) {
   .cow-details-grid {

@@ -70,7 +70,7 @@ function clearForm() {
       } else if (element.type === 'number') {
         element.value = fieldId === 'lactation' ? '' : 
                        fieldId === 'attemptNumber' ? '1' :
-                       fieldId === 'vwp' ? '60' : '';
+                       fieldId === 'vwp' ? '' : '';
       } else {
         element.value = '';
       }

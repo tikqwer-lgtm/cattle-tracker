@@ -19,6 +19,9 @@ function navigate(screenId) {
   if (screenId === 'view') {
     updateViewList();
   }
+  if (screenId === 'all-inseminations' && typeof renderAllInseminationsScreen === 'function') {
+    renderAllInseminationsScreen();
+  }
   if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
     renderNotificationCenter('notification-center-container');
   }

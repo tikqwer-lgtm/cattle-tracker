@@ -190,13 +190,28 @@ function addInseminationEntry() {
     return;
   }
 
-  // Заполняем поля осеменения
+  const attemptNumber = parseInt(document.getElementById('attemptNumberInsem')?.value) || 1;
+  const bull = document.getElementById('bullInsem')?.value || '';
+  const inseminator = document.getElementById('inseminatorInsem')?.value || '';
+  const code = document.getElementById('codeInsem')?.value || '';
+
+  // Добавляем в историю осеменений
+  if (!entry.inseminationHistory) entry.inseminationHistory = [];
+  entry.inseminationHistory.push({
+    date: inseminationDate,
+    attemptNumber: attemptNumber,
+    bull: bull,
+    inseminator: inseminator,
+    code: code
+  });
+
+  // Заполняем основные поля осеменения (последнее осеменение)
   entry.inseminationDate = inseminationDate;
-  entry.attemptNumber = parseInt(document.getElementById('attemptNumberInsem')?.value) || 1;
-  entry.bull = document.getElementById('bullInsem')?.value || '';
-  entry.inseminator = document.getElementById('inseminatorInsem')?.value || '';
-  entry.code = document.getElementById('codeInsem')?.value || '';
-  entry.status = 'Осеменена'; // Обновляем статус
+  entry.attemptNumber = attemptNumber;
+  entry.bull = bull;
+  entry.inseminator = inseminator;
+  entry.code = code;
+  entry.status = 'Осеменена';
 
   // Сохраняем изменения
   try {
