@@ -127,7 +127,6 @@ function updateViewList() {
             <td class="actions-cell">
               <button type="button" class="small-btn view" title="Карточка" data-action="view" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">👁</button>
               <button type="button" class="small-btn edit" data-action="edit" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">✏️</button>
-              <button type="button" class="small-btn delete" data-action="delete-one" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">🗑️</button>
             </td>
           </tr>
         `;
@@ -145,7 +144,35 @@ function updateViewList() {
 
   setTimeout(function () {
     updateSelectedCount();
+    // Проверочный код: убедиться, что групповое выделение отрисовано
+    _assertBulkSelectionUI();
   }, 0);
+}
+
+/**
+ * Проверка наличия UI группового выделения (для отладки и надёжности).
+ * Если элементов нет — в консоль пишется предупреждение.
+ */
+function _assertBulkSelectionUI() {
+  var bulk = document.getElementById('viewBulkActions');
+  var selectAll = document.getElementById('selectAllCheckbox');
+  var checkboxes = document.querySelectorAll('.entry-checkbox');
+  var bar = document.querySelector('.bulk-actions-bar');
+  if (!bulk || !bulk.innerHTML) {
+    console.warn('[Просмотр описи] Панель выделения (viewBulkActions) пуста');
+    return;
+  }
+  if (!bar) {
+    console.warn('[Просмотр описи] Элемент .bulk-actions-bar не найден');
+    return;
+  }
+  if (!selectAll && checkboxes.length > 0) {
+    console.warn('[Просмотр описи] Чекбокс «Выделить все» не найден');
+    return;
+  }
+  if (checkboxes.length === 0 && document.getElementById('viewEntriesList') && document.querySelector('.entries-table tbody')) {
+    console.warn('[Просмотр описи] В таблице нет чекбоксов строк (.entry-checkbox)');
+  }
 }
 
 function _handleViewListClick(ev) {
@@ -189,7 +216,7 @@ function _handleViewListClick(ev) {
     return;
   }
 
-  // Кнопки в ячейке «Действия»
+  // Кнопки в ячейке «Действия» (только карточка и редактирование; удаление — через групповое)
   var actionBtn = target.closest('.actions-cell [data-action]');
   if (actionBtn) {
     ev.stopPropagation();
@@ -198,7 +225,6 @@ function _handleViewListClick(ev) {
     var act = actionBtn.getAttribute('data-action');
     if (act === 'view' && typeof viewCow === 'function') viewCow(cattleId);
     if (act === 'edit' && typeof editEntry === 'function') editEntry(cattleId);
-    if (act === 'delete-one' && typeof deleteEntry === 'function') deleteEntry(cattleId);
     return;
   }
 
