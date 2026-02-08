@@ -1,8 +1,9 @@
 # Dependencies
 node_modules/
 
-# Electron binary (too large for GitHub)
+# Electron (dependencies and build output — too large for GitHub)
 electron/node_modules/
+electron/dist/
 
 # OS
 .DS_Store
