@@ -295,8 +295,8 @@
     <h1>🔄 Синхронизация</h1>
     <div class="sync-controls">
       <button onclick="exportData()">Экспорт данных</button>
-      <label for="importFile">Импорт данных
-        <input type="file" id="importFile" accept=".json" onchange="importData()" />
+      <label for="importFileJson">Импорт данных (JSON)
+        <input type="file" id="importFileJson" accept=".json" onchange="importData(event)" />
       </label>
       <div id="syncStatus" class="sync-status"></div>
     </div>
