@@ -141,17 +141,44 @@ function handleImportFile(event) {
 }
 
 /**
+ * Подсчёт кириллических символов (для выбора правильной кодировки).
+ */
+function countCyrillic(str) {
+  if (!str || typeof str !== 'string') return 0;
+  var n = 0;
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    if (c >= 0x0400 && c <= 0x04FF) n++;
+  }
+  return n;
+}
+
+/**
  * Декодирует содержимое файла с учётом кодировки (UTF-8 или Windows-1251).
- * Если при чтении как UTF-8 появляются замены символов — пробуем Windows-1251 (типично для Excel в Windows).
+ * - При наличии BOM UTF-8 — всегда используется UTF-8.
+ * - При символе замены U+FFFD в UTF-8 — пробуем Windows-1251.
+ * - Иначе сравниваем по количеству кириллицы: файлы Excel в Windows часто в Windows-1251,
+ *   при чтении как UTF-8 буквы превращаются в «иероглифы» (мало кириллицы в строке).
  */
 function decodeCsvFileContent(buffer) {
+  var bytes = new Uint8Array(buffer);
+  // Явный BOM UTF-8 — без проверок используем UTF-8
+  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+    try {
+      return new TextDecoder('utf-8').decode(buffer);
+    } catch (e) {
+      // fallback ниже
+    }
+  }
+
   var utf8 = '';
   try {
     utf8 = new TextDecoder('utf-8').decode(buffer);
   } catch (e) {
     utf8 = '';
   }
-  // Символ замены U+FFFD — признак неверной кодировки (файл в Windows-1251, а не в UTF-8)
+
+  // Символ замены — явная ошибка декодирования UTF-8
   if (utf8.indexOf('\uFFFD') !== -1) {
     try {
       return new TextDecoder('windows-1251').decode(buffer);
@@ -159,6 +186,20 @@ function decodeCsvFileContent(buffer) {
       return utf8;
     }
   }
+
+  // Нет BOM и нет замен: пробуем Windows-1251 и выбираем по количеству кириллицы
+  try {
+    var win1251 = new TextDecoder('windows-1251').decode(buffer);
+    var cyrillicUtf8 = countCyrillic(utf8);
+    var cyrillic1251 = countCyrillic(win1251);
+    // Если при декодировании как Windows-1251 кириллицы заметно больше — файл скорее всего в 1251
+    if (cyrillic1251 > cyrillicUtf8) {
+      return win1251;
+    }
+  } catch (e2) {
+    // windows-1251 недоступен в среде — оставляем utf8
+  }
+
   return utf8;
 }
 
