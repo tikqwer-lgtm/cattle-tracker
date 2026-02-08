@@ -13,6 +13,11 @@ const indexPath = isDev
   ? path.join(rootDir, 'index.html')
   : path.join(__dirname, 'index.html');
 
+// В режиме file:// отключаем Service Worker — он ломает загрузку и даёт "Not allowed to load local resource"
+if (isDev) {
+  app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
+}
+
 let mainWindow;
 
 function createWindow() {
@@ -23,15 +28,19 @@ function createWindow() {
     minHeight: 400,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: false
     },
     title: 'Учёт коров',
     icon: path.join(rootDir, 'favicon.ico')
   });
 
-  mainWindow.loadFile(indexPath).catch((err) => {
-    console.error('loadFile failed:', err);
-    mainWindow.loadURL(pathToFileURL(indexPath).href);
+  const ses = mainWindow.webContents.session;
+  ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] }).then(() => {
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.error('loadFile failed:', err);
+      mainWindow.loadURL(pathToFileURL(indexPath).href);
+    });
   });
 
   if (isDev) {
