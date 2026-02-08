@@ -174,6 +174,7 @@ function importFromCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // Проверяем наличие PapaParse
   if (typeof Papa === 'undefined') {
     alert('❌ Библиотека PapaParse не загружена. Пожалуйста, проверьте подключение к интернету или обновите страницу.');
     event.target.value = '';
