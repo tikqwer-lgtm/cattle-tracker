@@ -1,6 +1,6 @@
 # Cattle Tracker API
 
-Backend for multi-user, multiplatform cattle tracker.
+Backend for multi-user, multiplatform cattle tracker. Один сервер — единый источник данных для всех клиентов (десктоп, веб, мобильные).
 
 ## Setup
 
@@ -11,6 +11,16 @@ npm start
 ```
 
 Server runs on `http://localhost:3000`. Set `PORT` to change.
+
+## Развёртывание в интернете (HTTPS)
+
+Для доступа из интернета сервер должен работать по **HTTPS**. Рекомендуемая схема:
+
+1. Установите сервер на VPS или облачном хостинге (Node.js на порту 3000 или за обратным прокси).
+2. Настройте обратный прокси (Nginx, Caddy или облачный Load Balancer) с SSL: сертификат (Let's Encrypt или другой) и проксирование на `http://localhost:3000`.
+3. Пользователи в приложении вводят в «Адрес сервера» только **https://** URL (например `https://api.ваш-домен.ru`), без указания порта при использовании 443.
+
+Без HTTPS современные окружения могут блокировать запросы к API. В локальной сети допустим `http://IP:3000`.
 
 ## Endpoints
 

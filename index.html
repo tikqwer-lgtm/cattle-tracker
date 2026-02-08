@@ -6,8 +6,17 @@
   <title>Учёт коров — расширенный функционал</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#4a90e2" />
-  <!-- Режим API: раскомментируйте и укажите URL бэкенда для многопользовательской работы -->
-  <!-- <script>window.CATTLE_TRACKER_USE_API = true; window.CATTLE_TRACKER_API_BASE = 'http://localhost:3000';</script> -->
+  <script>
+  (function(){
+    try {
+      var base = localStorage.getItem('cattleTracker_apiBase');
+      if (base && (base = (base + '').trim())) {
+        window.CATTLE_TRACKER_USE_API = true;
+        window.CATTLE_TRACKER_API_BASE = base.replace(/\/$/, '');
+      }
+    } catch (e) {}
+  })();
+  </script>
   <!-- Подключение основных стилей -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -15,6 +24,14 @@
   <!-- Экран входа / регистрации -->
   <div id="auth-screen" class="screen">
     <h1>Вход</h1>
+    <div id="server-url-block" class="server-url-block">
+      <label for="serverApiBaseInput">Адрес сервера</label>
+      <div class="server-url-row">
+        <input type="url" id="serverApiBaseInput" placeholder="https://api.example.com" />
+        <button type="button" class="small-btn" id="serverUrlSaveBtn" onclick="saveServerBaseUrl()">Сохранить</button>
+      </div>
+      <p id="serverUrlHint" class="server-url-hint">Для синхронизации с другими пользователями укажите URL сервера (HTTPS для интернета).</p>
+    </div>
     <div id="auth-form-container" class="auth-form-container">
       <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
         <label for="authUsername">Логин</label>
@@ -336,6 +353,9 @@
   <!-- Экран резервного копирования -->
   <div id="backup-screen" class="screen">
     <h1>💾 Резервные копии</h1>
+    <div class="backup-actions">
+      <button type="button" class="action-btn" onclick="handleCheckForUpdates()">Проверить обновления</button>
+    </div>
     <div id="backup-container"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>

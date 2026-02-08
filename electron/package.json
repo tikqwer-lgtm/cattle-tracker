@@ -12,11 +12,19 @@
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
   "build": {
     "appId": "com.cattletracker.app",
     "productName": "Учёт коров",
     "directories": { "output": "dist" },
     "extraMetadata": { "main": "main.js" },
+    "publish": {
+      "provider": "github",
+      "owner": "tikqwer-lgtm",
+      "repo": "cattle-tracker"
+    },
     "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
     "nsis": {
       "oneClick": false,

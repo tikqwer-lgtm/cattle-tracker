@@ -1,11 +1,21 @@
 /**
  * Electron main process — открывает окно с приложением Учёт коров.
  * Загружает index.html из родительской папки (cattle-tracker).
- * Для работы с API включите в index.html: CATTLE_TRACKER_USE_API = true и укажите CATTLE_TRACKER_API_BASE.
+ * Для работы с API укажите адрес сервера в приложении (экран входа).
  */
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
+
+let autoUpdater;
+if (app.isPackaged) {
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.setFeedURL({ provider: 'github', owner: 'tikqwer-lgtm', repo: 'cattle-tracker' });
+  } catch (e) {
+    console.warn('electron-updater not available:', e.message);
+  }
+}
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const rootDir = path.join(__dirname, '..');
@@ -18,6 +28,80 @@ app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
 
 let mainWindow;
 
+function setupAutoUpdater() {
+  if (!autoUpdater || !app.isPackaged) return;
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Обновление',
+      message: 'Доступна новая версия. Скачивание в фоне…'
+    }).catch(() => {});
+  });
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Обновление',
+      message: 'Обновление загружено. Перезапустить приложение сейчас?',
+      buttons: ['Перезапустить', 'Позже']
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall(false, true);
+    }).catch(() => {});
+  });
+  autoUpdater.on('error', (err) => {
+    console.warn('Auto-update error:', err);
+  });
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
+function createAppMenu() {
+  const template = [
+    { role: 'fileMenu' },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    {
+      label: 'Справка',
+      submenu: [
+        {
+          label: 'Проверить обновления',
+          click: () => {
+            if (autoUpdater && app.isPackaged) {
+              autoUpdater.checkForUpdates().then((r) => {
+                if (r && r.updateInfo) {
+                  dialog.showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: 'Обновление',
+                    message: 'Доступна версия ' + (r.updateInfo.version || '') + '. Скачивание…'
+                  }).catch(() => {});
+                } else {
+                  dialog.showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: 'Обновления',
+                    message: 'Установлена последняя версия.'
+                  }).catch(() => {});
+                }
+              }).catch(() => {
+                dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'Обновления',
+                  message: 'Не удалось проверить обновления.'
+                }).catch(() => {});
+              });
+            } else {
+              dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'Обновления',
+                message: 'В режиме разработки проверка обновлений недоступна.'
+              }).catch(() => {});
+            }
+          }
+        }
+      ]
+    }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
@@ -27,7 +111,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false
+      webSecurity: false,
+      preload: path.join(__dirname, 'preload.js')
     },
     title: 'Учёт коров',
     icon: path.join(isDev ? rootDir : __dirname, 'favicon.ico')
@@ -48,7 +133,18 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  createAppMenu();
+  setupAutoUpdater();
 }
+
+ipcMain.handle('check-for-updates', () => {
+  if (!autoUpdater || !app.isPackaged) return Promise.resolve({ ok: false, dev: true });
+  return autoUpdater.checkForUpdates().then((r) => {
+    if (r && r.updateInfo) return { ok: true, version: r.updateInfo.version };
+    return { ok: true, current: true };
+  }).catch(() => ({ ok: false }));
+});
 
 app.whenReady().then(createWindow);
 
