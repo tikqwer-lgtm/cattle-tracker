@@ -208,14 +208,14 @@ function processImportData(data, delimiter, event) {
         cattleId: separated.cattleId || '',
         nickname: cleanString(cleanRow[1]) || '',
         birthDate: cleanString(cleanRow[2]) || '',
-        lactation: parseInt(cleanRow[3]) || 1,
+        lactation: (cleanRow[3] && String(cleanRow[3]).trim() !== '') ? (parseInt(cleanRow[3], 10) || '') : '',
         calvingDate: cleanString(cleanRow[4]) || '',
         inseminationDate: cleanString(cleanRow[5]) || '',
         attemptNumber: parseInt(cleanRow[6]) || 1,
         bull: cleanString(cleanRow[7]) || '',
         inseminator: cleanString(cleanRow[8]) || '',
         code: cleanString(cleanRow[9]) || '',
-        status: cleanString(cleanRow[10]) || 'Охота',
+        status: cleanString(cleanRow[10]) || '',
         protocol: {
           name: cleanString(cleanRow[11]) || '',
           startDate: cleanString(cleanRow[12]) || ''

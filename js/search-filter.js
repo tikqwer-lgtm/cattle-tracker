@@ -160,7 +160,7 @@
     var container = document.getElementById(containerId);
     if (!container) return;
 
-    var statusOptions = ['Охота', 'Сухостой', 'Отёл', 'Сухостой (вынужд.)', 'Отёл (вынужд.)'];
+    var statusOptions = ['Осемененная', 'Холостая', 'Стельная', 'Сухостой', 'Отёл', 'Брак'];
     var statusChecks = statusOptions.map(function (s) {
       var checked = filters.status.indexOf(s) !== -1 ? ' checked' : '';
       return '<label class="filter-check"><input type="checkbox" data-filter-status="' + s.replace(/"/g, '&quot;') + '"' + checked + '> ' + s + '</label>';
