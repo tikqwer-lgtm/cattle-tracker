@@ -7,6 +7,11 @@ var urlsToCache = [
   './css/base.css',
   './css/layout.css',
   './css/components.css',
+  './css/components-buttons.css',
+  './css/components-forms.css',
+  './css/components-cards.css',
+  './css/components-tables.css',
+  './css/components-screens.css',
   './css/forms.css',
   './css/responsive.css',
   './css/sync.css',
@@ -14,6 +19,9 @@ var urlsToCache = [
   './js/utils.js',
   './js/events.js',
   './js/api-client.js',
+  './js/storage-objects.js',
+  './js/storage-entries.js',
+  './js/storage-integrity.js',
   './js/storage.js',
   './js/core.js',
   './js/users.js',
@@ -23,13 +31,15 @@ var urlsToCache = [
   './js/app.js',
   './js/menu.js',
   './js/sync.js',
-  './js/export.js',
+  './js/export-import.js',
+  './js/export-excel.js',
   './js/insemination.js',
   './js/view-cow.js',
   './js/search-filter.js',
   './js/notifications.js',
   './js/analytics.js',
-  './js/backup.js'
+  './js/backup.js',
+  './js/view-list.js'
 ];
 
 self.addEventListener('install', function (event) {

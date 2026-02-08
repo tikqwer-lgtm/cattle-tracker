@@ -174,6 +174,33 @@ if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
   }
 }
 
+function handleCheckForUpdates() {
+  if (typeof window.electronAPI !== 'undefined' && window.electronAPI.checkForUpdates) {
+    window.electronAPI.checkForUpdates().then(function (r) {
+      if (r.dev) {
+        if (typeof showToast === 'function') showToast('Проверка обновлений доступна в установленной версии', 'info');
+        else alert('Проверка обновлений доступна в установленной версии.');
+        return;
+      }
+      if (!r.ok) {
+        if (typeof showToast === 'function') showToast('Не удалось проверить обновления', 'error');
+        else alert('Не удалось проверить обновления.');
+        return;
+      }
+      if (r.version) {
+        if (typeof showToast === 'function') showToast('Доступна версия ' + r.version + '. Скачивание…', 'info');
+        else alert('Доступна версия ' + r.version + '. Скачивание…');
+        return;
+      }
+      if (typeof showToast === 'function') showToast('Установлена последняя версия', 'success');
+      else alert('Установлена последняя версия.');
+    });
+  } else {
+    if (typeof showToast === 'function') showToast('Проверка обновлений доступна в десктопной версии', 'info');
+    else alert('Проверка обновлений доступна в десктопной версии приложения.');
+  }
+}
+
 // Экспорт для других модулей
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

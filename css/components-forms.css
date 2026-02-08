@@ -1,0 +1,27 @@
+/* components-forms.css — формы (сетка, поля ввода) */
+
+.form {
+  display: grid;
+  gap: 15px;
+}
+
+.form label {
+  font-weight: bold;
+}
+
+.form input[type="text"],
+.form input[type="date"],
+.form input[type="number"],
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.form textarea {
+  min-height: 80px;
+  resize: vertical;
+}

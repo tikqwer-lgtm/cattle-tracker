@@ -1,0 +1,43 @@
+/* components-cards.css — карточки записей, список записей */
+
+.entry {
+  background: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #4a90e2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.entry.unsynced {
+  border-left-color: #ff9900;
+}
+
+.entry-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 5px;
+}
+
+.small-btn {
+  padding: 5px 10px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.small-btn.view {
+  background: #5a9b5a;
+  color: white;
+}
+
+.small-btn.edit {
+  background: #4a90e2;
+  color: white;
+}
+
+.small-btn.delete {
+  background: #e74c3c;
+  color: white;
+}

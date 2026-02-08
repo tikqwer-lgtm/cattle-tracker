@@ -123,7 +123,37 @@
 
   var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
 
+  function getSavedServerBase() {
+    try {
+      var s = localStorage.getItem('cattleTracker_apiBase');
+      return (s && (s = (s + '').trim())) ? s : '';
+    } catch (e) { return ''; }
+  }
+
+  function saveServerBaseUrl() {
+    var input = document.getElementById('serverApiBaseInput');
+    var url = (input && input.value ? input.value : '').trim().replace(/\/$/, '');
+    if (!url) {
+      if (typeof showToast === 'function') showToast('Введите адрес сервера', 'error');
+      else alert('Введите адрес сервера');
+      return;
+    }
+    if (url.indexOf('http://') === 0 && url.indexOf('localhost') === -1 && url.indexOf('127.0.0.1') === -1) {
+      if (!confirm('Для доступа из интернета рекомендуется HTTPS. Продолжить с HTTP?')) return;
+    }
+    try {
+      localStorage.setItem('cattleTracker_apiBase', url);
+      if (typeof showToast === 'function') showToast('Адрес сохранён. Перезагрузка…', 'info');
+      location.reload();
+    } catch (e) {
+      if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
+      else alert('Ошибка сохранения');
+    }
+  }
+
   function initUsers() {
+    var serverInput = document.getElementById('serverApiBaseInput');
+    if (serverInput) serverInput.value = getSavedServerBase();
     if (useApi) {
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
@@ -241,6 +271,8 @@
     window.handleRegister = handleRegister;
     window.skipAuth = skipAuth;
     window.handleLogout = handleLogout;
+    window.saveServerBaseUrl = saveServerBaseUrl;
+    window.getSavedServerBase = getSavedServerBase;
   }
 
   if (typeof window !== 'undefined' && window.document) {
