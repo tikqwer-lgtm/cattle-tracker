@@ -98,7 +98,7 @@
         <span>📥</span>
         <span>Импорт из Excel</span>
       </button>
-      <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importFromCSV(event)">
+      <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
       <button onclick="navigate('view')" class="action-btn">
         <span>📋</span>
         <span>Просмотр описи</span>

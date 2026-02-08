@@ -27,14 +27,31 @@ function importData(event) {
  * Приводит дату из CSV к формату YYYY-MM-DD для хранения и input type="date"
  */
 function normalizeDateForStorage(str) {
-  if (!str || typeof str !== 'string') return '';
-  var s = str.trim();
+  if (str === null || str === undefined) return '';
+  // Excel может вернуть число (сериальный номер даты)
+  if (typeof str === 'number' && !isNaN(str) && typeof XLSX !== 'undefined' && XLSX.SSF && XLSX.SSF.parse_date_code) {
+    try {
+      var d = XLSX.SSF.parse_date_code(str);
+      if (d && d.y >= 1900) {
+        var y = d.y, m = (d.m || 1), day = (d.d || 1);
+        return y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      }
+    } catch (e) { /* игнор */ }
+  }
+  var s = String(str).trim();
   if (!s) return '';
   // Уже YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   // DD.MM.YYYY или DD/MM/YYYY
   var m = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
   if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  // DD.MM.YY (двузначный год: 00-30 → 2000-2030, 31-99 → 1931-1999)
+  var mShort = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{2})$/);
+  if (mShort) {
+    var yy = parseInt(mShort[3], 10);
+    var fullYear = yy <= 30 ? 2000 + yy : 1900 + yy;
+    return fullYear + '-' + mShort[2].padStart(2, '0') + '-' + mShort[1].padStart(2, '0');
+  }
   // YYYY.MM.DD или подобное
   var m2 = s.match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/);
   if (m2) return m2[1] + '-' + m2[2].padStart(2, '0') + '-' + m2[3].padStart(2, '0');
@@ -107,6 +124,20 @@ function separateCattleIdAndDate(value) {
   
   // Если дата не найдена, возвращаем исходное значение как номер
   return { cattleId: value, date: '' };
+}
+
+/**
+ * По имени файла выбирает импорт: .xlsx — широкая таблица осеменений, иначе — CSV.
+ */
+function handleImportFile(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var name = (file.name || '').toLowerCase();
+  if (name.endsWith('.xlsx')) {
+    importFromExcelWide(event);
+  } else {
+    importFromCSV(event);
+  }
 }
 
 /**
@@ -190,6 +221,137 @@ function importFromCSV(event) {
       event.target.value = '';
     }
   });
+}
+
+/**
+ * Импорт из Excel «широкой» таблицы осеменений.
+ * Формат: Номер коровы | Лактац | Кличка | Дата рождения | Дата отела | 1 | бык | 2 | бык | … | 7 | бык | Статус.
+ * Первая строка — заголовок, данные со второй. Даты в ячейках могут быть DD.MM.YY или число Excel.
+ */
+function importFromExcelWide(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  if (typeof XLSX === 'undefined') {
+    alert('❌ Библиотека SheetJS (XLSX) не загружена. Обновите страницу.');
+    event.target.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      var ab = e.target.result;
+      var wb = XLSX.read(ab, { type: 'array', cellDates: false, raw: true });
+      var sheetName = wb.SheetNames[0];
+      var ws = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+      if (!rows || rows.length < 2) {
+        alert('❌ В файле нет данных (нужна строка заголовка и хотя бы одна строка данных).');
+        event.target.value = '';
+        return;
+      }
+      var newCount = 0;
+      var updateCount = 0;
+      var skipped = 0;
+      var cleanStr = function (val) {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'number' && isNaN(val)) return '';
+        var s = String(val).trim();
+        return s.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+      };
+      var getCell = function (row, col) {
+        var v = row[col];
+        if (v === null || v === undefined) return '';
+        return v;
+      };
+      // Индексы: 0=Номер коровы, 1=Лактац, 2=Кличка, 3=Дата рождения, 4=Дата отела, 5..6=попытка1, 7..8=попытка2, … 17..18=попытка7, 19=Статус
+      for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        if (!row || !Array.isArray(row)) continue;
+        var cattleId = cleanStr(getCell(row, 0));
+        if (!cattleId) {
+          skipped++;
+          continue;
+        }
+        var lactation = cleanStr(getCell(row, 1));
+        var nickname = cleanStr(getCell(row, 2));
+        var birthDate = normalizeDateForStorage(getCell(row, 3));
+        var calvingDate = normalizeDateForStorage(getCell(row, 4));
+        var status = normalizeStatusFromImport(cleanStr(getCell(row, 19)));
+        var history = [];
+        for (var attempt = 1; attempt <= 7; attempt++) {
+          var dateCol = 4 + (attempt - 1) * 2 + 1;   // 5,7,9,11,13,15,17
+          var bullCol = dateCol + 1;                   // 6,8,10,12,14,16,18
+          var dateVal = getCell(row, dateCol);
+          var bullVal = cleanStr(getCell(row, bullCol));
+          var dateStr = normalizeDateForStorage(dateVal);
+          if (dateStr || bullVal) {
+            history.push({
+              date: dateStr || '',
+              attemptNumber: attempt,
+              bull: bullVal || '',
+              inseminator: '',
+              code: ''
+            });
+          }
+        }
+        history.sort(function (a, b) {
+          var da = (a.date || '').toString();
+          var db = (b.date || '').toString();
+          return da < db ? -1 : da > db ? 1 : 0;
+        });
+        var lastInsem = history.length > 0 ? history[history.length - 1] : null;
+        var existing = entries.find(function (e) { return e.cattleId === cattleId; });
+        if (existing) {
+          existing.lactation = lactation || existing.lactation;
+          existing.nickname = nickname || existing.nickname;
+          existing.birthDate = birthDate || existing.birthDate;
+          existing.calvingDate = calvingDate || existing.calvingDate;
+          existing.status = status || existing.status;
+          existing.inseminationHistory = history;
+          existing.inseminationDate = lastInsem ? lastInsem.date : (existing.inseminationDate || '');
+          existing.attemptNumber = lastInsem ? lastInsem.attemptNumber : (existing.attemptNumber || 1);
+          existing.bull = lastInsem ? lastInsem.bull : (existing.bull || '');
+          updateCount++;
+        } else {
+          var entry = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : {
+            cattleId: '', nickname: '', birthDate: '', lactation: '', calvingDate: '', inseminationDate: '', attemptNumber: 1, bull: '', inseminator: '', code: '', status: '', exitDate: '', dryStartDate: '', vwp: 60, note: '', protocol: { name: '', startDate: '' }, dateAdded: typeof nowFormatted === 'function' ? nowFormatted() : '', synced: false, userId: '', lastModifiedBy: '', inseminationHistory: []
+          };
+          entry.cattleId = cattleId;
+          entry.lactation = lactation;
+          entry.nickname = nickname;
+          entry.birthDate = birthDate;
+          entry.calvingDate = calvingDate;
+          entry.status = status;
+          entry.inseminationHistory = history;
+          entry.inseminationDate = lastInsem ? lastInsem.date : '';
+          entry.attemptNumber = lastInsem ? lastInsem.attemptNumber : 1;
+          entry.bull = lastInsem ? lastInsem.bull : '';
+          if (entry.dateAdded === '') entry.dateAdded = typeof nowFormatted === 'function' ? nowFormatted() : '';
+          entries.unshift(entry);
+          newCount++;
+        }
+      }
+      if (newCount > 0 || updateCount > 0) {
+        saveLocally();
+        if (typeof updateList === 'function') updateList();
+        if (typeof updateViewList === 'function') updateViewList();
+        var msg = '✅ Импорт таблицы осеменений: добавлено ' + newCount + ', обновлено ' + updateCount;
+        if (skipped > 0) msg += ', пропущено строк: ' + skipped;
+        alert(msg);
+      } else {
+        alert('⚠️ Нет данных для импорта. Проверьте формат файла (первая колонка — «Номер коровы», далее Лактац, Кличка, даты, 7 пар дата/бык, Статус).');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Ошибка при чтении Excel: ' + (err.message || String(err)));
+    }
+    event.target.value = '';
+  };
+  reader.onerror = function () {
+    alert('❌ Не удалось прочитать файл.');
+    event.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 /**
