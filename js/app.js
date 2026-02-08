@@ -27,30 +27,34 @@ function nowFormatted() {
  */
 function initApp() {
   console.log("Инициализация приложения...");
-  
-  // Загрузка данных из localStorage
-  if (typeof loadLocally === 'function') {
-    loadLocally();
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.loadObjectsFromApi === 'function';
+
+  if (useApi) {
+    window.loadObjectsFromApi().then(function () {
+      return typeof loadLocally === 'function' ? loadLocally() : Promise.resolve();
+    }).then(function () {
+      if (typeof initInseminationModule === 'function') initInseminationModule();
+      if (typeof updateList === 'function') updateList();
+      if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+      if (typeof updateHerdStats === 'function') updateHerdStats();
+      console.log("Приложение инициализировано (API). Записей:", entries.length);
+    }).catch(function (err) {
+      console.error("Ошибка инициализации (API):", err);
+      if (typeof updateList === 'function') updateList();
+    });
   } else {
-    console.error('Функция loadLocally не найдена. Проверьте подключение storage.js');
+    if (typeof loadLocally === 'function') loadLocally();
+    else console.error('Функция loadLocally не найдена. Проверьте подключение storage.js');
+    if (typeof updateList === 'function') updateList();
+    console.log("Приложение инициализировано. Записей:", entries.length);
   }
-  
-  // Инициализация голосового помощника
+
   if (typeof VoiceAssistant !== 'undefined') {
     new VoiceAssistant();
   }
-  
-  // Инициализация модуля осеменения
-  if (typeof initInseminationModule === 'function') {
+  if (!useApi && typeof initInseminationModule === 'function') {
     initInseminationModule();
   }
-  
-  // Обновление UI
-  if (typeof updateList === 'function') {
-    updateList();
-  }
-  
-  console.log("Приложение инициализировано. Записей:", entries.length);
 }
 
 /**
@@ -58,46 +62,38 @@ function initApp() {
  */
 function addEntry() {
   console.log("Добавление записи...");
-  
-  // Валидация
-  const cattleId = document.getElementById("cattleId").value.trim();
-
+  var cattleId = (document.getElementById("cattleId") && document.getElementById("cattleId").value || '').trim();
   if (!cattleId) {
     alert("Заполните номер коровы!");
     return;
   }
-
-  // Создание записи через storage.js
-  const entry = getDefaultCowEntry();
-
-  // Заполнение полей
+  var entry = getDefaultCowEntry();
   fillCowEntryFromForm(entry);
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
   }
-  
-  // Проверка на уникальность номера коровы
-  if (entries.some(e => e.cattleId === cattleId)) {
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
+  if (useApi) {
+    window.createEntryViaApi(entry).then(function () {
+      updateList();
+      if (typeof updateViewList === 'function') updateViewList();
+      clearForm();
+      console.log("Запись добавлена:", entry);
+    }).catch(function (err) {
+      alert(err && err.message ? err.message : "Ошибка сохранения на сервере");
+    });
+    return;
+  }
+  if (entries.some(function (e) { return e.cattleId === cattleId; })) {
     alert("Корова с таким номером уже существует!");
     return;
   }
-
-  // Добавление в массив
   entries.unshift(entry);
-  
-  // Сохранение
   saveLocally();
-  
-  // Обновление UI
   updateList();
-  if (typeof updateViewList === 'function') {
-    updateViewList();
-  }
-  
-  // Очистка формы
+  if (typeof updateViewList === 'function') updateViewList();
   clearForm();
-  
   console.log("Запись добавлена:", entry);
 }
 
@@ -106,51 +102,59 @@ function addEntry() {
  */
 function saveCurrentEntry() {
   console.log("Сохранение записи...");
-  
-  const cattleId = document.getElementById('cattleId').value.trim();
-
+  var cattleId = (document.getElementById('cattleId') && document.getElementById('cattleId').value || '').trim();
   if (!cattleId) {
     alert('Заполните номер коровы!');
     return;
   }
-
-  const entry = getDefaultCowEntry();
+  var entry = getDefaultCowEntry();
   fillCowEntryFromForm(entry);
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
   }
-
-  // Обработка редактирования существующей записи
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
+  if (useApi) {
+    var p;
+    if (window.currentEditingId) {
+      entry.dateAdded = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).dateAdded || entry.dateAdded;
+      entry.synced = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).synced || false;
+      p = window.updateEntryViaApi(window.currentEditingId, entry);
+      delete window.currentEditingId;
+    } else {
+      entry.dateAdded = nowFormatted();
+      entry.synced = false;
+      p = window.createEntryViaApi(entry);
+    }
+    p.then(function () {
+      updateList();
+      if (typeof updateViewList === 'function') updateViewList();
+      clearForm();
+      if (typeof navigate === 'function') navigate('view');
+      console.log("Запись сохранена:", entry);
+    }).catch(function (err) {
+      alert(err && err.message ? err.message : "Ошибка сохранения на сервере");
+    });
+    return;
+  }
   if (window.currentEditingId) {
-    const index = entries.findIndex(e => e.cattleId === window.currentEditingId);
+    var index = entries.findIndex(function (e) { return e.cattleId === window.currentEditingId; });
     if (index !== -1) {
-      // Сохраняем метаданные
       entry.dateAdded = entries[index].dateAdded;
       entry.synced = entries[index].synced;
       entries[index] = entry;
     }
     delete window.currentEditingId;
   } else {
-    // Новая запись
     entry.dateAdded = nowFormatted();
     entry.synced = false;
     entries.unshift(entry);
   }
-
   saveLocally();
   updateList();
-  if (typeof updateViewList === 'function') {
-    updateViewList();
-  }
-  
+  if (typeof updateViewList === 'function') updateViewList();
   clearForm();
-  
-  // Возврат к просмотру
-  if (typeof navigate === 'function') {
-    navigate('view');
-  }
-  
+  if (typeof navigate === 'function') navigate('view');
   console.log("Запись сохранена:", entry);
 }
 

@@ -65,8 +65,18 @@ function updateObjectSwitcher() {
     addBtn.onclick = function () {
       var name = prompt('Название новой базы (объекта):', 'Новая база');
       if (name === null) return;
-      if (typeof addObject === 'function') addObject(name);
-      updateObjectSwitcher();
+      if (typeof addObject === 'function') {
+        var result = addObject(name);
+        if (result && typeof result.then === 'function') {
+          result.then(function () { updateObjectSwitcher(); }).catch(function (err) {
+            alert(err && err.message ? err.message : 'Ошибка создания объекта');
+          });
+        } else {
+          updateObjectSwitcher();
+        }
+      } else {
+        updateObjectSwitcher();
+      }
     };
   }
 }
