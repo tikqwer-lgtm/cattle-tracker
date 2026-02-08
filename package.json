@@ -1,0 +1,24 @@
+{
+  "name": "cattle-tracker",
+  "version": "1.0.0",
+  "description": "Учёт коров — веб, десктоп, мобильные",
+  "scripts": {
+    "start": "echo Open index.html in browser or run server",
+    "server": "cd server && npm start",
+    "electron": "cd electron && npm start",
+    "cap:sync": "cap sync",
+    "cap:android": "cap run android",
+    "cap:ios": "cap run ios"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  },
+  "capacitor": {
+    "appId": "com.cattletracker.app",
+    "appName": "Учёт коров",
+    "webDir": "."
+  }
+}

@@ -13,6 +13,7 @@ var urlsToCache = [
   './css/view-cow.css',
   './js/utils.js',
   './js/events.js',
+  './js/api-client.js',
   './js/storage.js',
   './js/core.js',
   './js/users.js',

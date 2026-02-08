@@ -6,6 +6,8 @@
   <title>Учёт коров — расширенный функционал</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#4a90e2" />
+  <!-- Режим API: раскомментируйте и укажите URL бэкенда для многопользовательской работы -->
+  <!-- <script>window.CATTLE_TRACKER_USE_API = true; window.CATTLE_TRACKER_API_BASE = 'http://localhost:3000';</script> -->
   <!-- Подключение основных стилей -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -358,6 +360,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/events.js"></script>
+  <script src="js/api-client.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/core.js"></script>
   <script src="js/users.js"></script>

@@ -121,7 +121,19 @@
     return user.role === 'admin' || user.role === 'operator';
   }
 
+  var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
+
   function initUsers() {
+    if (useApi) {
+      global.CattleTrackerApi.getCurrentUser().then(function (u) {
+        currentUser = u || null;
+        updateAuthBar();
+      }).catch(function () {
+        currentUser = null;
+        updateAuthBar();
+      });
+      return;
+    }
     loadCurrentUser();
     updateAuthBar();
   }
@@ -156,6 +168,18 @@
     if (ev && ev.preventDefault) ev.preventDefault();
     var username = document.getElementById('authUsername') && document.getElementById('authUsername').value;
     var password = document.getElementById('authPassword') && document.getElementById('authPassword').value;
+    if (useApi) {
+      global.CattleTrackerApi.login(username, password).then(function (data) {
+        if (data && data.user) saveCurrentUser(data.user);
+        if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
+        updateAuthBar();
+        if (typeof navigate === 'function') navigate('menu');
+      }).catch(function (err) {
+        var msg = (err && err.message) ? err.message : 'Ошибка входа';
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+      });
+      return false;
+    }
     var result = loginUser(username, password);
     if (result.ok) {
       if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
@@ -171,6 +195,16 @@
     var username = document.getElementById('regUsername') && document.getElementById('regUsername').value;
     var password = document.getElementById('regPassword') && document.getElementById('regPassword').value;
     var role = document.getElementById('regRole') && document.getElementById('regRole').value;
+    if (useApi) {
+      global.CattleTrackerApi.register(username, password, role).then(function (data) {
+        if (typeof showToast === 'function') showToast('Регистрация успешна. Войдите.', 'success'); else alert('Регистрация успешна. Войдите.');
+        showAuthLogin();
+      }).catch(function (err) {
+        var msg = (err && err.message) ? err.message : 'Ошибка';
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+      });
+      return false;
+    }
     var result = registerUser(username, password, role);
     if (result.ok) {
       if (typeof showToast === 'function') showToast('Регистрация успешна. Войдите.', 'success'); else alert('Регистрация успешна. Войдите.');
@@ -184,7 +218,8 @@
     if (typeof navigate === 'function') navigate('menu');
   }
   function handleLogout() {
-    logoutUser();
+    if (useApi) global.CattleTrackerApi.logout();
+    saveCurrentUser(null);
     updateAuthBar();
     if (typeof showToast === 'function') showToast('Выход выполнен', 'info'); else alert('Выход выполнен');
     if (typeof navigate === 'function') navigate('menu');
