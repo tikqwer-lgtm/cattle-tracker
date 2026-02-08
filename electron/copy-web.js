@@ -42,7 +42,7 @@ for (const f of files) {
     console.log('  ', f);
   }
 }
-['css', 'js', 'lib'].forEach(dir => {
+['css', 'js', 'lib', 'icons'].forEach(dir => {
   if (fs.existsSync(path.join(root, dir))) {
     copyDir(dir);
     console.log('  ', dir + '/');

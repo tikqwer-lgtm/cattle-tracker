@@ -1,8 +1,10 @@
 /* Service Worker — оффлайн и кэширование. При релизе увеличивайте версию в CACHE_NAME. */
-var CACHE_NAME = 'cattle-tracker-v2';
+var CACHE_NAME = 'cattle-tracker-v3';
 var urlsToCache = [
   './',
   './index.html',
+  './manifest.json',
+  './icons/icon.svg',
   './css/style.css',
   './css/base.css',
   './css/layout.css',
@@ -16,6 +18,7 @@ var urlsToCache = [
   './css/responsive.css',
   './css/sync.css',
   './css/view-cow.css',
+  './css/print.css',
   './js/utils.js',
   './js/events.js',
   './js/api-client.js',
