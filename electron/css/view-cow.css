@@ -19,9 +19,9 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #f5f5f5;
+  background: var(--color-bg);
   padding: 10px 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -46,10 +46,10 @@
 }
 
 .cow-card {
-  background: white;
+  background: var(--color-bg-elevated);
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   max-width: 800px;
   margin: 20px auto;
 }
@@ -57,8 +57,8 @@
 .cow-card h2 {
   text-align: center;
   margin-bottom: 20px;
-  color: #2c3e50;
-  border-bottom: 2px solid #4a90e2;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-primary);
   padding-bottom: 10px;
 }
 
@@ -70,7 +70,7 @@
 }
 
 .cow-details-grid strong {
-  color: #4a90e2;
+  color: var(--color-primary);
 }
 
 .cow-card-actions {
@@ -105,24 +105,24 @@
 
 .cow-insemination-table th,
 .cow-insemination-table td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   padding: 8px 10px;
   text-align: left;
 }
 
 .cow-insemination-table th {
-  background: #4a90e2;
+  background: var(--color-primary);
   color: white;
   font-weight: 600;
 }
 
 .cow-insemination-table tr:nth-child(even) {
-  background: #f9f9f9;
+  background: var(--color-bg);
 }
 
 .cow-insemination-empty {
   margin: 12px 0;
-  color: #666;
+  color: var(--color-text-muted);
   font-style: italic;
 }
 

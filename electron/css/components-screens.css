@@ -5,11 +5,11 @@
   margin-bottom: 12px;
 }
 .search-filter-bar {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
   padding: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
 .search-row {
   display: flex;
@@ -20,8 +20,8 @@
 .search-row .search-input {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 1em;
 }
 .filter-row {
@@ -33,7 +33,7 @@
 }
 .filter-label {
   font-weight: bold;
-  color: #555;
+  color: var(--color-text-muted);
   margin-right: 4px;
 }
 .filter-check {
@@ -46,8 +46,8 @@
 .filter-row input[type="date"],
 .filter-row input[type="number"] {
   padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   max-width: 120px;
 }
 @media (max-width: 768px) {
@@ -58,9 +58,9 @@
 }
 
 .notification-center {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
   overflow: hidden;
   margin-bottom: 16px;
 }
@@ -69,8 +69,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: #e3f2fd;
-  border-bottom: 1px solid #ddd;
+  background: var(--color-primary-light);
+  border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
 .notification-groups {
@@ -78,7 +78,7 @@
   overflow-y: auto;
 }
 .notification-group {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 .notification-group:last-child {
   border-bottom: none;
@@ -88,9 +88,9 @@
   padding: 10px 16px;
   font-size: 0.95em;
   font-weight: 600;
-  color: #1565c0;
-  background: #e3f2fd;
-  border-bottom: 1px solid #ddd;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-bottom: 1px solid var(--color-border);
 }
 .notification-list {
   list-style: none;
@@ -99,7 +99,7 @@
 }
 .notification-item {
   padding: 12px 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -113,7 +113,7 @@
 }
 .notification-time {
   font-size: 0.8em;
-  color: #666;
+  color: var(--color-text-muted);
 }
 .notification-item[data-cattle-id]:not([data-cattle-id=""]) {
   cursor: pointer;
@@ -128,8 +128,8 @@
 }
 .analytics-controls select {
   padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 .analytics-indicators {
   margin-bottom: 20px;
@@ -141,21 +141,21 @@
   margin-bottom: 20px;
 }
 .analytics-card {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
   padding: 16px;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
 .analytics-card-value {
   font-size: 1.5em;
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--color-text);
 }
 .analytics-card-label {
   font-size: 0.85em;
-  color: #666;
+  color: var(--color-text-muted);
   margin-top: 4px;
 }
 .analytics-charts {
@@ -179,7 +179,7 @@
   gap: 10px;
   padding: 8px 0;
   margin-bottom: 10px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--color-border);
 }
 .auth-form-container {
   max-width: 400px;
@@ -203,9 +203,9 @@
 .backup-import-label {
   cursor: pointer;
   padding: 10px 16px;
-  background: #4a90e2;
+  background: var(--color-primary);
   color: #fff;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 0.95em;
 }
 .backup-list-header {
@@ -222,7 +222,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
   gap: 8px;
 }
