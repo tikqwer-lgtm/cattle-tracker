@@ -229,8 +229,24 @@
   box-sizing: border-box;
 }
 
-.view-screen h1 {
+/* Верхний блок экрана просмотра — закреплён при прокрутке списка вниз */
+.view-screen-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   flex-shrink: 0;
+  background: #f5f5f5;
+  padding-bottom: 10px;
+  margin-bottom: 0;
+  margin-left: -12px;
+  margin-right: -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.view-screen-header h1 {
   margin-bottom: 10px;
 }
 
@@ -239,10 +255,10 @@
   margin-top: 10px;
 }
 
-/* Контейнер панели выделения — вне скролла, всегда виден */
+/* Контейнер панели выделения — внутри липкого шапки */
 .view-bulk-actions {
   flex-shrink: 0;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .view-entries-wrapper {

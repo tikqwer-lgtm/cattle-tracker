@@ -239,10 +239,12 @@
 
   <!-- Экран просмотра записей -->
   <div id="view-screen" class="screen view-screen">
-    <h1>📋 Просмотр описи</h1>
-    <div id="search-filter-container" class="search-filter-container"></div>
-    <!-- Панель группового выделения — всегда видна, не скроллится -->
-    <div id="viewBulkActions" class="view-bulk-actions"></div>
+    <!-- Верхний блок: закреплён при прокрутке списка -->
+    <div class="view-screen-header">
+      <h1>📋 Просмотр описи</h1>
+      <div id="search-filter-container" class="search-filter-container"></div>
+      <div id="viewBulkActions" class="view-bulk-actions"></div>
+    </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
     <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
   </div>
@@ -310,7 +312,6 @@
   <script src="js/cow-operations.js"></script>
   <script src="js/voice-handler.js"></script>
   <script src="js/app.js"></script>
-  <script src="js/menu.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/export.js"></script>
   <script src="js/insemination.js"></script>
@@ -319,5 +320,7 @@
   <script src="js/notifications.js"></script>
   <script src="js/analytics.js"></script>
   <script src="js/backup.js"></script>
+  <!-- menu.js последним: список с групповым выделением (updateViewList) не должен перезаписываться -->
+  <script src="js/menu.js"></script>
 </body>
 </html>
