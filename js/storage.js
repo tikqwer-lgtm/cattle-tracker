@@ -455,10 +455,42 @@ function forceCleanDamagedEntries() {
   alert(`✅ Принудительная очистка завершена.\nУдалено поврежденных записей: ${removedCount}\nОсталось валидных: ${afterCount}`);
 }
 
+/**
+ * Удаляет все данные программы (записи коров, пользователи, копии, уведомления, фильтры).
+ * Необратимо!
+ */
+function deleteAllData() {
+  const beforeCount = entries.length;
+  entries = [];
+  try {
+    localStorage.removeItem('cattleEntries');
+    // Очищаем все ключи приложения
+    var keysToRemove = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && (key === 'cattleEntries' || key.indexOf('cattleTracker_') === 0)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(function (k) { localStorage.removeItem(k); });
+  } catch (e) {
+    console.error('Ошибка при удалении данных:', e);
+    alert('Ошибка при удалении данных. Проверьте консоль.');
+    return;
+  }
+  if (typeof window.CattleTrackerEvents !== 'undefined') {
+    window.CattleTrackerEvents.emit('entries:updated', entries);
+  }
+  if (typeof updateList === 'function') updateList();
+  if (typeof updateViewList === 'function') updateViewList();
+  alert('✅ Все данные удалены.\nУдалено записей: ' + beforeCount);
+}
+
 // Делаем функции доступными глобально для использования в консоли
 window.checkDataIntegrity = checkDataIntegrity;
 window.cleanAllEntries = cleanAllEntries;
 window.forceCleanDamagedEntries = forceCleanDamagedEntries;
+window.deleteAllData = deleteAllData;
 
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {
