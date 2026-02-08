@@ -241,19 +241,21 @@
   <div id="view-screen" class="screen view-screen">
     <!-- Верхний блок: закреплён при прокрутке списка -->
     <div class="view-screen-header">
+      <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
       <h1>📋 Просмотр описи</h1>
       <div id="search-filter-container" class="search-filter-container"></div>
       <div id="viewBulkActions" class="view-bulk-actions"></div>
     </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
-    <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
   </div>
 
   <!-- Экран просмотра карточки животного -->
-  <div id="view-cow-screen" class="screen">
-    <h1>🔍 Просмотр животного</h1>
-    <div id="viewCowCard"></div>
-    <button onclick="navigate('view')" class="back-button">Назад к списку</button>
+  <div id="view-cow-screen" class="screen view-cow-screen">
+    <div class="view-cow-header">
+      <button onclick="navigate('view')" class="back-button view-cow-back">Назад к списку</button>
+      <h1>🔍 Просмотр животного</h1>
+    </div>
+    <div id="viewCowCard" class="view-cow-body"></div>
   </div>
 
   <!-- Экран уведомлений -->

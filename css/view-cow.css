@@ -1,5 +1,50 @@
 /* view-cow.css — Стили карточки просмотра животного */
 
+/* Экран карточки: верхняя панель закреплена, контент прокручивается */
+.view-cow-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.view-cow-screen.active {
+  display: flex !important;
+}
+
+.view-cow-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f5f5f5;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-cow-back {
+  flex-shrink: 0;
+}
+
+.view-cow-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.view-cow-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
 .cow-card {
   background: white;
   padding: 20px;

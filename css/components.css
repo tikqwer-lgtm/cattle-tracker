@@ -229,7 +229,7 @@
   box-sizing: border-box;
 }
 
-/* Верхний блок экрана просмотра — закреплён при прокрутке списка вниз */
+/* Верхний блок экрана просмотра — всегда виден, список прокручивается под ним */
 .view-screen-header {
   position: sticky;
   top: 0;
@@ -246,13 +246,13 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.view-screen-header h1 {
-  margin-bottom: 10px;
+.view-screen-back {
+  margin-bottom: 8px;
+  display: inline-block;
 }
 
-.view-screen .back-button {
-  flex-shrink: 0;
-  margin-top: 10px;
+.view-screen-header h1 {
+  margin-bottom: 10px;
 }
 
 /* Контейнер панели выделения — внутри липкого шапки */
@@ -266,6 +266,14 @@
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Строка таблицы — клик открывает карточку животного */
+.view-entry-row {
+  cursor: pointer;
+}
+.view-entry-row:hover {
+  background: #e3f2fd;
 }
 
 /* Стили для группового выделения */

@@ -101,7 +101,6 @@ function updateViewList() {
           <th>Сухостой</th>
           <th>Примечание</th>
           <th>Синхронизация</th>
-          <th>Действия</th>
         </tr>
       </thead>
       <tbody>
@@ -109,7 +108,7 @@ function updateViewList() {
           const safeCattleId = escapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
           return `
-          <tr class="${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">
+          <tr class="view-entry-row ${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" role="button" tabindex="0">
             <td class="checkbox-column">
               <input type="checkbox" id="${checkboxId}" class="entry-checkbox" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" aria-label="Выделить">
             </td>
@@ -124,10 +123,6 @@ function updateViewList() {
             <td>${formatDate(entry.dryStartDate) || '—'}</td>
             <td>${escapeHtml(entry.note)}</td>
             <td>${entry.synced ? '✅' : '🟡'}</td>
-            <td class="actions-cell">
-              <button type="button" class="small-btn view" title="Карточка" data-action="view" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">👁</button>
-              <button type="button" class="small-btn edit" data-action="edit" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}">✏️</button>
-            </td>
           </tr>
         `;
         }).join('')}
@@ -140,6 +135,8 @@ function updateViewList() {
   if (viewScreen) {
     viewScreen.removeEventListener('click', _handleViewListClick);
     viewScreen.addEventListener('click', _handleViewListClick);
+    viewScreen.removeEventListener('keydown', _handleViewListKeydown);
+    viewScreen.addEventListener('keydown', _handleViewListKeydown);
   }
 
   setTimeout(function () {
@@ -173,6 +170,15 @@ function _assertBulkSelectionUI() {
   if (checkboxes.length === 0 && document.getElementById('viewEntriesList') && document.querySelector('.entries-table tbody')) {
     console.warn('[Просмотр описи] В таблице нет чекбоксов строк (.entry-checkbox)');
   }
+}
+
+function _handleViewListKeydown(ev) {
+  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+  var row = ev.target.closest('tbody tr.view-entry-row');
+  if (!row) return;
+  ev.preventDefault();
+  var cattleId = row.getAttribute('data-cattle-id');
+  if (cattleId && typeof viewCow === 'function') viewCow(cattleId);
 }
 
 function _handleViewListClick(ev) {
@@ -209,33 +215,19 @@ function _handleViewListClick(ev) {
 
   if (!tableContainer || !tableContainer.contains(target)) return;
 
-  // Чекбокс строки
+  // Чекбокс строки — только обновляем счётчик выделения, не открываем карточку
   if (target.classList && target.classList.contains('entry-checkbox')) {
     ev.stopPropagation();
     setTimeout(updateSelectedCount, 0);
     return;
   }
 
-  // Кнопки в ячейке «Действия» (только карточка и редактирование; удаление — через групповое)
-  var actionBtn = target.closest('.actions-cell [data-action]');
-  if (actionBtn) {
-    ev.stopPropagation();
-    var cattleId = actionBtn.getAttribute('data-cattle-id');
-    if (!cattleId) return;
-    var act = actionBtn.getAttribute('data-action');
-    if (act === 'view' && typeof viewCow === 'function') viewCow(cattleId);
-    if (act === 'edit' && typeof editEntry === 'function') editEntry(cattleId);
-    return;
-  }
-
-  // Клик по строке (не по чекбоксу и не по кнопкам) — переключить выделение
-  var row = target.closest('tbody tr');
-  if (row && !target.closest('.actions-cell')) {
-    var checkbox = row.querySelector('.entry-checkbox');
-    if (checkbox) {
-      checkbox.checked = !checkbox.checked;
-      updateSelectedCount();
-    }
+  // Клик по строке — открыть карточку животного (редактирование там)
+  var row = target.closest('tbody tr.view-entry-row');
+  if (row) {
+    ev.preventDefault();
+    var cattleId = row.getAttribute('data-cattle-id');
+    if (cattleId && typeof viewCow === 'function') viewCow(cattleId);
   }
 }
 
