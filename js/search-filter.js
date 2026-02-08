@@ -10,7 +10,9 @@
     lactation: null,
     dateFrom: '',
     dateTo: '',
-    synced: null
+    synced: null,
+    group: '',
+    bull: ''
   };
   var STORAGE_KEY = 'cattleTracker_search_filter';
 
@@ -24,6 +26,8 @@
         if (parsed.dateFrom) filters.dateFrom = parsed.dateFrom;
         if (parsed.dateTo) filters.dateTo = parsed.dateTo;
         if (parsed.synced != null) filters.synced = parsed.synced;
+        if (parsed.group) filters.group = parsed.group;
+        if (parsed.bull) filters.bull = parsed.bull;
       }
     } catch (e) {
       console.warn('search-filter: не удалось загрузить сохранённые фильтры', e);
@@ -57,8 +61,10 @@
       var note = (entry.note || '').toLowerCase();
       var inseminator = (entry.inseminator || '').toLowerCase();
       var protocolName = (entry.protocol && entry.protocol.name) ? entry.protocol.name.toLowerCase() : '';
+      var group = (entry.group || '').toLowerCase();
       return cattleId.indexOf(q) !== -1 ||
              nickname.indexOf(q) !== -1 ||
+             group.indexOf(q) !== -1 ||
              status.indexOf(q) !== -1 ||
              bull.indexOf(q) !== -1 ||
              code.indexOf(q) !== -1 ||
@@ -106,6 +112,14 @@
     } else if (f.synced === false) {
       result = result.filter(function (e) { return e.synced !== true; });
     }
+    if (f.group && String(f.group).trim() !== '') {
+      var g = String(f.group).trim().toLowerCase();
+      result = result.filter(function (e) { return (e.group || '').toLowerCase().indexOf(g) !== -1; });
+    }
+    if (f.bull && String(f.bull).trim() !== '') {
+      var b = String(f.bull).trim().toLowerCase();
+      result = result.filter(function (e) { return (e.bull || '').toLowerCase().indexOf(b) !== -1; });
+    }
     return result;
   }
 
@@ -139,6 +153,8 @@
       if (f.dateFrom !== undefined) filters.dateFrom = f.dateFrom;
       if (f.dateTo !== undefined) filters.dateTo = f.dateTo;
       if (f.synced !== undefined) filters.synced = f.synced;
+      if (f.group !== undefined) filters.group = f.group;
+      if (f.bull !== undefined) filters.bull = f.bull;
       saveFilters();
     }
   }
@@ -149,7 +165,9 @@
       lactation: filters.lactation,
       dateFrom: filters.dateFrom,
       dateTo: filters.dateTo,
-      synced: filters.synced
+      synced: filters.synced,
+      group: filters.group,
+      bull: filters.bull
     };
   }
 
@@ -166,14 +184,20 @@
       return '<label class="filter-check"><input type="checkbox" data-filter-status="' + s.replace(/"/g, '&quot;') + '"' + checked + '> ' + s + '</label>';
     }).join('');
 
+    var groupVal = (filters.group || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    var bullVal = (filters.bull || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     container.innerHTML =
       '<div class="search-filter-bar">' +
         '<div class="search-row">' +
-          '<input type="text" id="searchEntriesInput" class="search-input" placeholder="Поиск по номеру, кличке, статусу, быку..." value="' + (searchQuery.replace(/"/g, '&quot;').replace(/</g, '&lt;')) + '">' +
-          '<button type="button" id="searchFilterClearBtn" class="small-btn">Сбросить</button>' +
+          '<input type="text" id="searchEntriesInput" class="search-input" placeholder="Поиск по номеру, кличке, группе, статусу, быку..." value="' + (searchQuery.replace(/"/g, '&quot;').replace(/</g, '&lt;')) + '">' +
+          '<button type="button" id="searchFilterClearBtn" class="small-btn">Сбросить фильтры</button>' +
         '</div>' +
         '<div class="filter-row">' +
           '<span class="filter-label">Статус:</span>' + statusChecks +
+          '<span class="filter-label">Группа:</span>' +
+          '<input type="text" id="filterGroup" placeholder="часть названия" value="' + groupVal + '">' +
+          '<span class="filter-label">Бык:</span>' +
+          '<input type="text" id="filterBull" placeholder="часть имени" value="' + bullVal + '">' +
           '<span class="filter-label">Лактация:</span>' +
           '<input type="number" id="filterLactation" min="1" max="20" placeholder="—" value="' + (filters.lactation !== null && filters.lactation !== '' ? filters.lactation : '') + '">' +
           '<span class="filter-label">Период (осеменение):</span>' +
@@ -190,12 +214,16 @@
     var filterLactation = document.getElementById('filterLactation');
     var filterDateFrom = document.getElementById('filterDateFrom');
     var filterDateTo = document.getElementById('filterDateTo');
+    var filterGroup = document.getElementById('filterGroup');
+    var filterBull = document.getElementById('filterBull');
 
     function applyAndUpdateView() {
       searchQuery = searchInput ? searchInput.value.trim() : '';
       filters.lactation = filterLactation && filterLactation.value !== '' ? parseInt(filterLactation.value, 10) : null;
       filters.dateFrom = filterDateFrom ? filterDateFrom.value : '';
       filters.dateTo = filterDateTo ? filterDateTo.value : '';
+      filters.group = filterGroup ? filterGroup.value.trim() : '';
+      filters.bull = filterBull ? filterBull.value.trim() : '';
       var syncedRadio = document.querySelector('input[name="filterSynced"]:checked');
       if (syncedRadio) {
         if (syncedRadio.value === '1') filters.synced = true;
@@ -225,19 +253,21 @@
     if (clearBtn) {
       clearBtn.addEventListener('click', function () {
         searchQuery = '';
-        filters = { status: [], lactation: null, dateFrom: '', dateTo: '', synced: null };
+        filters = { status: [], lactation: null, dateFrom: '', dateTo: '', synced: null, group: '', bull: '' };
         saveFilters();
         if (searchInput) searchInput.value = '';
         if (filterLactation) filterLactation.value = '';
         if (filterDateFrom) filterDateFrom.value = '';
         if (filterDateTo) filterDateTo.value = '';
+        if (filterGroup) filterGroup.value = '';
+        if (filterBull) filterBull.value = '';
         var radios = container.querySelectorAll('input[name="filterSynced"]');
         if (radios.length) radios[0].checked = true;
         container.querySelectorAll('input[data-filter-status]').forEach(function (cb) { cb.checked = false; });
         if (typeof updateViewList === 'function') updateViewList();
       });
     }
-    container.querySelectorAll('input[data-filter-status], #filterLactation, #filterDateFrom, #filterDateTo, input[name="filterSynced"]').forEach(function (el) {
+    container.querySelectorAll('input[data-filter-status], #filterLactation, #filterDateFrom, #filterDateTo, #filterGroup, #filterBull, input[name="filterSynced"]').forEach(function (el) {
       el.addEventListener('change', applyAndUpdateView);
     });
   }

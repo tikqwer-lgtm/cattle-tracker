@@ -30,3 +30,23 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Переключатель объектов (баз) */
+.object-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.object-switcher label {
+  font-size: 0.95em;
+  color: #555;
+}
+.object-select {
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  font-size: 0.95em;
+}

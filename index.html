@@ -52,6 +52,13 @@
       <button type="button" class="small-btn" onclick="handleLogout()">Выйти</button>
     </div>
 
+    <!-- Переключатель объектов (баз) -->
+    <div id="object-switcher" class="object-switcher">
+      <label for="currentObjectSelect">Объект:</label>
+      <select id="currentObjectSelect" class="object-select" title="Выберите базу для работы"></select>
+      <button type="button" class="small-btn" id="addObjectBtn" title="Добавить новую базу">+ Добавить объект</button>
+    </div>
+
     <!-- Статистика стада -->
     <div class="herd-stats">
       <div class="stat-item">
@@ -76,61 +83,86 @@
       </div>
     </div>
 
-    <!-- Кнопки действий -->
+    <!-- Кнопки действий по группам -->
     <div class="action-buttons">
-      <button onclick="navigate('add')" class="action-btn">
-        <span>➕</span>
-        <span>Добавить животное</span>
-      </button>
-      <button onclick="navigate('insemination')" class="action-btn">
-        <span>🐄</span>
-        <span>Ввести осеменение</span>
-      </button>
-      <button onclick="exportToExcel()" class="action-btn">
-        <span>📤</span>
-        <span>Экспорт в Excel</span>
-      </button>
-      <button onclick="downloadTemplate()" class="action-btn">
-        <span>📋</span>
-        <span>Шаблон импорта</span>
-      </button>
-      <button onclick="document.getElementById('importFile').click()" class="action-btn">
-        <span>📥</span>
-        <span>Импорт из Excel</span>
-      </button>
-      <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
-      <button onclick="navigate('view')" class="action-btn">
-        <span>📋</span>
-        <span>Просмотр описи</span>
-      </button>
-      <button onclick="navigate('all-inseminations')" class="action-btn">
-        <span>📑</span>
-        <span>Все осеменения</span>
-      </button>
-      <button onclick="navigate('notifications')" class="action-btn">
-        <span>🔔</span>
-        <span>Уведомления</span>
-      </button>
-      <button onclick="navigate('analytics')" class="action-btn">
-        <span>📊</span>
-        <span>Аналитика</span>
-      </button>
-      <button onclick="navigate('auth')" class="action-btn">
-        <span>👤</span>
-        <span>Войти / Пользователи</span>
-      </button>
-      <button onclick="navigate('backup')" class="action-btn">
-        <span>💾</span>
-        <span>Резервные копии</span>
-      </button>
-      <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #ffc107;">
-        <span>🧹</span>
-        <span>Очистить поврежденные данные</span>
-      </button>
-      <button onclick="if(confirm('ВНИМАНИЕ! Это удалит ВСЕ данные программы (записи, пользователи, копии) без возможности восстановления. Продолжить?')) deleteAllData()" class="action-btn" style="background-color: #dc3545;">
-        <span>🗑️</span>
-        <span>Удалить все</span>
-      </button>
+      <div class="menu-section">
+        <h3 class="menu-section-title">Работа с данными</h3>
+        <div class="menu-section-buttons">
+          <button onclick="navigate('add')" class="action-btn">
+            <span>➕</span>
+            <span>Добавить животное</span>
+          </button>
+          <button onclick="exportToExcel()" class="action-btn">
+            <span>📤</span>
+            <span>Экспорт в Excel</span>
+          </button>
+          <button onclick="downloadTemplate()" class="action-btn">
+            <span>📋</span>
+            <span>Шаблон импорта</span>
+          </button>
+          <button onclick="document.getElementById('importFile').click()" class="action-btn">
+            <span>📥</span>
+            <span>Импорт из Excel</span>
+          </button>
+          <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
+          <button onclick="navigate('view')" class="action-btn">
+            <span>📋</span>
+            <span>Список всех животных</span>
+          </button>
+          <button onclick="navigate('all-inseminations')" class="action-btn">
+            <span>📑</span>
+            <span>Все осеменения</span>
+          </button>
+        </div>
+      </div>
+      <div class="menu-section">
+        <h3 class="menu-section-title">Действия</h3>
+        <div class="menu-section-buttons">
+          <button onclick="navigate('insemination')" class="action-btn">
+            <span>🐄</span>
+            <span>Ввести осеменение</span>
+          </button>
+        </div>
+      </div>
+      <div class="menu-section">
+        <h3 class="menu-section-title">Аналитика</h3>
+        <div class="menu-section-buttons">
+          <button onclick="navigate('analytics')" class="action-btn">
+            <span>📊</span>
+            <span>Аналитика</span>
+          </button>
+        </div>
+      </div>
+      <div class="menu-section">
+        <h3 class="menu-section-title">Уведомления</h3>
+        <div class="menu-section-buttons">
+          <button onclick="navigate('notifications')" class="action-btn">
+            <span>🔔</span>
+            <span>Уведомления</span>
+          </button>
+        </div>
+      </div>
+      <div class="menu-section">
+        <h3 class="menu-section-title">Настройки</h3>
+        <div class="menu-section-buttons">
+          <button onclick="navigate('auth')" class="action-btn">
+            <span>👤</span>
+            <span>Войти / Пользователи</span>
+          </button>
+          <button onclick="navigate('backup')" class="action-btn">
+            <span>💾</span>
+            <span>Резервные копии</span>
+          </button>
+          <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #ffc107;">
+            <span>🧹</span>
+            <span>Очистить поврежденные данные</span>
+          </button>
+          <button onclick="if(confirm('ВНИМАНИЕ! Это удалит ВСЕ данные программы (записи, пользователи, копии) без возможности восстановления. Продолжить?')) deleteAllData()" class="action-btn" style="background-color: #dc3545;">
+            <span>🗑️</span>
+            <span>Удалить все</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -179,6 +211,9 @@
 
       <label for="nickname">Кличка</label>
       <input type="text" id="nickname" />
+
+      <label for="group">Группа</label>
+      <input type="text" id="group" placeholder="Место размещения" />
 
       <label for="birthDate">Дата рождения</label>
       <input type="date" id="birthDate" />
@@ -248,7 +283,7 @@
     <!-- Верхний блок: закреплён при прокрутке списка -->
     <div class="view-screen-header">
       <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
-      <h1>📋 Просмотр описи</h1>
+      <h1>📋 Список всех животных</h1>
       <div id="search-filter-container" class="search-filter-container"></div>
       <div id="viewBulkActions" class="view-bulk-actions"></div>
     </div>

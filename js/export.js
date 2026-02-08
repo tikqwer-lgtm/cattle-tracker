@@ -414,44 +414,49 @@ function processImportData(data, delimiter, event) {
       if (separated.date && separated.cattleId !== cattleIdRaw) {
         fixedCount++;
         console.log(`Строка ${i + 2}: Разделено "${cattleIdRaw}" -> номер: "${separated.cattleId}", дата: "${separated.date}"`);
-        
-        // Если в cleanRow[5] (дата осеменения) пусто, используем извлеченную дату
-        if (!cleanRow[5] || cleanRow[5].trim() === '') {
-          cleanRow[5] = separated.date;
+        var insemCol = cleanRow.length >= 19 ? 6 : 5;
+        if ((!cleanRow[insemCol] || cleanRow[insemCol].trim() === '') && separated.date) {
+          cleanRow[insemCol] = separated.date;
         }
       }
 
-      var birthDateRaw = cleanString(cleanRow[2]);
-      var calvingDateRaw = cleanString(cleanRow[4]);
-      var inseminationDateRaw = cleanString(cleanRow[5]);
-      var protocolStartRaw = cleanString(cleanRow[12]);
-      var exitDateRaw = cleanString(cleanRow[13]);
-      var dryStartRaw = cleanString(cleanRow[14]);
+      // Поддержка старого формата CSV без колонки «Группа» (18 колонок) и нового (19 колонок)
+      var hasGroupColumn = cleanRow.length >= 19;
+      var idx = function (oldIdx, newIdx) { return hasGroupColumn ? cleanRow[newIdx] : cleanRow[oldIdx]; };
+
+      var birthDateRaw = cleanString(hasGroupColumn ? cleanRow[3] : cleanRow[2]);
+      var calvingDateRaw = cleanString(hasGroupColumn ? cleanRow[5] : cleanRow[4]);
+      var inseminationDateRaw = cleanString(hasGroupColumn ? cleanRow[6] : cleanRow[5]);
+      var protocolStartRaw = cleanString(hasGroupColumn ? cleanRow[13] : cleanRow[12]);
+      var exitDateRaw = cleanString(hasGroupColumn ? cleanRow[14] : cleanRow[13]);
+      var dryStartRaw = cleanString(hasGroupColumn ? cleanRow[15] : cleanRow[14]);
       
       const newEntry = {
         cattleId: separated.cattleId || '',
         nickname: cleanString(cleanRow[1]) || '',
+        group: hasGroupColumn ? cleanString(cleanRow[2]) || '' : '',
         birthDate: normalizeDateForStorage(birthDateRaw),
-        lactation: (cleanRow[3] && String(cleanRow[3]).trim() !== '') ? (parseInt(cleanRow[3], 10) || '') : '',
+        lactation: (idx(3, 4) && String(idx(3, 4)).trim() !== '') ? (parseInt(idx(3, 4), 10) || '') : '',
         calvingDate: normalizeDateForStorage(calvingDateRaw),
         inseminationDate: normalizeDateForStorage(inseminationDateRaw),
-        attemptNumber: parseInt(cleanRow[6]) || 1,
-        bull: cleanString(cleanRow[7]) || '',
-        inseminator: cleanString(cleanRow[8]) || '',
-        code: cleanString(cleanRow[9]) || '',
-        status: normalizeStatusFromImport(cleanString(cleanRow[10])),
+        attemptNumber: parseInt(idx(6, 7)) || 1,
+        bull: cleanString(idx(7, 8)) || '',
+        inseminator: cleanString(idx(8, 9)) || '',
+        code: cleanString(idx(9, 10)) || '',
+        status: normalizeStatusFromImport(cleanString(idx(10, 11))),
         protocol: {
-          name: cleanString(cleanRow[11]) || '',
+          name: cleanString(idx(11, 12)) || '',
           startDate: normalizeDateForStorage(protocolStartRaw)
         },
         exitDate: normalizeDateForStorage(exitDateRaw),
         dryStartDate: normalizeDateForStorage(dryStartRaw),
-        vwp: parseInt(cleanRow[15]) || 60,
-        note: cleanString(cleanRow[16]) || '',
-        synced: cleanRow[17] === 'Да' || cleanRow[17] === 'да' || cleanRow[17] === '1',
+        vwp: parseInt(idx(15, 16)) || 60,
+        note: cleanString(idx(16, 17)) || '',
+        synced: (hasGroupColumn ? cleanRow[18] : cleanRow[17]) === 'Да' || (hasGroupColumn ? cleanRow[18] : cleanRow[17]) === 'да' || (hasGroupColumn ? cleanRow[18] : cleanRow[17]) === '1',
         dateAdded: nowFormatted(),
         userId: '',
-        lastModifiedBy: ''
+        lastModifiedBy: '',
+        inseminationHistory: []
       };
 
       // Проверка на валидность записи
@@ -544,7 +549,7 @@ function processImportData(data, delimiter, event) {
 
 /** Порядок колонок CSV (для шаблона и экспорта). Разделитель — точка с запятой. ПДО — расчётное поле. */
 var CSV_HEADERS = [
-  'Номер', 'Кличка', 'Дата рождения', 'Лактация', 'Дата отёла', 'Дата осеменения',
+  'Номер', 'Кличка', 'Группа', 'Дата рождения', 'Лактация', 'Дата отёла', 'Дата осеменения',
   'Номер попытки', 'Бык', 'Осеменитель', 'Код', 'Статус', 'Протокол', 'Начало протокола',
   'Дата выбытия', 'Начало сухостоя', 'ПДО', 'Примечание', 'Синхронизировано'
 ];
@@ -611,6 +616,7 @@ function exportToExcel() {
       cowRows.push([
         e.cattleId || '',
         e.nickname || '',
+        e.group || '',
         formatDateForExport(e.birthDate),
         e.lactation !== undefined && e.lactation !== '' ? String(e.lactation) : '',
         formatDateForExport(e.calvingDate),
@@ -668,6 +674,7 @@ function exportToExcel() {
     var row = [
       escapeCsvCell(e.cattleId),
       escapeCsvCell(e.nickname),
+      escapeCsvCell(e.group || ''),
       escapeCsvCell(formatDateForExport(e.birthDate)),
       (e.lactation !== undefined && e.lactation !== '' ? String(e.lactation) : ''),
       escapeCsvCell(formatDateForExport(e.calvingDate)),
