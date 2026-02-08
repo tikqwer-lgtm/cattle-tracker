@@ -14,7 +14,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist "electron\node_modules" (
+if not exist "electron\node_modules\.bin\electron.cmd" (
     echo Установка зависимостей Electron...
     cd electron
     call npm install
@@ -29,12 +29,12 @@ if not exist "electron\node_modules" (
 )
 
 echo Запуск десктопного приложения (Electron)...
-cd electron
-call npm start
+cd /d "%~dp0electron"
+call "%~dp0electron\node_modules\.bin\electron.cmd" .
 if errorlevel 1 (
     echo.
     echo [Ошибка] Не удалось запустить приложение. Проверьте вывод выше.
 )
-cd ..
+cd /d "%~dp0"
 echo.
 pause

@@ -5,12 +5,13 @@
  */
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const rootDir = path.join(__dirname, '..');
-const indexUrl = isDev
-  ? 'file://' + path.join(rootDir, 'index.html').replace(/\\/g, '/')
-  : 'file://' + path.join(__dirname, 'index.html').replace(/\\/g, '/');
+const indexPath = isDev
+  ? path.join(rootDir, 'index.html')
+  : path.join(__dirname, 'index.html');
 
 let mainWindow;
 
@@ -28,8 +29,9 @@ function createWindow() {
     icon: path.join(rootDir, 'favicon.ico')
   });
 
-  mainWindow.loadURL(indexUrl).catch(() => {
-    mainWindow.loadURL('file://' + path.join(rootDir, 'index.html'));
+  mainWindow.loadFile(indexPath).catch((err) => {
+    console.error('loadFile failed:', err);
+    mainWindow.loadURL(pathToFileURL(indexPath).href);
   });
 
   if (isDev) {
