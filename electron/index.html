@@ -149,15 +149,11 @@
           <span>Аналитика</span>
         </button>
       </div>
-      <div class="menu-section notifications-dropdown-section">
-        <div class="notifications-dropdown-header action-btn menu-group-btn" id="notificationsDropdownHeader" role="button" tabindex="0" onclick="toggleMenuNotificationsDropdown()">
+      <div class="menu-section">
+        <button onclick="navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
           <span>🔔</span>
           <span>Уведомления</span>
-          <span class="notification-badge" id="notificationBadge">0</span>
-        </div>
-        <div class="notifications-dropdown-body" id="menuNotificationsDropdownBody" style="display: none;">
-          <div id="menu-notifications-dropdown"></div>
-        </div>
+        </button>
       </div>
       <div class="menu-section">
         <button onclick="navigateToSubmenu('settings')" class="action-btn menu-group-btn">
@@ -355,23 +351,10 @@
     <div class="view-screen-header">
       <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
       <h1>📋 Список всех животных</h1>
-      <button type="button" class="small-btn" id="viewFieldSettingsBtn" onclick="openFieldSettingsModal()">Настройка полей</button>
       <div id="search-filter-container" class="search-filter-container"></div>
       <div id="viewBulkActions" class="view-bulk-actions"></div>
     </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
-    <!-- Модальное окно «Настройка полей» -->
-    <div id="field-settings-modal" class="field-settings-modal" style="display: none;" role="dialog" aria-labelledby="field-settings-title">
-      <div class="field-settings-modal-content">
-        <h2 id="field-settings-title">Настройка полей</h2>
-        <p class="field-settings-hint">Отметьте поля, которые нужно отображать в списке.</p>
-        <div id="field-settings-list" class="field-settings-list"></div>
-        <div class="field-settings-actions">
-          <button type="button" class="small-btn" onclick="saveFieldSettingsAndClose()">Сохранить</button>
-          <button type="button" class="small-btn" onclick="closeFieldSettingsModal()">Отмена</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Экран просмотра карточки животного -->
@@ -442,18 +425,6 @@
       <div id="syncStatus" class="sync-status"></div>
     </div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
-  </div>
-
-  <!-- Подсказки при первом запуске -->
-  <div id="onboarding-modal" class="onboarding-modal" style="display: none;" role="dialog" aria-labelledby="onboarding-title">
-    <div class="onboarding-modal-content">
-      <h2 id="onboarding-title">Добро пожаловать</h2>
-      <p id="onboarding-text" class="onboarding-text"></p>
-      <div class="onboarding-actions">
-        <button type="button" class="small-btn" id="onboardingNextBtn">Далее</button>
-        <button type="button" class="small-btn" id="onboardingSkipBtn" style="display: none;">Не показывать снова</button>
-      </div>
-    </div>
   </div>
 
    <!-- Подключение скриптов в правильном порядке -->

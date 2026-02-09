@@ -32,18 +32,7 @@
   function loadHistory() {
     try {
       var raw = localStorage.getItem(LIST_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(list)) return [];
-      var migrated = false;
-      list = list.map(function (n) {
-        if (n.read === undefined) {
-          migrated = true;
-          return Object.assign({}, n, { read: true });
-        }
-        return n;
-      });
-      if (migrated) saveHistory(list);
-      return list;
+      return raw ? JSON.parse(raw) : [];
     } catch (e) {
       return [];
     }
@@ -53,25 +42,6 @@
     try {
       localStorage.setItem(LIST_KEY, JSON.stringify((list || []).slice(-200)));
     } catch (e) {}
-  }
-
-  function markNotificationRead(id) {
-    var list = loadHistory();
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].id === id) {
-        list[i] = Object.assign({}, list[i], { read: true });
-        saveHistory(list);
-        if (typeof window.CattleTrackerEvents !== 'undefined') {
-          window.CattleTrackerEvents.emit('notification:read', id);
-        }
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function getUnreadCount() {
-    return loadHistory().filter(function (n) { return !n.read; }).length;
   }
 
   var CATEGORY_LABELS = {
@@ -94,7 +64,6 @@
 
   function createNotification(type, message, cowId, meta) {
     meta = meta || {};
-    var silent = meta.silent === true || meta.fromTimer === true;
     var item = {
       id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
       type: type || 'info',
@@ -102,21 +71,18 @@
       cattleId: cowId || '',
       meta: meta,
       category: meta.category || 'other',
-      read: false,
       createdAt: new Date().toISOString()
     };
     var history = loadHistory();
     history.push(item);
     saveHistory(history);
-    if (!silent) {
-      if (typeof window.showToast === 'function') {
-        window.showToast(message, type === 'error' ? 'error' : 'info', 4000);
-      }
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification('Учёт коров', { body: message, tag: item.id });
-        } catch (err) {}
-      }
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type === 'error' ? 'error' : 'info', 4000);
+    }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('Учёт коров', { body: message, tag: item.id });
+      } catch (err) {}
     }
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('notification:created', item);
@@ -146,7 +112,7 @@
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
-            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving', fromTimer: true }));
+            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving' }));
           }
         }
       }
@@ -158,7 +124,7 @@
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
             notified[key2] = true;
-            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination', fromTimer: true }));
+            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination' }));
           }
         }
       }
@@ -169,7 +135,7 @@
           var key3 = 'dry_' + cattleId;
           if (!notified[key3]) {
             notified[key3] = true;
-            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry', fromTimer: true }));
+            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }));
           }
         }
       }
@@ -180,7 +146,7 @@
       var key4 = 'unsynced_count';
       if (!notified[key4]) {
         notified[key4] = true;
-        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync', fromTimer: true }));
+        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync' }));
       }
     }
     return out;
@@ -357,8 +323,7 @@
       listHtml += '<h4 class="notification-group-title">' + (CATEGORY_LABELS[cat] || cat).replace(/</g, '&lt;') + '</h4>';
       listHtml += '<ul class="notification-list">';
       items.forEach(function (n) {
-        var unreadClass = !n.read ? ' notification-item-unread' : '';
-        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notification-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0">' +
+        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
           '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
           '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
           '</li>';
@@ -378,15 +343,6 @@
       '</div>';
     var tasksContainer = document.getElementById('tasks-list-container');
     if (tasksContainer) renderTasksList(tasksContainer);
-    container.querySelectorAll('.notification-item[data-notification-id]').forEach(function (li) {
-      li.addEventListener('click', function () {
-        var id = li.getAttribute('data-notification-id');
-        if (id && markNotificationRead(id)) {
-          renderNotificationCenter(containerId);
-          if (typeof renderMenuNotificationsDropdown === 'function') renderMenuNotificationsDropdown('menu-notifications-dropdown');
-        }
-      });
-    });
     var checkBtn = document.getElementById('notifCheckNow');
     var clearBtn = document.getElementById('notifClearHistory');
     if (checkBtn) {
@@ -403,50 +359,6 @@
     }
   }
 
-  var MENU_DROPDOWN_LIMIT = 15;
-
-  function renderMenuNotificationsDropdown(containerId) {
-    var container = document.getElementById(containerId);
-    var badgeEl = document.getElementById('notificationBadge');
-    var unreadCount = getUnreadCount();
-    if (badgeEl) {
-      badgeEl.textContent = unreadCount > 0 ? String(unreadCount) : '0';
-      badgeEl.classList.toggle('notification-badge-empty', unreadCount === 0);
-    }
-    if (!container) return;
-    var history = getNotificationHistory().slice().reverse().slice(0, MENU_DROPDOWN_LIMIT);
-    if (history.length === 0) {
-      container.innerHTML = '<p class="notifications-dropdown-empty">Нет уведомлений</p>';
-      return;
-    }
-    var html = '<ul class="notifications-dropdown-list">';
-    history.forEach(function (n) {
-      var unreadClass = !n.read ? ' notification-item-unread' : '';
-      html += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notification-id="' + (n.id || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0">' +
-        '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
-        '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
-        '</li>';
-    });
-    html += '</ul><p class="notifications-dropdown-more"><a href="#" onclick="navigateToSubmenu(\'notifications\'); return false;">Все уведомления</a></p>';
-    container.innerHTML = html;
-    container.querySelectorAll('.notification-item[data-notification-id]').forEach(function (li) {
-      li.addEventListener('click', function (e) {
-        if (e.target && e.target.tagName === 'A') return;
-        var id = li.getAttribute('data-notification-id');
-        if (id && markNotificationRead(id)) {
-          renderMenuNotificationsDropdown(containerId);
-        }
-      });
-    });
-  }
-
-  function toggleMenuNotificationsDropdown() {
-    var body = document.getElementById('menuNotificationsDropdownBody');
-    if (!body) return;
-    var isExpanded = body.style.display !== 'none';
-    body.style.display = isExpanded ? 'none' : 'block';
-  }
-
   function initNotifications() {
     scheduleReminders();
     if (typeof window.requestNotificationPermission === 'undefined') {
@@ -461,10 +373,6 @@
     window.getNotificationHistory = getNotificationHistory;
     window.renderNotificationCenter = renderNotificationCenter;
     window.requestNotificationPermission = requestNotificationPermission;
-    window.markNotificationRead = markNotificationRead;
-    window.getUnreadCount = getUnreadCount;
-    window.renderMenuNotificationsDropdown = renderMenuNotificationsDropdown;
-    window.toggleMenuNotificationsDropdown = toggleMenuNotificationsDropdown;
   }
 
   if (typeof window !== 'undefined' && window.document) {

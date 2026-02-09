@@ -102,11 +102,6 @@ function navigate(screenId, options) {
     updateObjectSwitcher();
     updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
-    if (typeof renderMenuNotificationsDropdown === 'function') renderMenuNotificationsDropdown('menu-notifications-dropdown');
-    if (typeof window.electronAPI !== 'undefined' && window.electronAPI.setWindowMode) window.electronAPI.setWindowMode('menu');
-    maybeShowOnboarding();
-  } else {
-    if (typeof window.electronAPI !== 'undefined' && window.electronAPI.setWindowMode) window.electronAPI.setWindowMode('data');
   }
 }
 
@@ -203,69 +198,8 @@ function updateHerdStats() {
   document.getElementById('cullCows').textContent = cullCows;
 }
 
-var ONBOARDING_HINTS_KEY = 'cattleTracker_hasSeenHints';
-var ONBOARDING_STEPS = [
-  'Объект — это база данных. Новую базу можно добавить кнопкой «+ Добавить объект».',
-  'Уведомления отображаются в раскрывающейся строке «Уведомления» выше.',
-  'Список всех животных — в разделе «Работа с данными».'
-];
-
-function maybeShowOnboarding() {
-  try {
-    if (localStorage.getItem(ONBOARDING_HINTS_KEY)) return;
-  } catch (e) { return; }
-  var modal = document.getElementById('onboarding-modal');
-  var textEl = document.getElementById('onboarding-text');
-  var nextBtn = document.getElementById('onboardingNextBtn');
-  var skipBtn = document.getElementById('onboardingSkipBtn');
-  if (!modal || !textEl || !nextBtn || !skipBtn) return;
-  var step = 0;
-  function showStep() {
-    if (step >= ONBOARDING_STEPS.length) {
-      try { localStorage.setItem(ONBOARDING_HINTS_KEY, '1'); } catch (e) {}
-      modal.style.display = 'none';
-      return;
-    }
-    textEl.textContent = ONBOARDING_STEPS[step];
-    nextBtn.textContent = step === ONBOARDING_STEPS.length - 1 ? 'Понятно' : 'Далее';
-    nextBtn.style.display = '';
-    skipBtn.style.display = step === ONBOARDING_STEPS.length - 1 ? 'none' : '';
-    modal.style.display = 'flex';
-  }
-  nextBtn.onclick = function () {
-    step++;
-    showStep();
-  };
-  skipBtn.onclick = function () {
-    try { localStorage.setItem(ONBOARDING_HINTS_KEY, '1'); } catch (e) {}
-    modal.style.display = 'none';
-  };
-  showStep();
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   navigate('menu');
-  var dropdownHeader = document.getElementById('notificationsDropdownHeader');
-  if (dropdownHeader) {
-    dropdownHeader.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        if (typeof toggleMenuNotificationsDropdown === 'function') toggleMenuNotificationsDropdown();
-      }
-    });
-  }
-  if (typeof window.CattleTrackerEvents !== 'undefined') {
-    window.CattleTrackerEvents.on('notification:created', function () {
-      if (document.getElementById('menu-screen') && document.getElementById('menu-screen').classList.contains('active') && typeof renderMenuNotificationsDropdown === 'function') {
-        renderMenuNotificationsDropdown('menu-notifications-dropdown');
-      }
-    });
-    window.CattleTrackerEvents.on('notification:read', function () {
-      if (document.getElementById('menu-screen') && document.getElementById('menu-screen').classList.contains('active') && typeof renderMenuNotificationsDropdown === 'function') {
-        renderMenuNotificationsDropdown('menu-notifications-dropdown');
-      }
-    });
-  }
 });
 
 window.addEventListener('load', () => {

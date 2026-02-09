@@ -1,9 +1,5 @@
 /* layout.css - Стили макета и размещения */
 
-#menu-screen {
-  overflow-y: auto;
-}
-
 /* Корпоративный блок на главном экране */
 .menu-branding {
   display: flex;
