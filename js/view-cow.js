@@ -139,6 +139,8 @@ function viewCow(cattleId) {
     '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn">🐄 Запуск</button> ' +
     '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn">🐄 Отел</button> ' +
     '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn">📋 Поставить на протокол</button> ' +
+    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn">🩺 УЗИ</button> ' +
+    '<button onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn">📜 История</button> ' +
     '<button onclick="navigate(\'view\')" class="back-button">Назад к списку</button>' +
     '</div>' +
     '</div>';
@@ -151,6 +153,91 @@ function toggleViewCowInseminationHistory() {
   var el = document.getElementById('viewCowInseminationHistory');
   if (!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/**
+ * Открывает модальное окно истории действий по карточке животного
+ */
+function openViewCowActionHistory(cattleId) {
+  var modal = document.getElementById('viewCowActionHistoryModal');
+  var listEl = document.getElementById('viewCowActionHistoryList');
+  var closeBtn = document.getElementById('viewCowActionHistoryCloseBtn');
+  if (!modal || !listEl) return;
+  modal.setAttribute('data-current-cattle-id', cattleId || '');
+  renderViewCowActionHistoryModal(cattleId);
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  if (closeBtn && !closeBtn.dataset.bound) {
+    closeBtn.dataset.bound = '1';
+    closeBtn.addEventListener('click', closeViewCowActionHistoryModal);
+  }
+  if (!modal.dataset.overlayBound) {
+    modal.dataset.overlayBound = '1';
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeViewCowActionHistoryModal();
+    });
+  }
+}
+
+function closeViewCowActionHistoryModal() {
+  var modal = document.getElementById('viewCowActionHistoryModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+/**
+ * Заполняет список записей в модальном окне истории (с кнопкой удаления у каждой записи)
+ */
+function renderViewCowActionHistoryModal(cattleId) {
+  var listEl = document.getElementById('viewCowActionHistoryList');
+  if (!listEl) return;
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  var rawHistory = (entry && entry.actionHistory) ? entry.actionHistory : [];
+  var withIndex = rawHistory.map(function (item, idx) { return { item: item, index: idx }; });
+  withIndex.sort(function (a, b) {
+    var ta = (a.item.dateTime || '').toString();
+    var tb = (b.item.dateTime || '').toString();
+    return ta > tb ? -1 : ta < tb ? 1 : 0;
+  });
+  if (withIndex.length === 0) {
+    listEl.innerHTML = '<p class="cow-insemination-empty">Нет записей в истории.</p>';
+    return;
+  }
+  var html = withIndex.map(function (row) {
+    var item = row.item;
+    var origIndex = row.index;
+    var safeId = (cattleId || '').replace(/"/g, '&quot;');
+    var dt = escapeHtmlCard(item.dateTime);
+    var user = escapeHtmlCard(item.userName);
+    var action = escapeHtmlCard(item.action);
+    var details = escapeHtmlCard(item.details);
+    return '<div class="action-history-item" data-cattle-id="' + safeId + '" data-action-index="' + origIndex + '">' +
+      '<span class="action-history-date">' + dt + '</span> ' +
+      '<span class="action-history-user">' + user + '</span> — ' +
+      '<span class="action-history-action">' + action + '</span>' +
+      (details ? ' <span class="action-history-details">(' + details + ')</span>' : '') +
+      ' <button type="button" class="small-btn action-history-delete" onclick="deleteActionHistoryItem(\'' + safeId + '\', ' + origIndex + ')" title="Удалить запись">🗑️</button>' +
+      '</div>';
+  }).join('');
+  listEl.innerHTML = html;
+}
+
+/**
+ * Удаляет запись из истории действий; сохраняет данные и обновляет список в модалке
+ */
+function deleteActionHistoryItem(cattleId, index) {
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry || !entry.actionHistory || index < 0 || index >= entry.actionHistory.length) return;
+  entry.actionHistory.splice(index, 1);
+  if (typeof saveLocally === 'function') saveLocally();
+  if (typeof window.CATTLE_TRACKER_USE_API !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(function () {
+      renderViewCowActionHistoryModal(cattleId);
+    }).catch(function () { renderViewCowActionHistoryModal(cattleId); });
+  } else {
+    renderViewCowActionHistoryModal(cattleId);
+  }
 }
 
 /**

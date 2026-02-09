@@ -86,6 +86,7 @@ function navigate(screenId, options) {
   if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
   if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();
   if (screenId === 'protocol-assign' && typeof initProtocolAssignScreen === 'function') initProtocolAssignScreen();
+  if (screenId === 'uzi' && typeof initUziScreen === 'function') initUziScreen();
   if (screenId === 'view') {
     updateViewList();
   }
