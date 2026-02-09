@@ -73,6 +73,10 @@ function navigate(screenId, options) {
     screen.classList.add('active');
   }
 
+  if (typeof updateWindowModeForScreen === 'function') {
+    updateWindowModeForScreen(screenId);
+  }
+
   if (screenId === 'submenu') {
     renderSubmenu();
   }
@@ -102,6 +106,84 @@ function navigate(screenId, options) {
     updateObjectSwitcher();
     updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
+    if (typeof renderNotificationSummary === 'function') renderNotificationSummary('menuNotificationsBody');
+    if (typeof initMenuNotificationsToggle === 'function') initMenuNotificationsToggle();
+    if (typeof initFirstRunHints === 'function') initFirstRunHints();
+    if (typeof maybeShowFirstRunHints === 'function') maybeShowFirstRunHints();
+  }
+  if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
+}
+
+function updateWindowModeForScreen(screenId) {
+  if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.setWindowMode) return;
+  if (screenId === 'menu') window.electronAPI.setWindowMode('menu');
+  else window.electronAPI.setWindowMode('default');
+}
+
+function initMenuNotificationsToggle() {
+  var toggle = document.getElementById('menuNotificationsToggle');
+  var body = document.getElementById('menuNotificationsBody');
+  if (!toggle || !body || toggle.dataset.bound === '1') return;
+  toggle.dataset.bound = '1';
+  var savedOpen = false;
+  try {
+    savedOpen = localStorage.getItem('cattleTracker_notifications_open') === '1';
+  } catch (e) {}
+  setMenuNotificationsOpen(savedOpen);
+  toggle.addEventListener('click', function () {
+    var isOpen = toggle.getAttribute('aria-expanded') === 'true';
+    setMenuNotificationsOpen(!isOpen);
+  });
+}
+
+function setMenuNotificationsOpen(isOpen) {
+  var toggle = document.getElementById('menuNotificationsToggle');
+  var body = document.getElementById('menuNotificationsBody');
+  if (!toggle || !body) return;
+  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  body.hidden = !isOpen;
+  if (isOpen && typeof renderNotificationSummary === 'function') {
+    renderNotificationSummary('menuNotificationsBody');
+  }
+  try {
+    localStorage.setItem('cattleTracker_notifications_open', isOpen ? '1' : '0');
+  } catch (e) {}
+}
+
+function initFirstRunHints() {
+  var modal = document.getElementById('firstRunHints');
+  if (!modal || modal.dataset.bound === '1') return;
+  modal.dataset.bound = '1';
+  var closeBtn = document.getElementById('firstRunHintsClose');
+  var skipBtn = document.getElementById('firstRunHintsSkip');
+  if (closeBtn) closeBtn.addEventListener('click', function () { closeFirstRunHints(true); });
+  if (skipBtn) skipBtn.addEventListener('click', function () { closeFirstRunHints(true); });
+  modal.addEventListener('click', function (ev) {
+    if (ev.target === modal) closeFirstRunHints(true);
+  });
+}
+
+function maybeShowFirstRunHints() {
+  var modal = document.getElementById('firstRunHints');
+  if (!modal) return;
+  var seen = false;
+  try {
+    seen = localStorage.getItem('cattleTracker_hasSeenHints') === '1';
+  } catch (e) {}
+  if (seen) return;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeFirstRunHints(setFlag) {
+  var modal = document.getElementById('firstRunHints');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+  if (setFlag !== false) {
+    try {
+      localStorage.setItem('cattleTracker_hasSeenHints', '1');
+    } catch (e) {}
   }
 }
 

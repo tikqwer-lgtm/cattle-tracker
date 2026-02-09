@@ -44,6 +44,19 @@
     } catch (e) {}
   }
 
+  function normalizeHistory(list) {
+    if (!Array.isArray(list)) return [];
+    var changed = false;
+    list.forEach(function (n) {
+      if (typeof n.read !== 'boolean') {
+        n.read = true;
+        changed = true;
+      }
+    });
+    if (changed) saveHistory(list);
+    return list;
+  }
+
   var CATEGORY_LABELS = {
     calving: 'Предстоящий отёл',
     insemination: 'Осеменение',
@@ -62,8 +75,11 @@
     return 'other';
   }
 
-  function createNotification(type, message, cowId, meta) {
+  function createNotification(type, message, cowId, meta, options) {
     meta = meta || {};
+    options = options || {};
+    var showToastOpt = options.showToast !== false;
+    var showSystemOpt = options.showSystem !== false;
     var item = {
       id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
       type: type || 'info',
@@ -71,21 +87,28 @@
       cattleId: cowId || '',
       meta: meta,
       category: meta.category || 'other',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      read: false
     };
     var history = loadHistory();
     history.push(item);
     saveHistory(history);
-    if (typeof window.showToast === 'function') {
+    if (showToastOpt && typeof window.showToast === 'function') {
       window.showToast(message, type === 'error' ? 'error' : 'info', 4000);
     }
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (showSystemOpt && 'Notification' in window && Notification.permission === 'granted') {
       try {
         new Notification('Учёт коров', { body: message, tag: item.id });
       } catch (err) {}
     }
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('notification:created', item);
+    }
+    if (typeof updateNotificationIndicators === 'function') {
+      updateNotificationIndicators();
+    }
+    if (document.getElementById('menuNotificationsBody')) {
+      renderNotificationSummary('menuNotificationsBody');
     }
     return item;
   }
@@ -112,7 +135,7 @@
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
-            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving' }));
+            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -124,7 +147,7 @@
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
             notified[key2] = true;
-            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination' }));
+            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -135,7 +158,7 @@
           var key3 = 'dry_' + cattleId;
           if (!notified[key3]) {
             notified[key3] = true;
-            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }));
+            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -146,7 +169,7 @@
       var key4 = 'unsynced_count';
       if (!notified[key4]) {
         notified[key4] = true;
-        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync' }));
+        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync' }, { showToast: false, showSystem: false }));
       }
     }
     return out;
@@ -173,7 +196,86 @@
   }
 
   function getNotificationHistory() {
-    return loadHistory();
+    return normalizeHistory(loadHistory());
+  }
+
+  function getUnreadCount() {
+    var list = getNotificationHistory();
+    return list.filter(function (n) { return n.read === false; }).length;
+  }
+
+  function markNotificationRead(id) {
+    if (!id) return false;
+    var history = normalizeHistory(loadHistory());
+    var changed = false;
+    history.forEach(function (n) {
+      if (n.id === id && n.read === false) {
+        n.read = true;
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveHistory(history);
+      if (typeof updateNotificationIndicators === 'function') {
+        updateNotificationIndicators();
+      }
+    }
+    return changed;
+  }
+
+  function updateNotificationIndicators() {
+    var count = getUnreadCount();
+    var badge = document.getElementById('menuNotificationsBadge');
+    if (badge) {
+      badge.textContent = count ? String(count) : '';
+      badge.style.display = count ? 'inline-flex' : 'none';
+    }
+    var btnBadge = document.getElementById('menuNotificationsButtonBadge');
+    if (btnBadge) {
+      btnBadge.textContent = count ? String(count) : '';
+      btnBadge.style.display = count ? 'inline-flex' : 'none';
+    }
+  }
+
+  function renderNotificationSummary(containerId) {
+    var body = document.getElementById(containerId);
+    if (!body) return;
+    var list = getNotificationHistory().slice().reverse();
+    var limit = 5;
+    var items = list.slice(0, limit);
+    var html = '';
+    if (items.length === 0) {
+      html = '<div class="menu-notifications-empty">Нет уведомлений</div>';
+    } else {
+      html = '<ul class="menu-notifications-list">';
+      items.forEach(function (n) {
+        var cls = 'menu-notifications-item' + (n.read === false ? ' notification-item-unread' : '');
+        html += '<li class="' + cls + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '">' +
+          '<div class="menu-notifications-message">' + (n.message || '').replace(/</g, '&lt;') + '</div>' +
+          '<div class="menu-notifications-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</div>' +
+          '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '<div class="menu-notifications-actions">' +
+      '<button type="button" class="small-btn" data-action="open-notifications">Все уведомления</button>' +
+      '</div>';
+    body.innerHTML = html;
+    updateNotificationIndicators();
+    body.querySelectorAll('.menu-notifications-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var id = item.getAttribute('data-notif-id');
+        if (markNotificationRead(id)) {
+          renderNotificationSummary(containerId);
+        }
+      });
+    });
+    var openBtn = body.querySelector('[data-action="open-notifications"]');
+    if (openBtn) {
+      openBtn.addEventListener('click', function () {
+        if (typeof navigate === 'function') navigate('notifications');
+      });
+    }
   }
 
   /**
@@ -323,7 +425,8 @@
       listHtml += '<h4 class="notification-group-title">' + (CATEGORY_LABELS[cat] || cat).replace(/</g, '&lt;') + '</h4>';
       listHtml += '<ul class="notification-list">';
       items.forEach(function (n) {
-        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
+        var unreadClass = n.read === false ? ' notification-item-unread' : '';
+        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
           '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
           '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
           '</li>';
@@ -355,14 +458,27 @@
       clearBtn.addEventListener('click', function () {
         saveHistory([]);
         renderNotificationCenter(containerId);
+        updateNotificationIndicators();
       });
     }
+    container.querySelectorAll('.notification-item[data-notif-id]').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var id = item.getAttribute('data-notif-id');
+        if (markNotificationRead(id)) renderNotificationCenter(containerId);
+      });
+    });
+    updateNotificationIndicators();
   }
 
   function initNotifications() {
     scheduleReminders();
     if (typeof window.requestNotificationPermission === 'undefined') {
       window.requestNotificationPermission = requestNotificationPermission;
+    }
+    if (document.getElementById('menuNotificationsBody')) {
+      renderNotificationSummary('menuNotificationsBody');
+    } else {
+      updateNotificationIndicators();
     }
   }
 
@@ -371,6 +487,10 @@
     window.createNotification = createNotification;
     window.scheduleReminders = scheduleReminders;
     window.getNotificationHistory = getNotificationHistory;
+    window.getUnreadNotificationCount = getUnreadCount;
+    window.markNotificationRead = markNotificationRead;
+    window.updateNotificationIndicators = updateNotificationIndicators;
+    window.renderNotificationSummary = renderNotificationSummary;
     window.renderNotificationCenter = renderNotificationCenter;
     window.requestNotificationPermission = requestNotificationPermission;
   }

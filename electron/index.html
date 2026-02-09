@@ -129,6 +129,15 @@
       </div>
     </div>
 
+    <!-- Краткие уведомления -->
+    <div id="menu-notifications" class="menu-notifications">
+      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-expanded="false">
+        <span>Уведомления</span>
+        <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
+      </button>
+      <div class="menu-notifications-body" id="menuNotificationsBody" hidden></div>
+    </div>
+
     <!-- Кнопки действий по группам (главное меню — одна кнопка на группу) -->
     <div class="action-buttons">
       <div class="menu-section">
@@ -153,6 +162,7 @@
         <button onclick="navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
           <span>🔔</span>
           <span>Уведомления</span>
+          <span class="menu-notifications-button-badge" id="menuNotificationsButtonBadge" style="display: none;"></span>
         </button>
       </div>
       <div class="menu-section">
@@ -351,6 +361,7 @@
     <div class="view-screen-header">
       <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
       <h1>📋 Список всех животных</h1>
+      <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
       <div id="search-filter-container" class="search-filter-container"></div>
       <div id="viewBulkActions" class="view-bulk-actions"></div>
     </div>
@@ -406,6 +417,37 @@
     </div>
     <div id="backup-container"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Модальное окно: Настройка полей -->
+  <div id="viewFieldsSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2>Настройка полей</h2>
+        <button type="button" class="small-btn" id="viewFieldsCloseBtn">Закрыть</button>
+      </div>
+      <div id="viewFieldsList" class="view-fields-list"></div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="viewFieldsResetBtn">Сбросить</button>
+        <button type="button" class="action-btn" id="viewFieldsSaveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Подсказки при первом запуске -->
+  <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="first-run-hints-content">
+      <h2>Добро пожаловать</h2>
+      <ul>
+        <li>Выберите объект (базу) вверху и добавляйте новые кнопкой «Добавить объект».</li>
+        <li>Уведомления доступны на главном экране и в разделе «Уведомления».</li>
+        <li>Раздел «Работа с данными» содержит список всех животных и импорт/экспорт.</li>
+      </ul>
+      <div class="first-run-hints-actions">
+        <button type="button" class="small-btn" id="firstRunHintsSkip">Не показывать снова</button>
+        <button type="button" class="action-btn" id="firstRunHintsClose">Понятно</button>
+      </div>
+    </div>
   </div>
 
   <div id="protocols-screen" class="screen">

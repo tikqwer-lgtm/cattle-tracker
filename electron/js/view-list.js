@@ -2,6 +2,52 @@
 
 var viewListSortKey = '';
 var viewListSortDir = 'asc';
+var VIEW_LIST_FIELDS_KEY = 'cattleTracker_viewList_visibleFields';
+
+function viewListEscapeHtml(text) {
+  if (!text) return '—';
+  if (typeof text !== 'string') {
+    try { text = String(text); } catch (e) { return '—'; }
+  }
+  text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  if (!text) return '—';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+var VIEW_LIST_FIELDS = [
+  { key: 'cattleId', label: 'Корова', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.cattleId); } },
+  { key: 'nickname', label: 'Кличка', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.nickname); } },
+  { key: 'group', label: 'Группа', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.group || ''); } },
+  { key: 'lactation', label: 'Лактация', sortable: true, render: function (entry) { return entry.lactation || '—'; } },
+  { key: 'inseminationDate', label: 'Дата осеменения', sortable: true, render: function (entry) { return formatDate(entry.inseminationDate) || '—'; } },
+  { key: 'bull', label: 'Бык', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.bull); } },
+  { key: 'attemptNumber', label: 'Попытка', sortable: true, render: function (entry) { return entry.attemptNumber || '—'; } },
+  { key: 'status', label: 'Статус', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.status); } },
+  { key: 'calvingDate', label: 'Отёл', sortable: true, render: function (entry) { return formatDate(entry.calvingDate) || '—'; } },
+  { key: 'dryStartDate', label: 'Сухостой', sortable: true, render: function (entry) { return formatDate(entry.dryStartDate) || '—'; } },
+  { key: 'note', label: 'Примечание', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.note); } },
+  { key: 'synced', label: 'Синхронизация', sortable: true, render: function (entry) { return entry.synced ? '✅' : '🟡'; } }
+];
+
+function getVisibleFieldKeys() {
+  try {
+    var raw = localStorage.getItem(VIEW_LIST_FIELDS_KEY);
+    if (raw) {
+      var list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+  } catch (e) {}
+  return VIEW_LIST_FIELDS.map(function (f) { return f.key; });
+}
+
+function getVisibleViewFields() {
+  var keys = getVisibleFieldKeys();
+  var map = {};
+  VIEW_LIST_FIELDS.forEach(function (f) { map[f.key] = f; });
+  return keys.map(function (k) { return map[k]; }).filter(Boolean);
+}
 
 function _compareViewList(a, b, key, dir) {
   var mul = dir === 'asc' ? 1 : -1;
@@ -63,17 +109,11 @@ function updateViewList() {
 
   if (bulkContainer) bulkContainer.innerHTML = bulkBarHtml;
 
-  const escapeHtml = (text) => {
-    if (!text) return '—';
-    if (typeof text !== 'string') {
-      try { text = String(text); } catch (e) { return '—'; }
-    }
-    text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
-    if (!text) return '—';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  };
+  var fields = getVisibleViewFields();
+  var fieldKeys = fields.map(function (f) { return f.key; });
+  if (viewListSortKey && fieldKeys.indexOf(viewListSortKey) === -1) {
+    viewListSortKey = '';
+  }
 
   var sortAsc = viewListSortDir === 'asc';
   var sortMark = function (key) {
@@ -91,41 +131,23 @@ function updateViewList() {
           <th class="checkbox-column">
             <input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все">
           </th>
-          <th class="sortable-th${sortClass('cattleId')}" data-sort-key="cattleId" role="button" tabindex="0">Корова${sortMark('cattleId')}</th>
-          <th class="sortable-th${sortClass('nickname')}" data-sort-key="nickname" role="button" tabindex="0">Кличка${sortMark('nickname')}</th>
-          <th class="sortable-th${sortClass('group')}" data-sort-key="group" role="button" tabindex="0">Группа${sortMark('group')}</th>
-          <th class="sortable-th${sortClass('lactation')}" data-sort-key="lactation" role="button" tabindex="0">Лактация${sortMark('lactation')}</th>
-          <th class="sortable-th${sortClass('inseminationDate')}" data-sort-key="inseminationDate" role="button" tabindex="0">Дата осеменения${sortMark('inseminationDate')}</th>
-          <th class="sortable-th${sortClass('bull')}" data-sort-key="bull" role="button" tabindex="0">Бык${sortMark('bull')}</th>
-          <th class="sortable-th${sortClass('attemptNumber')}" data-sort-key="attemptNumber" role="button" tabindex="0">Попытка${sortMark('attemptNumber')}</th>
-          <th class="sortable-th${sortClass('status')}" data-sort-key="status" role="button" tabindex="0">Статус${sortMark('status')}</th>
-          <th class="sortable-th${sortClass('calvingDate')}" data-sort-key="calvingDate" role="button" tabindex="0">Отёл${sortMark('calvingDate')}</th>
-          <th class="sortable-th${sortClass('dryStartDate')}" data-sort-key="dryStartDate" role="button" tabindex="0">Сухостой${sortMark('dryStartDate')}</th>
-          <th class="sortable-th${sortClass('note')}" data-sort-key="note" role="button" tabindex="0">Примечание${sortMark('note')}</th>
-          <th class="sortable-th${sortClass('synced')}" data-sort-key="synced" role="button" tabindex="0">Синхронизация${sortMark('synced')}</th>
+          ${fields.map(field => {
+            if (!field.sortable) return `<th>${field.label}</th>`;
+            return `<th class="sortable-th${sortClass(field.key)}" data-sort-key="${field.key}" role="button" tabindex="0">${field.label}${sortMark(field.key)}</th>`;
+          }).join('')}
         </tr>
       </thead>
       <tbody>
         ${listToShow.map((entry, index) => {
-          const safeCattleId = escapeHtml(entry.cattleId);
+          const safeCattleId = viewListEscapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
+          const cells = fields.map(field => `<td>${field.render(entry)}</td>`).join('');
           return `
           <tr class="view-entry-row ${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" role="button" tabindex="0">
             <td class="checkbox-column">
               <input type="checkbox" id="${checkboxId}" class="entry-checkbox" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" aria-label="Выделить">
             </td>
-            <td>${safeCattleId}</td>
-            <td>${escapeHtml(entry.nickname)}</td>
-            <td>${escapeHtml(entry.group || '') || '—'}</td>
-            <td>${entry.lactation || '—'}</td>
-            <td>${formatDate(entry.inseminationDate) || '—'}</td>
-            <td>${escapeHtml(entry.bull)}</td>
-            <td>${entry.attemptNumber || '—'}</td>
-            <td>${escapeHtml(entry.status)}</td>
-            <td>${formatDate(entry.calvingDate) || '—'}</td>
-            <td>${formatDate(entry.dryStartDate) || '—'}</td>
-            <td>${escapeHtml(entry.note)}</td>
-            <td>${entry.synced ? '✅' : '🟡'}</td>
+            ${cells}
           </tr>
         `;
         }).join('')}
@@ -141,10 +163,74 @@ function updateViewList() {
     viewScreen.addEventListener('keydown', _handleViewListKeydown);
   }
 
+  initViewFieldsSettings();
+
   setTimeout(function () {
     updateSelectedCount();
     _assertBulkSelectionUI();
   }, 0);
+}
+
+function initViewFieldsSettings() {
+  var btn = document.getElementById('viewFieldsSettingsBtn');
+  var modal = document.getElementById('viewFieldsSettingsModal');
+  var closeBtn = document.getElementById('viewFieldsCloseBtn');
+  var saveBtn = document.getElementById('viewFieldsSaveBtn');
+  var resetBtn = document.getElementById('viewFieldsResetBtn');
+  if (!modal || !btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', openViewFieldsSettings);
+  if (closeBtn) closeBtn.addEventListener('click', closeViewFieldsSettings);
+  if (resetBtn) resetBtn.addEventListener('click', function () {
+    try { localStorage.removeItem(VIEW_LIST_FIELDS_KEY); } catch (e) {}
+    renderViewFieldsSettings();
+  });
+  if (saveBtn) saveBtn.addEventListener('click', function () {
+    var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
+      .map(function (el) { return el.value; });
+    if (checked.length === 0) {
+      alert('Выберите хотя бы одно поле.');
+      return;
+    }
+    try {
+      localStorage.setItem(VIEW_LIST_FIELDS_KEY, JSON.stringify(checked));
+    } catch (e) {}
+    closeViewFieldsSettings();
+    updateViewList();
+  });
+  modal.addEventListener('click', function (ev) {
+    if (ev.target === modal) closeViewFieldsSettings();
+  });
+}
+
+function renderViewFieldsSettings() {
+  var modal = document.getElementById('viewFieldsSettingsModal');
+  var listEl = document.getElementById('viewFieldsList');
+  if (!modal || !listEl) return;
+  var visible = getVisibleFieldKeys();
+  var html = VIEW_LIST_FIELDS.map(function (field) {
+    var checked = visible.indexOf(field.key) !== -1;
+    return '<label class="view-fields-item">' +
+      '<input type="checkbox" class="view-fields-checkbox" value="' + field.key + '"' + (checked ? ' checked' : '') + ' />' +
+      '<span>' + field.label + '</span>' +
+      '</label>';
+  }).join('');
+  listEl.innerHTML = html;
+}
+
+function openViewFieldsSettings() {
+  var modal = document.getElementById('viewFieldsSettingsModal');
+  if (!modal) return;
+  renderViewFieldsSettings();
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeViewFieldsSettings() {
+  var modal = document.getElementById('viewFieldsSettingsModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
 }
 
 function _assertBulkSelectionUI() {

@@ -46,6 +46,8 @@ function initApp() {
     if (typeof loadLocally === 'function') loadLocally();
     else console.error('Функция loadLocally не найдена. Проверьте подключение storage.js');
     if (typeof updateList === 'function') updateList();
+    if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+    if (typeof updateHerdStats === 'function') updateHerdStats();
     console.log("Приложение инициализировано. Записей:", entries.length);
   }
 
