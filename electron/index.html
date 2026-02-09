@@ -279,35 +279,6 @@
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран: УЗИ (проверка на стельность) -->
-  <div id="uzi-screen" class="screen">
-    <h1>🩺 УЗИ (проверка на стельность)</h1>
-    <form class="form" onsubmit="saveUziEntry(); return false;">
-      <label for="cattleIdUziInput">Номер коровы *</label>
-      <div class="autocomplete">
-        <input type="text" id="cattleIdUziInput" placeholder="Введите номер или выберите из списка" required />
-        <ul id="cattleIdUziList" class="autocomplete-list"></ul>
-      </div>
-      <label for="uziDateInput">Дата проверки на стельность</label>
-      <input type="date" id="uziDateInput" />
-      <label for="uziResultSelect">Результат</label>
-      <select id="uziResultSelect">
-        <option value="">— Выберите —</option>
-        <option value="Не стельная">Не стельная</option>
-        <option value="Стельная">Стельная</option>
-      </select>
-      <label for="uziSpecialistInput">Специалист</label>
-      <input type="text" id="uziSpecialistInput" placeholder="Кто проводил УЗИ" />
-      <label for="uziDaysFromInsemination">Дней от осеменения</label>
-      <input type="text" id="uziDaysFromInsemination" readonly placeholder="—" style="background: var(--color-bg-elevated);" />
-      <div class="form-actions">
-        <button type="button" onclick="navigate('menu')">Отмена</button>
-        <button type="submit">Сохранить</button>
-      </div>
-    </form>
-    <button onclick="navigate('menu')" class="back-button">Назад</button>
-  </div>
-
   <!-- Экран добавления/редактирования -->
   <div id="add-screen" class="screen">
     <h1 id="addScreenTitle">➕ Добавить корову</h1>
@@ -407,14 +378,12 @@
   </div>
 
   <!-- Экран «Все осеменения» -->
-  <div id="all-inseminations-screen" class="screen view-screen">
+  <div id="all-inseminations-screen" class="screen">
     <div class="view-screen-header">
-      <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
+      <button onclick="navigate('menu')" class="back-button">Назад в меню</button>
       <h1>📑 Все осеменения</h1>
-      <button type="button" class="small-btn" id="allInseminationsFieldsSettingsBtn">Настройка полей</button>
-      <div id="allInseminationsFilterContainer" class="search-filter-container"></div>
     </div>
-    <div id="allInseminationsList" class="view-entries-wrapper"></div>
+    <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
   </div>
 
   <!-- Экран уведомлений -->
@@ -462,32 +431,6 @@
         <button type="button" class="small-btn" id="viewFieldsResetBtn">Сбросить</button>
         <button type="button" class="action-btn" id="viewFieldsSaveBtn">Сохранить</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Модальное окно: Настройка полей (Все осеменения) -->
-  <div id="allInseminationsFieldsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="view-fields-modal-content">
-      <div class="view-fields-modal-header">
-        <h2>Настройка полей</h2>
-        <button type="button" class="small-btn" id="allInseminationsFieldsCloseBtn">Закрыть</button>
-      </div>
-      <div id="allInseminationsFieldsList" class="view-fields-list"></div>
-      <div class="view-fields-actions">
-        <button type="button" class="small-btn" id="allInseminationsFieldsResetBtn">Сбросить</button>
-        <button type="button" class="action-btn" id="allInseminationsFieldsSaveBtn">Сохранить</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Модальное окно: История действий карточки животного -->
-  <div id="viewCowActionHistoryModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="view-fields-modal-content">
-      <div class="view-fields-modal-header">
-        <h2>История действий</h2>
-        <button type="button" class="small-btn" id="viewCowActionHistoryCloseBtn">Закрыть</button>
-      </div>
-      <div id="viewCowActionHistoryList" class="view-fields-list" style="max-height: 60vh; overflow-y: auto;"></div>
     </div>
   </div>
 

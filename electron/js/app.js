@@ -77,7 +77,6 @@ function addEntry() {
   }
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
   if (useApi) {
-    if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Добавление', '');
     window.createEntryViaApi(entry).then(function () {
       updateList();
       if (typeof updateViewList === 'function') updateViewList();
@@ -92,7 +91,6 @@ function addEntry() {
     alert("Корова с таким номером уже существует!");
     return;
   }
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Добавление', '');
   entries.unshift(entry);
   saveLocally();
   updateList();
@@ -121,18 +119,11 @@ function saveCurrentEntry() {
   if (useApi) {
     var p;
     if (window.currentEditingId) {
-      var existing = entries.find(function (e) { return e.cattleId === window.currentEditingId; });
-      if (existing) {
-        entry.dateAdded = existing.dateAdded;
-        entry.synced = existing.synced;
-        entry.actionHistory = (existing.actionHistory || []).slice();
-        entry.uziHistory = (existing.uziHistory || []).slice();
-      }
-      if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Редактирование', '');
+      entry.dateAdded = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).dateAdded || entry.dateAdded;
+      entry.synced = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).synced || false;
       p = window.updateEntryViaApi(window.currentEditingId, entry);
       delete window.currentEditingId;
     } else {
-      if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Добавление', '');
       entry.dateAdded = nowFormatted();
       entry.synced = false;
       p = window.createEntryViaApi(entry);
@@ -153,14 +144,10 @@ function saveCurrentEntry() {
     if (index !== -1) {
       entry.dateAdded = entries[index].dateAdded;
       entry.synced = entries[index].synced;
-      entry.actionHistory = (entries[index].actionHistory || []).slice();
-      entry.uziHistory = (entries[index].uziHistory || []).slice();
-      if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Редактирование', '');
       entries[index] = entry;
     }
     delete window.currentEditingId;
   } else {
-    if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Добавление', '');
     entry.dateAdded = nowFormatted();
     entry.synced = false;
     entries.unshift(entry);

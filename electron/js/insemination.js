@@ -212,7 +212,6 @@ function addInseminationEntry() {
   entry.inseminator = inseminator;
   entry.code = code;
   entry.status = 'Осеменена';
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Осеменение', 'Дата: ' + (inseminationDate || '') + ', попытка ' + attemptNumber);
 
   // Сохраняем изменения
   try {
