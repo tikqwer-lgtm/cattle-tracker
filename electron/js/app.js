@@ -189,7 +189,7 @@ function handleCheckForUpdates() {
         return;
       }
       if (r.version) {
-        if (typeof showToast === 'function') showToast('Доступна версия ' + r.version + '. Скачивание…', 'info');
+        if (typeof showToast === 'function') showToast('Доступна версия ' + r.version + '. Скачивание…', 'info', 5000);
         else alert('Доступна версия ' + r.version + '. Скачивание…');
         return;
       }
@@ -199,6 +199,20 @@ function handleCheckForUpdates() {
   } else {
     if (typeof showToast === 'function') showToast('Проверка обновлений доступна в десктопной версии', 'info');
     else alert('Проверка обновлений доступна в десктопной версии приложения.');
+  }
+}
+
+// Подписка на прогресс и путь загрузки обновления (Electron)
+if (typeof window.electronAPI !== 'undefined') {
+  if (window.electronAPI.onUpdateDownloadPath && typeof showUpdateProgress === 'function') {
+    window.electronAPI.onUpdateDownloadPath(function (downloadPath) {
+      showUpdateProgress(0, downloadPath, 0);
+    });
+  }
+  if (window.electronAPI.onUpdateDownloadProgress && typeof showUpdateProgress === 'function') {
+    window.electronAPI.onUpdateDownloadProgress(function (data) {
+      showUpdateProgress(data.percent, null, data.bytesPerSecond);
+    });
   }
 }
 
