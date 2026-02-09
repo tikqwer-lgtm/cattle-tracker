@@ -118,6 +118,63 @@
 .notification-item[data-cattle-id]:not([data-cattle-id=""]) {
   cursor: pointer;
 }
+.notification-item.notification-item-unread {
+  background: var(--color-primary-light);
+  border-left: 4px solid var(--color-primary);
+}
+
+.notifications-dropdown-section {
+  margin-top: 0;
+}
+.notifications-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.notification-badge {
+  margin-left: 6px;
+  min-width: 1.4em;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 999px;
+  text-align: center;
+}
+.notification-badge.notification-badge-empty {
+  background: var(--color-text-muted);
+}
+.notifications-dropdown-body {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg-elevated);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.notifications-dropdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notifications-dropdown-list .notification-item {
+  cursor: pointer;
+}
+.notifications-dropdown-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+.notifications-dropdown-more {
+  margin: 8px 0 0;
+  font-size: 0.9em;
+}
+.notifications-dropdown-more a {
+  color: var(--color-primary);
+}
 
 .tasks-list-container {
   padding: 12px 16px;
@@ -304,4 +361,82 @@
 .backup-item-actions {
   display: flex;
   gap: 8px;
+}
+
+.field-settings-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.field-settings-modal-content {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.field-settings-modal-content h2 {
+  margin: 0 0 8px;
+  font-size: 1.2em;
+}
+.field-settings-hint {
+  margin: 0 0 16px;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+.field-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.field-settings-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.field-settings-item input {
+  margin: 0;
+}
+.field-settings-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.onboarding-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+.onboarding-modal-content {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+}
+.onboarding-modal-content h2 {
+  margin: 0 0 12px;
+  font-size: 1.25em;
+}
+.onboarding-text {
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.onboarding-actions {
+  display: flex;
+  gap: 10px;
 }

@@ -197,6 +197,8 @@ function cancelEdit() {
 
 /**
  * Универсальное автодополнение по номеру коровы для экранов Запуск/Отел/Протокол
+ * @param {string} inputId - id поля ввода
+ * @param {string} listId - id списка подсказок
  */
 function setupCattleAutocompleteFor(inputId, listId) {
   var input = document.getElementById(inputId);
@@ -226,6 +228,9 @@ function setupCattleAutocompleteFor(inputId, listId) {
   input.addEventListener('input', populate);
 }
 
+/**
+ * Обновляет запись: запуск в сухостой (dryStartDate)
+ */
 function saveDryRunEntry() {
   var cattleId = document.getElementById('cattleIdDryInput').value.trim();
   var dryStartDate = document.getElementById('dryStartDateInput').value;
@@ -259,6 +264,9 @@ function saveDryRunEntry() {
   if (typeof navigate === 'function') navigate('menu');
 }
 
+/**
+ * Обновляет запись: отёл (calvingDate)
+ */
 function saveCalvingEntry() {
   var cattleId = document.getElementById('cattleIdCalvingInput').value.trim();
   var calvingDate = document.getElementById('calvingDateInput').value;
@@ -291,6 +299,9 @@ function saveCalvingEntry() {
   if (typeof navigate === 'function') navigate('menu');
 }
 
+/**
+ * Обновляет запись: поставить на протокол (protocol.name, protocol.startDate)
+ */
 function saveProtocolAssignEntry() {
   var cattleId = document.getElementById('cattleIdProtocolInput').value.trim();
   var protocolName = document.getElementById('protocolSelectAssign').value;

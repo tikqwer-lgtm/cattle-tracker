@@ -82,3 +82,7 @@ function addObject(name) {
   switchToObject(id);
   return id;
 }
+
+if (typeof window !== 'undefined') {
+  window.addObject = addObject;
+}

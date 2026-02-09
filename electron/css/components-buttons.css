@@ -7,6 +7,13 @@
   margin-top: 20px;
 }
 
+#menu-screen .action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .menu-section {
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 16px;

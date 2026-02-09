@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onUpdateDownloadPath: (cb) => {
     ipcRenderer.on('update-download-path', (_e, path) => cb(path));
-  }
+  },
+  setWindowMode: (mode) => ipcRenderer.send('set-window-mode', mode)
 });

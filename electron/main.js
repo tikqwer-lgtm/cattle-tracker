@@ -5,7 +5,50 @@
  */
 const { app, BrowserWindow, Menu, dialog, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { pathToFileURL } = require('url');
+
+const WINDOW_STATE_FILE = 'window-state.json';
+
+function getWindowStatePath() {
+  return path.join(app.getPath('userData'), WINDOW_STATE_FILE);
+}
+
+function loadWindowState() {
+  try {
+    const filePath = getWindowStatePath();
+    if (!fs.existsSync(filePath)) return null;
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (!data || typeof data.width !== 'number' || typeof data.height !== 'number') return null;
+    const width = Math.max(400, Math.min(data.width, 4096));
+    const height = Math.max(400, Math.min(data.height, 4096));
+    let x = typeof data.x === 'number' ? data.x : 0;
+    let y = typeof data.y === 'number' ? data.y : 0;
+    const primary = screen.getPrimaryDisplay();
+    const work = primary.workArea;
+    x = Math.max(work.x, Math.min(x, work.x + work.width - 100));
+    y = Math.max(work.y, Math.min(y, work.y + work.height - 100));
+    return { x, y, width, height };
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveWindowState(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    const bounds = win.getBounds();
+    const filePath = getWindowStatePath();
+    fs.writeFileSync(filePath, JSON.stringify({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height
+    }), 'utf8');
+  } catch (e) {
+    console.warn('Save window state failed:', e.message);
+  }
+}
 
 let autoUpdater;
 if (app.isPackaged) {
@@ -30,6 +73,7 @@ let mainWindow;
 
 function setupAutoUpdater() {
   if (!autoUpdater || !app.isPackaged) return;
+  autoUpdater.autoDownload = false;
   const sendProgress = (data) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update-download-progress', data);
   };
@@ -41,7 +85,10 @@ function setupAutoUpdater() {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Обновление',
-      message: 'Доступна новая версия. Скачивание в фоне…'
+      message: 'Доступна новая версия. Разрешить скачивание?',
+      buttons: ['Скачать', 'Позже']
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.downloadUpdate().catch((err) => console.warn('downloadUpdate error:', err));
     }).catch(() => {});
   });
   autoUpdater.on('download-progress', (progress) => {
@@ -121,12 +168,15 @@ function createAppMenu() {
 function createWindow() {
   const primary = screen.getPrimaryDisplay();
   const work = primary.workArea;
-  const width = Math.min(900, work.width);
-  const height = Math.min(700, work.height);
+  const state = loadWindowState();
+  const width = state ? state.width : Math.min(900, work.width);
+  const height = state ? state.height : Math.min(700, work.height);
+  const x = state ? state.x : work.x + Math.max(0, Math.floor((work.width - width) / 2));
+  const y = state ? state.y : work.y + Math.max(0, Math.floor((work.height - height) / 2));
 
   mainWindow = new BrowserWindow({
-    x: work.x + Math.max(0, Math.floor((work.width - width) / 2)),
-    y: work.y + Math.max(0, Math.floor((work.height - height) / 2)),
+    x: x,
+    y: y,
     width: width,
     height: height,
     minWidth: 400,
@@ -146,8 +196,25 @@ function createWindow() {
     mainWindow.setBounds(display.workArea);
   });
 
+  mainWindow.on('close', () => {
+    saveWindowState(mainWindow);
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  ipcMain.on('set-window-mode', (_event, mode) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const primary = screen.getPrimaryDisplay();
+    const work = primary.workArea;
+    if (mode === 'menu') {
+      const maxW = Math.min(560, work.width);
+      const maxH = Math.min(680, work.height);
+      mainWindow.setMaximumSize(maxW, maxH);
+    } else {
+      mainWindow.setMaximumSize(16384, 16384);
+    }
   });
 
   const ses = mainWindow.webContents.session;
