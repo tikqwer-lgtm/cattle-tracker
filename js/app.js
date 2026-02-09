@@ -57,6 +57,17 @@ function initApp() {
   if (!useApi && typeof initInseminationModule === 'function') {
     initInseminationModule();
   }
+
+  var versionEl = document.getElementById('app-version');
+  if (versionEl) {
+    if (typeof window.electronAPI !== 'undefined' && window.electronAPI.getAppVersion) {
+      window.electronAPI.getAppVersion().then(function (v) {
+        versionEl.textContent = 'Версия ' + v;
+      });
+    } else {
+      versionEl.textContent = 'Версия ' + (versionEl.getAttribute('data-default-version') || '1.0.0');
+    }
+  }
 }
 
 /**

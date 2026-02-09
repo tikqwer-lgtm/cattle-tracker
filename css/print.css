@@ -60,6 +60,7 @@
     width: 56px;
     height: 56px;
     flex-shrink: 0;
+    object-fit: contain;
   }
 
   .print-company-name {

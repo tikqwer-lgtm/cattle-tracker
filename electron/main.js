@@ -233,6 +233,8 @@ function createWindow() {
   setupAutoUpdater();
 }
 
+ipcMain.handle('get-app-version', () => Promise.resolve(app.getVersion()));
+
 ipcMain.handle('check-for-updates', () => {
   if (!app.isPackaged) return Promise.resolve({ ok: false, dev: true });
   if (!autoUpdater) return Promise.resolve({ ok: false, error: 'Модуль обновлений не загружен' });
