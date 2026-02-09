@@ -30,14 +30,30 @@ let mainWindow;
 
 function setupAutoUpdater() {
   if (!autoUpdater || !app.isPackaged) return;
+  const sendProgress = (data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update-download-progress', data);
+  };
+  const sendPath = (downloadDir) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update-download-path', downloadDir);
+  };
   autoUpdater.on('update-available', () => {
+    sendPath(app.getPath('userData'));
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Обновление',
       message: 'Доступна новая версия. Скачивание в фоне…'
     }).catch(() => {});
   });
+  autoUpdater.on('download-progress', (progress) => {
+    sendProgress({
+      percent: Math.round(progress.percent || 0),
+      transferred: progress.transferred || 0,
+      total: progress.total || 0,
+      bytesPerSecond: progress.bytesPerSecond || 0
+    });
+  });
   autoUpdater.on('update-downloaded', () => {
+    sendProgress({ percent: 100, done: true });
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Обновление',

@@ -112,3 +112,44 @@ h1 {
 .toast-success { background: var(--color-success); }
 .toast-error { background: var(--color-error); }
 .toast-info { background: var(--color-primary); }
+
+/* Панель прогресса скачивания обновления */
+.update-progress-panel {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 14px 18px;
+  background: var(--bg-card, #fff);
+  border-radius: var(--radius-card, 8px);
+  box-shadow: var(--shadow-card, 0 4px 20px rgba(0,0,0,0.15));
+  z-index: 9998;
+  font-size: 13px;
+}
+.update-progress-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.update-progress-bar-wrap {
+  height: 8px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.update-progress-bar {
+  height: 100%;
+  background: var(--color-primary, #2563eb);
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+.update-progress-text {
+  color: var(--text-secondary, #555);
+  margin-bottom: 4px;
+}
+.update-progress-path {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  word-break: break-all;
+}

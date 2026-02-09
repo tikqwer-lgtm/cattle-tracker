@@ -43,6 +43,42 @@ function showToast(text, type, duration) {
 }
 
 /**
+ * Показывает/обновляет панель прогресса скачивания обновления (Electron).
+ * @param {number} percent - 0..100
+ * @param {string} downloadPath - путь к папке загрузки (опционально)
+ * @param {number} bytesPerSecond - скорость (опционально)
+ */
+function showUpdateProgress(percent, downloadPath, bytesPerSecond) {
+  var id = 'update-progress-panel';
+  var panel = document.getElementById(id);
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = id;
+    panel.className = 'update-progress-panel';
+    panel.innerHTML = '<div class="update-progress-title">Скачивание обновления</div>' +
+      '<div class="update-progress-bar-wrap"><div class="update-progress-bar" style="width:0%"></div></div>' +
+      '<div class="update-progress-text">0%</div>' +
+      '<div class="update-progress-path"></div>';
+    document.body.appendChild(panel);
+  }
+  var bar = panel.querySelector('.update-progress-bar');
+  var text = panel.querySelector('.update-progress-text');
+  var pathEl = panel.querySelector('.update-progress-path');
+  if (bar) bar.style.width = (percent || 0) + '%';
+  if (text) {
+    var speed = bytesPerSecond ? ' • ' + (bytesPerSecond < 1024 ? bytesPerSecond + ' Б/с' : (bytesPerSecond / 1024).toFixed(1) + ' КБ/с') : '';
+    text.textContent = (percent || 0) + '%' + speed;
+  }
+  if (downloadPath && pathEl) pathEl.textContent = 'Папка: ' + downloadPath;
+  if (percent >= 100) {
+    if (text) text.textContent = 'Готово';
+    setTimeout(function () {
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+    }, 2500);
+  }
+}
+
+/**
  * Подтверждение действия с кастомным текстом
  * @param {string} message
  * @returns {boolean}
