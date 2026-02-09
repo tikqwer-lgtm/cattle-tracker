@@ -246,6 +246,7 @@ function saveDryRunEntry() {
   entry.dryStartDate = dryStartDate || '';
   entry.status = entry.status || '';
   if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Запуск (сухостой)', dryStartDate ? 'Дата: ' + dryStartDate : '');
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -281,6 +282,7 @@ function saveCalvingEntry() {
   }
   entry.calvingDate = calvingDate || '';
   if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Отёл', calvingDate ? 'Дата: ' + calvingDate : '');
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -322,6 +324,7 @@ function saveProtocolAssignEntry() {
   if (!entry.protocol) entry.protocol = {};
   entry.protocol.name = protocolName;
   entry.protocol.startDate = startDate || '';
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Протокол', protocolName + (startDate ? ' с ' + startDate : ''));
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -373,6 +376,160 @@ function initProtocolAssignScreen() {
     var el = document.getElementById('cattleIdProtocolInput');
     if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
   }
+}
+
+/**
+ * Возвращает дату последнего осеменения до указанной даты (строго до неё).
+ * Учитываются только осеменения с датой < beforeDate.
+ * @param {Object} entry — запись животного
+ * @param {string} beforeDate — дата в формате YYYY-MM-DD
+ * @returns {string|null} — дата последнего осеменения или null
+ */
+function getLastInseminationDateBefore(entry, beforeDate) {
+  if (!entry || !beforeDate) return null;
+  var dates = [];
+  if (entry.inseminationHistory && entry.inseminationHistory.length > 0) {
+    entry.inseminationHistory.forEach(function (h) {
+      if (h.date && String(h.date) < String(beforeDate)) dates.push(h.date);
+    });
+  } else if (entry.inseminationDate && String(entry.inseminationDate) < String(beforeDate)) {
+    dates.push(entry.inseminationDate);
+  }
+  if (dates.length === 0) return null;
+  return dates.reduce(function (a, b) { return a > b ? a : b; });
+}
+
+/**
+ * Обновляет поле «Дней от осеменения» на экране УЗИ по выбранной корове и дате проверки
+ */
+function updateUziDaysFromInsemination() {
+  var cattleIdEl = document.getElementById('cattleIdUziInput');
+  var dateEl = document.getElementById('uziDateInput');
+  var outEl = document.getElementById('uziDaysFromInsemination');
+  if (!cattleIdEl || !dateEl || !outEl) return;
+  var cattleId = cattleIdEl.value.trim();
+  var uziDate = dateEl.value;
+  if (!cattleId || !uziDate) {
+    outEl.value = '';
+    outEl.placeholder = '—';
+    return;
+  }
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  var lastInsem = entry ? getLastInseminationDateBefore(entry, uziDate) : null;
+  if (!lastInsem) {
+    outEl.value = '';
+    outEl.placeholder = '—';
+    return;
+  }
+  var d1 = new Date(lastInsem);
+  var d2 = new Date(uziDate);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) {
+    outEl.value = '';
+    outEl.placeholder = '—';
+    return;
+  }
+  var days = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+  outEl.value = days >= 0 ? String(days) : '—';
+}
+
+/**
+ * Инициализация экрана УЗИ: автодополнение, подстановка номера коровы, пересчёт дней при смене коровы/даты
+ */
+function initUziScreen() {
+  setupCattleAutocompleteFor('cattleIdUziInput', 'cattleIdUziList');
+  if (window._prefillCattleId) {
+    var el = document.getElementById('cattleIdUziInput');
+    if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
+  }
+  var cattleIdEl = document.getElementById('cattleIdUziInput');
+  var dateEl = document.getElementById('uziDateInput');
+  if (cattleIdEl) {
+    cattleIdEl.removeEventListener('input', updateUziDaysFromInsemination);
+    cattleIdEl.removeEventListener('change', updateUziDaysFromInsemination);
+    cattleIdEl.addEventListener('input', updateUziDaysFromInsemination);
+    cattleIdEl.addEventListener('change', updateUziDaysFromInsemination);
+  }
+  if (dateEl) {
+    dateEl.removeEventListener('input', updateUziDaysFromInsemination);
+    dateEl.removeEventListener('change', updateUziDaysFromInsemination);
+    dateEl.addEventListener('input', updateUziDaysFromInsemination);
+    dateEl.addEventListener('change', updateUziDaysFromInsemination);
+  }
+  updateUziDaysFromInsemination();
+}
+
+/**
+ * Сохранение записи УЗИ: добавление в uziHistory, обновление статуса, запись в actionHistory
+ */
+function saveUziEntry() {
+  var cattleId = document.getElementById('cattleIdUziInput').value.trim();
+  var uziDate = document.getElementById('uziDateInput').value;
+  var result = document.getElementById('uziResultSelect').value;
+  var specialist = document.getElementById('uziSpecialistInput').value.trim();
+  var daysEl = document.getElementById('uziDaysFromInsemination');
+  var daysFromInsemination = daysEl && daysEl.value !== '' ? parseInt(daysEl.value, 10) : null;
+
+  if (!cattleId) {
+    if (typeof showToast === 'function') showToast('Укажите номер коровы', 'error'); else alert('Укажите номер коровы');
+    return;
+  }
+  if (!uziDate) {
+    if (typeof showToast === 'function') showToast('Укажите дату проверки', 'error'); else alert('Укажите дату проверки');
+    return;
+  }
+  if (!result) {
+    if (typeof showToast === 'function') showToast('Выберите результат (Не стельная / Стельная)', 'error'); else alert('Выберите результат');
+    return;
+  }
+
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) {
+    if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
+    return;
+  }
+
+  if (!entry.uziHistory) entry.uziHistory = [];
+  var lastInsem = getLastInseminationDateBefore(entry, uziDate);
+  var daysNum = null;
+  if (daysFromInsemination != null && !isNaN(daysFromInsemination)) daysNum = daysFromInsemination;
+  else if (lastInsem) {
+    var d1 = new Date(lastInsem);
+    var d2 = new Date(uziDate);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) daysNum = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+  }
+  entry.uziHistory.push({
+    date: uziDate,
+    result: result,
+    specialist: specialist,
+    daysFromInsemination: daysNum
+  });
+
+  if (result === 'Стельная') entry.status = 'Стельная';
+  if (result === 'Не стельная') entry.status = 'Холостая';
+
+  var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
+  var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
+  if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'УЗИ', detailsStr);
+
+  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(function () {
+      if (typeof loadLocally === 'function') return loadLocally();
+    }).then(function () {
+      if (typeof showToast === 'function') showToast('Сохранено', 'success');
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof navigate === 'function') navigate('view-cow');
+      viewCow(cattleId);
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+    });
+    return;
+  }
+  saveLocally();
+  if (typeof showToast === 'function') showToast('Сохранено', 'success');
+  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof navigate === 'function') navigate('view-cow');
+  if (typeof viewCow === 'function') viewCow(cattleId);
 }
 
 // Делаем функцию массового удаления доступной глобально

@@ -136,6 +136,8 @@ function loadLocally() {
         migrated = true;
       }
       if (!entry.inseminationHistory) entry.inseminationHistory = [];
+      if (!entry.actionHistory) entry.actionHistory = [];
+      if (!entry.uziHistory) entry.uziHistory = [];
       if (entry.group === undefined) entry.group = '';
     }
 
@@ -195,8 +197,28 @@ function getDefaultCowEntry() {
     synced: false,
     userId: '',
     lastModifiedBy: '',
-    inseminationHistory: []
+    inseminationHistory: [],
+    actionHistory: [],
+    uziHistory: []
   };
+}
+
+/**
+ * Добавляет запись в историю действий карточки животного.
+ * @param {Object} entry — запись животного
+ * @param {string} action — тип действия (Добавление, Редактирование, Осеменение, Отёл, Запуск (сухостой), Протокол, УЗИ, Удаление)
+ * @param {string} [details] — описание (опционально)
+ */
+function pushActionHistory(entry, action, details) {
+  if (!entry) return;
+  if (!entry.actionHistory) entry.actionHistory = [];
+  var userName = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().username : 'Admin';
+  var dateTime = typeof nowFormatted === 'function' ? nowFormatted() : new Date().toISOString();
+  entry.actionHistory.push({ dateTime: dateTime, userName: userName, action: action, details: details || '' });
+}
+
+if (typeof window !== 'undefined') {
+  window.pushActionHistory = pushActionHistory;
 }
 
 /**

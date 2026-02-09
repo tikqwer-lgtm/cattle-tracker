@@ -361,6 +361,26 @@
   gap: 8px;
   margin-bottom: 12px;
 }
+
+.action-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.action-history-item:last-child {
+  border-bottom: none;
+}
+.action-history-delete {
+  margin-left: auto;
+}
+.action-history-date,
+.action-history-user {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
 .view-fields-item {
   display: flex;
   align-items: center;
