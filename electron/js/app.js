@@ -183,8 +183,9 @@ function handleCheckForUpdates() {
         return;
       }
       if (!r.ok) {
-        if (typeof showToast === 'function') showToast('Не удалось проверить обновления', 'error');
-        else alert('Не удалось проверить обновления.');
+        var msg = r.error ? ('Не удалось проверить обновления: ' + r.error) : 'Не удалось проверить обновления';
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        else alert(msg);
         return;
       }
       if (r.version) {

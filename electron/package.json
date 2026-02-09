@@ -19,13 +19,14 @@
     "appId": "com.cattletracker.app",
     "productName": "Учёт коров",
     "directories": { "output": "dist" },
+    "asarUnpack": [ "**/node_modules/electron-updater/**" ],
     "extraMetadata": { "main": "main.js" },
     "publish": {
       "provider": "github",
       "owner": "tikqwer-lgtm",
       "repo": "cattle-tracker"
     },
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "artifactName": "cattle-tracker-desktop-setup-${version}.${ext}" },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

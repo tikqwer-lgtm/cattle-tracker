@@ -19,17 +19,41 @@
 Из папки `electron/`:
 
 ```bash
+npm install
 npm run dist
 ```
+
+Перед первой сборкой обязательно выполните `npm install`, иначе в пакет не попадёт `electron-updater` и в установленной версии будет «Модуль обновлений не загружен».
 
 Итоговые файлы появятся в `electron/dist/`. Скрипт `copy-web.js` перед сборкой копирует веб-приложение в `electron/`.
 
 ## Автообновление
 
-Проверка обновлений идёт через GitHub Releases (репозиторий из `build.publish` в `package.json`). Чтобы «Не удалось проверить обновления» не появлялось:
+Проверка обновлений идёт через **GitHub Releases**. Ошибка «Cannot find latest.yml» значит: в релизе нет файла `latest.yml` или установщика с нужным именем.
 
-1. Создайте **Release** в GitHub (репозиторий `tikqwer-lgtm/cattle-tracker` или свой — поправьте `publish` в `electron/package.json`).
-2. Тег релиза должен совпадать с версией в `package.json`, например `v1.0.1`.
-3. В этот релиз загрузите установщик из `dist/` и файл **`latest.yml`** (он тоже лежит в `dist/` после сборки) — без него updater не узнает новую версию.
+### Как выложить релиз (один раз для каждой версии)
 
-Если релизов ещё нет или репозиторий другой — измените в `electron/package.json` в секции `build.publish` поля `owner` и `repo` под свой GitHub.
+1. **Соберите проект** (в папке `electron/`):
+   ```bash
+   npm install
+   npm run dist
+   ```
+
+2. **Создайте Release на GitHub**  
+   Репозиторий: https://github.com/tikqwer-lgtm/cattle-tracker → вкладка **Releases** → **Draft a new release**.
+
+3. **Укажите тег версии**  
+   Тег должен совпадать с версией в `electron/package.json`, например: **`v1.0.1`** (обязательно буква `v` в начале).  
+   Можно создать тег из интерфейса при создании релиза.
+
+4. **Загрузите из `electron/dist/` два файла:**
+   - **`latest.yml`**
+   - **`cattle-tracker-desktop-setup-1.0.1.exe`** (имя совпадает с версией в `package.json`; в сборке задано через `artifactName`, так что exe и `latest.yml` всегда соответствуют друг другу).
+
+5. Опубликуйте релиз (**Publish release**).
+
+После этого установленная версия сможет находить `latest.yml` по адресу  
+`https://github.com/tikqwer-lgtm/cattle-tracker/releases/download/v1.0.1/latest.yml`  
+и при проверке обновлений не будет 404.
+
+Если репозиторий другой — измените в `electron/package.json` в секции `build.publish` поля `owner` и `repo`.
