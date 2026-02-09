@@ -176,6 +176,126 @@
     return loadHistory();
   }
 
+  function getProtocolTasks(fromDate, toDate) {
+    var list = typeof entries !== 'undefined' ? entries : [];
+    var getProtocolsFn = typeof getProtocols === 'function' ? getProtocols : function () { return []; };
+    var protocols = getProtocolsFn();
+    var byName = {};
+    protocols.forEach(function (p) { byName[p.name || p.id] = p; });
+    var from = fromDate ? dateOnly(new Date(fromDate)).getTime() : 0;
+    var to = toDate ? dateOnly(new Date(toDate)).getTime() : Number.MAX_SAFE_INTEGER;
+    var tasks = [];
+    list.forEach(function (entry) {
+      var protocol = entry.protocol;
+      if (!protocol || !protocol.name || !protocol.startDate) return;
+      var def = byName[protocol.name];
+      if (!def || !def.steps || !def.steps.length) return;
+      var start = parseDate(protocol.startDate);
+      if (!start) return;
+      var cattleId = entry.cattleId || '';
+      var group = entry.group || '';
+      def.steps.forEach(function (step) {
+        var d = new Date(start);
+        d.setDate(d.getDate() + (parseInt(step.day, 10) || 0));
+        var taskDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        var taskTime = dateOnly(d).getTime();
+        if (taskTime >= from && taskTime <= to) {
+          tasks.push({
+            date: taskDate,
+            dateKey: taskDate,
+            cattleId: cattleId,
+            group: group,
+            drug: (step.drug || '').trim() || '—',
+            protocolName: protocol.name
+          });
+        }
+      });
+    });
+    tasks.sort(function (a, b) { return a.dateKey.localeCompare(b.dateKey); });
+    return tasks;
+  }
+
+  function renderTasksList(containerEl, fromDate, toDate) {
+    if (!containerEl) return;
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    if (!fromDate && !toDate) { fromDate = todayStr; toDate = todayStr; }
+    var tasks = getProtocolTasks(fromDate, toDate);
+    var byDate = {};
+    tasks.forEach(function (t) {
+      if (!byDate[t.dateKey]) byDate[t.dateKey] = [];
+      byDate[t.dateKey].push(t);
+    });
+    var dates = Object.keys(byDate).sort();
+    var html = '<div class="tasks-list-block">';
+    html += '<h4 class="tasks-list-title">Список задач (инъекции по протоколам)</h4>';
+    html += '<div class="tasks-period">';
+    html += '<button type="button" class="small-btn tasks-period-btn" data-range="today">Сегодня</button>';
+    html += '<button type="button" class="small-btn tasks-period-btn" data-range="tomorrow">Завтра</button>';
+    html += '<button type="button" class="small-btn tasks-period-btn" data-range="week">Неделя вперёд</button>';
+    html += '<label>С <input type="date" id="tasksDateFrom" class="tasks-date-input" /></label>';
+    html += '<label>По <input type="date" id="tasksDateTo" class="tasks-date-input" /></label>';
+    html += '</div>';
+    if (dates.length === 0) {
+      html += '<p class="tasks-empty">Нет задач на выбранный период.</p>';
+    } else {
+      html += '<div class="tasks-by-date">';
+      dates.forEach(function (dateKey) {
+        var dayTasks = byDate[dateKey];
+        html += '<div class="tasks-date-group">';
+        html += '<div class="tasks-date-header">' + (dateKey || '').replace(/</g, '&lt;') + '</div>';
+        html += '<ul class="tasks-date-list">';
+        dayTasks.forEach(function (t) {
+          html += '<li class="tasks-item">' +
+            '<span class="tasks-cattle">' + (t.cattleId || '').replace(/</g, '&lt;') + '</span>' +
+            ' | <span class="tasks-group">' + (t.group || '—').replace(/</g, '&lt;') + '</span>' +
+            ' | <span class="tasks-drug">' + (t.drug || '—').replace(/</g, '&lt;') + '</span>' +
+            ' | <span class="tasks-date">' + (t.date || '').replace(/</g, '&lt;') + '</span>' +
+            '</li>';
+        });
+        html += '</ul></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    containerEl.innerHTML = html;
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    function applyRange(range) {
+      var from = '';
+      var to = '';
+      if (range === 'today') {
+        from = to = todayStr;
+      } else if (range === 'tomorrow') {
+        var t2 = new Date(today);
+        t2.setDate(t2.getDate() + 1);
+        from = to = t2.getFullYear() + '-' + String(t2.getMonth() + 1).padStart(2, '0') + String(t2.getDate()).padStart(2, '0');
+      } else if (range === 'week') {
+        from = todayStr;
+        var t7 = new Date(today);
+        t7.setDate(t7.getDate() + 7);
+        to = t7.getFullYear() + '-' + String(t7.getMonth() + 1).padStart(2, '0') + String(t7.getDate()).padStart(2, '0');
+      }
+      var fromEl = document.getElementById('tasksDateFrom');
+      var toEl = document.getElementById('tasksDateTo');
+      if (fromEl) fromEl.value = from;
+      if (toEl) toEl.value = to;
+      renderTasksList(containerEl, from || undefined, to || undefined);
+    }
+    containerEl.querySelectorAll('.tasks-period-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyRange(btn.getAttribute('data-range'));
+      });
+    });
+    var fromInput = document.getElementById('tasksDateFrom');
+    var toInput = document.getElementById('tasksDateTo');
+    if (fromInput) fromInput.addEventListener('change', function () {
+      renderTasksList(containerEl, fromInput.value || undefined, toInput ? toInput.value : undefined);
+    });
+    if (toInput) toInput.addEventListener('change', function () {
+      renderTasksList(containerEl, fromInput ? fromInput.value : undefined, toInput.value || undefined);
+    });
+  }
+
   function renderNotificationCenter(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
@@ -212,7 +332,10 @@
           '<button type="button" class="small-btn" id="notifClearHistory">Очистить историю</button>' +
         '</div>' +
         '<div class="notification-groups">' + listHtml + '</div>' +
+        '<div id="tasks-list-container" class="tasks-list-container"></div>' +
       '</div>';
+    var tasksContainer = document.getElementById('tasks-list-container');
+    if (tasksContainer) renderTasksList(tasksContainer);
     var checkBtn = document.getElementById('notifCheckNow');
     var clearBtn = document.getElementById('notifClearHistory');
     if (checkBtn) {

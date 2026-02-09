@@ -1,5 +1,34 @@
 // view-list.js — список на экране «Просмотр», массовое выделение
 
+var viewListSortKey = '';
+var viewListSortDir = 'asc';
+
+function _compareViewList(a, b, key, dir) {
+  var mul = dir === 'asc' ? 1 : -1;
+  var va = a[key];
+  var vb = b[key];
+  if (key === 'inseminationDate' || key === 'calvingDate' || key === 'dryStartDate') {
+    var da = va ? new Date(va).getTime() : 0;
+    var db = vb ? new Date(vb).getTime() : 0;
+    return mul * (da - db);
+  }
+  if (key === 'attemptNumber' || key === 'lactation') {
+    var na = parseInt(va, 10);
+    var nb = parseInt(vb, 10);
+    if (isNaN(na)) na = 0;
+    if (isNaN(nb)) nb = 0;
+    return mul * (na - nb);
+  }
+  if (key === 'synced') {
+    var ba = va === true || va === 'true';
+    var bb = vb === true || vb === 'true';
+    return mul * ((ba ? 1 : 0) - (bb ? 1 : 0));
+  }
+  var sa = (va != null ? String(va) : '').toLowerCase();
+  var sb = (vb != null ? String(vb) : '').toLowerCase();
+  return mul * (sa.localeCompare(sb, 'ru'));
+}
+
 /**
  * Обновляет список на экране просмотра
  */
@@ -10,6 +39,10 @@ function updateViewList() {
 
   var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
   var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
+  if (listToShow && listToShow.length > 0 && viewListSortKey) {
+    listToShow = listToShow.slice();
+    listToShow.sort(function (a, b) { return _compareViewList(a, b, viewListSortKey, viewListSortDir); });
+  }
 
   var bulkBarHtml = '<div class="bulk-actions-bar">' +
     '<div class="bulk-actions-left">' +
@@ -42,6 +75,15 @@ function updateViewList() {
     return div.innerHTML;
   };
 
+  var sortAsc = viewListSortDir === 'asc';
+  var sortMark = function (key) {
+    if (viewListSortKey !== key) return '';
+    return sortAsc ? ' <span class="sort-indicator" aria-hidden="true">▲</span>' : ' <span class="sort-indicator" aria-hidden="true">▼</span>';
+  };
+  var sortClass = function (key) {
+    if (viewListSortKey !== key) return '';
+    return sortAsc ? ' sort-asc' : ' sort-desc';
+  };
   tableContainer.innerHTML = `
     <table class="entries-table">
       <thead>
@@ -49,18 +91,18 @@ function updateViewList() {
           <th class="checkbox-column">
             <input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все">
           </th>
-          <th>Корова</th>
-          <th>Кличка</th>
-          <th>Группа</th>
-          <th>Лактация</th>
-          <th>Дата осеменения</th>
-          <th>Бык</th>
-          <th>Попытка</th>
-          <th>Статус</th>
-          <th>Отёл</th>
-          <th>Сухостой</th>
-          <th>Примечание</th>
-          <th>Синхронизация</th>
+          <th class="sortable-th${sortClass('cattleId')}" data-sort-key="cattleId" role="button" tabindex="0">Корова${sortMark('cattleId')}</th>
+          <th class="sortable-th${sortClass('nickname')}" data-sort-key="nickname" role="button" tabindex="0">Кличка${sortMark('nickname')}</th>
+          <th class="sortable-th${sortClass('group')}" data-sort-key="group" role="button" tabindex="0">Группа${sortMark('group')}</th>
+          <th class="sortable-th${sortClass('lactation')}" data-sort-key="lactation" role="button" tabindex="0">Лактация${sortMark('lactation')}</th>
+          <th class="sortable-th${sortClass('inseminationDate')}" data-sort-key="inseminationDate" role="button" tabindex="0">Дата осеменения${sortMark('inseminationDate')}</th>
+          <th class="sortable-th${sortClass('bull')}" data-sort-key="bull" role="button" tabindex="0">Бык${sortMark('bull')}</th>
+          <th class="sortable-th${sortClass('attemptNumber')}" data-sort-key="attemptNumber" role="button" tabindex="0">Попытка${sortMark('attemptNumber')}</th>
+          <th class="sortable-th${sortClass('status')}" data-sort-key="status" role="button" tabindex="0">Статус${sortMark('status')}</th>
+          <th class="sortable-th${sortClass('calvingDate')}" data-sort-key="calvingDate" role="button" tabindex="0">Отёл${sortMark('calvingDate')}</th>
+          <th class="sortable-th${sortClass('dryStartDate')}" data-sort-key="dryStartDate" role="button" tabindex="0">Сухостой${sortMark('dryStartDate')}</th>
+          <th class="sortable-th${sortClass('note')}" data-sort-key="note" role="button" tabindex="0">Примечание${sortMark('note')}</th>
+          <th class="sortable-th${sortClass('synced')}" data-sort-key="synced" role="button" tabindex="0">Синхронизация${sortMark('synced')}</th>
         </tr>
       </thead>
       <tbody>
@@ -128,6 +170,17 @@ function _assertBulkSelectionUI() {
 }
 
 function _handleViewListKeydown(ev) {
+  var sortTh = ev.target.closest('th[data-sort-key]');
+  if (sortTh && (ev.key === 'Enter' || ev.key === ' ')) {
+    ev.preventDefault();
+    var key = sortTh.getAttribute('data-sort-key');
+    if (key) {
+      if (viewListSortKey === key) viewListSortDir = viewListSortDir === 'asc' ? 'desc' : 'asc';
+      else { viewListSortKey = key; viewListSortDir = 'asc'; }
+      updateViewList();
+    }
+    return;
+  }
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
   var row = ev.target.closest('tbody tr.view-entry-row');
   if (!row) return;
@@ -163,6 +216,18 @@ function _handleViewListClick(ev) {
     ev.preventDefault();
     var cb = document.getElementById('selectAllCheckbox');
     if (cb) toggleSelectAll(cb.checked);
+    return;
+  }
+
+  var sortTh = target.closest('th[data-sort-key]');
+  if (sortTh && tableContainer && tableContainer.contains(sortTh)) {
+    ev.preventDefault();
+    var key = sortTh.getAttribute('data-sort-key');
+    if (key) {
+      if (viewListSortKey === key) viewListSortDir = viewListSortDir === 'asc' ? 'desc' : 'asc';
+      else { viewListSortKey = key; viewListSortDir = 'asc'; }
+      updateViewList();
+    }
     return;
   }
 

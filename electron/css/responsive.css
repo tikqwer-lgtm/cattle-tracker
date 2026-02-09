@@ -93,3 +93,13 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 380px) {
+  .menu-branding-text {
+    font-size: 0.85rem;
+  }
+  .menu-branding-logo {
+    width: 36px;
+    height: 36px;
+  }
+}

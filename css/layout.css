@@ -1,5 +1,23 @@
 /* layout.css - Стили макета и размещения */
 
+/* Корпоративный блок на главном экране */
+.menu-branding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+.menu-branding-logo {
+  flex-shrink: 0;
+}
+.menu-branding-text {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 /* Статистика стада */
 .herd-stats {
   display: flex;

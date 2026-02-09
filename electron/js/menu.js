@@ -1,9 +1,69 @@
 // menu.js — Навигация между экранами, переключатель объектов, статистика стада
 
+/** Конфиг групп главного меню: id группы → { title, buttons: [{ icon, text, onclick }] } */
+var MENU_GROUPS = {
+  data: {
+    title: 'Работа с данными',
+    buttons: [
+      { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')" },
+      { icon: '📤', text: 'Экспорт в Excel', onclick: 'exportToExcel()' },
+      { icon: '📋', text: 'Шаблон импорта', onclick: 'downloadTemplate()' },
+      { icon: '📥', text: 'Импорт из Excel', onclick: "document.getElementById('importFile').click()" },
+      { icon: '📋', text: 'Список всех животных', onclick: "navigate('view')" },
+      { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" }
+    ]
+  },
+  actions: {
+    title: 'Действия',
+    buttons: [
+      { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')" },
+      { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')" },
+      { icon: '🐄', text: 'Отел', onclick: "navigate('calving')" },
+      { icon: '📋', text: 'Поставить на протокол', onclick: "navigate('protocol-assign')" }
+    ]
+  },
+  analytics: {
+    title: 'Аналитика',
+    buttons: [
+      { icon: '📊', text: 'Аналитика', onclick: "navigate('analytics')" }
+    ]
+  },
+  notifications: {
+    title: 'Уведомления',
+    buttons: [
+      { icon: '🔔', text: 'Уведомления', onclick: "navigate('notifications')" }
+    ]
+  },
+  settings: {
+    title: 'Настройки',
+    buttons: [
+      { icon: '👤', text: 'Войти / Пользователи', onclick: "navigate('auth')" },
+      { icon: '💾', text: 'Резервные копии', onclick: "navigate('backup')" },
+      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" },
+      { icon: '🧹', text: 'Очистить поврежденные данные', onclick: 'cleanAllEntries()', style: 'background-color: #ffc107;' },
+      { icon: '🗑️', text: 'Удалить все', onclick: "if(confirm('ВНИМАНИЕ! Это удалит ВСЕ данные программы (записи, пользователи, копии) без возможности восстановления. Продолжить?')) deleteAllData()", style: 'background-color: #dc3545;' }
+    ]
+  }
+};
+
+/**
+ * Переход на экран подменю с заданной группой
+ */
+function navigateToSubmenu(groupId) {
+  window._submenuGroup = groupId;
+  navigate('submenu');
+}
+
 /**
  * Навигация между экранами
+ * @param {string} screenId - id экрана (без суффикса -screen)
+ * @param {Object} [options] - опции (например { group: 'data' } для подменю)
  */
-function navigate(screenId) {
+function navigate(screenId, options) {
+  if (options && options.group !== undefined) {
+    window._submenuGroup = options.group;
+  }
+
   document.querySelectorAll('.screen').forEach(el => {
     el.classList.remove('active');
   });
@@ -13,6 +73,15 @@ function navigate(screenId) {
     screen.classList.add('active');
   }
 
+  if (screenId === 'submenu') {
+    renderSubmenu();
+  }
+  if (screenId === 'protocols' && typeof renderProtocolsScreen === 'function') {
+    renderProtocolsScreen('protocols-container');
+  }
+  if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
+  if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();
+  if (screenId === 'protocol-assign' && typeof initProtocolAssignScreen === 'function') initProtocolAssignScreen();
   if (screenId === 'view') {
     updateViewList();
   }
@@ -34,6 +103,26 @@ function navigate(screenId) {
     updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
   }
+}
+
+/**
+ * Рендерит экран подменю: заголовок и кнопки выбранной группы
+ */
+function renderSubmenu() {
+  var groupId = window._submenuGroup || 'data';
+  var group = MENU_GROUPS[groupId];
+  var titleEl = document.getElementById('submenu-title');
+  var containerEl = document.getElementById('submenu-buttons');
+  if (!titleEl || !containerEl || !group) return;
+  titleEl.textContent = group.title;
+  var html = '';
+  for (var i = 0; i < group.buttons.length; i++) {
+    var btn = group.buttons[i];
+    var styleAttr = btn.style ? ' style="' + String(btn.style).replace(/"/g, '&quot;') + '"' : '';
+    html += '<button class="action-btn"' + styleAttr + ' onclick="' + String(btn.onclick).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">';
+    html += '<span>' + (btn.icon || '') + '</span><span>' + (btn.text || '').replace(/</g, '&lt;') + '</span></button>';
+  }
+  containerEl.innerHTML = html;
 }
 
 /**

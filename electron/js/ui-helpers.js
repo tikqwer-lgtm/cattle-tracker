@@ -27,10 +27,16 @@ function showLoading(container) {
 function showToast(text, type, duration) {
   if (typeof type !== 'string') type = 'info';
   if (typeof duration !== 'number') duration = 3000;
+  const container = document.getElementById('toast-container');
+  const parent = container || document.body;
+  var maxToasts = 5;
+  if (container && container.children.length >= maxToasts) {
+    container.removeChild(container.firstChild);
+  }
   const toast = document.createElement('div');
   toast.className = 'toast toast-' + type;
   toast.textContent = text;
-  document.body.appendChild(toast);
+  parent.appendChild(toast);
   requestAnimationFrame(function () {
     toast.classList.add('toast-visible');
   });

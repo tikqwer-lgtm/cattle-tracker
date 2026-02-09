@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/print.css" media="print" />
 </head>
 <body>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
     <div class="print-header-strip"></div>
@@ -87,6 +88,10 @@
 
   <!-- Экран меню -->
   <div id="menu-screen" class="screen active">
+    <div class="menu-branding" aria-hidden="false">
+      <img src="icons/icon.svg" alt="" class="menu-branding-logo" width="48" height="48" />
+      <span class="menu-branding-text">Молочная компания «Генетика»</span>
+    </div>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -124,87 +129,47 @@
       </div>
     </div>
 
-    <!-- Кнопки действий по группам -->
+    <!-- Кнопки действий по группам (главное меню — одна кнопка на группу) -->
     <div class="action-buttons">
       <div class="menu-section">
-        <h3 class="menu-section-title">Работа с данными</h3>
-        <div class="menu-section-buttons">
-          <button onclick="navigate('add')" class="action-btn">
-            <span>➕</span>
-            <span>Добавить животное</span>
-          </button>
-          <button onclick="exportToExcel()" class="action-btn">
-            <span>📤</span>
-            <span>Экспорт в Excel</span>
-          </button>
-          <button onclick="downloadTemplate()" class="action-btn">
-            <span>📋</span>
-            <span>Шаблон импорта</span>
-          </button>
-          <button onclick="document.getElementById('importFile').click()" class="action-btn">
-            <span>📥</span>
-            <span>Импорт из Excel</span>
-          </button>
-          <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
-          <button onclick="navigate('view')" class="action-btn">
-            <span>📋</span>
-            <span>Список всех животных</span>
-          </button>
-          <button onclick="navigate('all-inseminations')" class="action-btn">
-            <span>📑</span>
-            <span>Все осеменения</span>
-          </button>
-        </div>
+        <button onclick="navigateToSubmenu('data')" class="action-btn menu-group-btn">
+          <span>📁</span>
+          <span>Работа с данными</span>
+        </button>
       </div>
       <div class="menu-section">
-        <h3 class="menu-section-title">Действия</h3>
-        <div class="menu-section-buttons">
-          <button onclick="navigate('insemination')" class="action-btn">
-            <span>🐄</span>
-            <span>Ввести осеменение</span>
-          </button>
-        </div>
+        <button onclick="navigateToSubmenu('actions')" class="action-btn menu-group-btn">
+          <span>🐄</span>
+          <span>Действия</span>
+        </button>
       </div>
       <div class="menu-section">
-        <h3 class="menu-section-title">Аналитика</h3>
-        <div class="menu-section-buttons">
-          <button onclick="navigate('analytics')" class="action-btn">
-            <span>📊</span>
-            <span>Аналитика</span>
-          </button>
-        </div>
+        <button onclick="navigateToSubmenu('analytics')" class="action-btn menu-group-btn">
+          <span>📊</span>
+          <span>Аналитика</span>
+        </button>
       </div>
       <div class="menu-section">
-        <h3 class="menu-section-title">Уведомления</h3>
-        <div class="menu-section-buttons">
-          <button onclick="navigate('notifications')" class="action-btn">
-            <span>🔔</span>
-            <span>Уведомления</span>
-          </button>
-        </div>
+        <button onclick="navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
+          <span>🔔</span>
+          <span>Уведомления</span>
+        </button>
       </div>
       <div class="menu-section">
-        <h3 class="menu-section-title">Настройки</h3>
-        <div class="menu-section-buttons">
-          <button onclick="navigate('auth')" class="action-btn">
-            <span>👤</span>
-            <span>Войти / Пользователи</span>
-          </button>
-          <button onclick="navigate('backup')" class="action-btn">
-            <span>💾</span>
-            <span>Резервные копии</span>
-          </button>
-          <button onclick="cleanAllEntries()" class="action-btn" style="background-color: #ffc107;">
-            <span>🧹</span>
-            <span>Очистить поврежденные данные</span>
-          </button>
-          <button onclick="if(confirm('ВНИМАНИЕ! Это удалит ВСЕ данные программы (записи, пользователи, копии) без возможности восстановления. Продолжить?')) deleteAllData()" class="action-btn" style="background-color: #dc3545;">
-            <span>🗑️</span>
-            <span>Удалить все</span>
-          </button>
-        </div>
+        <button onclick="navigateToSubmenu('settings')" class="action-btn menu-group-btn">
+          <span>⚙️</span>
+          <span>Настройки</span>
+        </button>
       </div>
     </div>
+    <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
+  </div>
+
+  <!-- Экран подменю -->
+  <div id="submenu-screen" class="screen">
+    <h1 id="submenu-title">Подменю</h1>
+    <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
+    <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран ввода осеменения -->
@@ -238,6 +203,67 @@
       <div class="form-actions">
         <button type="button" onclick="navigate('menu')" id="cancelButtonInsem">Отмена</button>
         <button type="submit" id="saveButtonInsem">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Запуск (начало сухостоя) -->
+  <div id="dry-screen" class="screen">
+    <h1>🐄 Запуск (начало сухостоя)</h1>
+    <form class="form" onsubmit="saveDryRunEntry(); return false;">
+      <label for="cattleIdDryInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdDryInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdDryList" class="autocomplete-list"></ul>
+      </div>
+      <label for="dryStartDateInput">Дата начала сухостоя</label>
+      <input type="date" id="dryStartDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Отел -->
+  <div id="calving-screen" class="screen">
+    <h1>🐄 Отел</h1>
+    <form class="form" onsubmit="saveCalvingEntry(); return false;">
+      <label for="cattleIdCalvingInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdCalvingInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdCalvingList" class="autocomplete-list"></ul>
+      </div>
+      <label for="calvingDateInput">Дата отёла</label>
+      <input type="date" id="calvingDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Поставить на протокол -->
+  <div id="protocol-assign-screen" class="screen">
+    <h1>📋 Поставить на протокол</h1>
+    <form class="form" onsubmit="saveProtocolAssignEntry(); return false;">
+      <label for="cattleIdProtocolInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdProtocolInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdProtocolList" class="autocomplete-list"></ul>
+      </div>
+      <label for="protocolSelectAssign">Протокол</label>
+      <select id="protocolSelectAssign">
+        <option value="">— Выберите протокол —</option>
+      </select>
+      <label for="protocolStartDateInput">Дата постановки на протокол</label>
+      <input type="date" id="protocolStartDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
       </div>
     </form>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
@@ -382,6 +408,12 @@
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
+  <div id="protocols-screen" class="screen">
+    <h1>📋 Протоколы синхронизации</h1>
+    <div id="protocols-container"></div>
+    <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
     <h1>🔄 Синхронизация</h1>
@@ -423,6 +455,7 @@
   <script src="js/analytics.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/view-list.js"></script>
+  <script src="js/protocols.js"></script>
   <!-- menu.js последним -->
   <script src="js/menu.js"></script>
   <script>

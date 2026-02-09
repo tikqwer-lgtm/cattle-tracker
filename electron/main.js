@@ -3,7 +3,7 @@
  * Загружает index.html из родительской папки (cattle-tracker).
  * Для работы с API укажите адрес сервера в приложении (экран входа).
  */
-const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
@@ -119,9 +119,16 @@ function createAppMenu() {
 }
 
 function createWindow() {
+  const primary = screen.getPrimaryDisplay();
+  const work = primary.workArea;
+  const width = Math.min(900, work.width);
+  const height = Math.min(700, work.height);
+
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
+    x: work.x + Math.max(0, Math.floor((work.width - width) / 2)),
+    y: work.y + Math.max(0, Math.floor((work.height - height) / 2)),
+    width: width,
+    height: height,
     minWidth: 400,
     minHeight: 400,
     webPreferences: {
@@ -132,6 +139,15 @@ function createWindow() {
     },
     title: 'Учёт коров',
     icon: path.join(isDev ? rootDir : __dirname, 'favicon.ico')
+  });
+
+  mainWindow.on('maximize', () => {
+    const display = screen.getDisplayMatching(mainWindow.getBounds());
+    mainWindow.setBounds(display.workArea);
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 
   const ses = mainWindow.webContents.session;
@@ -145,10 +161,6 @@ function createWindow() {
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
 
   createAppMenu();
   setupAutoUpdater();

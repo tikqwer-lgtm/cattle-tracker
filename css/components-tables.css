@@ -248,3 +248,15 @@
 .autocomplete-list li:last-child {
   border-bottom: none;
 }
+
+.entries-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+.entries-table th.sortable-th:hover {
+  opacity: 0.95;
+}
+.entries-table th .sort-indicator {
+  font-size: 0.75em;
+  opacity: 0.9;
+}

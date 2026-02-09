@@ -136,6 +136,9 @@ function viewCow(cattleId) {
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
     '<div class="cow-card-actions">' +
     '<button onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn edit">✏️ Редактировать</button> ' +
+    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn">🐄 Запуск</button> ' +
+    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn">🐄 Отел</button> ' +
+    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn">📋 Поставить на протокол</button> ' +
     '<button onclick="navigate(\'view\')" class="back-button">Назад к списку</button>' +
     '</div>' +
     '</div>';

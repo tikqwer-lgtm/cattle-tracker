@@ -119,6 +119,73 @@
   cursor: pointer;
 }
 
+.tasks-list-container {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+}
+.tasks-list-block {
+  margin-top: 0;
+}
+.tasks-list-title {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.tasks-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.tasks-period label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: normal;
+  font-size: 0.9em;
+}
+.tasks-date-input {
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.tasks-by-date {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tasks-date-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.tasks-date-header {
+  padding: 8px 12px;
+  background: var(--color-primary-light);
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.tasks-date-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tasks-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9em;
+}
+.tasks-item:last-child {
+  border-bottom: none;
+}
+.tasks-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .analytics-controls {
   display: flex;
   align-items: center;

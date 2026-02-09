@@ -195,6 +195,186 @@ function cancelEdit() {
   }
 }
 
+/**
+ * Универсальное автодополнение по номеру коровы для экранов Запуск/Отел/Протокол
+ * @param {string} inputId - id поля ввода
+ * @param {string} listId - id списка подсказок
+ */
+function setupCattleAutocompleteFor(inputId, listId) {
+  var input = document.getElementById(inputId);
+  var list = document.getElementById(listId);
+  if (!input || !list) return;
+  function populate() {
+    list.innerHTML = '';
+    var filter = (input.value || '').toLowerCase();
+    if (!filter) return;
+    var matching = (entries || []).filter(function (e) {
+      return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
+        (e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
+    }).slice(0, 10);
+    matching.forEach(function (entry) {
+      var li = document.createElement('li');
+      li.textContent = entry.cattleId + (entry.nickname ? ' (' + entry.nickname + ')' : '');
+      li.dataset.value = entry.cattleId;
+      li.addEventListener('click', function () {
+        input.value = entry.cattleId;
+        list.innerHTML = '';
+      });
+      list.appendChild(li);
+    });
+  }
+  input.removeEventListener('input', input._cattleAutocompleteInput);
+  input._cattleAutocompleteInput = populate;
+  input.addEventListener('input', populate);
+}
+
+/**
+ * Обновляет запись: запуск в сухостой (dryStartDate)
+ */
+function saveDryRunEntry() {
+  var cattleId = document.getElementById('cattleIdDryInput').value.trim();
+  var dryStartDate = document.getElementById('dryStartDateInput').value;
+  if (!cattleId) {
+    if (typeof showToast === 'function') showToast('Укажите номер коровы', 'error'); else alert('Укажите номер коровы');
+    return;
+  }
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) {
+    if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
+    return;
+  }
+  entry.dryStartDate = dryStartDate || '';
+  entry.status = entry.status || '';
+  if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
+  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(function () {
+      if (typeof loadLocally === 'function') return loadLocally();
+    }).then(function () {
+      if (typeof showToast === 'function') showToast('Сохранено', 'success');
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof navigate === 'function') navigate('menu');
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+    });
+    return;
+  }
+  saveLocally();
+  if (typeof showToast === 'function') showToast('Сохранено', 'success');
+  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof navigate === 'function') navigate('menu');
+}
+
+/**
+ * Обновляет запись: отёл (calvingDate)
+ */
+function saveCalvingEntry() {
+  var cattleId = document.getElementById('cattleIdCalvingInput').value.trim();
+  var calvingDate = document.getElementById('calvingDateInput').value;
+  if (!cattleId) {
+    if (typeof showToast === 'function') showToast('Укажите номер коровы', 'error'); else alert('Укажите номер коровы');
+    return;
+  }
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) {
+    if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
+    return;
+  }
+  entry.calvingDate = calvingDate || '';
+  if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
+  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(function () {
+      if (typeof loadLocally === 'function') return loadLocally();
+    }).then(function () {
+      if (typeof showToast === 'function') showToast('Сохранено', 'success');
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof navigate === 'function') navigate('menu');
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+    });
+    return;
+  }
+  saveLocally();
+  if (typeof showToast === 'function') showToast('Сохранено', 'success');
+  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof navigate === 'function') navigate('menu');
+}
+
+/**
+ * Обновляет запись: поставить на протокол (protocol.name, protocol.startDate)
+ */
+function saveProtocolAssignEntry() {
+  var cattleId = document.getElementById('cattleIdProtocolInput').value.trim();
+  var protocolName = document.getElementById('protocolSelectAssign').value;
+  var startDate = document.getElementById('protocolStartDateInput').value;
+  if (!cattleId) {
+    if (typeof showToast === 'function') showToast('Укажите номер коровы', 'error'); else alert('Укажите номер коровы');
+    return;
+  }
+  if (!protocolName) {
+    if (typeof showToast === 'function') showToast('Выберите протокол', 'error'); else alert('Выберите протокол');
+    return;
+  }
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) {
+    if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
+    return;
+  }
+  if (!entry.protocol) entry.protocol = {};
+  entry.protocol.name = protocolName;
+  entry.protocol.startDate = startDate || '';
+  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(function () {
+      if (typeof loadLocally === 'function') return loadLocally();
+    }).then(function () {
+      if (typeof showToast === 'function') showToast('Сохранено', 'success');
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof navigate === 'function') navigate('menu');
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+    });
+    return;
+  }
+  saveLocally();
+  if (typeof showToast === 'function') showToast('Сохранено', 'success');
+  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof navigate === 'function') navigate('menu');
+}
+
+function initDryScreen() {
+  setupCattleAutocompleteFor('cattleIdDryInput', 'cattleIdDryList');
+  if (window._prefillCattleId) {
+    var el = document.getElementById('cattleIdDryInput');
+    if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
+  }
+}
+
+function initCalvingScreen() {
+  setupCattleAutocompleteFor('cattleIdCalvingInput', 'cattleIdCalvingList');
+  if (window._prefillCattleId) {
+    var el = document.getElementById('cattleIdCalvingInput');
+    if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
+  }
+}
+
+function initProtocolAssignScreen() {
+  setupCattleAutocompleteFor('cattleIdProtocolInput', 'cattleIdProtocolList');
+  var select = document.getElementById('protocolSelectAssign');
+  if (select && typeof getProtocols === 'function') {
+    var list = getProtocols();
+    select.innerHTML = '<option value="">— Выберите протокол —</option>';
+    list.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = p.name || p.id;
+      opt.textContent = p.name || 'Без названия';
+      select.appendChild(opt);
+    });
+  }
+  if (window._prefillCattleId) {
+    var el = document.getElementById('cattleIdProtocolInput');
+    if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
+  }
+}
+
 // Делаем функцию массового удаления доступной глобально
 window.deleteSelectedEntries = deleteSelectedEntries;
 
