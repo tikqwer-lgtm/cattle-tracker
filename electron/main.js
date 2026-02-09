@@ -139,11 +139,15 @@ function createWindow() {
 }
 
 ipcMain.handle('check-for-updates', () => {
-  if (!autoUpdater || !app.isPackaged) return Promise.resolve({ ok: false, dev: true });
+  if (!app.isPackaged) return Promise.resolve({ ok: false, dev: true });
+  if (!autoUpdater) return Promise.resolve({ ok: false, error: 'Модуль обновлений не загружен' });
   return autoUpdater.checkForUpdates().then((r) => {
     if (r && r.updateInfo) return { ok: true, version: r.updateInfo.version };
     return { ok: true, current: true };
-  }).catch(() => ({ ok: false }));
+  }).catch((err) => ({
+    ok: false,
+    error: (err && err.message) ? err.message : 'Ошибка при проверке'
+  }));
 });
 
 app.whenReady().then(createWindow);

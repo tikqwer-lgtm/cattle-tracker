@@ -178,8 +178,8 @@ function handleCheckForUpdates() {
   if (typeof window.electronAPI !== 'undefined' && window.electronAPI.checkForUpdates) {
     window.electronAPI.checkForUpdates().then(function (r) {
       if (r.dev) {
-        if (typeof showToast === 'function') showToast('Проверка обновлений доступна в установленной версии', 'info');
-        else alert('Проверка обновлений доступна в установленной версии.');
+        if (typeof showToast === 'function') showToast('Проверка обновлений работает только в установленной версии приложения', 'info');
+        else alert('Проверка обновлений работает только в установленной версии приложения.');
         return;
       }
       if (!r.ok) {

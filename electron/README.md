@@ -22,4 +22,14 @@
 npm run dist
 ```
 
-Итоговые файлы появятся в `electron/dist/`. Перед сборкой имеет смысл скопировать веб-приложение (index.html, css, js) в `electron/` или настроить `extraResources` в `package.json`, чтобы они попали в пакет.
+Итоговые файлы появятся в `electron/dist/`. Скрипт `copy-web.js` перед сборкой копирует веб-приложение в `electron/`.
+
+## Автообновление
+
+Проверка обновлений идёт через GitHub Releases (репозиторий из `build.publish` в `package.json`). Чтобы «Не удалось проверить обновления» не появлялось:
+
+1. Создайте **Release** в GitHub (репозиторий `tikqwer-lgtm/cattle-tracker` или свой — поправьте `publish` в `electron/package.json`).
+2. Тег релиза должен совпадать с версией в `package.json`, например `v1.0.1`.
+3. В этот релиз загрузите установщик из `dist/` и файл **`latest.yml`** (он тоже лежит в `dist/` после сборки) — без него updater не узнает новую версию.
+
+Если релизов ещё нет или репозиторий другой — измените в `electron/package.json` в секции `build.publish` поля `owner` и `repo` под свой GitHub.
