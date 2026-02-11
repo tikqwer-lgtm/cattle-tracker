@@ -93,11 +93,11 @@ function parseInseminationDateToTime(dateStr) {
 
 /**
  * Определяет номер лактации для осеменения.
- * Если у животного лактация 0 (тёлка) — возвращает 0. Иначе: до отёла = 1, после отёла = 2 (при одном calvingDate в записи).
+ * Если у животного задана лактация (0, 1, 2, …) — возвращаем её. Иначе: по дате отёла до/после = 1 или 2.
  */
 function getInseminationLactation(insemDate, calvingDate, entryLactation) {
   var lact = entryLactation !== undefined && entryLactation !== null && entryLactation !== '' ? parseInt(entryLactation, 10) : null;
-  if (lact === 0 || lact === '0') return 0;
+  if (lact !== null && !isNaN(lact) && lact >= 0) return lact;
   if (!calvingDate || !insemDate) return 1;
   var tInsem = parseInseminationDateToTime(insemDate);
   var tCalv = parseInseminationDateToTime(calvingDate);
