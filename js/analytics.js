@@ -538,7 +538,7 @@
     window.generateReport = generateReport;
     window.renderCharts = renderCharts;
     window.renderAnalyticsScreen = renderAnalyticsScreen;
-    window.getFilteredEntries = getFilteredEntries;
+    window.getAnalyticsFilteredEntries = getFilteredEntries;
     window.getPeriodBounds = getPeriodBounds;
   }
 
