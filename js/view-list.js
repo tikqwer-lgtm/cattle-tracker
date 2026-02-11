@@ -135,10 +135,18 @@ function updateViewList() {
 
   if (!listToShow || listToShow.length === 0) {
     var noResultsHint = (baseList.length === 0 && entries && entries.length > 0) ? ' (поиск/фильтр не дали результатов)' : ((entries && entries.length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
-    if (bulkContainer) bulkContainer.innerHTML = '';
+    if (bulkContainer) bulkContainer.innerHTML = bulkBarHtml;
+    if (bulkContainer) {
+      var bar = bulkContainer.querySelector('.bulk-actions-bar');
+      if (bar) {
+        var btns = bar.querySelectorAll('button');
+        btns.forEach(function (b) { b.disabled = true; });
+      }
+    }
     tableContainer.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
     var scrollBtnHide = document.getElementById('viewScrollToTopBtn');
     if (scrollBtnHide) scrollBtnHide.style.display = 'none';
+    initViewFieldsSettings();
     return;
   }
 
