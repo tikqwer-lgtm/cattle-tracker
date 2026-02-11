@@ -235,6 +235,8 @@ function renderSubmenu() {
 function updateObjectSwitcher() {
   var select = document.getElementById('currentObjectSelect');
   var addBtn = document.getElementById('addObjectBtn');
+  var selectView = document.getElementById('currentObjectSelectView');
+  var addBtnView = document.getElementById('addObjectBtnView');
   if (!select) return;
   var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
   if (!list || list.length === 0) {
@@ -242,32 +244,40 @@ function updateObjectSwitcher() {
     list = typeof getObjectsList === 'function' ? getObjectsList() : [{ id: 'default', name: 'Основная база' }];
   }
   var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
-  select.innerHTML = list.map(function (obj) {
+  var optionsHtml = list.map(function (obj) {
     var name = (obj.name || obj.id || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + (obj.id === currentId ? ' selected' : '') + '>' + name + '</option>';
   }).join('');
+  select.innerHTML = optionsHtml;
   select.onchange = function () {
     var id = select.value;
     if (id && typeof switchToObject === 'function') switchToObject(id);
   };
-  if (addBtn) {
-    addBtn.onclick = function () {
-      var name = prompt('Название новой базы (объекта):', 'Новая база');
-      if (name === null) return;
-      if (typeof addObject === 'function') {
-        var result = addObject(name);
-        if (result && typeof result.then === 'function') {
-          result.then(function () { updateObjectSwitcher(); }).catch(function (err) {
-            alert(err && err.message ? err.message : 'Ошибка создания объекта');
-          });
-        } else {
-          updateObjectSwitcher();
-        }
+  if (selectView) {
+    selectView.innerHTML = optionsHtml;
+    selectView.onchange = function () {
+      var id = selectView.value;
+      if (id && typeof switchToObject === 'function') switchToObject(id);
+    };
+  }
+  function handleAddObject() {
+    var name = prompt('Название новой базы (объекта):', 'Новая база');
+    if (name === null) return;
+    if (typeof addObject === 'function') {
+      var result = addObject(name);
+      if (result && typeof result.then === 'function') {
+        result.then(function () { updateObjectSwitcher(); }).catch(function (err) {
+          alert(err && err.message ? err.message : 'Ошибка создания объекта');
+        });
       } else {
         updateObjectSwitcher();
       }
-    };
+    } else {
+      updateObjectSwitcher();
+    }
   }
+  if (addBtn) addBtn.onclick = handleAddObject;
+  if (addBtnView) addBtnView.onclick = handleAddObject;
 }
 
 /**

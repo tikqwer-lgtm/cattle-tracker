@@ -86,3 +86,20 @@
   border-radius: var(--radius-md);
   font-size: 0.95em;
 }
+.add-object-btn {
+  font-weight: 600;
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.add-object-btn:hover {
+  background: var(--color-primary-dark, #2a5a9e);
+  color: #fff;
+  border-color: var(--color-primary-dark, #2a5a9e);
+}
+.object-switcher--view {
+  margin: 8px 0;
+}
+.object-switcher--view .object-select {
+  min-width: 140px;
+}
