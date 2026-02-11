@@ -325,6 +325,16 @@
 .analytics-breakdown-table th, .analytics-breakdown-table td { padding: 8px 12px; border: 1px solid var(--color-border); text-align: left; }
 .analytics-breakdown-table th { background: var(--color-bg-elevated); font-weight: 600; }
 .analytics-breakdown-table tbody tr:nth-child(even) { background: var(--color-bg-elevated); }
+
+.analytics-interval-intro { margin: 0 0 1rem 0; color: var(--color-text-muted); font-size: 0.95em; }
+.analytics-interval-table-wrapper { margin-bottom: 20px; overflow-x: auto; max-width: 480px; }
+.analytics-interval-table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.analytics-interval-table th, .analytics-interval-table td { padding: 8px 12px; border: 1px solid var(--color-border); }
+.analytics-interval-table th { background: var(--color-bg-elevated); font-weight: 600; text-align: left; }
+.analytics-interval-table td:last-child { text-align: right; }
+.analytics-interval-table td:nth-child(2) { text-align: right; }
+.analytics-interval-table tbody tr:nth-child(even) { background: var(--color-bg-elevated); }
+.analytics-interval-table tr.analytics-interval-total { font-weight: 600; background: var(--color-bg-elevated); }
 .analytics-indicators {
   margin-bottom: 20px;
 }

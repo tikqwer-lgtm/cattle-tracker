@@ -92,7 +92,19 @@ function parseInseminationDateToTime(dateStr) {
 }
 
 /**
- * Строит список осеменений для одной записи (отсортированный по дате), с полем daysFromPrevious
+ * Определяет номер лактации для осеменения: до отёла = 1, после отёла = 2 (при одном calvingDate в записи).
+ */
+function getInseminationLactation(insemDate, calvingDate) {
+  if (!calvingDate || !insemDate) return 1;
+  var tInsem = parseInseminationDateToTime(insemDate);
+  var tCalv = parseInseminationDateToTime(calvingDate);
+  if (isNaN(tInsem) || isNaN(tCalv)) return 1;
+  return tInsem < tCalv ? 1 : 2;
+}
+
+/**
+ * Строит список осеменений для одной записи (отсортированный по дате), с полем daysFromPrevious и lactation.
+ * Интервал «дней от предыдущего» считается только внутри одной лактации.
  */
 function getInseminationListForEntry(entry) {
   var list = [];
@@ -115,16 +127,22 @@ function getInseminationListForEntry(entry) {
     if (isNaN(tb)) return -1;
     return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
+  var calvingDate = entry.calvingDate || '';
   for (var i = 0; i < list.length; i++) {
+    list[i].lactation = getInseminationLactation(list[i].date, calvingDate);
     if (i === 0) {
       list[i].daysFromPrevious = '—';
     } else {
-      var prevTime = parseInseminationDateToTime(list[i - 1].date);
-      var currTime = parseInseminationDateToTime(list[i].date);
-      if (!isNaN(prevTime) && !isNaN(currTime)) {
-        list[i].daysFromPrevious = Math.round((currTime - prevTime) / (24 * 60 * 60 * 1000));
-      } else {
+      if (list[i].lactation !== list[i - 1].lactation) {
         list[i].daysFromPrevious = '—';
+      } else {
+        var prevTime = parseInseminationDateToTime(list[i - 1].date);
+        var currTime = parseInseminationDateToTime(list[i].date);
+        if (!isNaN(prevTime) && !isNaN(currTime)) {
+          list[i].daysFromPrevious = Math.round((currTime - prevTime) / (24 * 60 * 60 * 1000));
+        } else {
+          list[i].daysFromPrevious = '—';
+        }
       }
     }
   }
@@ -305,8 +323,7 @@ function deleteActionHistoryItem(cattleId, index) {
 
 /**
  * Собирает плоский список всех осеменений по всем животным (для экрана и экспорта)
- * Каждый элемент: { cattleId, nickname, date, attemptNumber, bull, inseminator, code, daysFromPrevious }
- * Сортировка по date по возрастанию. daysFromPrevious считается в контексте каждого животного.
+ * Каждый элемент: { cattleId, nickname, lactation, date, attemptNumber, bull, inseminator, code, daysFromPrevious }
  */
 function getAllInseminationsFlat() {
   var flat = [];
@@ -318,6 +335,7 @@ function getAllInseminationsFlat() {
       flat.push({
         cattleId: entry.cattleId || '',
         nickname: entry.nickname || '',
+        lactation: rows[j].lactation !== undefined ? rows[j].lactation : (entry.lactation || ''),
         date: rows[j].date,
         attemptNumber: rows[j].attemptNumber,
         bull: rows[j].bull || '',
@@ -328,29 +346,168 @@ function getAllInseminationsFlat() {
     }
   }
   flat.sort(function (a, b) {
-    var da = (a.date || '').toString();
-    var db = (b.date || '').toString();
-    return da < db ? -1 : da > db ? 1 : 0;
+    var ta = parseInseminationDateToTime(a.date);
+    var tb = parseInseminationDateToTime(b.date);
+    if (isNaN(ta) && isNaN(tb)) return 0;
+    if (isNaN(ta)) return 1;
+    if (isNaN(tb)) return -1;
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
   return flat;
 }
 
+var allInseminationsSortKey = 'date';
+var allInseminationsSortDir = 'asc';
+var allInseminationsFilter = { query: '', dateFrom: '', dateTo: '', lactation: null };
+
+function getFilteredAllInseminations(flat) {
+  if (!flat || !flat.length) return flat;
+  var list = flat.slice();
+  var q = (allInseminationsFilter.query || '').toLowerCase().trim();
+  if (q) {
+    list = list.filter(function (row) {
+      var cattleId = (row.cattleId || '').toLowerCase();
+      var nickname = (row.nickname || '').toLowerCase();
+      var bull = (row.bull || '').toLowerCase();
+      var code = (row.code || '').toLowerCase();
+      var inseminator = (row.inseminator || '').toLowerCase();
+      return cattleId.indexOf(q) !== -1 || nickname.indexOf(q) !== -1 ||
+        bull.indexOf(q) !== -1 || code.indexOf(q) !== -1 || inseminator.indexOf(q) !== -1;
+    });
+  }
+  if (allInseminationsFilter.dateFrom) {
+    list = list.filter(function (row) { return (row.date || '') >= allInseminationsFilter.dateFrom; });
+  }
+  if (allInseminationsFilter.dateTo) {
+    list = list.filter(function (row) { return (row.date || '') <= allInseminationsFilter.dateTo; });
+  }
+  if (allInseminationsFilter.lactation != null && allInseminationsFilter.lactation !== '') {
+    var lact = parseInt(allInseminationsFilter.lactation, 10);
+    if (!isNaN(lact)) {
+      list = list.filter(function (row) { return (row.lactation !== undefined && parseInt(row.lactation, 10) === lact) || (row.lactation === lact); });
+    }
+  }
+  return list;
+}
+
+function compareAllInseminationsRow(a, b, key, dir) {
+  var mul = dir === 'asc' ? 1 : -1;
+  var va = a[key];
+  var vb = b[key];
+  if (key === 'date') {
+    var ta = parseInseminationDateToTime(va);
+    var tb = parseInseminationDateToTime(vb);
+    return mul * (ta - tb);
+  }
+  if (key === 'lactation' || key === 'attemptNumber') {
+    var na = parseInt(va, 10);
+    var nb = parseInt(vb, 10);
+    if (isNaN(na)) na = 0;
+    if (isNaN(nb)) nb = 0;
+    return mul * (na - nb);
+  }
+  if (key === 'daysFromPrevious') {
+    var na = (va !== '—' && va !== undefined && va !== null && va !== '') ? parseInt(va, 10) : -1;
+    var nb = (vb !== '—' && vb !== undefined && vb !== null && vb !== '') ? parseInt(vb, 10) : -1;
+    return mul * (na - nb);
+  }
+  var sa = (va != null ? String(va) : '').toLowerCase();
+  var sb = (vb != null ? String(vb) : '').toLowerCase();
+  return mul * sa.localeCompare(sb, 'ru');
+}
+
+function renderAllInseminationsFilterUI() {
+  var container = document.getElementById('allInseminationsFilterContainer');
+  if (!container) return;
+  var q = (allInseminationsFilter.query || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  var lactVal = allInseminationsFilter.lactation !== null && allInseminationsFilter.lactation !== '' ? allInseminationsFilter.lactation : '';
+  container.innerHTML =
+    '<div class="search-filter-bar">' +
+      '<div class="search-row">' +
+        '<input type="text" id="allInsemSearchInput" class="search-input" placeholder="Поиск по номеру, кличке, быку, осеменителю..." value="' + q + '">' +
+        '<button type="button" id="allInsemFilterClearBtn" class="small-btn">Сбросить фильтры</button>' +
+      '</div>' +
+      '<div class="filter-row">' +
+        '<span class="filter-label">Период (дата осеменения):</span>' +
+        '<input type="date" id="allInsemDateFrom" value="' + (allInseminationsFilter.dateFrom || '') + '"> — ' +
+        '<input type="date" id="allInsemDateTo" value="' + (allInseminationsFilter.dateTo || '') + '">' +
+        '<span class="filter-label">Лактация:</span>' +
+        '<input type="number" id="allInsemFilterLactation" min="1" max="20" placeholder="—" value="' + lactVal + '">' +
+      '</div>' +
+    '</div>';
+  var searchInput = document.getElementById('allInsemSearchInput');
+  var clearBtn = document.getElementById('allInsemFilterClearBtn');
+  var dateFrom = document.getElementById('allInsemDateFrom');
+  var dateTo = document.getElementById('allInsemDateTo');
+  var filterLact = document.getElementById('allInsemFilterLactation');
+  function applyFilterAndRender() {
+    allInseminationsFilter.query = searchInput ? searchInput.value.trim() : '';
+    allInseminationsFilter.dateFrom = dateFrom ? dateFrom.value : '';
+    allInseminationsFilter.dateTo = dateTo ? dateTo.value : '';
+    allInseminationsFilter.lactation = filterLact && filterLact.value !== '' ? parseInt(filterLact.value, 10) : null;
+    renderAllInseminationsScreen();
+  }
+  if (searchInput) {
+    searchInput.addEventListener('input', function () { applyFilterAndRender(); });
+    searchInput.addEventListener('keyup', function (e) { if (e.key === 'Enter') applyFilterAndRender(); });
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      allInseminationsFilter = { query: '', dateFrom: '', dateTo: '', lactation: null };
+      if (searchInput) searchInput.value = '';
+      if (dateFrom) dateFrom.value = '';
+      if (dateTo) dateTo.value = '';
+      if (filterLact) filterLact.value = '';
+      renderAllInseminationsScreen();
+      renderAllInseminationsFilterUI();
+    });
+  }
+  [dateFrom, dateTo, filterLact].forEach(function (el) {
+    if (el) el.addEventListener('change', applyFilterAndRender);
+  });
+}
+
 /**
- * Заполняет экран «Все осеменения» таблицей по всем животным
+ * Заполняет экран «Все осеменения» таблицей по всем животным (с фильтром и сортировкой)
  */
 function renderAllInseminationsScreen() {
   var container = document.getElementById('allInseminationsList');
+  var filterContainer = document.getElementById('allInseminationsFilterContainer');
   if (!container) return;
+  if (filterContainer && !filterContainer.dataset.rendered) {
+    filterContainer.dataset.rendered = '1';
+    renderAllInseminationsFilterUI();
+  }
   var flat = getAllInseminationsFlat();
-  if (flat.length === 0) {
-    container.innerHTML = '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
+  var listToShow = getFilteredAllInseminations(flat);
+  if (listToShow.length > 0 && allInseminationsSortKey) {
+    listToShow = listToShow.slice();
+    listToShow.sort(function (a, b) {
+      return compareAllInseminationsRow(a, b, allInseminationsSortKey, allInseminationsSortDir);
+    });
+  }
+  if (listToShow.length === 0) {
+    container.innerHTML = '<p class="cow-insemination-empty">Нет данных об осеменениях.' + (flat.length > 0 ? ' Измените фильтры.' : '') + '</p>';
     return;
   }
-  var rows = flat.map(function (row) {
+  var sortAsc = allInseminationsSortDir === 'asc';
+  var sortMark = function (key) {
+    if (allInseminationsSortKey !== key) return '';
+    return sortAsc ? ' <span class="sort-indicator" aria-hidden="true">▲</span>' : ' <span class="sort-indicator" aria-hidden="true">▼</span>';
+  };
+  var sortClass = function (key) {
+    if (allInseminationsSortKey !== key) return '';
+    return sortAsc ? ' sort-asc' : ' sort-desc';
+  };
+  var th = function (key, label) {
+    return '<th class="sortable-th' + sortClass(key) + '" data-sort-key="' + String(key).replace(/"/g, '&quot;') + '" role="button" tabindex="0">' + (label || key) + sortMark(key) + '</th>';
+  };
+  var rows = listToShow.map(function (row) {
     var attrId = (row.cattleId || '').replace(/"/g, '&quot;');
     return '<tr class="all-insem-row" data-cattle-id="' + attrId + '" role="button" tabindex="0">' +
       '<td>' + escapeHtmlCard(row.cattleId) + '</td>' +
       '<td>' + escapeHtmlCard(row.nickname) + '</td>' +
+      '<td>' + escapeHtmlCard(row.lactation !== undefined && row.lactation !== '' ? row.lactation : '—') + '</td>' +
       '<td>' + (formatDate(row.date) || '—') + '</td>' +
       '<td>' + escapeHtmlCard(row.attemptNumber) + '</td>' +
       '<td>' + escapeHtmlCard(row.bull) + '</td>' +
@@ -361,13 +518,29 @@ function renderAllInseminationsScreen() {
   }).join('');
   container.innerHTML =
     '<table class="cow-insemination-table all-inseminations-table">' +
-    '<thead><tr><th>Номер коровы</th><th>Кличка</th><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Осеменитель</th><th>Дней от предыдущего</th><th>Код</th></tr></thead>' +
-    '<tbody>' + rows + '</tbody></table>';
+    '<thead><tr>' +
+    th('cattleId', 'Номер коровы') + th('nickname', 'Кличка') + th('lactation', 'Лактация') + th('date', 'Дата осеменения') +
+    th('attemptNumber', 'Попытка') + th('bull', 'Бык') + th('inseminator', 'Осеменитель') +
+    th('daysFromPrevious', 'Дней от предыдущего') + th('code', 'Код') +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
   container.querySelectorAll('.all-insem-row').forEach(function (tr) {
     var id = tr.getAttribute('data-cattle-id');
-    if (id) {
-      tr.addEventListener('click', function () { viewCow(id); });
-    }
+    if (id) tr.addEventListener('click', function () { viewCow(id); });
+  });
+  container.querySelectorAll('.all-inseminations-table th[data-sort-key]').forEach(function (thEl) {
+    thEl.addEventListener('click', function () {
+      var key = thEl.getAttribute('data-sort-key');
+      if (!key) return;
+      if (allInseminationsSortKey === key) allInseminationsSortDir = allInseminationsSortDir === 'asc' ? 'desc' : 'asc';
+      else { allInseminationsSortKey = key; allInseminationsSortDir = 'asc'; }
+      renderAllInseminationsScreen();
+    });
+    thEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        thEl.click();
+      }
+    });
   });
 }
 

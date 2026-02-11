@@ -114,11 +114,13 @@ function buildAndDownloadExcel(fieldKeys, includeInseminations, includeTasks, ta
   XLSX.utils.book_append_sheet(wb, wsCows, 'Коровы');
 
   if (includeInseminations && typeof getAllInseminationsFlat === 'function') {
-    var insemHeaders = [['Номер коровы', 'Кличка', 'Дата осеменения', 'Попытка', 'Бык', 'Осеменитель', 'Дней от предыдущего', 'Код']];
+    var insemHeaders = [['Номер коровы', 'Кличка', 'Лактация', 'Дата осеменения', 'Попытка', 'Бык', 'Осеменитель', 'Дней от предыдущего', 'Код']];
     var flat = getAllInseminationsFlat();
     var insemRows = flat.map(function (r) {
       return [
-        r.cattleId || '', r.nickname || '', formatDateForExport(r.date),
+        r.cattleId || '', r.nickname || '',
+        r.lactation !== undefined && r.lactation !== '' ? String(r.lactation) : '',
+        formatDateForExport(r.date),
         r.attemptNumber !== undefined ? String(r.attemptNumber) : '',
         r.bull || '', r.inseminator || '',
         r.daysFromPrevious !== undefined && r.daysFromPrevious !== '—' ? String(r.daysFromPrevious) : '',

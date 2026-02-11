@@ -26,7 +26,8 @@ var MENU_GROUPS = {
   analytics: {
     title: 'Аналитика',
     buttons: [
-      { icon: '📊', text: 'Аналитика', onclick: "navigate('analytics')" }
+      { icon: '📊', text: 'Аналитика', onclick: "navigate('analytics')" },
+      { icon: '📈', text: 'Интервальный анализ', onclick: "navigate('interval-analysis')" }
     ]
   },
   notifications: {
@@ -104,6 +105,9 @@ function navigate(screenId, options) {
   }
   if (screenId === 'analytics' && typeof renderAnalyticsScreen === 'function') {
     renderAnalyticsScreen();
+  }
+  if (screenId === 'interval-analysis' && typeof renderIntervalAnalysisScreen === 'function') {
+    renderIntervalAnalysisScreen();
   }
   if (screenId === 'backup' && typeof renderBackupUI === 'function') {
     renderBackupUI('backup-container');

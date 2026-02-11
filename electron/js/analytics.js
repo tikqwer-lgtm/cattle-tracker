@@ -531,6 +531,87 @@
     if (refreshBtn) refreshBtn.addEventListener('click', renderAnalyticsScreen);
   }
 
+  /** Интервалы между ИО для интервального анализа: подписи и границы (дни) */
+  var INTERVAL_BUCKETS = [
+    { label: '1-3 дня', min: 1, max: 3 },
+    { label: '4-17 дней', min: 4, max: 17 },
+    { label: '18-24 дня', min: 18, max: 24 },
+    { label: '25-35 дней', min: 25, max: 35 },
+    { label: '36-48 дней', min: 36, max: 48 },
+    { label: 'Свыше 48 дней', min: 49, max: null }
+  ];
+
+  function getIntervalAnalysisData() {
+    var counts = {};
+    INTERVAL_BUCKETS.forEach(function (b) { counts[b.label] = 0; });
+    var noDataCount = 0;
+    var list = typeof entries !== 'undefined' ? entries : [];
+    var getList = typeof getInseminationListForEntry === 'function' ? getInseminationListForEntry : function () { return []; };
+    for (var i = 0; i < list.length; i++) {
+      var rows = getList(list[i]);
+      if (rows.length < 2) continue;
+      for (var j = 0; j < rows.length; j++) {
+        var val = rows[j].daysFromPrevious;
+        if (val === '—' || val === undefined || val === null || val === '') {
+          noDataCount++;
+          continue;
+        }
+        var num = parseInt(val, 10);
+        if (isNaN(num)) {
+          noDataCount++;
+          continue;
+        }
+        var found = false;
+        for (var k = 0; k < INTERVAL_BUCKETS.length; k++) {
+          var b = INTERVAL_BUCKETS[k];
+          if (b.max !== null && num >= b.min && num <= b.max) {
+            counts[b.label]++;
+            found = true;
+            break;
+          }
+          if (b.max === null && num >= b.min) {
+            counts[b.label]++;
+            found = true;
+            break;
+          }
+        }
+        if (!found) noDataCount++;
+      }
+    }
+    var total = noDataCount;
+    INTERVAL_BUCKETS.forEach(function (b) { total += counts[b.label]; });
+    return {
+      buckets: INTERVAL_BUCKETS.map(function (b) { return { label: b.label, count: counts[b.label] }; }),
+      noDataCount: noDataCount,
+      total: total
+    };
+  }
+
+  function renderIntervalAnalysisScreen() {
+    var container = document.getElementById('intervalAnalysisTable');
+    if (!container) return;
+    var data = getIntervalAnalysisData();
+    var total = data.total;
+    var rows = data.buckets.map(function (b) {
+      var pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
+      return '<tr><td>' + escapeHtmlInterval(b.label) + '</td><td>' + b.count + '</td><td>' + pct + '%</td></tr>';
+    });
+    var noDataPct = total > 0 ? Math.round((data.noDataCount / total) * 100) : 0;
+    rows.push('<tr><td>Нет данных</td><td>' + data.noDataCount + '</td><td>' + noDataPct + '%</td></tr>');
+    var totalPct = total > 0 ? 100 : 0;
+    rows.push('<tr class="analytics-interval-total"><td>Всего</td><td>' + total + '</td><td>' + totalPct + '%</td></tr>');
+    container.innerHTML =
+      '<table class="analytics-interval-table">' +
+      '<thead><tr><th>Интервал между ИО</th><th>Количество, шт</th><th>Процент, %</th></tr></thead>' +
+      '<tbody>' + rows.join('') + '</tbody></table>';
+  }
+
+  function escapeHtmlInterval(str) {
+    if (str === undefined || str === null) return '';
+    var s = String(str);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   if (typeof window !== 'undefined') {
     window.calculatePR = function (hdr, cr) { return calculatePR(hdr, cr); };
     window.calculateCR = calculateCR;
@@ -538,6 +619,7 @@
     window.generateReport = generateReport;
     window.renderCharts = renderCharts;
     window.renderAnalyticsScreen = renderAnalyticsScreen;
+    window.renderIntervalAnalysisScreen = renderIntervalAnalysisScreen;
     window.getAnalyticsFilteredEntries = getFilteredEntries;
     window.getPeriodBounds = getPeriodBounds;
   }

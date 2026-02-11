@@ -337,14 +337,17 @@
   border-bottom: none;
 }
 
-.entries-table th.sortable-th {
+.entries-table th.sortable-th,
+.all-inseminations-table th.sortable-th {
   cursor: pointer;
   user-select: none;
 }
-.entries-table th.sortable-th:hover {
+.entries-table th.sortable-th:hover,
+.all-inseminations-table th.sortable-th:hover {
   opacity: 0.95;
 }
-.entries-table th .sort-indicator {
+.entries-table th .sort-indicator,
+.all-inseminations-table th .sort-indicator {
   font-size: 0.75em;
   opacity: 0.9;
 }
