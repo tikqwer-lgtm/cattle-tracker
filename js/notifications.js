@@ -437,9 +437,16 @@
       listHtml += '<ul class="notification-list">';
       items.forEach(function (n) {
         var unreadClass = n.read === false ? ' notification-item-unread' : '';
-        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
-          '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
-          '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
+        var cattleIdSafe = (n.cattleId || '').replace(/"/g, '&quot;');
+        var cardBtn = n.cattleId
+          ? '<button type="button" class="small-btn notification-view-card-btn" data-cattle-id="' + cattleIdSafe + '" aria-label="Посмотреть карточку">Посмотреть карточку</button>'
+          : '';
+        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + cattleIdSafe + '">' +
+          '<div class="notification-item-content">' +
+            '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
+            '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
+          '</div>' +
+          (cardBtn ? '<div class="notification-item-actions">' + cardBtn + '</div>' : '') +
           '</li>';
       });
       listHtml += '</ul></div>';
@@ -478,9 +485,18 @@
       });
     }
     container.querySelectorAll('.notification-item[data-notif-id]').forEach(function (item) {
-      item.addEventListener('click', function () {
+      item.addEventListener('click', function (ev) {
+        if (ev.target.closest('.notification-view-card-btn')) return;
         var id = item.getAttribute('data-notif-id');
         if (markNotificationRead(id)) renderNotificationCenter(containerId);
+      });
+    });
+    container.querySelectorAll('.notification-view-card-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var cattleId = btn.getAttribute('data-cattle-id');
+        if (cattleId && typeof viewCow === 'function') viewCow(cattleId);
       });
     });
     updateNotificationIndicators();

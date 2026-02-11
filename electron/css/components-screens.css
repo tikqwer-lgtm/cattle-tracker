@@ -135,6 +135,18 @@
   font-size: 0.8em;
   color: var(--color-text-muted);
 }
+.notification-item-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+.notification-item-actions {
+  margin-top: 6px;
+}
+.notification-view-card-btn {
+  font-size: 0.9em;
+}
 .notification-item[data-cattle-id]:not([data-cattle-id=""]) {
   cursor: pointer;
 }

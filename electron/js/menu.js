@@ -32,7 +32,8 @@ var MENU_GROUPS = {
   notifications: {
     title: 'Уведомления и планы',
     buttons: [
-      { icon: '🔔', text: 'Уведомления и планы', onclick: "navigate('notifications')" }
+      { icon: '🔔', text: 'Уведомления', onclick: "navigate('notifications')" },
+      { icon: '📋', text: 'Планы', onclick: "navigate('tasks')" }
     ]
   },
   settings: {
