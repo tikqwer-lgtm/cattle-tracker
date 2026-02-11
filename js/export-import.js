@@ -549,6 +549,9 @@ function openImportMappingModal(headers, rows) {
   var closeBtn2 = document.getElementById('importMappingCloseBtn2');
   if (!cattleSelect || !mappingList || !importBtn) return;
 
+  modal._importHeaders = headers;
+  modal._importRows = rows;
+
   function closeImportMappingModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
@@ -625,6 +628,12 @@ function openImportMappingModal(headers, rows) {
   if (importBtn && !importBtn.dataset.bound) {
     importBtn.dataset.bound = '1';
     importBtn.addEventListener('click', function () {
+      var currentRows = modal._importRows;
+      var currentHeaders = modal._importHeaders;
+      if (!currentRows || !currentHeaders) {
+        alert('Нет данных для импорта. Выберите файл заново.');
+        return;
+      }
       var cattleCol = cattleSelect.value;
       if (cattleCol === '' || cattleCol === null) {
         alert('Сначала выберите столбец с номером животного.');
@@ -632,7 +641,7 @@ function openImportMappingModal(headers, rows) {
       }
       var mapping = buildColumnMapping();
       if (!mapping) return;
-      runImportWithMapping(rows, mapping, headers);
+      runImportWithMapping(currentRows, mapping, currentHeaders);
       closeImportMappingModal();
     });
   }
