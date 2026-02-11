@@ -362,7 +362,10 @@ function runImportWithMapping(rows, columnMapping, headers) {
         obj[fieldKey] = normalizePregnancyCheckResult(raw);
       } else if (fieldKey === 'status') {
         obj[fieldKey] = normalizeStatusFromImport(raw);
-      } else if (fieldKey === 'lactation' || fieldKey === 'attemptNumber') {
+      } else if (fieldKey === 'lactation') {
+        var lactNum = parseInt(raw, 10);
+        obj[fieldKey] = (raw === '' || raw === null || raw === undefined) ? '' : (isNaN(lactNum) ? '' : lactNum);
+      } else if (fieldKey === 'attemptNumber') {
         obj[fieldKey] = parseInt(raw, 10) || '';
       } else if (fieldKey === 'protocolName') {
         obj[fieldKey] = raw;
@@ -397,7 +400,8 @@ function runImportWithMapping(rows, columnMapping, headers) {
         var pk = profileKeys[k];
         for (var g = group.length - 1; g >= 0; g--) {
           var val = group[g][pk];
-          if (val !== undefined && val !== null && val !== '') {
+          var hasVal = val !== undefined && val !== null && (val !== '' || (pk === 'lactation' && val === 0));
+          if (hasVal) {
             if (pk === 'protocolName') { entry.protocol = entry.protocol || {}; entry.protocol.name = val; }
             else if (pk === 'protocolStartDate') { entry.protocol = entry.protocol || {}; entry.protocol.startDate = val; }
             else entry[pk] = val;
