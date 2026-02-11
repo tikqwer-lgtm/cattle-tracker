@@ -104,7 +104,7 @@
     <div id="object-switcher" class="object-switcher">
       <label for="currentObjectSelect">Объект:</label>
       <select id="currentObjectSelect" class="object-select" title="Выберите базу для работы"></select>
-      <button type="button" class="small-btn add-object-btn" id="addObjectBtn" title="Добавить новую базу">+ Добавить объект</button>
+      <button type="button" class="small-btn add-object-btn" id="addObjectBtn" title="Добавить новую базу" onclick="typeof handleAddObjectClick === 'function' && handleAddObjectClick()">+ Добавить объект</button>
     </div>
 
     <!-- Статистика стада -->
@@ -399,11 +399,6 @@
     <div class="view-screen-header">
       <button onclick="navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
       <h1>📋 Список всех животных</h1>
-      <div id="object-switcher-view" class="object-switcher object-switcher--view">
-        <label for="currentObjectSelectView">Объект:</label>
-        <select id="currentObjectSelectView" class="object-select" title="Выберите базу для работы"></select>
-        <button type="button" class="small-btn add-object-btn" id="addObjectBtnView" title="Добавить новую базу">+ Добавить объект</button>
-      </div>
       <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
       <div id="search-filter-container" class="search-filter-container"></div>
       <div id="viewBulkActions" class="view-bulk-actions"></div>
