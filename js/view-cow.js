@@ -66,6 +66,32 @@ function getDaysPregnant(entry) {
 }
 
 /**
+ * Парсит строку даты в timestamp (мс) для расчёта интервалов. Поддерживает YYYY-MM-DD, DD.MM.YYYY, DD.MM.YY.
+ * @param {string} dateStr
+ * @returns {number} timestamp или NaN
+ */
+function parseInseminationDateToTime(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return NaN;
+  var s = dateStr.trim();
+  if (!s) return NaN;
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return d.getTime();
+  var dmY = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
+  if (dmY) {
+    d = new Date(parseInt(dmY[3], 10), parseInt(dmY[2], 10) - 1, parseInt(dmY[1], 10));
+    return isNaN(d.getTime()) ? NaN : d.getTime();
+  }
+  var dmYy = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{2})$/);
+  if (dmYy) {
+    var yy = parseInt(dmYy[3], 10);
+    var year = yy <= 30 ? 2000 + yy : 1900 + yy;
+    d = new Date(year, parseInt(dmYy[2], 10) - 1, parseInt(dmYy[1], 10));
+    return isNaN(d.getTime()) ? NaN : d.getTime();
+  }
+  return NaN;
+}
+
+/**
  * Строит список осеменений для одной записи (отсортированный по дате), с полем daysFromPrevious
  */
 function getInseminationListForEntry(entry) {
@@ -82,18 +108,21 @@ function getInseminationListForEntry(entry) {
     }];
   }
   list.sort(function (a, b) {
-    var da = (a.date || '').toString();
-    var db = (b.date || '').toString();
-    return da < db ? -1 : da > db ? 1 : 0;
+    var ta = parseInseminationDateToTime(a.date);
+    var tb = parseInseminationDateToTime(b.date);
+    if (isNaN(ta) && isNaN(tb)) return 0;
+    if (isNaN(ta)) return 1;
+    if (isNaN(tb)) return -1;
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
   for (var i = 0; i < list.length; i++) {
     if (i === 0) {
       list[i].daysFromPrevious = '—';
     } else {
-      var prev = new Date(list[i - 1].date);
-      var curr = new Date(list[i].date);
-      if (!isNaN(prev.getTime()) && !isNaN(curr.getTime())) {
-        list[i].daysFromPrevious = Math.round((curr - prev) / (24 * 60 * 60 * 1000));
+      var prevTime = parseInseminationDateToTime(list[i - 1].date);
+      var currTime = parseInseminationDateToTime(list[i].date);
+      if (!isNaN(prevTime) && !isNaN(currTime)) {
+        list[i].daysFromPrevious = Math.round((currTime - prevTime) / (24 * 60 * 60 * 1000));
       } else {
         list[i].daysFromPrevious = '—';
       }
