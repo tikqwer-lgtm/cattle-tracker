@@ -317,6 +317,14 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
+.analytics-custom-dates { display: inline-flex; align-items: center; gap: 8px; }
+.analytics-custom-dates input[type="date"] { padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.analytics-pdo-input { width: 60px; padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.analytics-breakdown-table-wrapper { margin-bottom: 20px; overflow-x: auto; }
+.analytics-breakdown-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.analytics-breakdown-table th, .analytics-breakdown-table td { padding: 8px 12px; border: 1px solid var(--color-border); text-align: left; }
+.analytics-breakdown-table th { background: var(--color-bg-elevated); font-weight: 600; }
+.analytics-breakdown-table tbody tr:nth-child(even) { background: var(--color-bg-elevated); }
 .analytics-indicators {
   margin-bottom: 20px;
 }

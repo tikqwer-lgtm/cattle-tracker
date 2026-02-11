@@ -447,10 +447,24 @@
         <option value="month">Месяц</option>
         <option value="quarter">Квартал</option>
         <option value="year">Год</option>
+        <option value="custom">Произвольный</option>
+      </select></label>
+      <span id="analyticsCustomDates" class="analytics-custom-dates" style="display: none;">
+        <label>С: <input type="date" id="analyticsDateFrom"></label>
+        <label>По: <input type="date" id="analyticsDateTo"></label>
+      </span>
+      <label>ПДО (дн.): <input type="number" id="analyticsPdo" min="0" max="365" value="50" class="analytics-pdo-input"></label>
+      <label>Разбивка: <select id="analyticsBreakdown">
+        <option value="">Нет</option>
+        <option value="group">По группам</option>
+        <option value="lactation">По лактациям</option>
+        <option value="inseminator">По осеменаторам</option>
+        <option value="bull">По быкам</option>
       </select></label>
       <button type="button" id="analyticsRefreshBtn" class="small-btn">Обновить</button>
     </div>
     <div id="analyticsIndicators" class="analytics-indicators"></div>
+    <div id="analyticsBreakdownTable" class="analytics-breakdown-table-wrapper" style="display: none;"></div>
     <div id="analyticsCharts" class="analytics-charts"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
