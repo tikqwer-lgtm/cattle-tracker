@@ -119,7 +119,7 @@ function buildAndDownloadExcel(fieldKeys, includeInseminations, includeTasks, ta
     var insemRows = flat.map(function (r) {
       return [
         r.cattleId || '', r.nickname || '',
-        r.lactation !== undefined && r.lactation !== '' ? String(r.lactation) : '',
+        (r.lactation !== undefined && r.lactation !== null && r.lactation !== '') || r.lactation === 0 ? String(r.lactation) : '',
         formatDateForExport(r.date),
         r.attemptNumber !== undefined ? String(r.attemptNumber) : '',
         r.bull || '', r.inseminator || '',

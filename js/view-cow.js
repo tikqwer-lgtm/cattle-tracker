@@ -335,7 +335,7 @@ function getAllInseminationsFlat() {
       flat.push({
         cattleId: entry.cattleId || '',
         nickname: entry.nickname || '',
-        lactation: rows[j].lactation !== undefined ? rows[j].lactation : (entry.lactation || ''),
+        lactation: (rows[j].lactation !== undefined && rows[j].lactation !== null) ? rows[j].lactation : (entry.lactation !== undefined && entry.lactation !== null) ? entry.lactation : '',
         date: rows[j].date,
         attemptNumber: rows[j].attemptNumber,
         bull: rows[j].bull || '',
@@ -507,7 +507,7 @@ function renderAllInseminationsScreen() {
     return '<tr class="all-insem-row" data-cattle-id="' + attrId + '" role="button" tabindex="0">' +
       '<td>' + escapeHtmlCard(row.cattleId) + '</td>' +
       '<td>' + escapeHtmlCard(row.nickname) + '</td>' +
-      '<td>' + escapeHtmlCard(row.lactation !== undefined && row.lactation !== '' ? row.lactation : '—') + '</td>' +
+      '<td>' + escapeHtmlCard((row.lactation !== undefined && row.lactation !== null && row.lactation !== '') || row.lactation === 0 ? row.lactation : '—') + '</td>' +
       '<td>' + (formatDate(row.date) || '—') + '</td>' +
       '<td>' + escapeHtmlCard(row.attemptNumber) + '</td>' +
       '<td>' + escapeHtmlCard(row.bull) + '</td>' +

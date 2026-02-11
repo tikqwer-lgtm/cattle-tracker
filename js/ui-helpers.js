@@ -176,7 +176,7 @@ function updateList() {
         <strong>Корова:</strong> ${cleanAndEscape(entry.cattleId)} | 
         <strong>Кличка:</strong> ${cleanAndEscape(entry.nickname)}<br>
         <strong>Дата осеменения:</strong> ${formatDate(entry.inseminationDate)} | 
-        <strong>Лактация:</strong> ${entry.lactation || '—'}<br>
+        <strong>Лактация:</strong> ${(entry.lactation !== undefined && entry.lactation !== null && entry.lactation !== '') || entry.lactation === 0 ? String(entry.lactation) : '—'}<br>
         <strong>Бык:</strong> ${cleanAndEscape(entry.bull)} | 
         <strong>Попытка:</strong> ${entry.attemptNumber || '—'} | 
         <strong>Статус:</strong> ${cleanAndEscape(entry.status)}<br>

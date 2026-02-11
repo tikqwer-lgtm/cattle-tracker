@@ -541,14 +541,29 @@
     { label: 'Свыше 48 дней', min: 49, max: null }
   ];
 
-  function getIntervalAnalysisData() {
+  var intervalAnalysisFilter = { lactation: null };
+
+  /**
+   * Собирает статистику по интервалам между осеменениями (по всем животным, внутри лактации).
+   * В анализ не включаются животные с одной попыткой осеменения (только попытка 1).
+   * «Нет данных» — для осеменений с попыткой 2 и более, у которых нет предыдущего осеменения в той же лактации для расчёта интервала.
+   * Фильтр по лактации: только животные с entry.lactation === filterLactation (0 = тёлки).
+   */
+  function getIntervalAnalysisData(filter) {
     var counts = {};
     INTERVAL_BUCKETS.forEach(function (b) { counts[b.label] = 0; });
     var noDataCount = 0;
     var list = typeof entries !== 'undefined' ? entries : [];
+    var filterLact = filter && filter.lactation !== undefined && filter.lactation !== null && filter.lactation !== '' ? parseInt(filter.lactation, 10) : null;
     var getList = typeof getInseminationListForEntry === 'function' ? getInseminationListForEntry : function () { return []; };
     for (var i = 0; i < list.length; i++) {
-      var rows = getList(list[i]);
+      var entry = list[i];
+      if (filterLact !== null) {
+        var entryLact = entry.lactation === undefined || entry.lactation === null || entry.lactation === '' ? null : parseInt(entry.lactation, 10);
+        if (isNaN(entryLact)) continue;
+        if (entryLact !== filterLact) continue;
+      }
+      var rows = getList(entry);
       if (rows.length < 2) continue;
       for (var j = 0; j < rows.length; j++) {
         var val = rows[j].daysFromPrevious;
@@ -587,14 +602,45 @@
     };
   }
 
+  function renderIntervalAnalysisFilterUI() {
+    var container = document.getElementById('intervalAnalysisFilter');
+    if (!container) return;
+    var lactVal = intervalAnalysisFilter.lactation !== null && intervalAnalysisFilter.lactation !== '' ? intervalAnalysisFilter.lactation : '';
+    var options = '<option value="">Все лактации</option><option value="0"' + (lactVal === 0 || lactVal === '0' ? ' selected' : '') + '>0 (тёлки)</option>';
+    for (var L = 1; L <= 15; L++) {
+      options += '<option value="' + L + '"' + (lactVal === L || lactVal === String(L) ? ' selected' : '') + '>' + L + '</option>';
+    }
+    container.innerHTML =
+      '<div class="search-filter-bar analytics-interval-filter-bar">' +
+        '<div class="filter-row">' +
+          '<span class="filter-label">Лактация:</span>' +
+          '<select id="intervalAnalysisLactation" class="analytics-interval-select" aria-label="Фильтр по лактации">' + options + '</select>' +
+        '</div>' +
+      '</div>';
+    var selectEl = document.getElementById('intervalAnalysisLactation');
+    if (selectEl) {
+      selectEl.addEventListener('change', function () {
+        var v = selectEl.value;
+        intervalAnalysisFilter.lactation = (v === '' || v === null) ? null : parseInt(v, 10);
+        if (isNaN(intervalAnalysisFilter.lactation)) intervalAnalysisFilter.lactation = null;
+        renderIntervalAnalysisScreen();
+      });
+    }
+  }
+
   function renderIntervalAnalysisScreen() {
+    var filterContainer = document.getElementById('intervalAnalysisFilter');
+    if (filterContainer && !filterContainer.dataset.rendered) {
+      filterContainer.dataset.rendered = '1';
+      renderIntervalAnalysisFilterUI();
+    }
     var container = document.getElementById('intervalAnalysisTable');
     if (!container) return;
-    var data = getIntervalAnalysisData();
+    var data = getIntervalAnalysisData(intervalAnalysisFilter);
     var total = data.total;
     var rows = data.buckets.map(function (b) {
       var pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
-      return '<tr><td>' + escapeHtmlInterval(b.label) + '</td><td>' + b.count + '</td><td>' + pct + '%</td></tr>';
+      return '<tr><td>' + escapeHtml(b.label) + '</td><td>' + b.count + '</td><td>' + pct + '%</td></tr>';
     });
     var noDataPct = total > 0 ? Math.round((data.noDataCount / total) * 100) : 0;
     rows.push('<tr><td>Нет данных</td><td>' + data.noDataCount + '</td><td>' + noDataPct + '%</td></tr>');
@@ -604,12 +650,6 @@
       '<table class="analytics-interval-table">' +
       '<thead><tr><th>Интервал между ИО</th><th>Количество, шт</th><th>Процент, %</th></tr></thead>' +
       '<tbody>' + rows.join('') + '</tbody></table>';
-  }
-
-  function escapeHtmlInterval(str) {
-    if (str === undefined || str === null) return '';
-    var s = String(str);
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   if (typeof window !== 'undefined') {
