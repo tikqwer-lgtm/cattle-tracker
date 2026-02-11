@@ -296,7 +296,7 @@ function updateHerdStats() {
   const totalCows = list.length;
   const pregnantCows = list.filter(e => e.status && (e.status.includes('Стельная') || e.status.includes('Отёл'))).length;
   const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
-  const inseminatedCows = list.filter(e => e.inseminationDate).length;
+  const inseminatedCows = list.filter(e => e.status && (e.status.includes('Осеменен') || (e.status.toLowerCase && e.status.toLowerCase().includes('осеменен')))).length;
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
   const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
 
