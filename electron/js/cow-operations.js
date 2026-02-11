@@ -64,14 +64,15 @@ function deleteEntry(cattleId) {
  * Удаляет выделенные записи
  */
 function deleteSelectedEntries() {
-  var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
-  if (checkboxes.length === 0) {
+  var selectedCattleIds = typeof window.getSelectedCattleIds === 'function'
+    ? window.getSelectedCattleIds()
+    : Array.prototype.map.call(document.querySelectorAll('.entry-checkbox:checked'), function (checkbox) {
+        return checkbox.getAttribute('data-cattle-id');
+      });
+  if (!selectedCattleIds || selectedCattleIds.length === 0) {
     alert('Нет выделенных записей для удаления');
     return;
   }
-  var selectedCattleIds = Array.prototype.map.call(checkboxes, function (checkbox) {
-    return checkbox.getAttribute('data-cattle-id');
-  });
   var count = selectedCattleIds.length;
   var confirmMessage = 'Вы уверены, что хотите удалить ' + count + (count === 1 ? ' запись' : count < 5 ? ' записи' : ' записей') + '?';
   if (!confirm(confirmMessage)) return;
@@ -279,6 +280,13 @@ function saveCalvingEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
+  if (calvingDate && typeof validateDateNotFuture === 'function') {
+    var err = validateDateNotFuture(calvingDate, 'Дата отёла');
+    if (err) {
+      if (typeof showToast === 'function') showToast(err, 'error'); else alert(err);
+      return;
+    }
+  }
   entry.calvingDate = calvingDate || '';
   if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
@@ -313,6 +321,13 @@ function saveProtocolAssignEntry() {
   if (!protocolName) {
     if (typeof showToast === 'function') showToast('Выберите протокол', 'error'); else alert('Выберите протокол');
     return;
+  }
+  if (startDate && typeof validateDateNotFuture === 'function') {
+    var errProto = validateDateNotFuture(startDate, 'Дата постановки на протокол');
+    if (errProto) {
+      if (typeof showToast === 'function') showToast(errProto, 'error'); else alert(errProto);
+      return;
+    }
   }
   var entry = entries.find(function (e) { return e.cattleId === cattleId; });
   if (!entry) {
@@ -460,6 +475,13 @@ function saveUziEntry() {
   if (!uziDate) {
     if (typeof showToast === 'function') showToast('Укажите дату проверки', 'error'); else alert('Укажите дату проверки');
     return;
+  }
+  if (typeof validateDateNotFuture === 'function') {
+    var errUzi = validateDateNotFuture(uziDate, 'Дата УЗИ');
+    if (errUzi) {
+      if (typeof showToast === 'function') showToast(errUzi, 'error'); else alert(errUzi);
+      return;
+    }
   }
   if (!result) {
     if (typeof showToast === 'function') showToast('Выберите результат (Не стельная / Стельная)', 'error'); else alert('Выберите результат');

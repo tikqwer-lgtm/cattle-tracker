@@ -39,6 +39,33 @@ function getPDO(entry) {
 }
 
 /**
+ * Дни стельности: от последнего осеменения до сегодня (только при статусе «Стельная»).
+ * @param {Object} entry — запись животного
+ * @returns {number|null} — количество дней или null
+ */
+function getDaysPregnant(entry) {
+  if (!entry) return null;
+  var status = (entry.status || '').toString();
+  if (status.indexOf('Стельная') === -1) return null;
+  var lastInsemDate = null;
+  if (entry.inseminationHistory && entry.inseminationHistory.length > 0) {
+    var dates = entry.inseminationHistory.map(function (h) { return h.date; }).filter(Boolean);
+    if (dates.length > 0) {
+      lastInsemDate = dates.reduce(function (a, b) { return a > b ? a : b; });
+    }
+  }
+  if (!lastInsemDate && entry.inseminationDate) lastInsemDate = entry.inseminationDate;
+  if (!lastInsemDate) return null;
+  var d = new Date(lastInsemDate);
+  var today = new Date();
+  if (isNaN(d.getTime())) return null;
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  var diff = Math.round((today - d) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff : null;
+}
+
+/**
  * Строит список осеменений для одной записи (отсортированный по дате), с полем daysFromPrevious
  */
 function getInseminationListForEntry(entry) {
@@ -85,8 +112,8 @@ function viewCow(cattleId) {
     return;
   }
 
-  // Перейти на экран просмотра карточки
-  navigate('view-cow');
+  // Перейти на экран просмотра карточки (с cattleId для роутинга)
+  navigate('view-cow', { cattleId: cattleId });
 
   // Заполнить карточку
   const card = document.getElementById('viewCowCard');
@@ -94,6 +121,8 @@ function viewCow(cattleId) {
 
   var pdoVal = getPDO(entry);
   var pdoStr = (pdoVal === '—' || pdoVal === '') ? '—' : String(pdoVal);
+  var daysPreg = getDaysPregnant(entry);
+  var daysPregStr = (daysPreg === null || daysPreg === undefined) ? '—' : String(daysPreg);
 
   var insemList = getInseminationListForEntry(entry);
   var historyRows = insemList.map(function (row) {
@@ -126,6 +155,7 @@ function viewCow(cattleId) {
     '<div><strong>Дата выбытия:</strong> ' + (formatDate(entry.exitDate) || '—') + '</div>' +
     '<div><strong>Начало сухостоя:</strong> ' + (formatDate(entry.dryStartDate) || '—') + '</div>' +
     '<div><strong>ПДО (дней от отёла до 1-го осеменения):</strong> ' + pdoStr + '</div>' +
+    '<div><strong>Дни стельности:</strong> ' + daysPregStr + '</div>' +
     '<div><strong>Протокол:</strong> ' + escapeHtmlCard((entry.protocol && entry.protocol.name) || entry.protocolName) + '</div>' +
     '<div><strong>Начало протокола:</strong> ' + (formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—') + '</div>' +
     '<div><strong>Примечание:</strong> ' + escapeHtmlCard(entry.note) + '</div>' +
@@ -135,13 +165,13 @@ function viewCow(cattleId) {
     '</div>' +
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
     '<div class="cow-card-actions">' +
-    '<button onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn edit">✏️ Редактировать</button> ' +
-    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn">🐄 Запуск</button> ' +
-    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn">🐄 Отел</button> ' +
-    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn">📋 Поставить на протокол</button> ' +
-    '<button onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn">🩺 УЗИ</button> ' +
-    '<button onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn">📜 История</button> ' +
-    '<button onclick="navigate(\'view\')" class="back-button">Назад к списку</button>' +
+    '<button type="button" onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn" aria-label="Редактировать">✏️ Редактировать</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn" aria-label="Отел">🐄 Отел</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="Поставить на протокол">📋 Поставить на протокол</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> ' +
+    '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
+    '<button type="button" onclick="navigate(\'view\')" class="small-btn cow-card-back" aria-label="Назад к списку">← Назад к списку</button>' +
     '</div>' +
     '</div>';
 }
@@ -167,6 +197,10 @@ function openViewCowActionHistory(cattleId) {
   renderViewCowActionHistoryModal(cattleId);
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
+  setTimeout(function () {
+    var first = modal.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])');
+    if (first) first.focus();
+  }, 0);
   if (closeBtn && !closeBtn.dataset.bound) {
     closeBtn.dataset.bound = '1';
     closeBtn.addEventListener('click', closeViewCowActionHistoryModal);

@@ -171,8 +171,24 @@ function saveCurrentEntry() {
   console.log("Запись сохранена:", entry);
 }
 
+function initOfflineIndicator() {
+  var el = document.getElementById('offline-indicator');
+  if (!el) return;
+  function update() {
+    var online = typeof navigator !== 'undefined' && navigator.onLine;
+    el.hidden = online;
+    el.setAttribute('aria-hidden', online ? 'true' : 'false');
+  }
+  update();
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+}
+
 // Запуск приложения при загрузке
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', function () {
+  initApp();
+  initOfflineIndicator();
+});
 
 // PWA: регистрация Service Worker (только для http/https; в Electron file:// не регистрируем)
 if (typeof navigator !== 'undefined' && navigator.serviceWorker) {

@@ -30,6 +30,25 @@ body {
   color: var(--color-text);
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-primary, #3d6eb5);
+  outline-offset: 2px;
+}
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--color-warning);
+  color: #1a1a1a;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.9em;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
 /* Шапка для печати — на экране скрыта */
 .print-header {
   display: none;

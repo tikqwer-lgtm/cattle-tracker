@@ -64,12 +64,28 @@
   overflow: hidden;
   margin-bottom: 16px;
 }
+.notification-section {
+  padding: 0;
+  margin: 0;
+}
+.notification-section-title {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 1.1em;
+  font-weight: 600;
+  background: var(--color-primary-light);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+.notification-section.plans-section .notification-section-title {
+  border-top: 1px solid var(--color-border);
+}
 .notification-center-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  background: var(--color-primary-light);
+  padding: 12px 16px;
+  background: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
@@ -206,9 +222,13 @@
   font-weight: 600;
 }
 
+.tasks-screen-container {
+  padding: 12px 16px;
+  overflow: auto;
+  min-height: 0;
+}
 .tasks-list-container {
   padding: 12px 16px;
-  border-top: 1px solid var(--color-border);
 }
 .tasks-list-block {
   margin-top: 0;
@@ -348,6 +368,46 @@
   padding: 16px;
   box-shadow: var(--shadow-card);
 }
+.view-fields-modal-content--wide {
+  width: min(560px, 95vw);
+}
+.export-settings-body {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.export-settings-section {
+  margin-bottom: 16px;
+}
+.export-settings-section-title {
+  font-size: 0.95em;
+  margin: 0 0 8px 0;
+  color: var(--color-text-muted);
+}
+.export-settings-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.export-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-weight: normal;
+}
+.export-tasks-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.export-tasks-period label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9em;
+}
 .view-fields-modal-header {
   display: flex;
   align-items: center;
@@ -360,6 +420,47 @@
   grid-template-columns: 1fr;
   gap: 8px;
   margin-bottom: 12px;
+}
+.view-fields-templates-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.view-fields-templates-title {
+  font-size: 1em;
+  margin: 0 0 8px 0;
+  color: var(--color-text-muted);
+}
+.view-fields-templates-list {
+  margin-bottom: 10px;
+}
+.view-fields-templates-empty {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+.view-fields-template-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+}
+.view-fields-template-name {
+  font-weight: 500;
+  min-width: 100px;
+}
+.view-fields-templates-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.view-fields-template-input {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-width: 160px;
 }
 .action-history-item {
   display: flex;

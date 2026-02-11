@@ -162,6 +162,17 @@
           }
         }
       }
+
+      if (entry.status && String(entry.status).indexOf('Стельная') !== -1 && typeof getDaysPregnant === 'function') {
+        var daysPreg = getDaysPregnant(entry);
+        if (daysPreg !== null && daysPreg > 275) {
+          var keyOverdue = 'overdue_' + cattleId;
+          if (!notified[keyOverdue]) {
+            notified[keyOverdue] = true;
+            out.push(createNotification('info', 'Проверить отел: корова ' + cattleId + ' (дней стельности: ' + daysPreg + ')', cattleId, { daysPregnant: daysPreg, category: 'calving' }, { showToast: false, showSystem: false }));
+          }
+        }
+      }
     });
 
     var unsynced = list.filter(function (e) { return e.synced !== true; });
@@ -436,13 +447,18 @@
     if (!listHtml) listHtml = '<ul class="notification-list"><li class="notification-item notification-empty">Нет уведомлений</li></ul>';
     container.innerHTML =
       '<div class="notification-center">' +
-        '<div class="notification-center-header">' +
-          '<span>Уведомления</span>' +
-          '<button type="button" class="small-btn" id="notifCheckNow">Проверить сейчас</button>' +
-          '<button type="button" class="small-btn" id="notifClearHistory">Очистить историю</button>' +
-        '</div>' +
-        '<div class="notification-groups">' + listHtml + '</div>' +
-        '<div id="tasks-list-container" class="tasks-list-container"></div>' +
+        '<section class="notification-section" aria-labelledby="notif-section-title">' +
+          '<h2 id="notif-section-title" class="notification-section-title">Уведомления</h2>' +
+          '<div class="notification-center-header">' +
+            '<button type="button" class="small-btn" id="notifCheckNow">Проверить сейчас</button>' +
+            '<button type="button" class="small-btn" id="notifClearHistory">Очистить историю</button>' +
+          '</div>' +
+          '<div class="notification-groups">' + listHtml + '</div>' +
+        '</section>' +
+        '<section class="notification-section plans-section" aria-labelledby="plans-section-title">' +
+          '<h2 id="plans-section-title" class="notification-section-title">Планы</h2>' +
+          '<div id="tasks-list-container" class="tasks-list-container"></div>' +
+        '</section>' +
       '</div>';
     var tasksContainer = document.getElementById('tasks-list-container');
     if (tasksContainer) renderTasksList(tasksContainer);
@@ -493,6 +509,11 @@
     window.renderNotificationSummary = renderNotificationSummary;
     window.renderNotificationCenter = renderNotificationCenter;
     window.requestNotificationPermission = requestNotificationPermission;
+    window.renderTasksScreen = function () {
+      var el = document.getElementById('tasksScreenContainer');
+      if (el) renderTasksList(el);
+    };
+    window.getProtocolTasks = getProtocolTasks;
   }
 
   if (typeof window !== 'undefined' && window.document) {

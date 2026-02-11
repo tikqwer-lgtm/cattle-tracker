@@ -45,6 +45,10 @@
   border: 1px solid var(--color-primary-border);
 }
 
+.herd-stats-percents {
+  margin-top: -8px;
+}
+
 .stat-item {
   text-align: center;
   min-width: 100px;

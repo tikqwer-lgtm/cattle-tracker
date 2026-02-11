@@ -23,6 +23,7 @@
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
     <div class="print-header-strip"></div>
@@ -128,6 +129,13 @@
         <div class="stat-value" id="cullCows">0</div>
         <div class="stat-label">На брак</div>
       </div>
+    </div>
+    <div class="herd-stats herd-stats-percents" id="herdStatsPercentsRow" aria-hidden="true">
+      <div class="stat-item"><div class="stat-value" id="pregnantCowsPct">0%</div><div class="stat-label">Стельных</div></div>
+      <div class="stat-item"><div class="stat-value" id="dryCowsPct">0%</div><div class="stat-label">В сухостое</div></div>
+      <div class="stat-item"><div class="stat-value" id="inseminatedCowsPct">0%</div><div class="stat-label">Осеменённых</div></div>
+      <div class="stat-item"><div class="stat-value" id="cullCowsPct">0%</div><div class="stat-label">На брак</div></div>
+      <div class="stat-item"><div class="stat-value" id="notInseminatedCowsPct">0%</div><div class="stat-label">Не осемененные</div></div>
     </div>
 
     <!-- Краткие уведомления -->
@@ -396,6 +404,7 @@
       <div id="viewBulkActions" class="view-bulk-actions"></div>
     </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
+    <button type="button" id="viewScrollToTopBtn" class="scroll-to-top-btn" aria-label="Вверх" style="display: none;">↑ Вверх</button>
   </div>
 
   <!-- Экран просмотра карточки животного -->
@@ -416,11 +425,18 @@
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
   </div>
 
-  <!-- Экран уведомлений -->
+  <!-- Экран уведомлений и планов -->
   <div id="notifications-screen" class="screen">
-    <h1>🔔 Уведомления</h1>
+    <h1>🔔 Уведомления и планы</h1>
     <div id="notification-center-container"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран списка задач -->
+  <div id="tasks-screen" class="screen">
+    <h1>📋 Список задач</h1>
+    <div id="tasksScreenContainer" class="tasks-screen-container"></div>
+    <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран аналитики -->
@@ -457,6 +473,14 @@
         <button type="button" class="small-btn" id="viewFieldsCloseBtn">Закрыть</button>
       </div>
       <div id="viewFieldsList" class="view-fields-list"></div>
+      <div class="view-fields-templates-section" id="viewFieldsTemplatesSection">
+        <h3 class="view-fields-templates-title">Шаблоны</h3>
+        <div id="viewFieldsTemplatesList" class="view-fields-templates-list"></div>
+        <div class="view-fields-templates-save">
+          <input type="text" id="viewFieldsTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" />
+          <button type="button" class="small-btn" id="viewFieldsSaveTemplateBtn">Сохранить текущий набор</button>
+        </div>
+      </div>
       <div class="view-fields-actions">
         <button type="button" class="small-btn" id="viewFieldsResetBtn">Сбросить</button>
         <button type="button" class="action-btn" id="viewFieldsSaveBtn">Сохранить</button>
@@ -472,6 +496,47 @@
         <button type="button" class="small-btn" id="viewCowActionHistoryCloseBtn">Закрыть</button>
       </div>
       <div id="viewCowActionHistoryList" class="view-fields-list" style="max-height: 60vh; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Настройка экспорта -->
+  <div id="exportSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportSettingsModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="exportSettingsModalTitle">Настройка экспорта</h2>
+        <button type="button" class="small-btn" id="exportSettingsCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="export-settings-body">
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Колонки листа «Коровы»</h3>
+          <div class="export-settings-actions-row">
+            <button type="button" class="small-btn" id="exportSelectAllBtn">Выбрать все</button>
+            <button type="button" class="small-btn" id="exportResetBtn">Сбросить</button>
+          </div>
+          <div id="exportFieldsList" class="view-fields-list"></div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Шаблоны экспорта</h3>
+          <div id="exportTemplatesList" class="view-fields-templates-list"></div>
+          <div class="view-fields-templates-save">
+            <input type="text" id="exportTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" aria-label="Название шаблона экспорта" />
+            <button type="button" class="small-btn" id="exportSaveTemplateBtn">Сохранить набор</button>
+          </div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Дополнительные листы</h3>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeInseminations" checked /> Включить лист «Осеменения»</label>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeTasks" /> Включить лист «Список задач»</label>
+          <div id="exportTasksPeriodRow" class="export-tasks-period" style="display: none;">
+            <label>Период задач: с <input type="date" id="exportTasksDateFrom" aria-label="Дата начала периода задач" /></label>
+            <label>по <input type="date" id="exportTasksDateTo" aria-label="Дата окончания периода задач" /></label>
+          </div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="exportSettingsCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="exportSettingsExportBtn">Экспортировать</button>
+      </div>
     </div>
   </div>
 
@@ -533,6 +598,7 @@
   <script src="js/export-excel.js"></script>
   <script src="js/insemination.js"></script>
   <script src="js/view-cow.js"></script>
+  <script src="js/field-config.js"></script>
   <script src="js/search-filter.js"></script>
   <script src="js/notifications.js"></script>
   <script src="js/analytics.js"></script>

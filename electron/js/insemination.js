@@ -190,6 +190,14 @@ function addInseminationEntry() {
     return;
   }
 
+  if (inseminationDate && typeof validateDateNotFuture === 'function') {
+    var err = validateDateNotFuture(inseminationDate, 'Дата осеменения');
+    if (err) {
+      alert(err);
+      return;
+    }
+  }
+
   const attemptNumber = parseInt(document.getElementById('attemptNumberInsem')?.value) || 1;
   const bull = document.getElementById('bullInsem')?.value || '';
   const inseminator = document.getElementById('inseminatorInsem')?.value || '';

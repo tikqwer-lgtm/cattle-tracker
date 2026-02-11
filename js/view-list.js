@@ -3,6 +3,10 @@
 var viewListSortKey = '';
 var viewListSortDir = 'asc';
 var VIEW_LIST_FIELDS_KEY = 'cattleTracker_viewList_visibleFields';
+var VIEW_LIST_FIELD_TEMPLATES_KEY = 'cattleTracker_viewList_fieldTemplates';
+var VIRTUAL_LIST_THRESHOLD = 200;
+var VIRTUAL_ROW_HEIGHT = 40;
+var viewListSelectedIds = new Set();
 
 function viewListEscapeHtml(text) {
   if (!text) return '—';
@@ -16,7 +20,7 @@ function viewListEscapeHtml(text) {
   return div.innerHTML;
 }
 
-var VIEW_LIST_FIELDS = [
+var VIEW_LIST_FIELDS_DEFAULT = [
   { key: 'cattleId', label: 'Корова', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.cattleId); } },
   { key: 'nickname', label: 'Кличка', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.nickname); } },
   { key: 'group', label: 'Группа', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.group || ''); } },
@@ -30,6 +34,7 @@ var VIEW_LIST_FIELDS = [
   { key: 'note', label: 'Примечание', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.note); } },
   { key: 'synced', label: 'Синхронизация', sortable: true, render: function (entry) { return entry.synced ? '✅' : '🟡'; } }
 ];
+var VIEW_LIST_FIELDS = (typeof window.COW_FIELDS !== 'undefined' && window.COW_FIELDS.length > 0) ? window.COW_FIELDS : VIEW_LIST_FIELDS_DEFAULT;
 
 function getVisibleFieldKeys() {
   try {
@@ -40,6 +45,23 @@ function getVisibleFieldKeys() {
     }
   } catch (e) {}
   return VIEW_LIST_FIELDS.map(function (f) { return f.key; });
+}
+
+function getFieldTemplates() {
+  try {
+    var raw = localStorage.getItem(VIEW_LIST_FIELD_TEMPLATES_KEY);
+    if (raw) {
+      var list = JSON.parse(raw);
+      if (Array.isArray(list)) return list;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function saveFieldTemplates(list) {
+  try {
+    localStorage.setItem(VIEW_LIST_FIELD_TEMPLATES_KEY, JSON.stringify(list || []));
+  } catch (e) {}
 }
 
 function getVisibleViewFields() {
@@ -53,10 +75,21 @@ function _compareViewList(a, b, key, dir) {
   var mul = dir === 'asc' ? 1 : -1;
   var va = a[key];
   var vb = b[key];
-  if (key === 'inseminationDate' || key === 'calvingDate' || key === 'dryStartDate') {
+  if (key === 'protocolStartDate') {
+    va = (a.protocol && a.protocol.startDate) || a.protocolStartDate;
+    vb = (b.protocol && b.protocol.startDate) || b.protocolStartDate;
+  }
+  if (key === 'inseminationDate' || key === 'calvingDate' || key === 'dryStartDate' || key === 'birthDate' || key === 'exitDate' || key === 'protocolStartDate') {
     var da = va ? new Date(va).getTime() : 0;
     var db = vb ? new Date(vb).getTime() : 0;
     return mul * (da - db);
+  }
+  if (key === 'daysPregnant') {
+    var na = typeof getDaysPregnant === 'function' ? getDaysPregnant(a) : null;
+    var nb = typeof getDaysPregnant === 'function' ? getDaysPregnant(b) : null;
+    na = (na != null && na !== '—') ? Number(na) : 0;
+    nb = (nb != null && nb !== '—') ? Number(nb) : 0;
+    return mul * (na - nb);
   }
   if (key === 'attemptNumber' || key === 'lactation') {
     var na = parseInt(va, 10);
@@ -104,6 +137,8 @@ function updateViewList() {
     var noResultsHint = (baseList.length === 0 && entries && entries.length > 0) ? ' (поиск/фильтр не дали результатов)' : ((entries && entries.length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
     if (bulkContainer) bulkContainer.innerHTML = '';
     tableContainer.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
+    var scrollBtnHide = document.getElementById('viewScrollToTopBtn');
+    if (scrollBtnHide) scrollBtnHide.style.display = 'none';
     return;
   }
 
@@ -124,6 +159,24 @@ function updateViewList() {
     if (viewListSortKey !== key) return '';
     return sortAsc ? ' sort-asc' : ' sort-desc';
   };
+
+  if (listToShow.length > VIRTUAL_LIST_THRESHOLD) {
+    _renderVirtualList(tableContainer, listToShow, fields, sortMark, sortClass, bulkContainer);
+    var viewScreen = document.getElementById('view-screen');
+    if (viewScreen) {
+      viewScreen.removeEventListener('click', _handleViewListClick);
+      viewScreen.addEventListener('click', _handleViewListClick);
+      viewScreen.removeEventListener('keydown', _handleViewListKeydown);
+      viewScreen.addEventListener('keydown', _handleViewListKeydown);
+    }
+    initViewFieldsSettings();
+    setTimeout(function () { updateSelectedCount(); _assertBulkSelectionUI(); }, 0);
+    var virtualBody = document.getElementById('viewVirtualBody');
+    _setupScrollToTopForContainer(virtualBody || tableContainer);
+    return;
+  }
+
+  viewListSelectedIds.clear();
   tableContainer.innerHTML = `
     <table class="entries-table">
       <thead>
@@ -169,6 +222,84 @@ function updateViewList() {
     updateSelectedCount();
     _assertBulkSelectionUI();
   }, 0);
+
+  _setupScrollToTopForContainer(tableContainer);
+}
+
+function _setupScrollToTopForContainer(tableContainer) {
+  var scrollBtn = document.getElementById('viewScrollToTopBtn');
+  if (!scrollBtn) return;
+  scrollBtn.style.display = (tableContainer && tableContainer.scrollTop > 200) ? '' : 'none';
+  if (tableContainer && !tableContainer.dataset.scrollToTopBound) {
+    tableContainer.dataset.scrollToTopBound = '1';
+    tableContainer.addEventListener('scroll', function () {
+      if (scrollBtn) scrollBtn.style.display = tableContainer.scrollTop > 200 ? '' : 'none';
+    });
+    scrollBtn.addEventListener('click', function () {
+      tableContainer.scrollTop = 0;
+      if (scrollBtn) scrollBtn.style.display = 'none';
+    });
+  }
+}
+
+function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, bulkContainer) {
+  var totalHeight = listToShow.length * VIRTUAL_ROW_HEIGHT;
+  var gridCols = '40px ' + fields.map(function () { return 'minmax(70px,1fr)'; }).join(' ');
+  var headHtml = '<div class="view-virtual-head" style="grid-template-columns:' + gridCols + '">' +
+    '<div class="view-virtual-head-cell view-virtual-checkbox"><input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все"></div>' +
+    fields.map(function (f) {
+      if (!f.sortable) return '<div class="view-virtual-head-cell">' + (f.label || '').replace(/</g, '&lt;') + '</div>';
+      return '<div class="view-virtual-head-cell sortable-th' + sortClass(f.key) + '" data-sort-key="' + (f.key || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0">' + (f.label || '').replace(/</g, '&lt;') + sortMark(f.key) + '</div>';
+    }).join('') +
+    '</div>';
+  container.innerHTML =
+    '<div class="view-virtual-wrap">' +
+    headHtml +
+    '<div class="view-virtual-body" id="viewVirtualBody">' +
+    '<div class="view-virtual-viewport" id="viewVirtualViewport" style="height:' + totalHeight + 'px"></div>' +
+    '<div class="view-virtual-rows" id="viewVirtualRows"></div>' +
+    '</div></div>';
+  container._virtualData = { list: listToShow, fields: fields, renderVisible: null };
+  function renderVisible() {
+    var body = document.getElementById('viewVirtualBody');
+    var viewport = document.getElementById('viewVirtualViewport');
+    var rowsEl = document.getElementById('viewVirtualRows');
+    if (!body || !viewport || !rowsEl) return;
+    var scrollTop = body.scrollTop || 0;
+    var height = body.clientHeight || 400;
+    var start = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - 5);
+    var end = Math.min(listToShow.length, start + Math.ceil(height / VIRTUAL_ROW_HEIGHT) + 10);
+    var html = '';
+    for (var i = start; i < end; i++) {
+      var entry = listToShow[i];
+      var safeCattleId = viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
+      var checked = viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
+      var cells = fields.map(function (field) { return '<div class="view-virtual-cell">' + (field.render(entry) || '') + '</div>'; }).join('');
+      html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + '" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
+        '<div class="view-virtual-cell view-virtual-checkbox"><input type="checkbox" class="entry-checkbox" data-cattle-id="' + safeCattleId + '" aria-label="Выделить"' + checked + '></div>' +
+        cells + '</div>';
+    }
+    rowsEl.innerHTML = html;
+  }
+  container._virtualData.renderVisible = renderVisible;
+  renderVisible();
+  var body = document.getElementById('viewVirtualBody');
+  if (body) {
+    body.addEventListener('scroll', renderVisible);
+  }
+  requestAnimationFrame(function () {
+    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
+  });
+  setTimeout(function () {
+    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
+  }, 0);
+}
+
+function refreshViewListVisible() {
+  var container = document.getElementById('viewEntriesList');
+  if (container && container._virtualData && container._virtualData.renderVisible) {
+    container._virtualData.renderVisible();
+  }
 }
 
 function initViewFieldsSettings() {
@@ -200,7 +331,54 @@ function initViewFieldsSettings() {
   });
   modal.addEventListener('click', function (ev) {
     if (ev.target === modal) closeViewFieldsSettings();
+    var applyBtn = ev.target.closest('.view-fields-template-apply');
+    if (applyBtn && applyBtn.dataset.templateIndex !== undefined) {
+      var idx = parseInt(applyBtn.dataset.templateIndex, 10);
+      var templates = getFieldTemplates();
+      if (templates[idx] && templates[idx].fieldKeys && templates[idx].fieldKeys.length > 0) {
+        try {
+          localStorage.setItem(VIEW_LIST_FIELDS_KEY, JSON.stringify(templates[idx].fieldKeys));
+        } catch (e) {}
+        renderViewFieldsSettings();
+        updateViewList();
+      }
+      ev.preventDefault();
+      return;
+    }
+    var deleteBtn = ev.target.closest('.view-fields-template-delete');
+    if (deleteBtn && deleteBtn.dataset.templateIndex !== undefined) {
+      var idxDel = parseInt(deleteBtn.dataset.templateIndex, 10);
+      var list = getFieldTemplates();
+      list.splice(idxDel, 1);
+      saveFieldTemplates(list);
+      renderViewFieldsSettings();
+      ev.preventDefault();
+      return;
+    }
   });
+
+  var saveTemplateBtn = document.getElementById('viewFieldsSaveTemplateBtn');
+  var templateNameInput = document.getElementById('viewFieldsTemplateNameInput');
+  if (saveTemplateBtn && templateNameInput) {
+    saveTemplateBtn.addEventListener('click', function () {
+      var name = (templateNameInput.value || '').trim();
+      if (!name) {
+        alert('Введите название шаблона.');
+        return;
+      }
+      var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
+        .map(function (el) { return el.value; });
+      if (checked.length === 0) {
+        alert('Выберите хотя бы одно поле.');
+        return;
+      }
+      var list = getFieldTemplates();
+      list.push({ name: name, fieldKeys: checked });
+      saveFieldTemplates(list);
+      templateNameInput.value = '';
+      renderViewFieldsSettings();
+    });
+  }
 }
 
 function renderViewFieldsSettings() {
@@ -216,6 +394,21 @@ function renderViewFieldsSettings() {
       '</label>';
   }).join('');
   listEl.innerHTML = html;
+
+  var templatesListEl = document.getElementById('viewFieldsTemplatesList');
+  if (templatesListEl) {
+    var templates = getFieldTemplates();
+    templatesListEl.innerHTML = templates.length === 0
+      ? '<p class="view-fields-templates-empty">Нет сохранённых шаблонов</p>'
+      : templates.map(function (t, idx) {
+          var name = (t.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          return '<div class="view-fields-template-item">' +
+            '<span class="view-fields-template-name">' + name + '</span>' +
+            ' <button type="button" class="small-btn view-fields-template-apply" data-template-index="' + idx + '" aria-label="Применить">Применить</button>' +
+            ' <button type="button" class="small-btn view-fields-template-delete" data-template-index="' + idx + '" aria-label="Удалить">Удалить</button>' +
+            '</div>';
+        }).join('');
+  }
 }
 
 function openViewFieldsSettings() {
@@ -224,6 +417,10 @@ function openViewFieldsSettings() {
   renderViewFieldsSettings();
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
+  setTimeout(function () {
+    var first = modal.querySelector('.view-fields-checkbox, .view-fields-template-apply, #viewFieldsCloseBtn');
+    if (first) first.focus();
+  }, 0);
 }
 
 function closeViewFieldsSettings() {
@@ -268,7 +465,7 @@ function _handleViewListKeydown(ev) {
     return;
   }
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
-  var row = ev.target.closest('tbody tr.view-entry-row');
+  var row = ev.target.closest('tbody tr.view-entry-row, .view-virtual-row.view-entry-row');
   if (!row) return;
   ev.preventDefault();
   var cattleId = row.getAttribute('data-cattle-id');
@@ -305,7 +502,7 @@ function _handleViewListClick(ev) {
     return;
   }
 
-  var sortTh = target.closest('th[data-sort-key]');
+  var sortTh = target.closest('th[data-sort-key], .view-virtual-head-cell[data-sort-key]');
   if (sortTh && tableContainer && tableContainer.contains(sortTh)) {
     ev.preventDefault();
     var key = sortTh.getAttribute('data-sort-key');
@@ -321,11 +518,20 @@ function _handleViewListClick(ev) {
 
   if (target.classList && target.classList.contains('entry-checkbox')) {
     ev.stopPropagation();
+    var virtualBody = document.getElementById('viewVirtualBody');
+    if (virtualBody && tableContainer && tableContainer._virtualData && tableContainer._virtualData.renderVisible) {
+      var cattleId = target.getAttribute('data-cattle-id');
+      if (cattleId) {
+        if (viewListSelectedIds.has(cattleId)) viewListSelectedIds.delete(cattleId);
+        else viewListSelectedIds.add(cattleId);
+        tableContainer._virtualData.renderVisible();
+      }
+    }
     setTimeout(updateSelectedCount, 0);
     return;
   }
 
-  var row = target.closest('tbody tr.view-entry-row');
+  var row = target.closest('tbody tr.view-entry-row, .view-virtual-row.view-entry-row');
   if (row) {
     ev.preventDefault();
     var cattleId = row.getAttribute('data-cattle-id');
@@ -334,45 +540,87 @@ function _handleViewListClick(ev) {
 }
 
 function selectAllEntries() {
-  const checkboxes = document.querySelectorAll('.entry-checkbox');
-  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-  checkboxes.forEach(checkbox => { checkbox.checked = true; });
+  var container = document.getElementById('viewEntriesList');
+  if (container && container._virtualData && container._virtualData.list) {
+    container._virtualData.list.forEach(function (entry) { viewListSelectedIds.add(entry.cattleId); });
+    if (container._virtualData.renderVisible) container._virtualData.renderVisible();
+  } else {
+    var checkboxes = document.querySelectorAll('.entry-checkbox');
+    checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+  }
+  var selectAllCheckbox = document.getElementById('selectAllCheckbox');
   if (selectAllCheckbox) selectAllCheckbox.checked = true;
   updateSelectedCount();
 }
 
 function deselectAllEntries() {
-  const checkboxes = document.querySelectorAll('.entry-checkbox');
-  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-  checkboxes.forEach(checkbox => { checkbox.checked = false; });
+  viewListSelectedIds.clear();
+  var container = document.getElementById('viewEntriesList');
+  if (container && container._virtualData && container._virtualData.renderVisible) {
+    container._virtualData.renderVisible();
+  } else {
+    var checkboxes = document.querySelectorAll('.entry-checkbox');
+    checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+  }
+  var selectAllCheckbox = document.getElementById('selectAllCheckbox');
   if (selectAllCheckbox) selectAllCheckbox.checked = false;
   updateSelectedCount();
 }
 
 function toggleSelectAll(checked) {
-  const checkboxes = document.querySelectorAll('.entry-checkbox');
-  checkboxes.forEach(checkbox => { checkbox.checked = checked; });
+  var container = document.getElementById('viewEntriesList');
+  if (container && container._virtualData && container._virtualData.list) {
+    if (checked) {
+      container._virtualData.list.forEach(function (entry) { viewListSelectedIds.add(entry.cattleId); });
+    } else {
+      viewListSelectedIds.clear();
+    }
+    if (container._virtualData.renderVisible) container._virtualData.renderVisible();
+  } else {
+    var checkboxes = document.querySelectorAll('.entry-checkbox');
+    checkboxes.forEach(function (checkbox) { checkbox.checked = checked; });
+  }
   updateSelectedCount();
 }
 
 function updateSelectedCount() {
-  const checkboxes = document.querySelectorAll('.entry-checkbox:checked');
-  const count = checkboxes.length;
-  const countElement = document.getElementById('selectedCount');
-  const deleteBtn = document.getElementById('deleteSelectedBtn');
+  var container = document.getElementById('viewEntriesList');
+  var count;
+  var total;
+  if (container && container._virtualData && container._virtualData.list) {
+    count = viewListSelectedIds.size;
+    total = container._virtualData.list.length;
+  } else {
+    var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
+    var allCheckboxes = document.querySelectorAll('.entry-checkbox');
+    count = checkboxes.length;
+    total = allCheckboxes.length;
+  }
+  var countElement = document.getElementById('selectedCount');
+  var deleteBtn = document.getElementById('deleteSelectedBtn');
   if (countElement) countElement.textContent = 'Выделено: ' + count;
   if (deleteBtn) deleteBtn.disabled = count === 0;
-  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-  const allCheckboxes = document.querySelectorAll('.entry-checkbox');
-  if (selectAllCheckbox && allCheckboxes.length > 0) {
-    selectAllCheckbox.checked = count === allCheckboxes.length;
+  var selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  if (selectAllCheckbox && total > 0) {
+    selectAllCheckbox.checked = count === total;
   }
-  const allRows = document.querySelectorAll('.entries-table tbody tr');
-  allRows.forEach(row => {
-    const checkbox = row.querySelector('.entry-checkbox');
-    if (checkbox && checkbox.checked) row.classList.add('selected-row');
-    else row.classList.remove('selected-row');
-  });
+  if (!container || !container._virtualData) {
+    var allRows = document.querySelectorAll('.entries-table tbody tr');
+    allRows.forEach(function (row) {
+      var checkbox = row.querySelector('.entry-checkbox');
+      if (checkbox && checkbox.checked) row.classList.add('selected-row');
+      else row.classList.remove('selected-row');
+    });
+  }
+}
+
+function getSelectedCattleIds() {
+  var container = document.getElementById('viewEntriesList');
+  if (container && container._virtualData && container._virtualData.list) {
+    return Array.from(viewListSelectedIds);
+  }
+  var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
+  return Array.prototype.map.call(checkboxes, function (cb) { return cb.getAttribute('data-cattle-id'); });
 }
 
 function toggleRowSelection(event, checkboxId) {
@@ -391,3 +639,5 @@ window.deselectAllEntries = deselectAllEntries;
 window.toggleSelectAll = toggleSelectAll;
 window.toggleRowSelection = toggleRowSelection;
 window.updateSelectedCount = updateSelectedCount;
+window.getSelectedCattleIds = getSelectedCattleIds;
+window.refreshViewListVisible = refreshViewListVisible;

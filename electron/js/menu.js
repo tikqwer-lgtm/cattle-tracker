@@ -19,6 +19,7 @@ var MENU_GROUPS = {
       { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')" },
       { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')" },
       { icon: '🐄', text: 'Отел', onclick: "navigate('calving')" },
+      { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')" },
       { icon: '📋', text: 'Поставить на протокол', onclick: "navigate('protocol-assign')" }
     ]
   },
@@ -29,9 +30,9 @@ var MENU_GROUPS = {
     ]
   },
   notifications: {
-    title: 'Уведомления',
+    title: 'Уведомления и планы',
     buttons: [
-      { icon: '🔔', text: 'Уведомления', onclick: "navigate('notifications')" }
+      { icon: '🔔', text: 'Уведомления и планы', onclick: "navigate('notifications')" }
     ]
   },
   settings: {
@@ -89,12 +90,18 @@ function navigate(screenId, options) {
   if (screenId === 'uzi' && typeof initUziScreen === 'function') initUziScreen();
   if (screenId === 'view') {
     updateViewList();
+    setTimeout(function () {
+      if (typeof refreshViewListVisible === 'function') refreshViewListVisible();
+    }, 0);
   }
   if (screenId === 'all-inseminations' && typeof renderAllInseminationsScreen === 'function') {
     renderAllInseminationsScreen();
   }
   if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
     renderNotificationCenter('notification-center-container');
+  }
+  if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
+    renderTasksScreen();
   }
   if (screenId === 'analytics' && typeof renderAnalyticsScreen === 'function') {
     renderAnalyticsScreen();
@@ -113,6 +120,21 @@ function navigate(screenId, options) {
     if (typeof maybeShowFirstRunHints === 'function') maybeShowFirstRunHints();
   }
   if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
+
+  var newHash = '#' + (screenId || 'menu');
+  if (screenId === 'view-cow' && options && options.cattleId) newHash += '/' + String(options.cattleId).replace(/[#/]/g, '');
+  if (typeof location !== 'undefined' && location.hash !== newHash) location.hash = newHash;
+}
+
+function syncRouteToScreen() {
+  var hash = (typeof location !== 'undefined' && location.hash ? location.hash.slice(1) : '') || 'menu';
+  var parts = hash.split('/');
+  var screenId = parts[0] || 'menu';
+  if (screenId === 'view-cow' && parts[1]) {
+    if (typeof viewCow === 'function') viewCow(parts[1]);
+  } else {
+    navigate(screenId);
+  }
 }
 
 function updateWindowModeForScreen(screenId) {
@@ -265,6 +287,8 @@ function updateHerdStats() {
     if (iEl) iEl.textContent = '0';
     var cEl = document.getElementById('cullCows');
     if (cEl) cEl.textContent = '0';
+    var percentsRow0 = document.getElementById('herdStatsPercentsRow');
+    if (percentsRow0) { percentsRow0.setAttribute('aria-hidden', 'true'); percentsRow0.style.display = 'none'; }
     return;
   }
 
@@ -273,17 +297,43 @@ function updateHerdStats() {
   const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
   const inseminatedCows = list.filter(e => e.inseminationDate).length;
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
+  const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
 
   document.getElementById('totalCows').textContent = totalCows;
   document.getElementById('pregnantCows').textContent = pregnantCows;
   document.getElementById('dryCows').textContent = dryCows;
   document.getElementById('inseminatedCows').textContent = inseminatedCows;
   document.getElementById('cullCows').textContent = cullCows;
+
+  var percentsRow = document.getElementById('herdStatsPercentsRow');
+  if (percentsRow) {
+    if (totalCows === 0) {
+      percentsRow.setAttribute('aria-hidden', 'true');
+      percentsRow.style.display = 'none';
+    } else {
+      percentsRow.setAttribute('aria-hidden', 'false');
+      percentsRow.style.display = '';
+      var pct = function (n) { return Math.round((n / totalCows) * 100); };
+      var pElPct = document.getElementById('pregnantCowsPct');
+      var dElPct = document.getElementById('dryCowsPct');
+      var iElPct = document.getElementById('inseminatedCowsPct');
+      var cElPct = document.getElementById('cullCowsPct');
+      var notInsElPct = document.getElementById('notInseminatedCowsPct');
+      if (pElPct) pElPct.textContent = pct(pregnantCows) + '%';
+      if (dElPct) dElPct.textContent = pct(dryCows) + '%';
+      if (iElPct) iElPct.textContent = pct(inseminatedCows) + '%';
+      if (cElPct) cElPct.textContent = pct(cullCows) + '%';
+      if (notInsElPct) notInsElPct.textContent = pct(notInseminatedCows) + '%';
+    }
+  }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  navigate('menu');
+document.addEventListener('DOMContentLoaded', function () {
+  syncRouteToScreen();
 });
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', syncRouteToScreen);
+}
 
 window.addEventListener('load', () => {
   if (document.getElementById('menu-screen').classList.contains('active')) {
