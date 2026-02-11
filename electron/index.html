@@ -572,6 +572,32 @@
     </div>
   </div>
 
+  <!-- Модальное окно: маппинг столбцов при импорте CSV/Excel -->
+  <div id="importMappingModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="importMappingModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="importMappingModalTitle">Сопоставление столбцов импорта</h2>
+        <button type="button" class="small-btn" id="importMappingCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="import-mapping-body">
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Столбец с номером животного (обязательно)</h3>
+          <select id="importMappingCattleColumn" class="import-mapping-cattle-select" aria-label="Выберите столбец с номером животного">
+            <option value="">— Выберите столбец —</option>
+          </select>
+        </div>
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Сопоставление остальных столбцов с полями программы</h3>
+          <div id="importMappingFieldsList" class="import-mapping-fields-list"></div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="importMappingCloseBtn2">Отмена</button>
+        <button type="button" class="action-btn" id="importMappingImportBtn">Импортировать</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Подсказки при первом запуске -->
   <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="first-run-hints-content">

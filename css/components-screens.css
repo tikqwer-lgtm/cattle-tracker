@@ -516,6 +516,53 @@
   gap: 12px;
 }
 
+/* Импорт: маппинг столбцов */
+.import-mapping-body {
+  max-height: 55vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+.import-mapping-section {
+  margin-bottom: 16px;
+}
+.import-mapping-section-title {
+  font-size: 0.95em;
+  margin: 0 0 8px 0;
+  color: var(--color-text-muted);
+}
+.import-mapping-cattle-select {
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1em;
+}
+.import-mapping-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.import-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(200px, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.import-mapping-col-label {
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-mapping-field-select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.95em;
+  min-width: 0;
+}
+
 .first-run-hints {
   position: fixed;
   inset: 0;
