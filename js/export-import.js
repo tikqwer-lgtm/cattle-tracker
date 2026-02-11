@@ -53,14 +53,14 @@ function normalizeDateForStorage(str) {
   return s;
 }
 function normalizeStatusFromImport(raw) {
-  if (!raw || typeof raw !== 'string') return '';
-  var s = raw.trim().toLowerCase();
+  if (raw === null || raw === undefined) return '';
+  var s = String(raw).trim().toLowerCase().replace(/\.$/, '');
   if (!s) return '';
   if (s === 'осем' || s === 'осемененная') return 'Осемененная';
-  if (s === 'не стел') return 'Холостая';
+  if (s === 'не стел' || s === 'нестельная') return 'Холостая';
   if (s === 'яловая' || s === 'ял') return 'Холостая';
   if (s === 'ст' || s === 'стел' || s === 'стельная') return 'Стельная';
-  return raw.trim();
+  return String(raw).trim();
 }
 function separateCattleIdAndDate(value) {
   if (!value || typeof value !== 'string') return { cattleId: value || '', date: '' };
@@ -171,14 +171,16 @@ function parseFileToHeadersAndRows(file) {
               if (cell === null || cell === undefined) cells.push('');
               else if (typeof cell === 'number' && !isNaN(cell) && typeof XLSX !== 'undefined' && XLSX.SSF) {
                 var parsed = null;
-                try {
-                  if (XLSX.SSF.parse_date_code) {
-                    var d = XLSX.SSF.parse_date_code(cell);
-                    if (d && d.y >= 1900) {
-                      parsed = d.y + '-' + String(d.m || 1).padStart(2, '0') + '-' + String(d.d || 1).padStart(2, '0');
+                if (cell >= 1000) {
+                  try {
+                    if (XLSX.SSF.parse_date_code) {
+                      var d = XLSX.SSF.parse_date_code(cell);
+                      if (d && d.y >= 1900 && d.y <= 2100) {
+                        parsed = d.y + '-' + String(d.m || 1).padStart(2, '0') + '-' + String(d.d || 1).padStart(2, '0');
+                      }
                     }
-                  }
-                } catch (e) {}
+                  } catch (e) {}
+                }
                 cells.push(parsed !== null ? parsed : cleanStr(cell));
               } else {
                 cells.push(cleanStr(cell));
@@ -565,6 +567,7 @@ function openImportMappingModal(headers, rows) {
   for (var i = 0; i < headers.length; i++) {
     var row = document.createElement('div');
     row.className = 'import-mapping-row';
+    row.dataset.columnIndex = String(i);
     var label = document.createElement('label');
     label.className = 'import-mapping-col-label';
     label.textContent = (headers[i] || 'Столбец ' + (i + 1));
@@ -585,6 +588,20 @@ function openImportMappingModal(headers, rows) {
     row.appendChild(select);
     mappingList.appendChild(row);
   }
+
+  function updateCattleColumnVisibility() {
+    var cattleCol = cattleSelect.value;
+    var rows = mappingList.querySelectorAll('.import-mapping-row');
+    for (var r = 0; r < rows.length; r++) {
+      var rw = rows[r];
+      rw.style.display = (rw.dataset.columnIndex === cattleCol) ? 'none' : '';
+    }
+  }
+  if (!cattleSelect.dataset.visibilityBound) {
+    cattleSelect.dataset.visibilityBound = '1';
+    cattleSelect.addEventListener('change', updateCattleColumnVisibility);
+  }
+  updateCattleColumnVisibility();
 
   function buildColumnMapping() {
     var cattleCol = cattleSelect.value;
