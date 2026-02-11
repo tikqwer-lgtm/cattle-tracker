@@ -199,7 +199,7 @@
           '<span class="filter-label">Бык:</span>' +
           '<input type="text" id="filterBull" placeholder="часть имени" value="' + bullVal + '">' +
           '<span class="filter-label">Лактация:</span>' +
-          '<input type="number" id="filterLactation" min="1" max="20" placeholder="—" value="' + (filters.lactation !== null && filters.lactation !== '' ? filters.lactation : '') + '">' +
+          '<input type="number" id="filterLactation" min="0" max="20" placeholder="—" value="' + ((filters.lactation !== null && filters.lactation !== '') || filters.lactation === 0 ? filters.lactation : '') + '">' +
           '<span class="filter-label">Период (осеменение):</span>' +
           '<input type="date" id="filterDateFrom" value="' + (filters.dateFrom || '') + '"> — ' +
           '<input type="date" id="filterDateTo" value="' + (filters.dateTo || '') + '">' +

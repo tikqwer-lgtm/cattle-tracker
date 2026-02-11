@@ -547,8 +547,8 @@
    * Собирает статистику по интервалам между осеменениями (по всем животным, внутри лактации).
    * В анализ не включаются животные с одной попыткой осеменения (только попытка 1).
    * «Нет данных» — для осеменений с попыткой 2 и более, у которых нет предыдущего осеменения в той же лактации для расчёта интервала.
-   * Фильтр по лактации: только животные с entry.lactation === filterLactation (0 = тёлки).
-   * @param {{ lactation: number|null }} [filter] — lactation: null/undefined = все, 0 = тёлки, 1, 2, ...
+   * Фильтр по лактации: '' = все, '0' = тёлки, '1' = первотелки, '2+' = 2 и более, '1+2+' = лактирующие (1 и 2+).
+   * @param {{ lactation: string|null }} [filter] — lactation: null/'' = все, '0', '1', '2+', '1+2+'
    * @returns {{ buckets: Array<{label: string, count: number}>, noDataCount: number, total: number }}
    */
   function getIntervalAnalysisData(filter) {
@@ -556,14 +556,17 @@
     INTERVAL_BUCKETS.forEach(function (b) { counts[b.label] = 0; });
     var noDataCount = 0;
     var list = typeof entries !== 'undefined' ? entries : [];
-    var filterLact = filter && filter.lactation !== undefined && filter.lactation !== null && filter.lactation !== '' ? parseInt(filter.lactation, 10) : null;
+    var filterLact = filter && filter.lactation !== undefined && filter.lactation !== null && filter.lactation !== '' ? String(filter.lactation) : '';
     var getList = typeof getInseminationListForEntry === 'function' ? getInseminationListForEntry : function () { return []; };
     for (var i = 0; i < list.length; i++) {
       var entry = list[i];
-      if (filterLact !== null) {
+      if (filterLact !== '') {
         var entryLact = entry.lactation === undefined || entry.lactation === null || entry.lactation === '' ? null : parseInt(entry.lactation, 10);
-        if (isNaN(entryLact)) continue;
-        if (entryLact !== filterLact) continue;
+        if (entryLact === null || isNaN(entryLact)) continue;
+        if (filterLact === '0' && entryLact !== 0) continue;
+        if (filterLact === '1' && entryLact !== 1) continue;
+        if (filterLact === '2+' && entryLact < 2) continue;
+        if (filterLact === '1+2+' && entryLact < 1) continue;
       }
       var rows = getList(entry);
       if (rows.length < 2) continue;
@@ -607,11 +610,12 @@
   function renderIntervalAnalysisFilterUI() {
     var container = document.getElementById('intervalAnalysisFilter');
     if (!container) return;
-    var lactVal = intervalAnalysisFilter.lactation !== null && intervalAnalysisFilter.lactation !== '' ? intervalAnalysisFilter.lactation : '';
-    var options = '<option value="">Все лактации</option><option value="0"' + (lactVal === 0 || lactVal === '0' ? ' selected' : '') + '>0 (тёлки)</option>';
-    for (var L = 1; L <= 15; L++) {
-      options += '<option value="' + L + '"' + (lactVal === L || lactVal === String(L) ? ' selected' : '') + '>' + L + '</option>';
-    }
+    var lactVal = intervalAnalysisFilter.lactation !== null && intervalAnalysisFilter.lactation !== '' ? String(intervalAnalysisFilter.lactation) : '';
+    var options = '<option value="">Все лактации</option>' +
+      '<option value="0"' + (lactVal === '0' ? ' selected' : '') + '>0 (тёлки)</option>' +
+      '<option value="1"' + (lactVal === '1' ? ' selected' : '') + '>1 (первотелки)</option>' +
+      '<option value="2+"' + (lactVal === '2+' ? ' selected' : '') + '>2+ (коровы)</option>' +
+      '<option value="1+2+"' + (lactVal === '1+2+' ? ' selected' : '') + '>1 + 2+ (лактирующие)</option>';
     container.innerHTML =
       '<div class="search-filter-bar analytics-interval-filter-bar">' +
         '<div class="filter-row">' +
@@ -623,8 +627,7 @@
     if (selectEl) {
       selectEl.addEventListener('change', function () {
         var v = selectEl.value;
-        intervalAnalysisFilter.lactation = (v === '' || v === null) ? null : parseInt(v, 10);
-        if (isNaN(intervalAnalysisFilter.lactation)) intervalAnalysisFilter.lactation = null;
+        intervalAnalysisFilter.lactation = (v === '' || v === null) ? null : v;
         renderIntervalAnalysisScreen();
       });
     }

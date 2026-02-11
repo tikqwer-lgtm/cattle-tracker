@@ -202,7 +202,11 @@ function updateViewList() {
         ${listToShow.map((entry, index) => {
           const safeCattleId = viewListEscapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
-          const cells = fields.map(field => `<td>${field.render(entry)}</td>`).join('');
+          const cells = fields.map(field => {
+            const v = field.render(entry);
+            const show = (field.key === 'lactation' && (v === 0 || v === '0')) ? '0' : v;
+            return `<td>${show}</td>`;
+          }).join('');
           return `
           <tr class="view-entry-row ${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" role="button" tabindex="0">
             <td class="checkbox-column">
@@ -282,7 +286,11 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
       var entry = listToShow[i];
       var safeCattleId = viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
       var checked = viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
-      var cells = fields.map(function (field) { return '<div class="view-virtual-cell">' + (field.render(entry) || '') + '</div>'; }).join('');
+      var cells = fields.map(function (field) {
+        var v = field.render(entry);
+        if (field.key === 'lactation' && (v === 0 || v === '0')) v = '0';
+        return '<div class="view-virtual-cell">' + (v || '') + '</div>';
+      }).join('');
       html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + '" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
         '<div class="view-virtual-cell view-virtual-checkbox"><input type="checkbox" class="entry-checkbox" data-cattle-id="' + safeCattleId + '" aria-label="Выделить"' + checked + '></div>' +
         cells + '</div>';
