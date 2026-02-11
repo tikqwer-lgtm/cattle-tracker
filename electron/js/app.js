@@ -65,7 +65,11 @@ function initApp() {
         versionEl.textContent = 'Версия ' + v;
       });
     } else {
-      versionEl.textContent = 'Версия ' + (versionEl.getAttribute('data-default-version') || '1.0.0');
+      var fallback = versionEl.getAttribute('data-default-version') || '1.0.0';
+      versionEl.textContent = 'Версия ' + fallback;
+      fetch('package.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (pkg) {
+        if (pkg && pkg.version) versionEl.textContent = 'Версия ' + pkg.version;
+      }).catch(function () {});
     }
   }
 }

@@ -230,11 +230,45 @@ function renderSubmenu() {
 }
 
 /**
- * Обработчик кнопки «Добавить объект» (вызывается из HTML и при необходимости из кода)
+ * Показать модальное окно «Добавить объект»
+ */
+function showAddObjectModal() {
+  var modal = document.getElementById('addObjectModal');
+  var input = document.getElementById('addObjectNameInput');
+  if (!modal || !input) return;
+  input.value = 'Новая база';
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.removeAttribute('hidden');
+  input.focus();
+}
+
+/**
+ * Скрыть модальное окно «Добавить объект»
+ */
+function hideAddObjectModal() {
+  var modal = document.getElementById('addObjectModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+  modal.setAttribute('hidden', '');
+}
+
+/**
+ * Обработчик кнопки «Добавить объект» — открывает модальное окно (без prompt)
  */
 function handleAddObjectClick() {
-  var name = prompt('Название новой базы (объекта):', 'Новая база');
-  if (name === null) return;
+  showAddObjectModal();
+}
+
+/**
+ * Создать объект с указанным именем (вызывается из модального окна)
+ */
+function confirmAddObject() {
+  var input = document.getElementById('addObjectNameInput');
+  var name = input && (input.value || '').trim();
+  hideAddObjectModal();
+  if (!name) return;
   if (typeof addObject !== 'function') {
     if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
     return;
@@ -244,7 +278,9 @@ function handleAddObjectClick() {
     result.then(function () {
       if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
     }).catch(function (err) {
-      alert(err && err.message ? err.message : 'Ошибка создания объекта');
+      var msg = err && err.message ? err.message : 'Ошибка создания объекта';
+      if (typeof showToast === 'function') showToast(msg, 'error', 5000);
+      else if (typeof console !== 'undefined') console.error(msg);
     });
   } else {
     if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
@@ -334,7 +370,29 @@ function updateHerdStats() {
   }
 }
 
+function initAddObjectModal() {
+  var modal = document.getElementById('addObjectModal');
+  var input = document.getElementById('addObjectNameInput');
+  var closeBtn = document.getElementById('addObjectModalCloseBtn');
+  var cancelBtn = document.getElementById('addObjectModalCancelBtn');
+  var okBtn = document.getElementById('addObjectModalOkBtn');
+  if (!modal || !input || modal.dataset.inited === '1') return;
+  modal.dataset.inited = '1';
+  function close() { hideAddObjectModal(); }
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (cancelBtn) cancelBtn.addEventListener('click', close);
+  if (okBtn) okBtn.addEventListener('click', confirmAddObject);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); confirmAddObject(); }
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) close();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  initAddObjectModal();
   syncRouteToScreen();
 });
 if (typeof window !== 'undefined') {

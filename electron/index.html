@@ -479,6 +479,24 @@
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
+  <!-- Модальное окно: Добавить объект (базу) -->
+  <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden>
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="addObjectModalTitle">Новая база (объект)</h2>
+        <button type="button" class="small-btn" id="addObjectModalCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="view-fields-modal-body" style="padding: 1rem 0;">
+        <label for="addObjectNameInput">Название</label>
+        <input type="text" id="addObjectNameInput" class="view-fields-template-input" placeholder="Новая база" value="Новая база" style="width: 100%; margin-top: 0.25rem;" />
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="addObjectModalCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="addObjectModalOkBtn">Добавить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Модальное окно: Настройка полей -->
   <div id="viewFieldsSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="view-fields-modal-content">
