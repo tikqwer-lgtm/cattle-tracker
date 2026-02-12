@@ -11,8 +11,6 @@ const path = require('path');
 const fs = require('fs');
 
 const db = require('./db');
-db.initSchema();
-
 const authRoutes = require('./routes/auth');
 const objectsRoutes = require('./routes/objects');
 const entriesRoutes = require('./routes/entries');
@@ -46,6 +44,40 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Внутренняя ошибка сервера' });
 });
 
-app.listen(PORT, () => {
-  console.log('Cattle Tracker API listening on port', PORT);
+function listenOnPort(app, portStart) {
+  return new Promise((resolve, reject) => {
+    let port = portStart;
+    const maxPort = portStart + 10;
+
+    function tryListen() {
+      const server = app.listen(port, () => {
+        console.log('Cattle Tracker API listening on port', port);
+        resolve(server);
+      });
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE' && port < maxPort) {
+          console.log('Port', port, 'in use, trying', port + 1, '...');
+          server.close(() => {
+            port++;
+            tryListen();
+          });
+        } else {
+          reject(err);
+        }
+      });
+    }
+
+    tryListen();
+  });
+}
+
+async function start() {
+  await db.initDb();
+  db.initSchema();
+  await listenOnPort(app, PORT);
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

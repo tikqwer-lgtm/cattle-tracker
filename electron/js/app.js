@@ -38,6 +38,9 @@ function initApp() {
       if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
       if (typeof updateHerdStats === 'function') updateHerdStats();
       console.log("Приложение инициализировано (API). Записей:", entries.length);
+      if (entries.length === 0 && typeof showToast === 'function') {
+        showToast('На сервере пока нет записей. Локальные данные остались в браузере — уберите адрес сервера в Настройках, чтобы снова с ними работать.', 'info', 8000);
+      }
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();

@@ -1,42 +1,41 @@
 @echo off
-chcp 65001 > nul
 cd /d "%~dp0"
-
-echo Cattle Tracker — запуск сервера API
-echo.
 
 where node >nul 2>&1
 if errorlevel 1 (
-    echo [Ошибка] Node.js не найден. Установите Node.js: https://nodejs.org/
+    echo [Error] Node.js not found. Install from https://nodejs.org/
     pause
     exit /b 1
 )
 
 if not exist "server\package.json" (
-    echo [Ошибка] Папка server не найдена.
+    echo [Error] Folder server not found.
     pause
     exit /b 1
 )
 
-cd server
+cd /d "%~dp0server"
+if errorlevel 1 (
+    echo [Error] Cannot change to server folder.
+    pause
+    exit /b 1
+)
+
 if not exist "node_modules" (
-    echo Установка зависимостей сервера...
+    echo Installing server dependencies...
     call npm install
     if errorlevel 1 (
-        echo [Ошибка] Не удалось установить зависимости.
-        cd ..
+        echo [Error] npm install failed.
         pause
         exit /b 1
     )
     echo.
 )
 
-echo Сервер запускается. Адрес: http://localhost:3000
-echo Для чат-консультанта задайте переменную DEEPSEEK_API_KEY (ключ с https://platform.deepseek.com/)
-echo Чат-консультант работает только при наличии интернета (DeepSeek API).
-echo Закройте окно для остановки сервера.
+echo Server starting at http://localhost:3000
+echo For chat consultant set env DEEPSEEK_API_KEY. Requires internet.
+echo Close this window to stop the server.
 echo.
-node server.js
+node "%~dp0server\server.js"
 
-cd /d "%~dp0"
 pause
