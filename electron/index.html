@@ -194,7 +194,7 @@
       <label for="bullInsem">Бык</label>
       <input type="text" id="bullInsem" />
 
-      <label for="inseminatorInsem">Осеменитель</label>
+      <label for="inseminatorInsem">Техник ИО</label>
       <input type="text" id="inseminatorInsem" />
 
       <label for="codeInsem">Код осеменения</label>
@@ -300,77 +300,80 @@
 
   <!-- Экран добавления/редактирования -->
   <div id="add-screen" class="screen">
-    <h1 id="addScreenTitle">➕ Добавить корову</h1>
-    <form class="form form-cow-editor" onsubmit="saveCurrentEntry(); return false;">
-      <label for="cattleId">Номер коровы *</label>
-      <input type="text" id="cattleId" required />
-
-      <label for="nickname">Кличка</label>
-      <input type="text" id="nickname" />
-
-      <label for="group">Группа</label>
-      <input type="text" id="group" placeholder="Место размещения" />
-
-      <label for="birthDate">Дата рождения</label>
-      <input type="date" id="birthDate" />
-
-      <label for="lactation">Лактация</label>
-      <input type="number" id="lactation" min="1" max="20" placeholder="—" />
-
-      <label for="calvingDate">Дата отёла</label>
-      <input type="date" id="calvingDate" />
-
-      <label for="inseminationDate">Дата осеменения</label>
-      <input type="date" id="inseminationDate" />
-
-      <label for="attemptNumber">Номер попытки</label>
-      <input type="number" id="attemptNumber" value="1" />
-
-      <label for="bull">Бык</label>
-      <input type="text" id="bull" />
-
-      <label for="inseminator">Осеменитель</label>
-      <input type="text" id="inseminator" />
-
-      <label for="code">Код</label>
-      <input type="text" id="code" />
-
-      <label for="status">Статус</label>
-      <select id="status">
-        <option value="">—</option>
-        <option>Осемененная</option>
-        <option>Холостая</option>
-        <option>Стельная</option>
-        <option>Сухостой</option>
-        <option>Отёл</option>
-        <option>Брак</option>
-      </select>
-
-      <label for="exitDate">Дата выбытия</label>
-      <input type="date" id="exitDate" />
-
-      <label for="dryStartDate">Начало сухостоя</label>
-      <input type="date" id="dryStartDate" />
-
-      <label for="vwp">ПДО (дней от отёла до 1-го осеменения)</label>
-      <input type="text" id="vwp" readonly placeholder="—" title="Рассчитывается автоматически" />
-
-      <label for="protocolName">Протокол</label>
-      <input type="text" id="protocolName" />
-
-      <label for="protocolStartDate">Начало протокола</label>
-      <input type="date" id="protocolStartDate" />
-
-      <label for="note">Примечание</label>
-      <textarea id="note"></textarea>
-
+    <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
+    <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
+      <fieldset class="form-cow-section">
+        <legend>Основные данные</legend>
+        <div class="form-cow-editor">
+          <label for="cattleId">Номер коровы *</label>
+          <input type="text" id="cattleId" required />
+          <label for="nickname">Кличка</label>
+          <input type="text" id="nickname" />
+          <label for="group">Группа</label>
+          <input type="text" id="group" placeholder="Место размещения" />
+          <label for="birthDate">Дата рождения</label>
+          <input type="date" id="birthDate" />
+          <label for="lactation">Лактация</label>
+          <input type="number" id="lactation" min="1" max="20" placeholder="—" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Отел и осеменение</legend>
+        <div class="form-cow-editor">
+          <label for="calvingDate">Дата отёла</label>
+          <input type="date" id="calvingDate" />
+          <label for="inseminationDate">Дата осеменения</label>
+          <input type="date" id="inseminationDate" />
+          <label for="attemptNumber">Номер попытки</label>
+          <input type="number" id="attemptNumber" value="1" />
+          <label for="bull">Бык</label>
+          <input type="text" id="bull" />
+          <label for="inseminator">Техник ИО</label>
+          <input type="text" id="inseminator" />
+          <label for="code">Код</label>
+          <input type="text" id="code" />
+          <label for="status">Статус</label>
+          <select id="status">
+            <option value="">—</option>
+            <option>Осемененная</option>
+            <option>Холостая</option>
+            <option>Стельная</option>
+            <option>Сухостой</option>
+            <option>Отёл</option>
+            <option>Брак</option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Сухостой и протокол</legend>
+        <div class="form-cow-editor">
+          <label for="dryStartDate">Начало сухостоя</label>
+          <input type="date" id="dryStartDate" />
+          <label for="vwp">ПДО (дней от отёла до 1-го осеменения)</label>
+          <input type="text" id="vwp" readonly placeholder="—" title="Рассчитывается автоматически" />
+          <label for="protocolName">Протокол</label>
+          <input type="text" id="protocolName" />
+          <label for="protocolStartDate">Начало протокола</label>
+          <input type="date" id="protocolStartDate" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Выбытие и примечание</legend>
+        <div class="form-cow-editor">
+          <label for="exitDate">Дата выбытия</label>
+          <input type="date" id="exitDate" />
+          <label for="note">Примечание</label>
+          <textarea id="note"></textarea>
+        </div>
+      </fieldset>
       <div class="form-actions">
-        <button type="button" onclick="cancelEdit()" id="cancelButton">Отмена</button>
-        <button type="submit" id="saveButton">Сохранить</button>
+        <button type="button" onclick="clearForm();" id="clearFormButton" aria-label="Очистить форму" style="display: none;">Очистить форму</button>
+        <button type="button" onclick="cancelEdit()" id="cancelButton" aria-label="Отмена">Отмена</button>
+        <button type="submit" id="saveButton" aria-label="Сохранить запись">Сохранить</button>
       </div>
     </form>
 
-    <button onclick="navigate('menu')" class="back-button">Назад</button>
+    <button onclick="navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
   </div>
 
   <!-- Экран просмотра записей -->

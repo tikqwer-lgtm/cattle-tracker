@@ -112,6 +112,19 @@ function navigate(screenId, options) {
   if (screenId === 'backup' && typeof renderBackupUI === 'function') {
     renderBackupUI('backup-container');
   }
+  if (screenId === 'add') {
+    var clearBtn = document.getElementById('clearFormButton');
+    if (clearBtn) clearBtn.style.display = window.currentEditingId ? 'none' : 'inline-block';
+    if (!window.currentEditingId) {
+      var titleEl = document.getElementById('addScreenTitle');
+      if (titleEl) titleEl.textContent = '➕ Добавить корову';
+      if (typeof clearForm === 'function') clearForm();
+    }
+    setTimeout(function () {
+      var firstField = document.getElementById('cattleId');
+      if (firstField) firstField.focus();
+    }, 0);
+  }
 
   if (screenId === 'menu') {
     updateObjectSwitcher();

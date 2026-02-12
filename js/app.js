@@ -127,6 +127,19 @@ function saveCurrentEntry() {
     alert('Заполните номер коровы!');
     return;
   }
+  if (window.currentEditingId) {
+    if (cattleId !== window.currentEditingId && entries.some(function (e) { return e.cattleId === cattleId; })) {
+      if (typeof showToast === 'function') showToast('Корова с таким номером уже есть', 'error');
+      else alert('Корова с таким номером уже есть');
+      return;
+    }
+  } else {
+    if (entries.some(function (e) { return e.cattleId === cattleId; })) {
+      if (typeof showToast === 'function') showToast('Корова с таким номером уже есть', 'error');
+      else alert('Корова с таким номером уже есть');
+      return;
+    }
+  }
   var entry = getDefaultCowEntry();
   fillCowEntryFromForm(entry);
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {

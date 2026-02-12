@@ -116,7 +116,7 @@ function getImportMappingFields() {
     var defaults = [
       { key: 'nickname', label: 'Кличка' }, { key: 'group', label: 'Группа' }, { key: 'birthDate', label: 'Дата рождения' },
       { key: 'lactation', label: 'Лактация' }, { key: 'calvingDate', label: 'Дата отёла' }, { key: 'inseminationDate', label: 'Дата осеменения' },
-      { key: 'attemptNumber', label: 'Номер попытки' }, { key: 'bull', label: 'Бык' }, { key: 'inseminator', label: 'Осеменитель' },
+      { key: 'attemptNumber', label: 'Номер попытки' }, { key: 'bull', label: 'Бык' }, { key: 'inseminator', label: 'Техник ИО' },
       { key: 'code', label: 'Код' }, { key: 'status', label: 'Статус' }, { key: 'exitDate', label: 'Дата выбытия' },
       { key: 'dryStartDate', label: 'Начало сухостоя' }, { key: 'protocolName', label: 'Протокол' }, { key: 'protocolStartDate', label: 'Начало протокола' },
       { key: 'note', label: 'Примечание' }

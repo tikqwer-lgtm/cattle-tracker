@@ -14,6 +14,9 @@ function editEntry(cattleId) {
   // Устанавливаем режим редактирования
   window.currentEditingId = entry.cattleId;
 
+  var clearBtn = document.getElementById('clearFormButton');
+  if (clearBtn) clearBtn.style.display = 'none';
+
   // Обновляем заголовок экрана
   const titleElement = document.getElementById('addScreenTitle');
   if (titleElement) {

@@ -87,9 +87,9 @@
 /* Редактор карточки: компактная сетка в несколько столбцов */
 .form-cow-editor {
   display: grid;
-  grid-template-columns: auto 1fr auto 1fr;
-  gap: 0.4rem 1.25rem;
-  align-items: center;
+  grid-template-columns: minmax(140px, auto) 1fr minmax(140px, auto) 1fr;
+  gap: 0.75rem 1.25rem;
+  align-items: start;
   max-width: 920px;
 }
 .form-cow-editor label {
@@ -103,6 +103,28 @@
 .form-cow-editor textarea {
   min-height: 60px;
 }
+
+/* Обёртка формы с секциями */
+.form-cow-editor-wrap {
+  max-width: 920px;
+}
+.form-cow-section {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1rem 0.5rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated, #f8f9fa);
+}
+.form-cow-section legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.form-cow-editor-wrap .form-actions {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   .form-cow-editor {
     grid-template-columns: 1fr;

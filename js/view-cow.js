@@ -181,7 +181,7 @@ function viewCow(cattleId) {
     );
   }).join('');
   var historyTableHtml = insemList.length > 0
-    ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Осеменитель</th><th>Дней от предыдущего</th><th>Код</th></tr></thead><tbody>' + historyRows + '</tbody></table>'
+    ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Техник ИО</th><th>Дней от предыдущего</th><th>Код</th></tr></thead><tbody>' + historyRows + '</tbody></table>'
     : '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
 
   var rawId = (entry.cattleId || '');
@@ -199,7 +199,7 @@ function viewCow(cattleId) {
     '<div><strong>Дата осеменения:</strong> ' + (formatDate(entry.inseminationDate) || '—') + '</div>' +
     '<div class="cow-details-cell-with-button"><strong>Номер попытки:</strong> ' + escapeHtmlCard(entry.attemptNumber) + ' <button type="button" class="small-btn cow-insemination-toggle" onclick="toggleViewCowInseminationHistory()">Все осеменения</button></div>' +
     '<div><strong>Бык:</strong> ' + escapeHtmlCard(entry.bull) + '</div>' +
-    '<div><strong>Осеменитель:</strong> ' + escapeHtmlCard(entry.inseminator) + '</div>' +
+    '<div><strong>Техник ИО:</strong> ' + escapeHtmlCard(entry.inseminator) + '</div>' +
     '<div><strong>Код:</strong> ' + escapeHtmlCard(entry.code) + '</div>' +
     '<div><strong>Статус:</strong> ' + escapeHtmlCard(entry.status) + '</div>' +
     '<div><strong>Дата выбытия:</strong> ' + (formatDate(entry.exitDate) || '—') + '</div>' +
@@ -523,7 +523,7 @@ function renderAllInseminationsScreen() {
     '<table class="cow-insemination-table all-inseminations-table">' +
     '<thead><tr>' +
     th('cattleId', 'Номер коровы') + th('nickname', 'Кличка') + th('lactation', 'Лактация') + th('date', 'Дата осеменения') +
-    th('attemptNumber', 'Попытка') + th('bull', 'Бык') + th('inseminator', 'Осеменитель') +
+    th('attemptNumber', 'Попытка') + th('bull', 'Бык') + th('inseminator', 'Техник ИО') +
     th('daysFromPrevious', 'Дней от предыдущего') + th('code', 'Код') +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
   container.querySelectorAll('.all-insem-row').forEach(function (tr) {

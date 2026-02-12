@@ -18,7 +18,7 @@
     { key: 'inseminationDate', label: 'Дата осеменения', sortable: true, render: function (e) { return e && typeof formatDate === 'function' ? formatDate(e.inseminationDate) : ''; } },
     { key: 'attemptNumber', label: 'Номер попытки', sortable: true, render: function (e) { return e && (e.attemptNumber !== undefined && e.attemptNumber !== '') ? String(e.attemptNumber) : ''; } },
     { key: 'bull', label: 'Бык', sortable: true, render: function (e) { return e ? safeStr(e.bull) : ''; } },
-    { key: 'inseminator', label: 'Осеменитель', sortable: true, render: function (e) { return e ? safeStr(e.inseminator) : ''; } },
+    { key: 'inseminator', label: 'Техник ИО', sortable: true, render: function (e) { return e ? safeStr(e.inseminator) : ''; } },
     { key: 'code', label: 'Код', sortable: true, render: function (e) { return e ? safeStr(e.code) : ''; } },
     { key: 'status', label: 'Статус', sortable: true, render: function (e) { return e ? safeStr(e.status) : ''; } },
     { key: 'exitDate', label: 'Дата выбытия', sortable: true, render: function (e) { return e && typeof formatDate === 'function' ? formatDate(e.exitDate) : ''; } },
