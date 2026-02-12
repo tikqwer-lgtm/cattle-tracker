@@ -23,6 +23,22 @@
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <!-- Панель чат-консультанта -->
+  <div id="chat-consultant-panel" class="chat-consultant-panel" aria-hidden="true" hidden>
+    <div class="chat-consultant-header">
+      <h2 class="chat-consultant-title">Чат-консультант</h2>
+      <button type="button" class="chat-consultant-close" onclick="closeChatConsultant()" aria-label="Закрыть">×</button>
+    </div>
+    <div id="chat-consultant-messages" class="chat-consultant-messages"></div>
+    <div class="chat-consultant-input-row">
+      <input type="text" id="chat-consultant-input" class="chat-consultant-input" placeholder="Задайте вопрос по работе программы..." autocomplete="off" />
+      <button type="button" class="chat-consultant-send" onclick="sendChatMessage()" aria-label="Отправить">Отправить</button>
+    </div>
+  </div>
+  <!-- Контекстное меню для вызова консультанта -->
+  <div id="chat-context-menu" class="chat-context-menu" role="menu" aria-hidden="true" hidden>
+    <button type="button" class="chat-context-menu-item" role="menuitem" onclick="contextMenuOpenConsultant()">Вызвать консультанта</button>
+  </div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
@@ -673,6 +689,7 @@
   <script src="js/backup.js"></script>
   <script src="js/view-list.js"></script>
   <script src="js/protocols.js"></script>
+  <script src="js/chat-consultant.js"></script>
   <!-- menu.js последним -->
   <script src="js/menu.js"></script>
   <script>

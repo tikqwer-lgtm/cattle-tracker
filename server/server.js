@@ -16,6 +16,7 @@ db.initSchema();
 const authRoutes = require('./routes/auth');
 const objectsRoutes = require('./routes/objects');
 const entriesRoutes = require('./routes/entries');
+const chatRoutes = require('./routes/chat');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/objects', objectsRoutes);
 app.use('/api/objects', entriesRoutes);
+app.use('/api', chatRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

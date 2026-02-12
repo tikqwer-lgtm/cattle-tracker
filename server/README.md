@@ -34,5 +34,6 @@ Server runs on `http://localhost:3000`. Set `PORT` to change.
 - `GET /api/objects/:id/entries/:cattleId` — get one entry
 - `PUT /api/objects/:id/entries/:cattleId` — update entry
 - `DELETE /api/objects/:id/entries/:cattleId` — delete entry
+- `POST /api/chat` — чат-консультант: body `{ messages: [{ role, content }, ...] }`, возвращает `{ content }`. Контекст — документация приложения (README, инструкции). Требуется переменная окружения **`DEEPSEEK_API_KEY`** (API DeepSeek); без неё маршрут возвращает 503.
 
 Database: SQLite at `server/data/cattle.db`. Schema is created on first start.

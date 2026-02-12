@@ -125,6 +125,12 @@ function createAppMenu() {
       label: 'Справка',
       submenu: [
         {
+          label: 'Чат-консультант',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('open-chat-consultant');
+          }
+        },
+        {
           label: 'Проверить обновления',
           click: () => {
             if (autoUpdater && app.isPackaged) {

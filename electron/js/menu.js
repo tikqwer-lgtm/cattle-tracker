@@ -42,7 +42,8 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '👤', text: 'Войти / Пользователи', onclick: "navigate('auth')" },
       { icon: '💾', text: 'Резервные копии', onclick: "navigate('backup')" },
-      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
+      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" },
+      { icon: '💬', text: 'Чат-консультант', onclick: 'openChatConsultant()' }
     ]
   }
 };
