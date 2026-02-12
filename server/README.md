@@ -4,6 +4,8 @@ Backend for multi-user, multiplatform cattle tracker. Один сервер — 
 
 ## Setup
 
+Из корня проекта можно запустить **start-server.bat** (Windows) — скрипт сам установит зависимости при первом запуске и запустит сервер. Или вручную:
+
 ```bash
 cd server
 npm install
@@ -11,6 +13,8 @@ npm start
 ```
 
 Server runs on `http://localhost:3000`. Set `PORT` to change.
+
+Автозапуск при старте Windows: поместите ярлык на `start-server.bat` в папку автозагрузки (`Win+R` → `shell:startup`).
 
 ## Развёртывание в интернете (HTTPS)
 

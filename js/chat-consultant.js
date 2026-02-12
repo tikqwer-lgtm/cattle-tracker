@@ -47,7 +47,17 @@
     panel.setAttribute('aria-hidden', 'false');
     var input = getInput();
     if (input) {
-      input.focus();
+      input.disabled = false;
+      input.readOnly = false;
+      setTimeout(function () {
+        input.focus();
+      }, 50);
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      var container = getMessagesContainer();
+      if (container && container.children.length === 0) {
+        appendMessage('assistant', 'Чат-консультант работает только при подключении к интернету (DeepSeek). Сейчас сеть недоступна — дождитесь появления подключения.', true);
+      }
     }
   }
 
@@ -103,7 +113,10 @@
         appendMessage('assistant', content);
       })
       .catch(function (err) {
-        var msg = err && err.message ? err.message : 'Ошибка соединения';
+        var isNetwork = !err || err.name === 'TypeError' || (err.message && (err.message.indexOf('fetch') !== -1 || err.message.indexOf('Network') !== -1));
+        var msg = isNetwork
+          ? 'Нет подключения к интернету. Чат-консультант использует DeepSeek и работает только при наличии сети.'
+          : (err && err.message ? err.message : 'Ошибка соединения');
         appendMessage('assistant', msg, true);
       })
       .then(function () {

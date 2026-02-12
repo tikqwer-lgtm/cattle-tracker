@@ -141,6 +141,11 @@
     if (url.indexOf('http://') === 0 && url.indexOf('localhost') === -1 && url.indexOf('127.0.0.1') === -1) {
       if (!confirm('Для доступа из интернета рекомендуется HTTPS. Продолжить с HTTP?')) return;
     }
+    var useApiNow = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API;
+    var hasLocalEntries = !useApiNow && typeof global !== 'undefined' && global.entries && Array.isArray(global.entries) && global.entries.length > 0;
+    if (hasLocalEntries && !confirm('После перезагрузки будут показаны данные с сервера (сейчас на сервере может не быть записей). Ваши локальные записи останутся в браузере, но не будут отображаться. Чтобы снова видеть их, уберите адрес сервера в Настройках. Рекомендуется создать резервную копию перед перезагрузкой. Продолжить?')) {
+      return;
+    }
     try {
       localStorage.setItem('cattleTracker_apiBase', url);
       if (typeof showToast === 'function') showToast('Адрес сохранён. Перезагрузка…', 'info');
