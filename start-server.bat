@@ -33,7 +33,8 @@ if not exist "node_modules" (
 )
 
 echo Server starting at http://localhost:3000
-echo For chat consultant set env DEEPSEEK_API_KEY. Requires internet.
+echo For chat consultant: create server\.env with DEEPSEEK_API_KEY=your_key
+echo Get key at https://platform.deepseek.com/
 echo Close this window to stop the server.
 echo.
 node "%~dp0server\server.js"

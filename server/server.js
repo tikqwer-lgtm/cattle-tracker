@@ -4,6 +4,7 @@
  * Objects: GET /api/objects, POST /api/objects
  * Entries: GET/POST /api/objects/:id/entries, GET/PUT/DELETE /api/objects/:id/entries/:cattleId
  */
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');

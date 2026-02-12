@@ -6,39 +6,12 @@
   <title>Учёт коров — расширенный функционал</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#3d6eb5" />
-  <script>
-  (function(){
-    try {
-      var base = localStorage.getItem('cattleTracker_apiBase');
-      if (base && (base = (base + '').trim())) {
-        window.CATTLE_TRACKER_USE_API = true;
-        window.CATTLE_TRACKER_API_BASE = base.replace(/\/$/, '');
-      }
-    } catch (e) {}
-  })();
-  </script>
   <!-- Подключение основных стилей -->
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/print.css" media="print" />
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
-  <!-- Панель чат-консультанта -->
-  <div id="chat-consultant-panel" class="chat-consultant-panel" aria-hidden="true" hidden>
-    <div class="chat-consultant-header">
-      <h2 class="chat-consultant-title">Чат-консультант</h2>
-      <button type="button" class="chat-consultant-close" onclick="closeChatConsultant()" aria-label="Закрыть">×</button>
-    </div>
-    <div id="chat-consultant-messages" class="chat-consultant-messages"></div>
-    <div class="chat-consultant-input-row">
-      <input type="text" id="chat-consultant-input" class="chat-consultant-input" placeholder="Задайте вопрос по работе программы..." autocomplete="off" />
-      <button type="button" class="chat-consultant-send" onclick="sendChatMessage()" aria-label="Отправить">Отправить</button>
-    </div>
-  </div>
-  <!-- Контекстное меню для вызова консультанта -->
-  <div id="chat-context-menu" class="chat-context-menu" role="menu" aria-hidden="true" hidden>
-    <button type="button" class="chat-context-menu-item" role="menuitem" onclick="contextMenuOpenConsultant()">Вызвать консультанта</button>
-  </div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
@@ -64,14 +37,6 @@
   <!-- Экран входа / регистрации -->
   <div id="auth-screen" class="screen">
     <h1>Вход</h1>
-    <div id="server-url-block" class="server-url-block">
-      <label for="serverApiBaseInput">Адрес сервера</label>
-      <div class="server-url-row">
-        <input type="url" id="serverApiBaseInput" placeholder="https://api.example.com" />
-        <button type="button" class="small-btn" id="serverUrlSaveBtn" onclick="saveServerBaseUrl()">Сохранить</button>
-      </div>
-      <p id="serverUrlHint" class="server-url-hint">Для синхронизации с другими пользователями укажите URL сервера (HTTPS для интернета).</p>
-    </div>
     <div id="auth-form-container" class="auth-form-container">
       <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
         <label for="authUsername">Логин</label>
@@ -689,7 +654,6 @@
   <script src="js/backup.js"></script>
   <script src="js/view-list.js"></script>
   <script src="js/protocols.js"></script>
-  <script src="js/chat-consultant.js"></script>
   <!-- menu.js последним -->
   <script src="js/menu.js"></script>
   <script>
