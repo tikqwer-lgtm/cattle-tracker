@@ -83,3 +83,28 @@
 .backup-actions {
   margin-bottom: 1rem;
 }
+
+/* Редактор карточки: компактная сетка в несколько столбцов */
+.form-cow-editor {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 0.4rem 1.25rem;
+  align-items: center;
+  max-width: 920px;
+}
+.form-cow-editor label {
+  margin: 0;
+}
+.form-cow-editor .form-actions {
+  grid-column: 1 / -1;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+.form-cow-editor textarea {
+  min-height: 60px;
+}
+@media (max-width: 640px) {
+  .form-cow-editor {
+    grid-template-columns: 1fr;
+  }
+}

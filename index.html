@@ -320,7 +320,7 @@
   <!-- Экран добавления/редактирования -->
   <div id="add-screen" class="screen">
     <h1 id="addScreenTitle">➕ Добавить корову</h1>
-    <form class="form" onsubmit="saveCurrentEntry(); return false;">
+    <form class="form form-cow-editor" onsubmit="saveCurrentEntry(); return false;">
       <label for="cattleId">Номер коровы *</label>
       <input type="text" id="cattleId" required />
 
@@ -389,7 +389,6 @@
       </div>
     </form>
 
-    <div id="entriesList"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
