@@ -351,3 +351,31 @@
   font-size: 0.75em;
   opacity: 0.9;
 }
+
+/* Режим редактора: редактируемые ячейки и инлайн-поля */
+.entries-table.view-list-editor-mode td.editable-cell {
+  cursor: text;
+  background: var(--color-bg);
+}
+.entries-table.view-list-editor-mode td.editable-cell:hover {
+  background: #f0f7ff;
+}
+.view-list-inline-input,
+.view-list-inline-select {
+  width: 100%;
+  min-width: 60px;
+  padding: 4px 6px;
+  font-size: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+.view-list-inline-input:focus,
+.view-list-inline-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+#viewEditorModeBtn.active {
+  background: var(--color-primary);
+  color: white;
+}

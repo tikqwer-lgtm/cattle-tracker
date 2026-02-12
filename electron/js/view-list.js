@@ -7,6 +7,16 @@ var VIEW_LIST_FIELD_TEMPLATES_KEY = 'cattleTracker_viewList_fieldTemplates';
 var VIRTUAL_LIST_THRESHOLD = 200;
 var VIRTUAL_ROW_HEIGHT = 40;
 var viewListSelectedIds = new Set();
+var viewListEditorMode = false;
+
+/** Поля, которые можно редактировать прямо в списке (остальные только просмотр) */
+var VIEW_LIST_EDITABLE_KEYS = {
+  cattleId: 'text', nickname: 'text', group: 'text', birthDate: 'date', lactation: 'number',
+  calvingDate: 'date', inseminationDate: 'date', attemptNumber: 'number', bull: 'text',
+  inseminator: 'text', code: 'text', status: 'select', exitDate: 'date', dryStartDate: 'date',
+  protocolName: 'text', protocolStartDate: 'date', note: 'text'
+};
+var STATUS_OPTIONS = ['Осемененная', 'Холостая', 'Стельная', 'Сухостой', 'Отёл', 'Брак'];
 
 function viewListEscapeHtml(text) {
   if (!text) return '—';
@@ -147,6 +157,7 @@ function updateViewList() {
     var scrollBtnHide = document.getElementById('viewScrollToTopBtn');
     if (scrollBtnHide) scrollBtnHide.style.display = 'none';
     initViewFieldsSettings();
+    initViewEditorModeButton();
     return;
   }
 
@@ -168,7 +179,7 @@ function updateViewList() {
     return sortAsc ? ' sort-asc' : ' sort-desc';
   };
 
-  if (listToShow.length > VIRTUAL_LIST_THRESHOLD) {
+  if (listToShow.length > VIRTUAL_LIST_THRESHOLD && !viewListEditorMode) {
     _renderVirtualList(tableContainer, listToShow, fields, sortMark, sortClass, bulkContainer);
     var viewScreen = document.getElementById('view-screen');
     if (viewScreen) {
@@ -178,6 +189,7 @@ function updateViewList() {
       viewScreen.addEventListener('keydown', _handleViewListKeydown);
     }
     initViewFieldsSettings();
+    initViewEditorModeButton();
     setTimeout(function () { updateSelectedCount(); _assertBulkSelectionUI(); }, 0);
     var virtualBody = document.getElementById('viewVirtualBody');
     _setupScrollToTopForContainer(virtualBody || tableContainer);
@@ -185,8 +197,9 @@ function updateViewList() {
   }
 
   viewListSelectedIds.clear();
+  var tableClass = 'entries-table' + (viewListEditorMode ? ' view-list-editor-mode' : '');
   tableContainer.innerHTML = `
-    <table class="entries-table">
+    <table class="${tableClass}">
       <thead>
         <tr>
           <th class="checkbox-column">
@@ -205,7 +218,8 @@ function updateViewList() {
           const cells = fields.map(field => {
             const v = field.render(entry);
             const show = (field.key === 'lactation' && (v === 0 || v === '0')) ? '0' : v;
-            return `<td>${show}</td>`;
+            var editable = viewListEditorMode && VIEW_LIST_EDITABLE_KEYS[field.key];
+            return `<td data-field-key="${field.key}" ${editable ? ' class="editable-cell"' : ''}>${show}</td>`;
           }).join('');
           return `
           <tr class="view-entry-row ${entry.synced ? '' : 'unsynced'}" data-row-index="${index}" data-cattle-id="${safeCattleId.replace(/"/g, '&quot;')}" role="button" tabindex="0">
@@ -229,6 +243,7 @@ function updateViewList() {
   }
 
   initViewFieldsSettings();
+  initViewEditorModeButton();
 
   setTimeout(function () {
     updateSelectedCount();
@@ -446,6 +461,89 @@ function closeViewFieldsSettings() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function initViewEditorModeButton() {
+  var btn = document.getElementById('viewEditorModeBtn');
+  if (!btn || btn.dataset.editorBound === '1') return;
+  btn.dataset.editorBound = '1';
+  btn.addEventListener('click', function () {
+    viewListEditorMode = !viewListEditorMode;
+    btn.textContent = viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
+    btn.classList.toggle('active', viewListEditorMode);
+    updateViewList();
+  });
+  btn.textContent = viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
+  btn.classList.toggle('active', viewListEditorMode);
+}
+
+function _getEntryRawValue(entry, fieldKey) {
+  if (fieldKey === 'protocolName') return (entry.protocol && entry.protocol.name) || entry.protocolName || '';
+  if (fieldKey === 'protocolStartDate') return (entry.protocol && entry.protocol.startDate) || entry.protocolStartDate || '';
+  var v = entry[fieldKey];
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
+function _setEntryValue(entry, fieldKey, value) {
+  if (fieldKey === 'protocolName') {
+    entry.protocol = entry.protocol || {};
+    entry.protocol.name = value;
+    return;
+  }
+  if (fieldKey === 'protocolStartDate') {
+    entry.protocol = entry.protocol || {};
+    entry.protocol.startDate = value;
+    return;
+  }
+  entry[fieldKey] = value;
+}
+
+function startInlineEdit(td, cattleId, fieldKey) {
+  if (!td || !cattleId || !fieldKey || !VIEW_LIST_EDITABLE_KEYS[fieldKey]) return;
+  var entriesList = typeof entries !== 'undefined' ? entries : [];
+  var entry = entriesList.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) return;
+  var fieldType = VIEW_LIST_EDITABLE_KEYS[fieldKey];
+  var currentVal = _getEntryRawValue(entry, fieldKey);
+  var input;
+  if (fieldType === 'select' && fieldKey === 'status') {
+    input = document.createElement('select');
+    input.className = 'view-list-inline-select';
+    STATUS_OPTIONS.forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      if (opt === currentVal) o.selected = true;
+      input.appendChild(o);
+    });
+  } else {
+    input = document.createElement('input');
+    input.className = 'view-list-inline-input';
+    input.type = fieldType === 'date' ? 'date' : fieldType === 'number' ? 'number' : 'text';
+    if (fieldKey === 'lactation') input.min = 0;
+    if (fieldKey === 'attemptNumber') input.min = 1;
+    input.value = currentVal;
+  }
+  td.innerHTML = '';
+  td.appendChild(input);
+  input.focus();
+  function finishEdit() {
+    var newVal = input.value.trim();
+    if (fieldType === 'number') {
+      var num = parseInt(newVal, 10);
+      newVal = (newVal === '' || isNaN(num)) ? '' : num;
+    }
+    _setEntryValue(entry, fieldKey, newVal);
+    if (typeof saveLocally === 'function') saveLocally();
+    updateViewList();
+  }
+  input.addEventListener('blur', finishEdit);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); updateViewList(); }
+  });
+  input.addEventListener('click', function (e) { e.stopPropagation(); });
+}
+
 function _assertBulkSelectionUI() {
   var bulk = document.getElementById('viewBulkActions');
   var selectAll = document.getElementById('selectAllCheckbox');
@@ -545,6 +643,23 @@ function _handleViewListClick(ev) {
     }
     setTimeout(updateSelectedCount, 0);
     return;
+  }
+
+  if (viewListEditorMode) {
+    var cell = target.closest('td.editable-cell, td[data-field-key]');
+    if (cell && cell.classList && cell.classList.contains('editable-cell')) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var row = cell.closest('tr.view-entry-row');
+      if (row) {
+        var cattleId = row.getAttribute('data-cattle-id');
+        var fieldKey = cell.getAttribute('data-field-key');
+        if (cattleId && fieldKey && VIEW_LIST_EDITABLE_KEYS[fieldKey]) {
+          startInlineEdit(cell, cattleId, fieldKey);
+        }
+      }
+      return;
+    }
   }
 
   var row = target.closest('tbody tr.view-entry-row, .view-virtual-row.view-entry-row');
