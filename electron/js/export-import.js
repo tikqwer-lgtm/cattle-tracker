@@ -28,10 +28,13 @@ function importData(event) {
  */
 function normalizeDateForStorage(str) {
   if (str === null || str === undefined) return '';
-  if (typeof str === 'number' && !isNaN(str) && typeof XLSX !== 'undefined' && XLSX.SSF && XLSX.SSF.parse_date_code) {
+  var numVal = null;
+  if (typeof str === 'number' && !isNaN(str)) numVal = str;
+  else if (typeof str === 'string' && /^\d+$/.test(str.trim())) numVal = parseInt(str.trim(), 10);
+  if (numVal !== null && typeof XLSX !== 'undefined' && XLSX.SSF && XLSX.SSF.parse_date_code) {
     try {
-      var d = XLSX.SSF.parse_date_code(str);
-      if (d && d.y >= 1900) {
+      var d = XLSX.SSF.parse_date_code(numVal);
+      if (d && d.y >= 1900 && d.y <= 2100) {
         var y = d.y, m = (d.m || 1), day = (d.d || 1);
         return y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
       }
@@ -169,22 +172,7 @@ function parseFileToHeadersAndRows(file) {
             for (var c = 0; c < maxCol; c++) {
               var cell = row[c];
               if (cell === null || cell === undefined) cells.push('');
-              else if (typeof cell === 'number' && !isNaN(cell) && typeof XLSX !== 'undefined' && XLSX.SSF) {
-                var parsed = null;
-                if (cell >= 1000) {
-                  try {
-                    if (XLSX.SSF.parse_date_code) {
-                      var d = XLSX.SSF.parse_date_code(cell);
-                      if (d && d.y >= 1900 && d.y <= 2100) {
-                        parsed = d.y + '-' + String(d.m || 1).padStart(2, '0') + '-' + String(d.d || 1).padStart(2, '0');
-                      }
-                    }
-                  } catch (e) {}
-                }
-                cells.push(parsed !== null ? parsed : cleanStr(cell));
-              } else {
-                cells.push(cleanStr(cell));
-              }
+              else cells.push(cleanStr(cell));
             }
             while (cells.length < maxCol) cells.push('');
             dataRows.push(cells);
@@ -340,6 +328,17 @@ function runImportWithMapping(rows, columnMapping, headers) {
     return (v === null || v === undefined) ? '' : String(v).trim();
   };
 
+  var dateCols = [], bullCols = [];
+  for (var col in columnMapping) {
+    if (col === 'cattleIdColumnIndex') continue;
+    var idx = parseInt(col, 10);
+    if (isNaN(idx)) continue;
+    if (columnMapping[col] === 'inseminationDate') dateCols.push(idx);
+    if (columnMapping[col] === 'bull') bullCols.push(idx);
+  }
+  dateCols.sort(function (a, b) { return a - b; });
+  bullCols.sort(function (a, b) { return a - b; });
+
   var rowObjects = [];
   for (var r = 0; r < rows.length; r++) {
     var row = rows[r];
@@ -348,7 +347,7 @@ function runImportWithMapping(rows, columnMapping, headers) {
     if (cattleIdCol === undefined || cattleIdCol === null) continue;
     var cattleId = cleanStr(getCell(row, cattleIdCol));
     if (!cattleId) continue;
-    var obj = { cattleId: cattleId, _rowIndex: r };
+    var obj = { cattleId: cattleId, _rowIndex: r, inseminationPairs: [] };
     for (var col in columnMapping) {
       if (col === 'cattleIdColumnIndex') continue;
           var fieldKey = columnMapping[col];
@@ -373,6 +372,25 @@ function runImportWithMapping(rows, columnMapping, headers) {
         obj[fieldKey] = raw;
       }
     }
+    for (var pi = 0; pi < dateCols.length || pi < bullCols.length; pi++) {
+      var dCol = dateCols[pi], bCol = bullCols[pi];
+      var pairDate = dCol !== undefined ? normalizeDateForStorage(getCell(row, dCol)) : '';
+      var pairBull = bCol !== undefined ? cleanStr(getCell(row, bCol)) : '';
+      if (pairDate || pairBull) {
+        obj.inseminationPairs.push({
+          date: pairDate,
+          attemptNumber: pi + 1,
+          bull: pairBull,
+          inseminator: cleanStr(obj.inseminator) || '',
+          code: cleanStr(obj.code) || ''
+        });
+      }
+    }
+    if (obj.inseminationPairs.length > 0) {
+      var lastP = obj.inseminationPairs[obj.inseminationPairs.length - 1];
+      obj.inseminationDate = lastP.date;
+      obj.bull = lastP.bull;
+    }
     rowObjects.push(obj);
   }
 
@@ -391,7 +409,7 @@ function runImportWithMapping(rows, columnMapping, headers) {
     var group = byCattleId[cattleId];
     try {
       var entry = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : {
-        cattleId: '', nickname: '', group: '', birthDate: '', lactation: '', calvingDate: '', inseminationDate: '', attemptNumber: 1, bull: '', inseminator: '', code: '', status: '', exitDate: '', dryStartDate: '', vwp: 60, note: '', protocol: { name: '', startDate: '' }, dateAdded: typeof nowFormatted === 'function' ? nowFormatted() : '', synced: false, userId: '', lastModifiedBy: '', inseminationHistory: [], actionHistory: [], uziHistory: []
+        cattleId: '', nickname: '', group: '', birthDate: '', lactation: '', calvingDate: '', inseminationDate: '', attemptNumber: '', bull: '', inseminator: '', code: '', status: '', exitDate: '', dryStartDate: '', vwp: 60, note: '', protocol: { name: '', startDate: '' }, dateAdded: typeof nowFormatted === 'function' ? nowFormatted() : '', synced: false, userId: '', lastModifiedBy: '', inseminationHistory: [], actionHistory: [], uziHistory: []
       };
       entry.cattleId = cattleId;
       if (entry.dateAdded === '') entry.dateAdded = typeof nowFormatted === 'function' ? nowFormatted() : '';
@@ -413,15 +431,31 @@ function runImportWithMapping(rows, columnMapping, headers) {
       var insemList = [];
       for (var g = 0; g < group.length; g++) {
         var rowObj = group[g];
-        var idate = rowObj.inseminationDate;
-        if (idate && normalizeDateForStorage(idate)) {
-          insemList.push({
-            date: normalizeDateForStorage(idate),
-            attemptNumber: rowObj.attemptNumber !== undefined && rowObj.attemptNumber !== '' ? parseInt(rowObj.attemptNumber, 10) || 1 : 1,
-            bull: cleanStr(rowObj.bull) || '',
-            inseminator: cleanStr(rowObj.inseminator) || '',
-            code: cleanStr(rowObj.code) || ''
-          });
+        if (rowObj.inseminationPairs && rowObj.inseminationPairs.length > 0) {
+          for (var ip = 0; ip < rowObj.inseminationPairs.length; ip++) {
+            var rec = rowObj.inseminationPairs[ip];
+            var nd = rec.date ? normalizeDateForStorage(rec.date) : '';
+            if (nd || (rec.bull && cleanStr(rec.bull))) {
+              insemList.push({
+                date: nd,
+                attemptNumber: rec.attemptNumber !== undefined && rec.attemptNumber !== '' ? parseInt(rec.attemptNumber, 10) || 1 : 1,
+                bull: cleanStr(rec.bull) || '',
+                inseminator: cleanStr(rec.inseminator) || '',
+                code: cleanStr(rec.code) || ''
+              });
+            }
+          }
+        } else {
+          var idate = rowObj.inseminationDate;
+          if (idate && normalizeDateForStorage(idate)) {
+            insemList.push({
+              date: normalizeDateForStorage(idate),
+              attemptNumber: rowObj.attemptNumber !== undefined && rowObj.attemptNumber !== '' ? parseInt(rowObj.attemptNumber, 10) || 1 : 1,
+              bull: cleanStr(rowObj.bull) || '',
+              inseminator: cleanStr(rowObj.inseminator) || '',
+              code: cleanStr(rowObj.code) || ''
+            });
+          }
         }
       }
       insemList.sort(function (a, b) { var da = (a.date || '').toString(), db = (b.date || '').toString(); return da < db ? -1 : da > db ? 1 : 0; });
@@ -472,7 +506,7 @@ function runImportWithMapping(rows, columnMapping, headers) {
       entry.inseminationHistory = insemList;
       var lastInsemRec = insemList.length > 0 ? insemList[insemList.length - 1] : null;
       entry.inseminationDate = lastInsemRec ? lastInsemRec.date : '';
-      entry.attemptNumber = lastInsemRec ? lastInsemRec.attemptNumber : 1;
+      entry.attemptNumber = lastInsemRec ? lastInsemRec.attemptNumber : '';
       entry.bull = lastInsemRec ? lastInsemRec.bull : '';
       entry.inseminator = lastInsemRec ? lastInsemRec.inseminator : '';
       entry.code = lastInsemRec ? lastInsemRec.code : '';
@@ -498,7 +532,7 @@ function runImportWithMapping(rows, columnMapping, headers) {
         existing.inseminationHistory = mergedInsem;
         var lastM = mergedInsem.length > 0 ? mergedInsem[mergedInsem.length - 1] : null;
         existing.inseminationDate = lastM ? lastM.date : (existing.inseminationDate || '');
-        existing.attemptNumber = lastM ? lastM.attemptNumber : (existing.attemptNumber || 1);
+        existing.attemptNumber = lastM ? lastM.attemptNumber : (existing.attemptNumber || '');
         existing.bull = lastM ? lastM.bull : (existing.bull || '');
         existing.inseminator = lastM ? lastM.inseminator : (existing.inseminator || '');
         existing.code = lastM ? lastM.code : (existing.code || '');
