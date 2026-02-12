@@ -352,10 +352,14 @@
   opacity: 0.9;
 }
 
-/* Режим редактора: редактируемые ячейки и инлайн-поля */
+/* Режим редактора: фиксированная ширина столбцов, редактируемые ячейки */
+.entries-table.view-list-editor-mode {
+  table-layout: fixed;
+}
 .entries-table.view-list-editor-mode td.editable-cell {
   cursor: text;
   background: var(--color-bg);
+  overflow: hidden;
 }
 .entries-table.view-list-editor-mode td.editable-cell:hover {
   background: #f0f7ff;
@@ -363,7 +367,7 @@
 .view-list-inline-input,
 .view-list-inline-select {
   width: 100%;
-  min-width: 60px;
+  max-width: 100%;
   padding: 4px 6px;
   font-size: inherit;
   border: 1px solid var(--color-border);

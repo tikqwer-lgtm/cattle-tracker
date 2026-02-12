@@ -497,6 +497,16 @@ function _setEntryValue(entry, fieldKey, value) {
   entry[fieldKey] = value;
 }
 
+function _setCellDisplay(td, entry, fieldKey) {
+  var fields = getVisibleViewFields();
+  var field = fields.filter(function (f) { return f.key === fieldKey; })[0];
+  if (!field) return;
+  var v = field.render(entry);
+  var show = (fieldKey === 'lactation' && (v === 0 || v === '0')) ? '0' : v;
+  td.textContent = show || '—';
+  td.classList.add('editable-cell');
+}
+
 function startInlineEdit(td, cattleId, fieldKey) {
   if (!td || !cattleId || !fieldKey || !VIEW_LIST_EDITABLE_KEYS[fieldKey]) return;
   var entriesList = typeof entries !== 'undefined' ? entries : [];
@@ -526,20 +536,27 @@ function startInlineEdit(td, cattleId, fieldKey) {
   td.innerHTML = '';
   td.appendChild(input);
   input.focus();
-  function finishEdit() {
-    var newVal = input.value.trim();
-    if (fieldType === 'number') {
-      var num = parseInt(newVal, 10);
-      newVal = (newVal === '' || isNaN(num)) ? '' : num;
+  var editCommitted = false;
+  function finishEdit(save) {
+    if (save) {
+      var newVal = input.value.trim();
+      if (fieldType === 'number') {
+        var num = parseInt(newVal, 10);
+        newVal = (newVal === '' || isNaN(num)) ? '' : num;
+      }
+      _setEntryValue(entry, fieldKey, newVal);
+      if (typeof saveLocally === 'function') saveLocally();
     }
-    _setEntryValue(entry, fieldKey, newVal);
-    if (typeof saveLocally === 'function') saveLocally();
-    updateViewList();
+    _setCellDisplay(td, entry, fieldKey);
   }
-  input.addEventListener('blur', finishEdit);
+  input.addEventListener('blur', function () {
+    if (editCommitted) return;
+    editCommitted = true;
+    finishEdit(true);
+  });
   input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { e.preventDefault(); updateViewList(); }
+    if (e.key === 'Enter') { e.preventDefault(); editCommitted = true; finishEdit(true); }
+    if (e.key === 'Escape') { e.preventDefault(); editCommitted = true; finishEdit(false); }
   });
   input.addEventListener('click', function (e) { e.stopPropagation(); });
 }
