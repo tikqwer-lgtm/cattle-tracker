@@ -429,7 +429,8 @@ function renderSyncServerBasesList() {
     list.forEach(function (obj) {
       var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
       var dateStr = formatServerDate(obj.last_updated_at || obj.lastUpdatedAt || obj.created_at);
-      var lastUser = String(obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : '—')).replace(/</g, '&lt;');
+      var lastUserRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
+      var lastUser = lastUserRaw !== null && lastUserRaw !== '' ? String(lastUserRaw).replace(/</g, '&lt;') : '—';
       var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;
       var count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
       html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td>' + lastUser + '</td><td>' + count + '</td><td class="sync-bases-actions">';

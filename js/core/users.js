@@ -154,16 +154,11 @@
   }
 
   /**
-   * Возвращает записи, видимые текущему пользователю (по userId или все для админа)
+   * Возвращает записи, видимые текущему пользователю. Все авторизованные видят все записи.
    */
   function getVisibleEntries(list) {
     if (!list || !Array.isArray(list)) return list || [];
-    var user = getCurrentUser();
-    if (!user) return list;
-    if (user.role === 'admin') return list;
-    return list.filter(function (e) {
-      return !e.userId || e.userId === user.id;
-    });
+    return list;
   }
 
   function canAdd() {

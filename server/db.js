@@ -211,6 +211,15 @@ function getObjects() {
   return allSql('SELECT id, name, created_at FROM objects ORDER BY created_at');
 }
 
+function getRowVal(row, key) {
+  if (row[key] !== undefined && row[key] !== null) return row[key];
+  const lower = key.toLowerCase();
+  for (const k of Object.keys(row)) {
+    if (k.toLowerCase() === lower) return row[k];
+  }
+  return null;
+}
+
 /**
  * Returns objects with entries_count, last_updated_at, last_modified_by from entries.
  */
@@ -222,14 +231,22 @@ function getObjectsWithMeta() {
       (SELECT last_modified_by FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_modified_by
     FROM objects o ORDER BY o.created_at
   `;
-  return allSql(sql).map(row => ({
-    id: row.id,
-    name: row.name,
-    created_at: row.created_at || null,
-    entries_count: Number(row.entries_count != null ? row.entries_count : 0),
-    last_updated_at: row.last_updated_at != null ? String(row.last_updated_at) : null,
-    last_modified_by: row.last_modified_by != null ? String(row.last_modified_by) : null
-  }));
+  return allSql(sql).map(row => {
+    const id = getRowVal(row, 'id');
+    const name = getRowVal(row, 'name');
+    const entriesCount = getRowVal(row, 'entries_count');
+    const lastUpdatedAt = getRowVal(row, 'last_updated_at');
+    const lastModifiedBy = getRowVal(row, 'last_modified_by');
+    const createdAt = getRowVal(row, 'created_at');
+    return {
+      id: id != null ? String(id) : '',
+      name: name != null ? String(name) : '',
+      created_at: createdAt != null ? String(createdAt) : null,
+      entries_count: Number(entriesCount != null ? entriesCount : 0),
+      last_updated_at: lastUpdatedAt != null ? String(lastUpdatedAt) : null,
+      last_modified_by: lastModifiedBy != null ? String(lastModifiedBy) : null
+    };
+  });
 }
 
 function getObjectById(id) {

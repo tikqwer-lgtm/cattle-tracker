@@ -65,7 +65,8 @@ function navigate(screenId, options) {
     window._submenuGroup = options.group;
   }
 
-  if (screenId !== 'auth' && typeof getCurrentUser === 'function' && !getCurrentUser()) {
+  var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (screenId !== 'auth' && !currentUser) {
     screenId = 'auth';
   }
 
@@ -534,7 +535,12 @@ function initAddObjectModal() {
 
 document.addEventListener('DOMContentLoaded', function () {
   initAddObjectModal();
-  syncRouteToScreen();
+  var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (currentUser) {
+    syncRouteToScreen();
+  } else {
+    navigate('auth');
+  }
 });
 if (typeof window !== 'undefined') {
   window.addEventListener('hashchange', syncRouteToScreen);

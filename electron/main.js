@@ -80,15 +80,20 @@ function setupAutoUpdater() {
   const sendPath = (downloadDir) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update-download-path', downloadDir);
   };
-  autoUpdater.on('update-available', () => {
-    sendPath(app.getPath('userData'));
+  autoUpdater.on('update-available', (info) => {
+    const newVer = (info && info.version) ? String(info.version).trim() : '';
+    const currentVer = app.getVersion() ? String(app.getVersion()).trim() : '';
+    if (!newVer || newVer === currentVer) return;
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Обновление',
-      message: 'Доступна новая версия. Разрешить скачивание?',
+      message: 'Доступна новая версия ' + newVer + '. Разрешить скачивание?',
       buttons: ['Скачать', 'Позже']
     }).then(({ response }) => {
-      if (response === 0) autoUpdater.downloadUpdate().catch((err) => console.warn('downloadUpdate error:', err));
+      if (response === 0) {
+        sendPath(app.getPath('userData'));
+        autoUpdater.downloadUpdate().catch((err) => console.warn('downloadUpdate error:', err));
+      }
     }).catch(() => {});
   });
   autoUpdater.on('download-progress', (progress) => {
@@ -113,7 +118,6 @@ function setupAutoUpdater() {
   autoUpdater.on('error', (err) => {
     console.warn('Auto-update error:', err);
   });
-  autoUpdater.checkForUpdates().catch(() => {});
 }
 
 function createAppMenu() {
@@ -235,11 +239,27 @@ function createWindow() {
 
 ipcMain.handle('get-app-version', () => Promise.resolve(app.getVersion()));
 
+function isVersionNewer(newVer, currentVer) {
+  if (!newVer || !currentVer) return false;
+  const n = String(newVer).trim().split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const c = String(currentVer).trim().split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(n.length, c.length); i++) {
+    const a = n[i] || 0;
+    const b = c[i] || 0;
+    if (a > b) return true;
+    if (a < b) return false;
+  }
+  return false;
+}
+
 ipcMain.handle('check-for-updates', () => {
   if (!app.isPackaged) return Promise.resolve({ ok: false, dev: true });
   if (!autoUpdater) return Promise.resolve({ ok: false, error: 'Модуль обновлений не загружен' });
   return autoUpdater.checkForUpdates().then((r) => {
-    if (r && r.updateInfo) return { ok: true, version: r.updateInfo.version };
+    const currentVer = app.getVersion();
+    if (r && r.updateInfo && r.updateInfo.version && isVersionNewer(r.updateInfo.version, currentVer)) {
+      return { ok: true, version: r.updateInfo.version };
+    }
     return { ok: true, current: true };
   }).catch((err) => ({
     ok: false,

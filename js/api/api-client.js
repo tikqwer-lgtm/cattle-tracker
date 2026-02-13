@@ -73,7 +73,7 @@
   }
 
   function getObjectsList() {
-    return request('GET', '/api/objects');
+    return request('GET', '/api/objects?_=' + Date.now());
   }
 
   function getCurrentObjectId() {
