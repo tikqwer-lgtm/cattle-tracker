@@ -73,18 +73,27 @@ function initApp() {
   }
 
   var versionEl = document.getElementById('app-version');
-  if (versionEl) {
+  var versionHeaderEl = document.getElementById('app-version-header');
+  function setVersionText(text) {
+    if (versionEl) versionEl.textContent = text;
+    if (versionHeaderEl) versionHeaderEl.textContent = text;
+  }
+  if (versionEl || versionHeaderEl) {
     if (typeof window.electronAPI !== 'undefined' && window.electronAPI.getAppVersion) {
       window.electronAPI.getAppVersion().then(function (v) {
-        versionEl.textContent = 'Версия ' + v;
+        setVersionText('Версия ' + v);
       });
     } else {
-      var fallback = versionEl.getAttribute('data-default-version') || '1.0.0';
-      versionEl.textContent = 'Версия ' + fallback;
+      var fallback = (versionEl && versionEl.getAttribute('data-default-version')) || '1.0.0';
+      setVersionText('Версия ' + fallback);
       fetch('package.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (pkg) {
-        if (pkg && pkg.version) versionEl.textContent = 'Версия ' + pkg.version;
+        if (pkg && pkg.version) setVersionText('Версия ' + pkg.version);
       }).catch(function () {});
     }
+  }
+  var serverBtn = document.getElementById('app-header-server-btn');
+  if (serverBtn && typeof getSavedServerBase === 'function' && getSavedServerBase()) {
+    serverBtn.style.display = '';
   }
 }
 

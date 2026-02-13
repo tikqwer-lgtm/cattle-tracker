@@ -296,17 +296,50 @@ function refreshFromServer() {
   });
 }
 
+/** Флаг: идёт ли синхронизация (чтобы не запускать повторно). */
+var isSyncInProgress = false;
+
 /**
  * Синхронизация текущей базы с сервером: отправить последние изменения на сервер (по уникальному cattleId — создать или обновить запись).
  */
 function syncCurrentBaseToServer() {
+  if (isSyncInProgress) return Promise.resolve();
   if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi || typeof window.loadLocally !== 'function') {
     return Promise.resolve();
   }
   var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
   if (!objectId) return Promise.resolve();
   var localEntries = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  var total = localEntries.length;
+  var progressBlock = document.getElementById('syncProgressBlock');
+  var progressBar = document.getElementById('syncProgressBar');
+  var progressLabel = document.getElementById('syncProgressLabel');
+  var progressText = document.getElementById('syncProgressText');
+  function setSyncButtonsDisabled(disabled) {
+    document.querySelectorAll('.sync-current-base-btn').forEach(function (btn) { btn.disabled = disabled; });
+  }
+  function showSyncProgress(visible) {
+    if (progressBlock) progressBlock.style.display = visible ? 'block' : 'none';
+  }
+  function setSyncProgress(current, label) {
+    if (progressBar) {
+      var pct = total ? Math.min(100, Math.round((current / total) * 100)) : 100;
+      progressBar.style.width = pct + '%';
+      progressBar.setAttribute('aria-valuenow', pct);
+    }
+    if (progressLabel && label !== undefined) progressLabel.textContent = label || 'Синхронизация…';
+    if (progressText) progressText.textContent = current + ' / ' + total;
+  }
+  isSyncInProgress = true;
+  setSyncButtonsDisabled(true);
+  showSyncProgress(true);
+  setSyncProgress(0, 'Синхронизация с сервером…');
   updateSyncServerStatus('Синхронизация с сервером…');
+  function finish() {
+    isSyncInProgress = false;
+    setSyncButtonsDisabled(false);
+    showSyncProgress(false);
+  }
   return window.CattleTrackerApi.loadEntries(objectId).then(function (serverEntries) {
     var serverByCattleId = {};
     (serverEntries || []).forEach(function (e) {
@@ -315,6 +348,7 @@ function syncCurrentBaseToServer() {
     var index = 0;
     function next() {
       if (index >= localEntries.length) {
+        finish();
         return window.loadLocally().then(function () {
           updateSyncServerStatus('Подключено к серверу. Данные синхронизированы.');
           updateConnectionIndicator(true);
@@ -325,17 +359,23 @@ function syncCurrentBaseToServer() {
       }
       var entry = localEntries[index];
       var cattleId = (entry && entry.cattleId) ? String(entry.cattleId).trim() : '';
-      if (!cattleId) { index++; return next(); }
+      if (!cattleId) { index++; setSyncProgress(index, 'Синхронизация…'); return next(); }
       var isUpdate = !!serverByCattleId[cattleId];
       var p = isUpdate
         ? window.CattleTrackerApi.updateEntry(objectId, cattleId, entry)
         : window.CattleTrackerApi.createEntry(objectId, entry);
-      return p.then(function () { index++; return next(); }).catch(function (err) {
+      return p.then(function () {
+        index++;
+        setSyncProgress(index, 'Синхронизация…');
+        return next();
+      }).catch(function (err) {
+        finish();
         updateSyncServerStatus('Ошибка: ' + (err && err.message ? err.message : ''), true);
       });
     }
     return next();
   }).catch(function (err) {
+    finish();
     var msg = (err && err.message) ? err.message : 'Ошибка синхронизации';
     updateSyncServerStatus(msg, true);
     updateConnectionIndicator(false);
@@ -388,12 +428,13 @@ function renderSyncServerBasesList() {
     var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
     list.forEach(function (obj) {
       var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      var dateStr = formatServerDate(obj.last_updated_at || obj.created_at);
-      var lastUser = (obj.last_modified_by || '—').replace(/</g, '&lt;');
-      var count = obj.entries_count != null ? obj.entries_count : '—';
+      var dateStr = formatServerDate(obj.last_updated_at || obj.lastUpdatedAt || obj.created_at);
+      var lastUser = String(obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : '—')).replace(/</g, '&lt;');
+      var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;
+      var count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
       html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td>' + lastUser + '</td><td>' + count + '</td><td class="sync-bases-actions">';
       if (obj.id === currentId) {
-        html += '<button type="button" class="small-btn" onclick="syncCurrentBaseToServer()">Синхронизация</button> ';
+        html += '<button type="button" class="small-btn sync-current-base-btn" onclick="syncCurrentBaseToServer()">Синхронизация</button> ';
       }
       html += '<button type="button" class="small-btn" onclick="showImportNewObjectModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\', \'' + String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;') + '\')">Импорт в новый объект</button> ';
       html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в существующий</button>';
@@ -401,7 +442,7 @@ function renderSyncServerBasesList() {
     });
     if (!currentOnServer && currentId) {
       html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
-      html += '<button type="button" class="small-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
+      html += '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
       html += '</td></tr>';
     }
     html += '</tbody></table>';
@@ -412,7 +453,7 @@ function renderSyncServerBasesList() {
     if (list.length === 0) {
       html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
       html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
-      html += '<button type="button" class="small-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
+      html += '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
       html += '</td></tr></tbody></table>';
     }
     container.innerHTML = html;

@@ -39,8 +39,8 @@
     </div>
   </div>
 
-  <!-- ========== Вход и регистрация ========== -->
-  <div id="auth-screen" class="screen">
+  <!-- ========== Вход и регистрация (обязательно при запуске) ========== -->
+  <div id="auth-screen" class="screen active">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
       <div id="auth-server-block" class="auth-server-block" style="display: none;">
@@ -50,6 +50,10 @@
       </div>
       <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
       <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
+        <label for="authUsernameSelect">Выбрать пользователя</label>
+        <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
+          <option value="">— Выберите из списка —</option>
+        </select>
         <label for="authUsername">Логин</label>
         <input type="text" id="authUsername" required autocomplete="username" />
         <label for="authPassword">Пароль</label>
@@ -67,8 +71,8 @@
         <input type="password" id="regPassword" autocomplete="new-password" required />
         <label for="regRole">Роль</label>
         <select id="regRole">
+          <option value="admin" selected>Администратор</option>
           <option value="operator">Оператор</option>
-          <option value="admin">Администратор</option>
           <option value="viewer">Только просмотр</option>
         </select>
         <div class="form-actions">
@@ -78,11 +82,10 @@
       </form>
       <p id="auth-user-data-hint" class="auth-user-data-hint" style="display: none;">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
     </div>
-    <button type="button" class="back-button" onclick="skipAuth()">Продолжить без входа</button>
   </div>
 
   <!-- ========== Меню (главный экран) ========== -->
-  <div id="menu-screen" class="screen active">
+  <div id="menu-screen" class="screen">
     <div class="menu-branding" aria-hidden="false">
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
@@ -478,16 +481,6 @@
     <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- ========== Настройки: резервные копии, протоколы, синхронизация ========== -->
-  <div id="backup-screen" class="screen">
-    <h1>💾 Резервные копии</h1>
-    <div class="backup-actions">
-      <button type="button" class="action-btn" onclick="handleCheckForUpdates()">Проверить обновления</button>
-    </div>
-    <div id="backup-container"></div>
-    <button onclick="navigate('menu')" class="back-button">Назад</button>
-  </div>
-
   <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
   <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden data-editing-id="">
     <div class="view-fields-modal-content">
@@ -658,13 +651,15 @@
         <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
       </div>
     </div>
-    <div class="sync-controls">
-      <button onclick="exportData()">Экспорт данных</button>
-      <label for="importFileJson">Импорт данных (JSON)
-        <input type="file" id="importFileJson" accept=".json" onchange="importData(event)" />
-      </label>
-      <div id="syncStatus" class="sync-status"></div>
+    <div id="sync-backup-section" class="sync-section">
+      <h3>Резервное копирование</h3>
+      <p class="sync-section-hint">Создать копию в браузере, экспорт в JSON или восстановление из файла/списка.</p>
+      <div class="sync-backup-actions-row">
+        <button type="button" class="action-btn small" onclick="typeof handleCheckForUpdates === 'function' && handleCheckForUpdates()">Проверить обновления</button>
+      </div>
+      <div id="sync-backup-container"></div>
     </div>
+    <div id="syncStatus" class="sync-status"></div>
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 

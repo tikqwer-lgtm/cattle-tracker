@@ -6,6 +6,8 @@
 
   var USERS_KEY = 'cattleTracker_users';
   var CURRENT_USER_KEY = 'cattleTracker_currentUser';
+  var LAST_USERNAMES_KEY = 'cattleTracker_lastUsernames';
+  var MAX_LAST_USERNAMES = 15;
   var currentUser = null;
 
   function simpleHash(str) {
@@ -63,7 +65,7 @@
       return { ok: false, message: 'Пользователь с таким логином уже есть' };
     }
     var id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'operator' };
+    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'admin' };
     users.push(newUser);
     saveUsers(users);
     return { ok: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
@@ -78,7 +80,68 @@
     }
     var session = { id: user.id, username: user.username, role: user.role };
     saveCurrentUser(session);
+    addLastUsername(user.username);
     return { ok: true, user: session };
+  }
+
+  function getLastUsernames() {
+    try {
+      var raw = localStorage.getItem(LAST_USERNAMES_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+
+  function addLastUsername(username) {
+    if (!username || typeof username !== 'string') return;
+    var u = username.trim();
+    if (!u) return;
+    var list = getLastUsernames();
+    list = list.filter(function (x) { return x !== u; });
+    list.unshift(u);
+    list = list.slice(0, MAX_LAST_USERNAMES);
+    try {
+      localStorage.setItem(LAST_USERNAMES_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  /** Список логинов для выбора при входе: в локальном режиме — все пользователи, при API — недавно входившие. */
+  function getLoginUsernameList() {
+    if (typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API) {
+      return getLastUsernames();
+    }
+    return loadUsers().map(function (u) { return u.username || ''; }).filter(Boolean);
+  }
+
+  function fillAuthUsernameList() {
+    var select = document.getElementById('authUsernameSelect');
+    var input = document.getElementById('authUsername');
+    if (!select) return;
+    var list = getLoginUsernameList();
+    var current = select.value;
+    select.innerHTML = '';
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = '— Выберите из списка —';
+    select.appendChild(empty);
+    list.forEach(function (u) {
+      var opt = document.createElement('option');
+      opt.value = u;
+      opt.textContent = u;
+      select.appendChild(opt);
+    });
+    if (current && list.indexOf(current) !== -1) select.value = current;
+    if (input && select.value) input.value = select.value;
+  }
+
+  function initAuthUsernameSelect() {
+    var select = document.getElementById('authUsernameSelect');
+    var input = document.getElementById('authUsername');
+    if (!select || !input) return;
+    fillAuthUsernameList();
+    select.addEventListener('change', function () {
+      if (select.value) input.value = select.value;
+    });
   }
 
   function logoutUser() {
@@ -168,6 +231,7 @@
     if (authHint) authHint.style.display = getSavedServerBase() ? '' : 'none';
     var userDataHint = document.getElementById('auth-user-data-hint');
     if (userDataHint) userDataHint.style.display = getSavedServerBase() ? '' : 'none';
+    initAuthUsernameSelect();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }
@@ -175,6 +239,7 @@
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
         updateAuthBar();
+        if (currentUser && typeof navigate === 'function') navigate('menu');
       }).catch(function () {
         currentUser = null;
         updateAuthBar();
@@ -183,6 +248,7 @@
     }
     loadCurrentUser();
     updateAuthBar();
+    if (getCurrentUser() && typeof navigate === 'function') navigate('menu');
   }
 
   function updateAuthBar() {
@@ -258,7 +324,10 @@
     var password = document.getElementById('authPassword') && document.getElementById('authPassword').value;
     if (useApi) {
       global.CattleTrackerApi.login(username, password).then(function (data) {
-        if (data && data.user) saveCurrentUser(data.user);
+        if (data && data.user) {
+          saveCurrentUser(data.user);
+          addLastUsername(data.user.username || username);
+        }
         if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
         updateAuthBar();
         if (typeof navigate === 'function') navigate('menu');
@@ -303,7 +372,6 @@
     return false;
   }
   function skipAuth() {
-    if (typeof navigate === 'function') navigate('menu');
   }
   function handleLogout() {
     if (useApi) global.CattleTrackerApi.logout();
@@ -332,6 +400,7 @@
     window.saveServerBaseUrl = saveServerBaseUrl;
     window.getSavedServerBase = getSavedServerBase;
     window.initRegisterUsernameCheck = initRegisterUsernameCheck;
+    window.fillAuthUsernameList = fillAuthUsernameList;
   }
 
   if (typeof window !== 'undefined' && window.document) {

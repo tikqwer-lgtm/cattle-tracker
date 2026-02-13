@@ -69,7 +69,7 @@ function initSchema() {
       id TEXT PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'operator',
+      role TEXT NOT NULL DEFAULT 'admin',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -103,7 +103,28 @@ function initSchema() {
   if (!row) {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");
   }
+  migrateEntriesMetaColumns();
   saveDb();
+}
+
+/** Добавить колонки updated_at и last_modified_by в entries, если их нет (старые БД). */
+function migrateEntriesMetaColumns() {
+  const info = allSql("PRAGMA table_info(entries)");
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  if (names.indexOf('updated_at') === -1) {
+    try {
+      runSql('ALTER TABLE entries ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))');
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate updated_at:', e.message);
+    }
+  }
+  if (names.indexOf('last_modified_by') === -1) {
+    try {
+      runSql('ALTER TABLE entries ADD COLUMN last_modified_by TEXT');
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate last_modified_by:', e.message);
+    }
+  }
 }
 
 function rowToEntry(row) {
@@ -173,7 +194,7 @@ function entryToRow(entry, objectId) {
 function createUser(id, username, passwordHash, role) {
   runSql(
     'INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)',
-    [id, username, passwordHash, role || 'operator']
+    [id, username, passwordHash, role || 'admin']
   );
   saveDb();
 }
@@ -205,9 +226,9 @@ function getObjectsWithMeta() {
     id: row.id,
     name: row.name,
     created_at: row.created_at || null,
-    entries_count: row.entries_count != null ? row.entries_count : 0,
-    last_updated_at: row.last_updated_at || null,
-    last_modified_by: row.last_modified_by || null
+    entries_count: Number(row.entries_count != null ? row.entries_count : 0),
+    last_updated_at: row.last_updated_at != null ? String(row.last_updated_at) : null,
+    last_modified_by: row.last_modified_by != null ? String(row.last_modified_by) : null
   }));
 }
 

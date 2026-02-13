@@ -42,7 +42,6 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '👤', text: 'Войти / Пользователи', onclick: "navigate('auth')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
-      { icon: '💾', text: 'Резервные копии', onclick: "navigate('backup')" },
       { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
     ]
   }
@@ -64,6 +63,10 @@ function navigateToSubmenu(groupId) {
 function navigate(screenId, options) {
   if (options && options.group !== undefined) {
     window._submenuGroup = options.group;
+  }
+
+  if (screenId !== 'auth' && typeof getCurrentUser === 'function' && !getCurrentUser()) {
+    screenId = 'auth';
   }
 
   document.querySelectorAll('.screen').forEach(el => {
@@ -108,6 +111,7 @@ function navigate(screenId, options) {
     }
   }
   if (screenId === 'auth') {
+    if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
     requestAnimationFrame(function () {
       setTimeout(function () {
         var loginInput = document.getElementById('authUsername');
@@ -126,8 +130,8 @@ function navigate(screenId, options) {
   if (screenId === 'interval-analysis' && typeof renderIntervalAnalysisScreen === 'function') {
     renderIntervalAnalysisScreen();
   }
-  if (screenId === 'backup' && typeof renderBackupUI === 'function') {
-    renderBackupUI('backup-container');
+  if (screenId === 'sync' && typeof renderBackupUI === 'function') {
+    renderBackupUI('sync-backup-container');
   }
   if (screenId === 'add') {
     var clearBtn = document.getElementById('clearFormButton');

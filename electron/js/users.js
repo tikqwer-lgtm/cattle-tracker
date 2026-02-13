@@ -63,7 +63,7 @@
       return { ok: false, message: 'Пользователь с таким логином уже есть' };
     }
     var id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'operator' };
+    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'admin' };
     users.push(newUser);
     saveUsers(users);
     return { ok: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
@@ -170,6 +170,7 @@
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
         updateAuthBar();
+        if (currentUser && typeof navigate === 'function') navigate('menu');
       }).catch(function () {
         currentUser = null;
         updateAuthBar();
@@ -178,6 +179,7 @@
     }
     loadCurrentUser();
     updateAuthBar();
+    if (getCurrentUser() && typeof navigate === 'function') navigate('menu');
   }
 
   function updateAuthBar() {
@@ -257,7 +259,6 @@
     return false;
   }
   function skipAuth() {
-    if (typeof navigate === 'function') navigate('menu');
   }
   function handleLogout() {
     if (useApi) global.CattleTrackerApi.logout();

@@ -41,6 +41,27 @@
   color: var(--color-text-muted);
 }
 
+.sync-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--color-bg-elevated, #f8f9fa);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+}
+.sync-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+.sync-section-hint {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+}
+.sync-backup-actions-row {
+  margin-bottom: 12px;
+}
+.sync-backup-actions-row .action-btn { margin-right: 8px; }
+
 /* Секция синхронизации с сервером API */
 .sync-server-section {
   margin-bottom: 20px;
@@ -97,12 +118,48 @@
 .sync-bases-table th {
   font-weight: 600;
 }
+.sync-bases-table th:nth-child(4) { text-align: right; }
 .sync-bases-actions {
   white-space: nowrap;
 }
 .sync-bases-actions .small-btn {
   margin-right: 6px;
   margin-bottom: 4px;
+}
+.sync-bases-table td:nth-child(1) { min-width: 120px; }
+.sync-bases-table td:nth-child(2) { min-width: 130px; }
+.sync-bases-table td:nth-child(3) { min-width: 100px; }
+.sync-bases-table td:nth-child(4) { min-width: 60px; text-align: right; }
+
+/* Прогресс синхронизации */
+.sync-progress-block {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+.sync-progress-label {
+  font-size: 0.9em;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+.sync-progress-bar-wrap {
+  height: 10px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.sync-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, #5a8fd9 100%);
+  border-radius: 5px;
+  transition: width 0.25s ease;
+}
+.sync-progress-text {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
 }
 
 .sync-replace-overlay {

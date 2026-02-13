@@ -28,8 +28,8 @@ router.post('/register', (req, res) => {
   }
   const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const passwordHash = bcrypt.hashSync(p, 10);
-  db.createUser(id, u, passwordHash, role || 'operator');
-  const user = { id, username: u, role: role || 'operator' };
+  db.createUser(id, u, passwordHash, role || 'admin');
+  const user = { id, username: u, role: role || 'admin' };
   const token = signToken(user);
   res.status(201).json({ ok: true, user, token });
 });
