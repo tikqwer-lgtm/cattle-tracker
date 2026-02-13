@@ -166,6 +166,11 @@
     if (serverInput) serverInput.value = getSavedServerBase();
     var authHint = document.getElementById('auth-api-hint');
     if (authHint) authHint.style.display = getSavedServerBase() ? '' : 'none';
+    var userDataHint = document.getElementById('auth-user-data-hint');
+    if (userDataHint) userDataHint.style.display = getSavedServerBase() ? '' : 'none';
+    if (useApi && typeof initRegisterUsernameCheck === 'function') {
+      initRegisterUsernameCheck();
+    }
     if (useApi) {
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
@@ -194,17 +199,58 @@
     }
   }
 
+  function initRegisterUsernameCheck() {
+    var input = document.getElementById('regUsername');
+    var checkEl = document.getElementById('authUsernameCheck');
+    if (!input || !checkEl || !global.CattleTrackerApi || typeof global.CattleTrackerApi.checkUsername !== 'function') return;
+    var debounceTimer = null;
+    function doCheck() {
+      var u = (input.value || '').trim();
+      checkEl.textContent = '';
+      checkEl.className = 'auth-username-check';
+      if (!u) return;
+      checkEl.textContent = 'Проверка…';
+      global.CattleTrackerApi.checkUsername(u).then(function (data) {
+        if ((input.value || '').trim() !== u) return;
+        if (data.available) {
+          checkEl.textContent = 'Логин свободен';
+          checkEl.className = 'auth-username-check auth-username-free';
+        } else {
+          checkEl.textContent = 'Логин уже занят';
+          checkEl.className = 'auth-username-check auth-username-taken';
+        }
+      }).catch(function () {
+        if ((input.value || '').trim() !== u) return;
+        checkEl.textContent = '';
+        checkEl.className = 'auth-username-check';
+      });
+    }
+    function scheduleCheck() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doCheck, 400);
+    }
+    input.addEventListener('input', scheduleCheck);
+    input.addEventListener('blur', function () {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doCheck, 150);
+    });
+  }
+
   function showAuthLogin() {
     var loginForm = document.getElementById('authLoginForm');
     var regForm = document.getElementById('authRegisterForm');
+    var checkEl = document.getElementById('authUsernameCheck');
     if (loginForm) loginForm.style.display = '';
     if (regForm) regForm.style.display = 'none';
+    if (checkEl) { checkEl.textContent = ''; checkEl.className = 'auth-username-check'; }
   }
   function showAuthRegister() {
     var loginForm = document.getElementById('authLoginForm');
     var regForm = document.getElementById('authRegisterForm');
+    var checkEl = document.getElementById('authUsernameCheck');
     if (loginForm) loginForm.style.display = 'none';
     if (regForm) regForm.style.display = '';
+    if (checkEl) { checkEl.textContent = ''; checkEl.className = 'auth-username-check'; }
   }
   function handleLogin(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
@@ -285,6 +331,7 @@
     window.handleLogout = handleLogout;
     window.saveServerBaseUrl = saveServerBaseUrl;
     window.getSavedServerBase = getSavedServerBase;
+    window.initRegisterUsernameCheck = initRegisterUsernameCheck;
   }
 
   if (typeof window !== 'undefined' && window.document) {

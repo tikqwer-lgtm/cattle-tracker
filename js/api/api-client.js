@@ -141,6 +141,12 @@
     });
   }
 
+  function checkUsername(username) {
+    var u = (username || '').trim();
+    if (!u) return Promise.resolve({ available: true });
+    return request('GET', '/api/auth/check-username?username=' + encodeURIComponent(u));
+  }
+
   var api = {
     getBaseUrl: getBaseUrl,
     getToken: getToken,
@@ -159,7 +165,8 @@
     login: login,
     logout: logout,
     register: register,
-    getCurrentUser: getCurrentUser
+    getCurrentUser: getCurrentUser,
+    checkUsername: checkUsername
   };
 
   if (typeof global !== 'undefined') {

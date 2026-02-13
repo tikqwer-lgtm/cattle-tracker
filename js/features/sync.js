@@ -297,6 +297,52 @@ function refreshFromServer() {
 }
 
 /**
+ * Синхронизация текущей базы с сервером: отправить последние изменения на сервер (по уникальному cattleId — создать или обновить запись).
+ */
+function syncCurrentBaseToServer() {
+  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi || typeof window.loadLocally !== 'function') {
+    return Promise.resolve();
+  }
+  var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+  if (!objectId) return Promise.resolve();
+  var localEntries = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  updateSyncServerStatus('Синхронизация с сервером…');
+  return window.CattleTrackerApi.loadEntries(objectId).then(function (serverEntries) {
+    var serverByCattleId = {};
+    (serverEntries || []).forEach(function (e) {
+      if (e && e.cattleId) serverByCattleId[e.cattleId] = e;
+    });
+    var index = 0;
+    function next() {
+      if (index >= localEntries.length) {
+        return window.loadLocally().then(function () {
+          updateSyncServerStatus('Подключено к серверу. Данные синхронизированы.');
+          updateConnectionIndicator(true);
+          if (typeof updateList === 'function') updateList();
+          if (typeof updateHerdStats === 'function') updateHerdStats();
+          if (typeof updateViewList === 'function') updateViewList();
+        });
+      }
+      var entry = localEntries[index];
+      var cattleId = (entry && entry.cattleId) ? String(entry.cattleId).trim() : '';
+      if (!cattleId) { index++; return next(); }
+      var isUpdate = !!serverByCattleId[cattleId];
+      var p = isUpdate
+        ? window.CattleTrackerApi.updateEntry(objectId, cattleId, entry)
+        : window.CattleTrackerApi.createEntry(objectId, entry);
+      return p.then(function () { index++; return next(); }).catch(function (err) {
+        updateSyncServerStatus('Ошибка: ' + (err && err.message ? err.message : ''), true);
+      });
+    }
+    return next();
+  }).catch(function (err) {
+    var msg = (err && err.message) ? err.message : 'Ошибка синхронизации';
+    updateSyncServerStatus(msg, true);
+    updateConnectionIndicator(false);
+  });
+}
+
+/**
  * Проверка доступности сервера (GET /api/health) и обновление статуса на экране синхронизации.
  */
 function updateSyncServerStatusFromHealth() {
@@ -347,9 +393,9 @@ function renderSyncServerBasesList() {
       var count = obj.entries_count != null ? obj.entries_count : '—';
       html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td>' + lastUser + '</td><td>' + count + '</td><td class="sync-bases-actions">';
       if (obj.id === currentId) {
-        html += '<button type="button" class="small-btn" onclick="refreshFromServer()">Синхронизация</button> ';
+        html += '<button type="button" class="small-btn" onclick="syncCurrentBaseToServer()">Синхронизация</button> ';
       }
-      html += '<button type="button" class="small-btn" onclick="loadServerBaseIntoNewObject(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в новый объект</button> ';
+      html += '<button type="button" class="small-btn" onclick="showImportNewObjectModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\', \'' + String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;') + '\')">Импорт в новый объект</button> ';
       html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в существующий</button>';
       html += '</td></tr>';
     });
@@ -418,10 +464,35 @@ function uploadCurrentBaseToServer() {
   });
 }
 
-function loadServerBaseIntoNewObject(sourceId) {
+/**
+ * Открыть модальное окно для ввода имени нового объекта при импорте с сервера.
+ */
+function showImportNewObjectModal(sourceId, sourceName) {
+  var modal = document.getElementById('addObjectModal');
+  var input = document.getElementById('addObjectNameInput');
+  var titleEl = document.getElementById('addObjectModalTitle');
+  var okBtn = document.getElementById('addObjectModalOkBtn');
+  if (!modal || !input) return;
+  modal.setAttribute('data-editing-id', '');
+  modal.setAttribute('data-import-source-id', sourceId || '');
+  if (titleEl) titleEl.textContent = 'Импорт в новый объект';
+  if (okBtn) okBtn.textContent = 'Импортировать';
+  input.value = (sourceName && String(sourceName).trim()) ? String(sourceName).trim() + ' (копия)' : 'Копия базы';
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.removeAttribute('hidden');
+  setTimeout(function () { if (input) input.focus(); }, 0);
+}
+
+/**
+ * Импорт базы с сервера в новый объект. name — если передан, не показывать prompt (уже введено в модалке).
+ */
+function loadServerBaseIntoNewObject(sourceId, name) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
-  var name = prompt('Название нового объекта:', 'Копия базы');
-  if (name === null || !String(name).trim()) return;
+  if (name === undefined || name === null) {
+    name = prompt('Название нового объекта:', 'Копия базы');
+    if (name === null || !String(name).trim()) return;
+  }
   name = String(name).trim();
   var statusEl = document.getElementById('syncServerStatus');
   if (statusEl) statusEl.textContent = 'Создание объекта и копирование записей…';
@@ -552,6 +623,7 @@ if (typeof window !== 'undefined') {
   window.disconnectFromServer = disconnectFromServer;
   window.updateConnectionIndicator = updateConnectionIndicator;
   window.refreshFromServer = refreshFromServer;
+  window.syncCurrentBaseToServer = syncCurrentBaseToServer;
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
   window.initSyncServerBlock = initSyncServerBlock;
   window.renderSyncServerBasesList = renderSyncServerBasesList;
@@ -559,6 +631,7 @@ if (typeof window !== 'undefined') {
   window.showReplaceBaseModal = showReplaceBaseModal;
   window.replaceServerBaseInObject = replaceServerBaseInObject;
   window.uploadCurrentBaseToServer = uploadCurrentBaseToServer;
+  window.showImportNewObjectModal = showImportNewObjectModal;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSyncServerBlock);
   } else {

@@ -269,6 +269,7 @@ function showAddObjectModal() {
   var okBtn = document.getElementById('addObjectModalOkBtn');
   if (!modal || !input) return;
   modal.setAttribute('data-editing-id', '');
+  modal.removeAttribute('data-import-source-id');
   if (titleEl) titleEl.textContent = 'Новая база (объект)';
   if (okBtn) okBtn.textContent = 'Добавить';
   input.value = 'Новая база';
@@ -294,6 +295,7 @@ function showEditObjectModal() {
   var okBtn = document.getElementById('addObjectModalOkBtn');
   if (!modal || !input) return;
   modal.setAttribute('data-editing-id', id);
+  modal.removeAttribute('data-import-source-id');
   if (titleEl) titleEl.textContent = 'Редактировать объект';
   if (okBtn) okBtn.textContent = 'Сохранить';
   input.value = (obj.name || '').trim() || 'Новая база';
@@ -355,13 +357,23 @@ function handleAddObjectClick() {
 }
 
 /**
- * Создать или обновить объект (вызывается из модального окна)
+ * Создать или обновить объект (вызывается из модального окна). Поддерживает режим «Импорт в новый объект».
  */
 function confirmAddObject() {
   var modal = document.getElementById('addObjectModal');
   var input = document.getElementById('addObjectNameInput');
   var name = input && (input.value || '').trim();
   var editingId = modal && modal.getAttribute('data-editing-id');
+  var importSourceId = modal && modal.getAttribute('data-import-source-id');
+  if (importSourceId) {
+    modal.removeAttribute('data-import-source-id');
+    hideAddObjectModal();
+    if (!name) return;
+    if (typeof window.loadServerBaseIntoNewObject === 'function') {
+      window.loadServerBaseIntoNewObject(importSourceId, name);
+    }
+    return;
+  }
   hideAddObjectModal();
   if (!name) return;
   if (editingId) {

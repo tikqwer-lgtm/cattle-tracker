@@ -1,11 +1,20 @@
 /**
- * Auth routes: register, login, logout, me.
+ * Auth routes: register, login, logout, me, check-username.
  */
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 const { signToken, requireAuth } = require('../auth');
+
+router.get('/check-username', (req, res) => {
+  const username = (req.query.username || '').trim();
+  if (!username) {
+    return res.json({ available: true });
+  }
+  const exists = !!db.findUserByUsername(username);
+  res.json({ available: !exists });
+});
 
 router.post('/register', (req, res) => {
   const { username, password, role } = req.body || {};

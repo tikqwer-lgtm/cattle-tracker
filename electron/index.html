@@ -47,7 +47,7 @@
       <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
       <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
         <label for="authUsername">Логин</label>
-        <input type="text" id="authUsername" required />
+        <input type="text" id="authUsername" required autocomplete="username" />
         <label for="authPassword">Пароль</label>
         <input type="password" id="authPassword" autocomplete="current-password" required />
         <div class="form-actions">
@@ -57,7 +57,8 @@
       </form>
       <form id="authRegisterForm" class="form" style="display: none;" onsubmit="handleRegister(event)">
         <label for="regUsername">Логин</label>
-        <input type="text" id="regUsername" required />
+        <input type="text" id="regUsername" required autocomplete="username" />
+        <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
         <label for="regPassword">Пароль</label>
         <input type="password" id="regPassword" autocomplete="new-password" required />
         <label for="regRole">Роль</label>
@@ -71,6 +72,7 @@
           <button type="button" onclick="showAuthLogin()">Назад к входу</button>
         </div>
       </form>
+      <p id="auth-user-data-hint" class="auth-user-data-hint" style="display: none;">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
     </div>
     <button type="button" class="back-button" onclick="skipAuth()">Продолжить без входа</button>
   </div>
@@ -638,6 +640,7 @@
       <div class="sync-server-controls">
         <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
         <button type="button" class="action-btn" onclick="refreshFromServer()">Обновить с сервера</button>
+        <button type="button" class="small-btn" onclick="typeof disconnectFromServer === 'function' && disconnectFromServer()">Отключиться от сервера</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
       <div class="sync-server-bases">
