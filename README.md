@@ -90,43 +90,28 @@ cattle-tracker/
 ├── capacitor.config.json   # Конфиг для мобильных приложений (Capacitor)
 ├── css/
 │   ├── style.css           # Сводный файл стилей
-│   ├── base.css            # Базовые стили, тосты, загрузка
-│   ├── layout.css          # Статистика стада
-│   ├── components.css      # Кнопки, таблицы, поиск, аналитика
-│   ├── forms.css           # Формы
-│   ├── responsive.css      # Адаптив
-│   ├── sync.css            # Синхронизация
-│   ├── view-cow.css        # Карточка животного
-│   └── chat-consultant.css # Панель чат-консультанта
+│   ├── base.css, layout.css, forms.css, sync.css, responsive.css, view-cow.css, print.css
+│   ├── components.css      # Сборка компонентов (кнопки, таблицы, формы, карточки)
+│   ├── screens/            # Стили экранов (поиск, уведомления, аналитика, модалки, вход, резервы)
+│   │   ├── search-filter.css, notifications.css, tasks-analytics.css, modals-auth-backup.css
+│   └── chat-consultant.css
 ├── js/
-│   ├── utils.js            # formatDate, nowFormatted
-│   ├── events.js           # Шина событий (on/off/emit)
-│   ├── api-client.js       # Запросы к API при включённом сервере
-│   ├── storage.js          # localStorage / API, модель записи коровы
-│   ├── storage-objects.js  # Объекты (базы), переключатель
-│   ├── storage-entries.js  # Записи по объекту
-│   ├── storage-integrity.js# Проверка и очистка повреждённых данных
-│   ├── core.js             # Класс CattleTracker
-│   ├── users.js            # Вход, роли, getVisibleEntries
-│   ├── ui-helpers.js       # clearForm, updateList, showToast
-│   ├── cow-operations.js   # editEntry, deleteEntry, fillForm
-│   ├── voice-handler.js    # Обработка голосовых команд
-│   ├── app.js              # initApp, addEntry, saveCurrentEntry
-│   ├── menu.js             # navigate, подменю, статистика стада
-│   ├── sync.js             # Google Таблицы
-│   ├── export-import.js    # Импорт/экспорт CSV
-│   ├── export-excel.js     # Экспорт в Excel (CSV)
-│   ├── insemination.js     # Ввод осеменения
-│   ├── view-cow.js         # Карточка животного
-│   ├── view-list.js        # Список описи, выделение строк
-│   ├── field-config.js     # Конфигурация полей
-│   ├── search-filter.js    # Поиск и фильтрация
-│   ├── notifications.js    # Уведомления и напоминания
-│   ├── analytics.js        # PR, CR, HDR, графики
-│   ├── backup.js           # Резервные копии
-│   ├── protocols.js        # Протоколы синхронизации
-│   ├── chat-consultant.js  # Чат-консультант (панель, ПКМ)
-│   └── ...
+│   ├── utils/              # Константы, утилиты, голос
+│   │   ├── constants.js, utils.js, voice-handler.js, voice.js
+│   ├── core/               # Ядро приложения
+│   │   ├── events.js, core.js, users.js, app.js, menu.js
+│   ├── api/                # API-клиент
+│   │   └── api-client.js
+│   ├── storage/            # Хранилище (объекты, записи, целостность)
+│   │   ├── storage-objects.js, storage-entries.js, storage-integrity.js, storage.js
+│   ├── ui/                 # UI-хелперы, операции с формами, конфиг полей
+│   │   ├── ui-helpers.js, cow-operations.js, field-config.js
+│   └── features/           # Фичи: синхронизация, экспорт/импорт, экраны, аналитика, уведомления, резервы
+│       ├── sync.js, export-import-parse.js, export-import.js, export-excel.js
+│       ├── insemination.js, view-cow.js, view-list-fields.js, view-list.js
+│       ├── analytics-calc.js, analytics.js, notifications.js, backup.js, protocols.js
+│       ├── search-filter.js, chat-consultant.js
+│       └── ...
 ├── README.md
 └── ИНСТРУКЦИЯ_РАБОТА_С_ДАННЫМИ.md
 ```

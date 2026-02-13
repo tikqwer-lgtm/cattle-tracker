@@ -3,4 +3,7 @@
 @import 'components-forms.css';
 @import 'components-cards.css';
 @import 'components-tables.css';
-@import 'components-screens.css';
+@import 'screens/search-filter.css';
+@import 'screens/notifications.css';
+@import 'screens/tasks-analytics.css';
+@import 'screens/modals-auth-backup.css';

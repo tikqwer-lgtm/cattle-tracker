@@ -12,15 +12,7 @@ if (typeof getDefaultCowEntry === 'undefined' && typeof module !== 'undefined' &
   console.warn('getDefaultCowEntry не найдена. Убедитесь, что storage.js загружен.');
 }
 
-/**
- * Возвращает текущую дату и время в формате строки "дд.мм.гггг чч:мм"
- * @returns {string}
- */
-function nowFormatted() {
-  const now = new Date();
-  return now.toLocaleDateString("ru-RU") + " " +
-         now.toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
-}
+/* nowFormatted — в utils/utils.js */
 
 /**
  * Инициализация приложения при загрузке
