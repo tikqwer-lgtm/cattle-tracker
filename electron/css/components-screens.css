@@ -638,6 +638,13 @@
 .auth-server-block .small-btn {
   margin-top: 4px;
 }
+.auth-api-hint {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+  padding: 8px 0;
+  line-height: 1.4;
+}
 .auth-form-container {
   max-width: 400px;
   margin: 0 auto 20px;

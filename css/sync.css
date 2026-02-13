@@ -62,3 +62,88 @@
 .sync-server-status-error {
   color: var(--color-danger, #c00);
 }
+
+.sync-server-bases {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+.sync-server-bases h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+}
+.sync-server-bases-hint {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+}
+.sync-server-bases-list .sync-loading,
+.sync-server-bases-list .sync-empty {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.sync-bases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.sync-bases-table th,
+.sync-bases-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.sync-bases-table th {
+  font-weight: 600;
+}
+.sync-bases-actions {
+  white-space: nowrap;
+}
+.sync-bases-actions .small-btn {
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.sync-replace-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.sync-replace-modal {
+  background: var(--color-bg, #fff);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-width: 400px;
+  width: 90%;
+}
+.sync-replace-modal h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+.sync-replace-modal p {
+  margin: 0 0 12px 0;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+.sync-replace-select {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 1em;
+}
+.sync-replace-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

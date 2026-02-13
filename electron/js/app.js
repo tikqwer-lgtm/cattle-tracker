@@ -44,6 +44,11 @@ function initApp() {
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
+      var msg = (err && err.message) ? err.message : '';
+      if (msg.indexOf('авторизац') !== -1 || msg.indexOf('401') !== -1) {
+        if (typeof showToast === 'function') showToast('Войдите в учётную запись: Настройки → Войти / Пользователи → логин и пароль → Войти (или Регистрация).', 'info', 8000);
+        if (typeof navigate === 'function') navigate('auth');
+      }
     });
   } else {
     if (typeof loadLocally === 'function') loadLocally();

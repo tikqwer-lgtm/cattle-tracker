@@ -261,6 +261,150 @@ function updateSyncServerStatusFromHealth() {
   });
 }
 
+function formatServerDate(isoStr) {
+  if (!isoStr) return '—';
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderSyncServerBasesList() {
+  var container = document.getElementById('syncServerBasesList');
+  if (!container || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  container.innerHTML = '<p class="sync-loading">Загрузка списка…</p>';
+  window.CattleTrackerApi.getObjectsList().then(function (list) {
+    if (!list || !list.length) {
+      container.innerHTML = '<p class="sync-empty">На сервере пока нет баз.</p>';
+      return;
+    }
+    var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата создания</th><th>Действия</th></tr></thead><tbody>';
+    list.forEach(function (obj) {
+      var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      var dateStr = formatServerDate(obj.created_at);
+      html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td class="sync-bases-actions">';
+      html += '<button type="button" class="small-btn" onclick="loadServerBaseIntoNewObject(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">В новый объект</button> ';
+      html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Заменить в существующем</button>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function (err) {
+    container.innerHTML = '<p class="sync-server-status-error">Ошибка загрузки списка: ' + (err && err.message ? err.message : '') + '</p>';
+  });
+}
+
+function loadServerBaseIntoNewObject(sourceId) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var name = prompt('Название нового объекта:', 'Копия базы');
+  if (name === null || !String(name).trim()) return;
+  name = String(name).trim();
+  var statusEl = document.getElementById('syncServerStatus');
+  if (statusEl) statusEl.textContent = 'Создание объекта и копирование записей…';
+  window.CattleTrackerApi.createObject(name).then(function (newObj) {
+    return window.CattleTrackerApi.loadEntries(sourceId).then(function (entries) {
+      if (!entries || !entries.length) {
+        if (statusEl) statusEl.textContent = 'Объект «' + name + '» создан (записей 0).';
+        renderSyncServerBasesList();
+        if (typeof window.loadLocally === 'function') window.loadLocally();
+        return;
+      }
+      var i = 0;
+      function next() {
+        if (i >= entries.length) {
+          if (statusEl) statusEl.textContent = 'Готово: объект «' + name + '», записей ' + entries.length + '.';
+          renderSyncServerBasesList();
+          if (typeof window.loadLocally === 'function') window.loadLocally();
+          if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+          return;
+        }
+        var entry = entries[i];
+        window.CattleTrackerApi.createEntry(newObj.id, entry).then(function () { i++; next(); }).catch(function (err) {
+          if (statusEl) statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error';
+        });
+      }
+      next();
+    });
+  }).catch(function (err) {
+    if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+  });
+}
+
+function showReplaceBaseModal(sourceId) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  window.CattleTrackerApi.getObjectsList().then(function (list) {
+    var targets = list.filter(function (o) { return o.id !== sourceId; });
+    if (!targets.length) { alert('Нет другого объекта для замены (нужна минимум ещё одна база).'); return; }
+    var overlay = document.createElement('div');
+    overlay.className = 'sync-replace-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'Выбор объекта для замены');
+    var nameOpt = (list.filter(function (o) { return o.id === sourceId; })[0] || {}).name || sourceId;
+    overlay.innerHTML = '<div class="sync-replace-modal">' +
+      '<h4>Заменить данные в существующем объекте</h4>' +
+      '<p>Источник: «' + String(nameOpt).replace(/</g, '&lt;') + '». Выберите объект, в котором заменить данные (текущие записи будут удалены):</p>' +
+      '<select id="syncReplaceTargetSelect" class="sync-replace-select"></select>' +
+      '<div class="sync-replace-actions">' +
+      '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
+      '<button type="button" class="action-btn" data-action="replace">Заменить</button>' +
+      '</div></div>';
+    var select = overlay.querySelector('#syncReplaceTargetSelect');
+    targets.forEach(function (o) {
+      var opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.name || o.id;
+      select.appendChild(opt);
+    });
+    function close() {
+      overlay.remove();
+      document.body.style.overflow = '';
+    }
+    overlay.querySelector('[data-action="cancel"]').onclick = close;
+    overlay.querySelector('[data-action="replace"]').onclick = function () {
+      var targetId = select.value;
+      if (!targetId) return;
+      if (!confirm('Заменить все данные в выбранном объекте? Текущие записи будут удалены.')) return;
+      close();
+      replaceServerBaseInObject(sourceId, targetId);
+    };
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(overlay);
+  }).catch(function (err) { alert('Ошибка: ' + (err && err.message ? err.message : '')); });
+}
+
+function replaceServerBaseInObject(sourceId, targetId) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var statusEl = document.getElementById('syncServerStatus');
+  if (statusEl) statusEl.textContent = 'Загрузка и замена…';
+  window.CattleTrackerApi.loadEntries(sourceId).then(function (sourceEntries) {
+    return window.CattleTrackerApi.loadEntries(targetId).then(function (targetEntries) {
+      var deleteNext = function (idx) {
+        if (idx >= targetEntries.length) {
+          var addNext = function (i) {
+            if (i >= sourceEntries.length) {
+              if (statusEl) statusEl.textContent = 'Готово: заменено записей ' + sourceEntries.length + '.';
+              renderSyncServerBasesList();
+              if (typeof window.loadLocally === 'function') window.loadLocally();
+              return;
+            }
+            window.CattleTrackerApi.createEntry(targetId, sourceEntries[i]).then(function () { addNext(i + 1); }).catch(function (err) {
+              if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+            });
+          };
+          addNext(0);
+          return;
+        };
+        window.CattleTrackerApi.deleteEntry(targetId, targetEntries[idx].cattleId).then(function () { deleteNext(idx + 1); }).catch(function (err) {
+          if (statusEl) { statusEl.textContent = 'Ошибка удаления: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+        });
+      };
+      deleteNext(0);
+    });
+  }).catch(function (err) {
+    if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+  });
+}
+
 function initSyncServerBlock() {
   var block = document.getElementById('sync-server-block');
   if (!block) return;
@@ -268,6 +412,7 @@ function initSyncServerBlock() {
   block.style.display = useApi ? '' : 'none';
   if (useApi) {
     updateSyncServerStatusFromHealth();
+    renderSyncServerBasesList();
   }
 }
 
@@ -275,6 +420,10 @@ if (typeof window !== 'undefined') {
   window.refreshFromServer = refreshFromServer;
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
   window.initSyncServerBlock = initSyncServerBlock;
+  window.renderSyncServerBasesList = renderSyncServerBasesList;
+  window.loadServerBaseIntoNewObject = loadServerBaseIntoNewObject;
+  window.showReplaceBaseModal = showReplaceBaseModal;
+  window.replaceServerBaseInObject = replaceServerBaseInObject;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSyncServerBlock);
   } else {

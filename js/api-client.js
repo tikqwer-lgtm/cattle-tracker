@@ -92,6 +92,10 @@
     });
   }
 
+  function createObject(name) {
+    return request('POST', '/api/objects', { name: (name || 'Новая база').trim() });
+  }
+
   function login(username, password) {
     return request('POST', '/api/auth/login', { username: username, password: password }).then(function (data) {
       if (data.token) setToken(data.token);
@@ -128,6 +132,7 @@
     getCurrentObjectId: getCurrentObjectId,
     setCurrentObjectId: setCurrentObjectId,
     addObject: addObject,
+    createObject: createObject,
     login: login,
     logout: logout,
     register: register,

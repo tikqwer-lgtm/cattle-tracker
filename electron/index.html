@@ -629,6 +629,11 @@
         <button type="button" class="action-btn" onclick="refreshFromServer()">Обновить с сервера</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div class="sync-server-bases">
+        <h3>Базы на сервере</h3>
+        <p class="sync-server-bases-hint">Загрузить выбранную базу в новый объект (указать название) или заменить данные в существующем.</p>
+        <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
+      </div>
     </div>
     <div class="sync-controls">
       <button onclick="exportData()">Экспорт данных</button>

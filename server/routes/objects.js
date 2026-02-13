@@ -8,7 +8,7 @@ const { requireAuth, requireRole } = require('../auth');
 
 router.get('/', requireAuth, (req, res) => {
   const list = db.getObjects();
-  res.json(list.map(o => ({ id: o.id, name: o.name })));
+  res.json(list.map(o => ({ id: o.id, name: o.name, created_at: o.created_at || null })));
 });
 
 router.post('/', requireAuth, requireRole('admin', 'operator'), (req, res) => {
