@@ -22,3 +22,6 @@ Thumbs.db
 # Env / secrets (optional)
 .env
 .env.local
+
+# Server deploy (local IP, do not commit)
+server/server-address.txt

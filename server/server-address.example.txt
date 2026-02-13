@@ -1,0 +1,5 @@
+# Скопируйте этот файл как server-address.txt и укажите IP вашего сервера.
+# Файл server-address.txt не попадает в git (см. .gitignore).
+
+SERVER_IP=31.130.155.149
+USER=root
