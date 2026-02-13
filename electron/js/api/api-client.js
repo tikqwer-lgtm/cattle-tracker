@@ -47,11 +47,6 @@
         }) : Promise.reject(new Error('Ошибка ' + res.status));
       };
       return next();
-    }).catch(function (err) {
-      if (err && err.message === 'Failed to fetch') {
-        return Promise.reject(new Error('Сервер недоступен. Проверьте адрес API (Настройки → Войти) и что сервер запущен.'));
-      }
-      return Promise.reject(err);
     });
   }
 

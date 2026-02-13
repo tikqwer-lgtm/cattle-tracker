@@ -34,7 +34,7 @@
     </div>
   </div>
 
-  <!-- Экран входа / регистрации -->
+  <!-- ========== Вход и регистрация ========== -->
   <div id="auth-screen" class="screen">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
@@ -74,7 +74,7 @@
     <button type="button" class="back-button" onclick="skipAuth()">Продолжить без входа</button>
   </div>
 
-  <!-- Экран меню -->
+  <!-- ========== Меню (главный экран) ========== -->
   <div id="menu-screen" class="screen active">
     <div class="menu-branding" aria-hidden="false">
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
@@ -171,7 +171,7 @@
     <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
   </div>
 
-  <!-- Экран подменю -->
+  <!-- ========== Подменю и формы действий (осеменение, отёл, УЗИ) ========== -->
   <div id="submenu-screen" class="screen">
     <h1 id="submenu-title">Подменю</h1>
     <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
@@ -304,7 +304,7 @@
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран добавления/редактирования -->
+  <!-- ========== Форма добавления/редактирования животного ========== -->
   <div id="add-screen" class="screen">
     <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
     <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
@@ -382,7 +382,7 @@
     <button onclick="navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
   </div>
 
-  <!-- Экран просмотра записей -->
+  <!-- ========== Просмотр списка и карточка животного ========== -->
   <div id="view-screen" class="screen view-screen">
     <!-- Верхний блок: закреплён при прокрутке списка -->
     <div class="view-screen-header">
@@ -416,7 +416,7 @@
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
   </div>
 
-  <!-- Экран уведомлений и планов -->
+  <!-- ========== Уведомления, планы, аналитика ========== -->
   <div id="notifications-screen" class="screen">
     <h1>🔔 Уведомления и планы</h1>
     <div id="notification-center-container"></div>
@@ -469,7 +469,7 @@
     <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран резервного копирования -->
+  <!-- ========== Настройки: резервные копии, протоколы, синхронизация ========== -->
   <div id="backup-screen" class="screen">
     <h1>💾 Резервные копии</h1>
     <div class="backup-actions">
@@ -645,7 +645,7 @@
     <button onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-   <!-- Подключение скриптов в правильном порядке -->
+  <!-- Подключение скриптов в правильном порядке -->
   <!-- Режим API: если в настройках сохранён адрес сервера, включаем работу с API -->
   <script>
   (function() {
@@ -658,37 +658,45 @@
     } catch (e) {}
   })();
   </script>
-  <!-- PapaParse для парсинга CSV, Chart.js для графиков, SheetJS для экспорта xlsx -->
+  <!-- Внешние библиотеки: PapaParse (CSV), Chart.js (графики), SheetJS (xlsx) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/events.js"></script>
-  <script src="js/api-client.js"></script>
-  <script src="js/storage-objects.js"></script>
-  <script src="js/storage-entries.js"></script>
-  <script src="js/storage-integrity.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/core.js"></script>
-  <script src="js/users.js"></script>
-  <script src="js/ui-helpers.js"></script>
-  <script src="js/cow-operations.js"></script>
-  <script src="js/voice-handler.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/sync.js"></script>
-  <script src="js/export-import.js"></script>
-  <script src="js/export-excel.js"></script>
-  <script src="js/insemination.js"></script>
-  <script src="js/view-cow.js"></script>
-  <script src="js/field-config.js"></script>
-  <script src="js/search-filter.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/analytics.js"></script>
-  <script src="js/backup.js"></script>
-  <script src="js/view-list.js"></script>
-  <script src="js/protocols.js"></script>
-  <!-- menu.js последним -->
-  <script src="js/menu.js"></script>
+  <!-- Константы и утилиты -->
+  <script src="js/utils/constants.js"></script>
+  <script src="js/utils/utils.js"></script>
+  <script src="js/core/events.js"></script>
+  <!-- API и хранилище -->
+  <script src="js/api/api-client.js"></script>
+  <script src="js/storage/storage-objects.js"></script>
+  <script src="js/storage/storage-entries.js"></script>
+  <script src="js/storage/storage-integrity.js"></script>
+  <script src="js/storage/storage.js"></script>
+  <script src="js/core/core.js"></script>
+  <script src="js/core/users.js"></script>
+  <!-- UI и операции с формами -->
+  <script src="js/ui/ui-helpers.js"></script>
+  <script src="js/ui/cow-operations.js"></script>
+  <script src="js/utils/voice-handler.js"></script>
+  <script src="js/core/app.js"></script>
+  <!-- Фичи: синхронизация, экспорт/импорт, экраны -->
+  <script src="js/features/sync.js"></script>
+  <script src="js/features/export-import-parse.js"></script>
+  <script src="js/features/export-import.js"></script>
+  <script src="js/features/export-excel.js"></script>
+  <script src="js/features/insemination.js"></script>
+  <script src="js/features/view-cow.js"></script>
+  <script src="js/ui/field-config.js"></script>
+  <script src="js/features/search-filter.js"></script>
+  <script src="js/features/notifications.js"></script>
+  <script src="js/features/analytics-calc.js"></script>
+  <script src="js/features/analytics.js"></script>
+  <script src="js/features/backup.js"></script>
+  <script src="js/features/view-list-fields.js"></script>
+  <script src="js/features/view-list.js"></script>
+  <script src="js/features/protocols.js"></script>
+  <!-- Навигация и меню — подключать последним -->
+  <script src="js/core/menu.js"></script>
   <script>
   (function() {
     function setPrintHeaderDate() {

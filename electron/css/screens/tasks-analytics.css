@@ -1,0 +1,146 @@
+/* Экран планов (задач) и аналитики */
+
+.tasks-screen-container {
+  padding: 12px 16px;
+  overflow: auto;
+  min-height: 0;
+}
+.tasks-list-container {
+  padding: 12px 16px;
+}
+.tasks-list-block {
+  margin-top: 0;
+}
+.tasks-list-title {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.tasks-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.tasks-period label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: normal;
+  font-size: 0.9em;
+}
+.tasks-date-input {
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.tasks-by-date {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tasks-date-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.tasks-date-header {
+  padding: 8px 12px;
+  background: var(--color-primary-light);
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.tasks-date-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tasks-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9em;
+}
+.tasks-item:last-child {
+  border-bottom: none;
+}
+.tasks-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.analytics-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.analytics-controls select {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.analytics-custom-dates { display: inline-flex; align-items: center; gap: 8px; }
+.analytics-custom-dates input[type="date"] { padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.analytics-pdo-input { width: 60px; padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.analytics-breakdown-table-wrapper { margin-bottom: 20px; overflow-x: auto; }
+.analytics-breakdown-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.analytics-breakdown-table th, .analytics-breakdown-table td { padding: 8px 12px; border: 1px solid var(--color-border); text-align: left; }
+.analytics-breakdown-table th { background: var(--color-bg-elevated); font-weight: 600; }
+.analytics-breakdown-table tbody tr:nth-child(even) { background: var(--color-bg-elevated); }
+
+.analytics-interval-intro { margin: 0 0 1rem 0; color: var(--color-text-muted); font-size: 0.95em; }
+.analytics-interval-filter { margin-bottom: 1rem; }
+.analytics-interval-filter-bar .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.analytics-interval-select { padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 1em; min-width: 140px; }
+.analytics-interval-table-wrapper { margin-bottom: 20px; overflow-x: auto; max-width: 480px; }
+.analytics-interval-table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.analytics-interval-table th, .analytics-interval-table td { padding: 8px 12px; border: 1px solid var(--color-border); }
+.analytics-interval-table th { background: var(--color-bg-elevated); font-weight: 600; text-align: left; }
+.analytics-interval-table td:last-child { text-align: right; }
+.analytics-interval-table td:nth-child(2) { text-align: right; }
+.analytics-interval-table tbody tr:nth-child(even) { background: var(--color-bg-elevated); }
+.analytics-interval-table tr.analytics-interval-total { font-weight: 600; background: var(--color-bg-elevated); }
+.analytics-indicators {
+  margin-bottom: 20px;
+}
+.analytics-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.analytics-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+.analytics-card-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: var(--color-text);
+}
+.analytics-card-label {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+.analytics-charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.analytics-chart-wrapper {
+  max-width: 100%;
+  width: 100%;
+  min-height: 280px;
+}
+.analytics-chart-wrapper canvas {
+  max-height: 320px;
+}
