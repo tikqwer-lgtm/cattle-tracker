@@ -638,6 +638,7 @@
       <div class="sync-server-controls">
         <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
         <button type="button" class="action-btn" onclick="refreshFromServer()">Обновить с сервера</button>
+        <button type="button" class="small-btn" onclick="typeof disconnectFromServer === 'function' && disconnectFromServer()">Отключиться от сервера</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
       <div class="sync-server-bases">

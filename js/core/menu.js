@@ -107,6 +107,12 @@ function navigate(screenId, options) {
       window.updateSyncServerStatusFromHealth();
     }
   }
+  if (screenId === 'auth') {
+    setTimeout(function () {
+      var loginInput = document.getElementById('authUsername');
+      if (loginInput) loginInput.focus();
+    }, 0);
+  }
   if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
     renderTasksScreen();
   }
@@ -269,7 +275,7 @@ function showAddObjectModal() {
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
   modal.removeAttribute('hidden');
-  input.focus();
+  setTimeout(function () { if (input) input.focus(); }, 0);
 }
 
 /**
@@ -294,7 +300,7 @@ function showEditObjectModal() {
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
   modal.removeAttribute('hidden');
-  input.focus();
+  setTimeout(function () { if (input) input.focus(); }, 0);
 }
 
 /**

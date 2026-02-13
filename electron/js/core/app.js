@@ -27,15 +27,29 @@ function initApp() {
     }).then(function () {
       if (typeof initInseminationModule === 'function') initInseminationModule();
       if (typeof updateList === 'function') updateList();
+      var list = typeof getObjectsList === 'function' ? getObjectsList() : [];
+      var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+      if (list && list.length > 0 && currentId && !list.some(function (o) { return o.id === currentId; })) {
+        if (typeof setCurrentObjectId === 'function') setCurrentObjectId(list[0].id);
+        if (typeof loadLocally === 'function') loadLocally().then(function () {
+          if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+          if (typeof updateHerdStats === 'function') updateHerdStats();
+          if (typeof updateViewList === 'function') updateViewList();
+        });
+      }
       if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
       if (typeof updateHerdStats === 'function') updateHerdStats();
       console.log("Приложение инициализировано (API). Записей:", entries.length);
-      if (entries.length === 0 && typeof showToast === 'function') {
-        showToast('На сервере пока нет записей. Локальные данные остались в браузере — уберите адрес сервера в Настройках, чтобы снова с ними работать.', 'info', 8000);
+      if (entries.length === 0 && list && list.length === 0 && typeof showToast === 'function') {
+        showToast('На сервере нет баз. Подключитесь и выберите «Синхронизация» → импорт в новый объект.', 'info', 8000);
+      } else if (entries.length === 0 && list && list.length > 0 && typeof showToast === 'function') {
+        showToast('В выбранной базе пока нет записей.', 'info', 4000);
       }
+      if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
+      if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
       var msg = (err && err.message) ? err.message : '';
       if (msg.indexOf('авторизац') !== -1 || msg.indexOf('401') !== -1) {
         if (typeof showToast === 'function') showToast('Войдите в учётную запись: Настройки → Войти / Пользователи → логин и пароль → Войти (или Регистрация).', 'info', 8000);

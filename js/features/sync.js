@@ -236,6 +236,20 @@ function connectToServer() {
 }
 
 /**
+ * Отключиться от сервера: удалить адрес из localStorage и перезагрузить (режим локальных данных).
+ */
+function disconnectFromServer() {
+  if (!confirm('Отключиться от сервера? Приложение перейдёт на локальные данные и перезагрузится.')) return;
+  try {
+    localStorage.removeItem('cattleTracker_apiBase');
+    if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
+    location.reload();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Ошибка', 'error');
+  }
+}
+
+/**
  * Обновляет индикатор подключения (лампочка) на экране Синхронизация и в шапке.
  * @param {boolean} connected - true: зелёный, false: красный
  */
@@ -535,6 +549,7 @@ function initSyncServerBlock() {
 if (typeof window !== 'undefined') {
   window.DEFAULT_SERVER_URL = DEFAULT_SERVER_URL;
   window.connectToServer = connectToServer;
+  window.disconnectFromServer = disconnectFromServer;
   window.updateConnectionIndicator = updateConnectionIndicator;
   window.refreshFromServer = refreshFromServer;
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;

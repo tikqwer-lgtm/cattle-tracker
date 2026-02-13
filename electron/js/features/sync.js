@@ -1,3 +1,6 @@
+/** Адрес сервера по умолчанию для кнопки «Подключиться к серверу». */
+var DEFAULT_SERVER_URL = 'http://31.130.155.149:3000';
+
 /**
  * URL веб-приложения Google Apps Script для отправки данных.
  * Должен указывать на опубликованное веб-приложение.
@@ -216,6 +219,41 @@ async function sendUnsynced() {
  */
 
 // --- Синхронизация с сервером API ---
+
+/**
+ * Подключиться к серверу (фиксированный адрес): сохранить в localStorage и перезагрузить.
+ */
+function connectToServer() {
+  var url = (typeof DEFAULT_SERVER_URL !== 'undefined' ? DEFAULT_SERVER_URL : 'http://31.130.155.149:3000').replace(/\/$/, '');
+  if (!url) return;
+  try {
+    localStorage.setItem('cattleTracker_apiBase', url);
+    if (typeof showToast === 'function') showToast('Подключение… Перезагрузка.', 'info');
+    location.reload();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
+  }
+}
+
+/**
+ * Обновляет индикатор подключения (лампочка) на экране Синхронизация и в шапке.
+ * @param {boolean} connected - true: зелёный, false: красный
+ */
+function updateConnectionIndicator(connected) {
+  var className = connected ? 'connection-indicator--connected' : 'connection-indicator--disconnected';
+  var title = connected ? 'Подключено к серверу' : 'Сервер не подключён';
+  var ids = ['connection-indicator-sync', 'connection-indicator-sync-connected', 'connection-indicator-global'];
+  ids.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'connection-indicator ' + className;
+    el.setAttribute('aria-label', connected ? 'Подключено к серверу' : 'Сервер не подключён');
+    el.title = title;
+  });
+  var globalEl = document.getElementById('connection-indicator-global');
+  if (globalEl) globalEl.style.display = '';
+}
+
 function updateSyncServerStatus(message, isError) {
   var el = document.getElementById('syncServerStatus');
   if (!el) return;
@@ -233,12 +271,14 @@ function refreshFromServer() {
   updateSyncServerStatus('Обновление…');
   return window.loadLocally().then(function () {
     updateSyncServerStatus('Подключено к серверу: ' + (window.CattleTrackerApi.getBaseUrl ? window.CattleTrackerApi.getBaseUrl() : ''));
+    updateConnectionIndicator(true);
     if (typeof updateList === 'function') updateList();
     if (typeof updateHerdStats === 'function') updateHerdStats();
     if (typeof updateViewList === 'function') updateViewList();
   }).catch(function (err) {
     var msg = (err && err.message) ? err.message : 'Ошибка подключения';
     updateSyncServerStatus('Ошибка: ' + msg, true);
+    updateConnectionIndicator(false);
   });
 }
 
@@ -246,18 +286,27 @@ function refreshFromServer() {
  * Проверка доступности сервера (GET /api/health) и обновление статуса на экране синхронизации.
  */
 function updateSyncServerStatusFromHealth() {
-  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) {
+    updateConnectionIndicator(false);
+    return;
+  }
   var base = window.CattleTrackerApi.getBaseUrl ? window.CattleTrackerApi.getBaseUrl() : '';
-  if (!base) return;
+  if (!base) {
+    updateConnectionIndicator(false);
+    return;
+  }
   updateSyncServerStatus('Проверка…');
   fetch(base + '/api/health').then(function (res) {
     if (res.ok) {
       updateSyncServerStatus('Подключено к серверу: ' + base);
+      updateConnectionIndicator(true);
     } else {
       updateSyncServerStatus('Ошибка подключения (код ' + res.status + ')', true);
+      updateConnectionIndicator(false);
     }
   }).catch(function (err) {
     updateSyncServerStatus('Ошибка: ' + (err && err.message ? err.message : 'нет связи'), true);
+    updateConnectionIndicator(false);
   });
 }
 
@@ -273,23 +322,85 @@ function renderSyncServerBasesList() {
   if (!container || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
   container.innerHTML = '<p class="sync-loading">Загрузка списка…</p>';
   window.CattleTrackerApi.getObjectsList().then(function (list) {
-    if (!list || !list.length) {
+    var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+    list = list || [];
+    var currentOnServer = list.some(function (o) { return o.id === currentId; });
+    var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
+    list.forEach(function (obj) {
+      var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      var dateStr = formatServerDate(obj.last_updated_at || obj.created_at);
+      var lastUser = (obj.last_modified_by || '—').replace(/</g, '&lt;');
+      var count = obj.entries_count != null ? obj.entries_count : '—';
+      html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td>' + lastUser + '</td><td>' + count + '</td><td class="sync-bases-actions">';
+      if (obj.id === currentId) {
+        html += '<button type="button" class="small-btn" onclick="refreshFromServer()">Синхронизация</button> ';
+      }
+      html += '<button type="button" class="small-btn" onclick="loadServerBaseIntoNewObject(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в новый объект</button> ';
+      html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в существующий</button>';
+      html += '</td></tr>';
+    });
+    if (!currentOnServer && currentId) {
+      html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
+      html += '<button type="button" class="small-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
+      html += '</td></tr>';
+    }
+    html += '</tbody></table>';
+    if (list.length === 0 && !currentId) {
       container.innerHTML = '<p class="sync-empty">На сервере пока нет баз.</p>';
       return;
     }
-    var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата создания</th><th>Действия</th></tr></thead><tbody>';
-    list.forEach(function (obj) {
-      var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      var dateStr = formatServerDate(obj.created_at);
-      html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td class="sync-bases-actions">';
-      html += '<button type="button" class="small-btn" onclick="loadServerBaseIntoNewObject(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">В новый объект</button> ';
-      html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Заменить в существующем</button>';
-      html += '</td></tr>';
-    });
-    html += '</tbody></table>';
+    if (list.length === 0) {
+      html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
+      html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
+      html += '<button type="button" class="small-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
+      html += '</td></tr></tbody></table>';
+    }
     container.innerHTML = html;
   }).catch(function (err) {
     container.innerHTML = '<p class="sync-server-status-error">Ошибка загрузки списка: ' + (err && err.message ? err.message : '') + '</p>';
+  });
+}
+
+/**
+ * Загрузить текущую базу (записи) на сервер: создать объект и отправить все записи.
+ */
+function uploadCurrentBaseToServer() {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var name = prompt('Название базы на сервере:', 'Текущая база');
+  if (name === null || !String(name).trim()) return;
+  name = String(name).trim();
+  var statusEl = document.getElementById('syncServerStatus');
+  var list = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  if (statusEl) statusEl.textContent = 'Создание объекта на сервере…';
+  window.CattleTrackerApi.createObject(name).then(function (newObj) {
+    if (!list.length) {
+      if (statusEl) statusEl.textContent = 'Объект «' + name + '» создан на сервере (записей 0).';
+      renderSyncServerBasesList();
+      if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
+      if (typeof window.loadLocally === 'function') window.loadLocally();
+      if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+      window.CattleTrackerApi.setCurrentObjectId(newObj.id);
+      if (typeof window.loadLocally === 'function') window.loadLocally();
+      return;
+    }
+    var i = 0;
+    function next() {
+      if (i >= list.length) {
+        if (statusEl) statusEl.textContent = 'Готово: база «' + name + '» на сервере, записей ' + list.length + '.';
+        renderSyncServerBasesList();
+        if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
+        window.CattleTrackerApi.setCurrentObjectId(newObj.id);
+        if (typeof window.loadLocally === 'function') window.loadLocally();
+        if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+        return;
+      }
+      window.CattleTrackerApi.createEntry(newObj.id, list[i]).then(function () { i++; next(); }).catch(function (err) {
+        if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+      });
+    }
+    next();
+  }).catch(function (err) {
+    if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
   });
 }
 
@@ -406,17 +517,25 @@ function replaceServerBaseInObject(sourceId, targetId) {
 }
 
 function initSyncServerBlock() {
-  var block = document.getElementById('sync-server-block');
-  if (!block) return;
+  var connectBlock = document.getElementById('sync-connect-block');
+  var serverBlock = document.getElementById('sync-server-block');
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
-  block.style.display = useApi ? '' : 'none';
+  if (connectBlock) connectBlock.style.display = useApi ? 'none' : '';
+  if (serverBlock) serverBlock.style.display = useApi ? '' : 'none';
   if (useApi) {
     updateSyncServerStatusFromHealth();
     renderSyncServerBasesList();
+  } else {
+    updateConnectionIndicator(false);
+    var globalEl = document.getElementById('connection-indicator-global');
+    if (globalEl) globalEl.style.display = '';
   }
 }
 
 if (typeof window !== 'undefined') {
+  window.DEFAULT_SERVER_URL = DEFAULT_SERVER_URL;
+  window.connectToServer = connectToServer;
+  window.updateConnectionIndicator = updateConnectionIndicator;
   window.refreshFromServer = refreshFromServer;
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
   window.initSyncServerBlock = initSyncServerBlock;
@@ -424,6 +543,7 @@ if (typeof window !== 'undefined') {
   window.loadServerBaseIntoNewObject = loadServerBaseIntoNewObject;
   window.showReplaceBaseModal = showReplaceBaseModal;
   window.replaceServerBaseInObject = replaceServerBaseInObject;
+  window.uploadCurrentBaseToServer = uploadCurrentBaseToServer;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSyncServerBlock);
   } else {

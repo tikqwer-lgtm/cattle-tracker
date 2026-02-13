@@ -23,6 +23,28 @@ if (useApi) {
     });
   };
 
+  updateObject = function (id, payload) {
+    return window.CattleTrackerApi.updateObject(id, payload || {}).then(function () {
+      return loadObjectsFromApi();
+    });
+  };
+
+  deleteObject = function (id) {
+    var currentId = getCurrentObjectId();
+    return window.CattleTrackerApi.deleteObject(id).then(function () {
+      return loadObjectsFromApi().then(function () {
+        var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
+        if (currentId === id && list.length) {
+          switchToObject(list[0].id);
+        } else if (currentId === id) {
+          setCurrentObjectId('default');
+          if (typeof loadLocally === 'function') loadLocally();
+        }
+        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+      });
+    });
+  };
+
   switchToObject = function (objectId) {
     setCurrentObjectId(objectId);
     var p = loadLocally();
@@ -100,6 +122,8 @@ window.getCurrentObjectId = getCurrentObjectId;
 window.getObjectsList = getObjectsList;
 window.switchToObject = switchToObject;
 window.addObject = addObject;
+window.updateObject = updateObject;
+window.deleteObject = deleteObject;
 window.ensureObjectsAndMigration = ensureObjectsAndMigration;
 
 if (typeof module !== 'undefined' && module.exports) {

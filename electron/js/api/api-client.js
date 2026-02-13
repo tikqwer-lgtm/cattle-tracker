@@ -47,6 +47,11 @@
         }) : Promise.reject(new Error('Ошибка ' + res.status));
       };
       return next();
+    }).catch(function (err) {
+      if (err && err.message === 'Failed to fetch') {
+        return Promise.reject(new Error('Сервер недоступен. Проверьте адрес API (Настройки → Войти) и что сервер запущен.'));
+      }
+      return Promise.reject(err);
     });
   }
 
@@ -73,16 +78,32 @@
   function getCurrentObjectId() {
     try {
       var id = sessionStorage.getItem(CURRENT_OBJECT_KEY);
-      return id && id.trim() ? id : 'default';
+      if (id && id.trim()) return id.trim();
+      id = localStorage.getItem(CURRENT_OBJECT_KEY);
+      if (id && id.trim()) {
+        sessionStorage.setItem(CURRENT_OBJECT_KEY, id.trim());
+        return id.trim();
+      }
+      return 'default';
     } catch (e) {
       return 'default';
     }
   }
 
   function setCurrentObjectId(id) {
+    var val = (id || 'default').trim();
     try {
-      sessionStorage.setItem(CURRENT_OBJECT_KEY, (id || 'default').trim());
+      sessionStorage.setItem(CURRENT_OBJECT_KEY, val);
+      localStorage.setItem(CURRENT_OBJECT_KEY, val);
     } catch (e) {}
+  }
+
+  function updateObject(id, payload) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(id), payload || {});
+  }
+
+  function deleteObject(id) {
+    return request('DELETE', '/api/objects/' + encodeURIComponent(id));
   }
 
   function addObject(name) {
@@ -133,6 +154,8 @@
     setCurrentObjectId: setCurrentObjectId,
     addObject: addObject,
     createObject: createObject,
+    updateObject: updateObject,
+    deleteObject: deleteObject,
     login: login,
     logout: logout,
     register: register,
