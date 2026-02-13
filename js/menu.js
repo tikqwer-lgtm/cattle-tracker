@@ -41,6 +41,7 @@ var MENU_GROUPS = {
     title: 'Настройки',
     buttons: [
       { icon: '👤', text: 'Войти / Пользователи', onclick: "navigate('auth')" },
+      { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
       { icon: '💾', text: 'Резервные копии', onclick: "navigate('backup')" },
       { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
     ]
@@ -99,6 +100,12 @@ function navigate(screenId, options) {
   }
   if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
     renderNotificationCenter('notification-center-container');
+  }
+  if (screenId === 'sync' && typeof window.initSyncServerBlock === 'function') {
+    window.initSyncServerBlock();
+    if (window.CATTLE_TRACKER_USE_API && typeof window.updateSyncServerStatusFromHealth === 'function') {
+      window.updateSyncServerStatusFromHealth();
+    }
   }
   if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
     renderTasksScreen();

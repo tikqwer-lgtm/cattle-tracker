@@ -38,6 +38,12 @@
   <div id="auth-screen" class="screen">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
+      <div class="auth-server-block">
+        <label for="serverApiBaseInput">Адрес сервера API</label>
+        <input type="text" id="serverApiBaseInput" placeholder="http://IP:3000 (для VPS без SSL — только http)" />
+        <button type="button" class="small-btn" onclick="saveServerBaseUrl()">Сохранить адрес</button>
+      </div>
+      <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
       <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
         <label for="authUsername">Логин</label>
         <input type="text" id="authUsername" required />
@@ -617,6 +623,13 @@
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
     <h1>🔄 Синхронизация</h1>
+    <!-- Секция для режима API: обновление с сервера и статус -->
+    <div id="sync-server-block" class="sync-server-section" style="display: none;">
+      <div class="sync-server-controls">
+        <button type="button" class="action-btn" onclick="refreshFromServer()">Обновить с сервера</button>
+      </div>
+      <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+    </div>
     <div class="sync-controls">
       <button onclick="exportData()">Экспорт данных</button>
       <label for="importFileJson">Импорт данных (JSON)
@@ -628,6 +641,18 @@
   </div>
 
    <!-- Подключение скриптов в правильном порядке -->
+  <!-- Режим API: если в настройках сохранён адрес сервера, включаем работу с API -->
+  <script>
+  (function() {
+    try {
+      var base = (localStorage.getItem('cattleTracker_apiBase') || '').trim().replace(/\/$/, '');
+      if (base) {
+        window.CATTLE_TRACKER_USE_API = true;
+        window.CATTLE_TRACKER_API_BASE = base;
+      }
+    } catch (e) {}
+  })();
+  </script>
   <!-- PapaParse для парсинга CSV, Chart.js для графиков, SheetJS для экспорта xlsx -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

@@ -44,6 +44,11 @@ function initApp() {
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
+      var msg = (err && err.message) ? err.message : '';
+      if (msg.indexOf('авторизац') !== -1 || msg.indexOf('401') !== -1) {
+        if (typeof showToast === 'function') showToast('Войдите в учётную запись: Настройки → Войти / Пользователи → логин и пароль → Войти (или Регистрация).', 'info', 8000);
+        if (typeof navigate === 'function') navigate('auth');
+      }
     });
   } else {
     if (typeof loadLocally === 'function') loadLocally();
@@ -194,14 +199,42 @@ function saveCurrentEntry() {
 function initOfflineIndicator() {
   var el = document.getElementById('offline-indicator');
   if (!el) return;
+  var defaultOfflineText = el.textContent || 'Офлайн';
+  function setOffline() {
+    el.textContent = defaultOfflineText;
+    el.hidden = false;
+    el.setAttribute('aria-hidden', 'false');
+  }
+  function setOnline() {
+    el.hidden = true;
+    el.setAttribute('aria-hidden', 'true');
+  }
   function update() {
     var online = typeof navigator !== 'undefined' && navigator.onLine;
-    el.hidden = online;
-    el.setAttribute('aria-hidden', online ? 'true' : 'false');
+    if (online) {
+      if (window.CATTLE_TRACKER_USE_API && typeof window.refreshFromServer === 'function') {
+        el.textContent = 'Синхронизация…';
+        el.hidden = false;
+        el.setAttribute('aria-hidden', 'false');
+        window.refreshFromServer().then(function () {
+          setOnline();
+        }).catch(function () {
+          setOnline();
+        });
+      } else {
+        setOnline();
+      }
+    } else {
+      setOffline();
+    }
   }
-  update();
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    setOffline();
+  } else {
+    setOnline();
+  }
   window.addEventListener('online', update);
-  window.addEventListener('offline', update);
+  window.addEventListener('offline', function () { setOffline(); });
 }
 
 // Запуск приложения при загрузке

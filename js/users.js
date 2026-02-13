@@ -138,6 +138,11 @@
       else alert('Введите адрес сервера');
       return;
     }
+    if (url.indexOf('https://') === 0 && (url.indexOf(':3000') !== -1 || url.indexOf(':3001') !== -1)) {
+      url = url.replace(/^https:\/\//i, 'http://');
+      if (input) input.value = url;
+      if (typeof showToast === 'function') showToast('На порту 3000 обычно работает HTTP. Используется http://…', 'info', 5000);
+    }
     if (url.indexOf('http://') === 0 && url.indexOf('localhost') === -1 && url.indexOf('127.0.0.1') === -1) {
       if (!confirm('Для доступа из интернета рекомендуется HTTPS. Продолжить с HTTP?')) return;
     }
@@ -159,6 +164,8 @@
   function initUsers() {
     var serverInput = document.getElementById('serverApiBaseInput');
     if (serverInput) serverInput.value = getSavedServerBase();
+    var authHint = document.getElementById('auth-api-hint');
+    if (authHint) authHint.style.display = getSavedServerBase() ? '' : 'none';
     if (useApi) {
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
