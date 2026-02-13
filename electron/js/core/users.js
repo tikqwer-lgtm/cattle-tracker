@@ -105,6 +105,7 @@
     } catch (e) {}
   }
 
+  /** Список логинов для выбора при входе: в локальном режиме — все пользователи, при API — недавно входившие. */
   function getLoginUsernameList() {
     if (typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API) {
       return getLastUsernames();
