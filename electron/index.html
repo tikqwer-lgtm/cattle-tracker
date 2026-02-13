@@ -617,6 +617,13 @@
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
     <h1>🔄 Синхронизация</h1>
+    <!-- Секция для режима API: обновление с сервера и статус -->
+    <div id="sync-server-block" class="sync-server-section" style="display: none;">
+      <div class="sync-server-controls">
+        <button type="button" class="action-btn" onclick="refreshFromServer()">Обновить с сервера</button>
+      </div>
+      <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+    </div>
     <div class="sync-controls">
       <button onclick="exportData()">Экспорт данных</button>
       <label for="importFileJson">Импорт данных (JSON)

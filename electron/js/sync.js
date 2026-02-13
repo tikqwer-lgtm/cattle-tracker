@@ -214,3 +214,70 @@ async function sendUnsynced() {
  * Обновляет отображение списка записей.
  * Определена в app.js для доступности при инициализации.
  */
+
+// --- Синхронизация с сервером API ---
+function updateSyncServerStatus(message, isError) {
+  var el = document.getElementById('syncServerStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = 'sync-server-status' + (isError ? ' sync-server-status-error' : '');
+}
+
+/**
+ * Обновить данные с сервера (режим API). Вызывается кнопкой «Обновить с сервера» и при событии online.
+ */
+function refreshFromServer() {
+  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi || typeof window.loadLocally !== 'function') {
+    return Promise.resolve();
+  }
+  updateSyncServerStatus('Обновление…');
+  return window.loadLocally().then(function () {
+    updateSyncServerStatus('Подключено к серверу: ' + (window.CattleTrackerApi.getBaseUrl ? window.CattleTrackerApi.getBaseUrl() : ''));
+    if (typeof updateList === 'function') updateList();
+    if (typeof updateHerdStats === 'function') updateHerdStats();
+    if (typeof updateViewList === 'function') updateViewList();
+  }).catch(function (err) {
+    var msg = (err && err.message) ? err.message : 'Ошибка подключения';
+    updateSyncServerStatus('Ошибка: ' + msg, true);
+  });
+}
+
+/**
+ * Проверка доступности сервера (GET /api/health) и обновление статуса на экране синхронизации.
+ */
+function updateSyncServerStatusFromHealth() {
+  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var base = window.CattleTrackerApi.getBaseUrl ? window.CattleTrackerApi.getBaseUrl() : '';
+  if (!base) return;
+  updateSyncServerStatus('Проверка…');
+  fetch(base + '/api/health').then(function (res) {
+    if (res.ok) {
+      updateSyncServerStatus('Подключено к серверу: ' + base);
+    } else {
+      updateSyncServerStatus('Ошибка подключения (код ' + res.status + ')', true);
+    }
+  }).catch(function (err) {
+    updateSyncServerStatus('Ошибка: ' + (err && err.message ? err.message : 'нет связи'), true);
+  });
+}
+
+function initSyncServerBlock() {
+  var block = document.getElementById('sync-server-block');
+  if (!block) return;
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
+  block.style.display = useApi ? '' : 'none';
+  if (useApi) {
+    updateSyncServerStatusFromHealth();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.refreshFromServer = refreshFromServer;
+  window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
+  window.initSyncServerBlock = initSyncServerBlock;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSyncServerBlock);
+  } else {
+    initSyncServerBlock();
+  }
+}
