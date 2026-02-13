@@ -259,12 +259,75 @@ function renderSubmenu() {
 function showAddObjectModal() {
   var modal = document.getElementById('addObjectModal');
   var input = document.getElementById('addObjectNameInput');
+  var titleEl = document.getElementById('addObjectModalTitle');
+  var okBtn = document.getElementById('addObjectModalOkBtn');
   if (!modal || !input) return;
+  modal.setAttribute('data-editing-id', '');
+  if (titleEl) titleEl.textContent = 'Новая база (объект)';
+  if (okBtn) okBtn.textContent = 'Добавить';
   input.value = 'Новая база';
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
   modal.removeAttribute('hidden');
   input.focus();
+}
+
+/**
+ * Показать модальное окно «Редактировать объект» для выбранной базы
+ */
+function showEditObjectModal() {
+  var select = document.getElementById('currentObjectSelect');
+  var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
+  if (!select || !list || !list.length) return;
+  var id = select.value;
+  var obj = list.filter(function (o) { return o.id === id; })[0];
+  if (!obj) return;
+  var modal = document.getElementById('addObjectModal');
+  var input = document.getElementById('addObjectNameInput');
+  var titleEl = document.getElementById('addObjectModalTitle');
+  var okBtn = document.getElementById('addObjectModalOkBtn');
+  if (!modal || !input) return;
+  modal.setAttribute('data-editing-id', id);
+  if (titleEl) titleEl.textContent = 'Редактировать объект';
+  if (okBtn) okBtn.textContent = 'Сохранить';
+  input.value = (obj.name || '').trim() || 'Новая база';
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.removeAttribute('hidden');
+  input.focus();
+}
+
+/**
+ * Обработчик кнопки «Изменить» — открывает модалку редактирования текущего объекта
+ */
+function handleEditObjectClick() {
+  showEditObjectModal();
+}
+
+/**
+ * Обработчик кнопки «Удалить» — удаляет текущий объект с подтверждением
+ */
+function handleDeleteObjectClick() {
+  var select = document.getElementById('currentObjectSelect');
+  var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
+  if (!select || !list || !list.length) return;
+  var id = select.value;
+  var obj = list.filter(function (o) { return o.id === id; })[0];
+  var name = (obj && obj.name) ? obj.name : id;
+  if (!confirm('Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.')) return;
+  if (typeof deleteObject !== 'function') return;
+  var p = deleteObject(id);
+  if (p && typeof p.then === 'function') {
+    p.then(function () {
+      if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+      if (typeof showToast === 'function') showToast('Объект удалён', 'info');
+    }).catch(function (err) {
+      var msg = err && err.message ? err.message : 'Ошибка удаления';
+      if (typeof showToast === 'function') showToast(msg, 'error', 5000);
+    });
+  } else {
+    if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+  }
 }
 
 /**
@@ -286,13 +349,34 @@ function handleAddObjectClick() {
 }
 
 /**
- * Создать объект с указанным именем (вызывается из модального окна)
+ * Создать или обновить объект (вызывается из модального окна)
  */
 function confirmAddObject() {
+  var modal = document.getElementById('addObjectModal');
   var input = document.getElementById('addObjectNameInput');
   var name = input && (input.value || '').trim();
+  var editingId = modal && modal.getAttribute('data-editing-id');
   hideAddObjectModal();
   if (!name) return;
+  if (editingId) {
+    if (typeof updateObject !== 'function') {
+      if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+      return;
+    }
+    var result = updateObject(editingId, { name: name });
+    if (result && typeof result.then === 'function') {
+      result.then(function () {
+        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+        if (typeof showToast === 'function') showToast('Название сохранено', 'success');
+      }).catch(function (err) {
+        var msg = err && err.message ? err.message : 'Ошибка сохранения';
+        if (typeof showToast === 'function') showToast(msg, 'error', 5000);
+      });
+    } else {
+      if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+    }
+    return;
+  }
   if (typeof addObject !== 'function') {
     if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
     return;

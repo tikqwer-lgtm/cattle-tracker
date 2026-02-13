@@ -83,6 +83,42 @@ function addObject(name) {
   return id;
 }
 
+function updateObject(id, payload) {
+  var list = getObjectsList();
+  if (!list) return Promise.resolve(false);
+  var name = (payload && payload.name != null) ? String(payload.name).trim() : '';
+  if (!name) return Promise.resolve(false);
+  var idx = list.findIndex(function (o) { return o.id === id; });
+  if (idx === -1) return Promise.resolve(false);
+  list[idx].name = name;
+  saveObjectsList(list);
+  return Promise.resolve(true);
+}
+
+function deleteObject(id) {
+  var list = getObjectsList();
+  if (!list) return Promise.resolve(false);
+  var idx = list.findIndex(function (o) { return o.id === id; });
+  if (idx === -1) return Promise.resolve(false);
+  var currentId = getCurrentObjectId();
+  list.splice(idx, 1);
+  if (list.length === 0) list = [{ id: 'default', name: 'Основная база' }];
+  saveObjectsList(list);
+  try {
+    localStorage.removeItem('cattleEntries_' + id);
+  } catch (e) {}
+  if (currentId === id) {
+    var nextId = list[0] ? list[0].id : 'default';
+    setCurrentObjectId(nextId);
+    if (typeof loadLocally === 'function') loadLocally();
+  }
+  if (typeof updateHerdStats === 'function') updateHerdStats();
+  if (typeof updateViewList === 'function') updateViewList();
+  return Promise.resolve(true);
+}
+
 if (typeof window !== 'undefined') {
   window.addObject = addObject;
+  window.updateObject = updateObject;
+  window.deleteObject = deleteObject;
 }

@@ -190,6 +190,27 @@ function getObjects() {
   return allSql('SELECT id, name, created_at FROM objects ORDER BY created_at');
 }
 
+/**
+ * Returns objects with entries_count, last_updated_at, last_modified_by from entries.
+ */
+function getObjectsWithMeta() {
+  const sql = `
+    SELECT o.id, o.name, o.created_at,
+      (SELECT COUNT(*) FROM entries WHERE object_id = o.id) as entries_count,
+      (SELECT updated_at FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_updated_at,
+      (SELECT last_modified_by FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_modified_by
+    FROM objects o ORDER BY o.created_at
+  `;
+  return allSql(sql).map(row => ({
+    id: row.id,
+    name: row.name,
+    created_at: row.created_at || null,
+    entries_count: row.entries_count != null ? row.entries_count : 0,
+    last_updated_at: row.last_updated_at || null,
+    last_modified_by: row.last_modified_by || null
+  }));
+}
+
 function getObjectById(id) {
   return getSql('SELECT id, name FROM objects WHERE id = ?', [id]);
 }
@@ -197,6 +218,23 @@ function getObjectById(id) {
 function createObject(id, name) {
   runSql('INSERT INTO objects (id, name) VALUES (?, ?)', [id, name]);
   saveDb();
+}
+
+function updateObject(id, name) {
+  const obj = getObjectById(id);
+  if (!obj) return false;
+  runSql('UPDATE objects SET name = ? WHERE id = ?', [(name || obj.name).trim() || obj.name, id]);
+  saveDb();
+  return true;
+}
+
+function deleteObject(id) {
+  const obj = getObjectById(id);
+  if (!obj) return false;
+  runSql('DELETE FROM entries WHERE object_id = ?', [id]);
+  runSql('DELETE FROM objects WHERE id = ?', [id]);
+  saveDb();
+  return true;
 }
 
 function getEntries(objectId, userId, role) {
@@ -275,8 +313,11 @@ module.exports = {
   findUserByUsername,
   findUserById,
   getObjects,
+  getObjectsWithMeta,
   getObjectById,
   createObject,
+  updateObject,
+  deleteObject,
   getEntries,
   getEntry,
   createEntry,
