@@ -34,6 +34,7 @@
       method: method,
       headers: { 'Content-Type': 'application/json' }
     };
+    if (method === 'GET') opts.cache = 'no-cache';
     var token = getToken();
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     if (body !== undefined) opts.body = JSON.stringify(body);

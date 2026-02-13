@@ -63,19 +63,16 @@ function showUpdateProgress(percent, downloadPath, bytesPerSecond) {
     panel.className = 'update-progress-panel';
     panel.innerHTML = '<div class="update-progress-title">Скачивание обновления</div>' +
       '<div class="update-progress-bar-wrap"><div class="update-progress-bar" style="width:0%"></div></div>' +
-      '<div class="update-progress-text">0%</div>' +
-      '<div class="update-progress-path"></div>';
+      '<div class="update-progress-text">0%</div>';
     document.body.appendChild(panel);
   }
   var bar = panel.querySelector('.update-progress-bar');
   var text = panel.querySelector('.update-progress-text');
-  var pathEl = panel.querySelector('.update-progress-path');
   if (bar) bar.style.width = (percent || 0) + '%';
   if (text) {
-    var speed = bytesPerSecond ? ' • ' + (bytesPerSecond < 1024 ? bytesPerSecond + ' Б/с' : (bytesPerSecond / 1024).toFixed(1) + ' КБ/с') : '';
+    var speed = bytesPerSecond ? ' · ' + (bytesPerSecond < 1024 ? bytesPerSecond + ' Б/с' : (bytesPerSecond / 1024).toFixed(1) + ' КБ/с') : '';
     text.textContent = (percent || 0) + '%' + speed;
   }
-  if (downloadPath && pathEl) pathEl.textContent = 'Папка: ' + downloadPath;
   if (percent >= 100) {
     if (text) text.textContent = 'Готово';
     setTimeout(function () {

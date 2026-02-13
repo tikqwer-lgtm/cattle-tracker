@@ -108,10 +108,14 @@ function navigate(screenId, options) {
     }
   }
   if (screenId === 'auth') {
-    setTimeout(function () {
-      var loginInput = document.getElementById('authUsername');
-      if (loginInput) loginInput.focus();
-    }, 0);
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        var loginInput = document.getElementById('authUsername');
+        if (loginInput) {
+          loginInput.focus({ preventScroll: false });
+        }
+      }, 120);
+    });
   }
   if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
     renderTasksScreen();
@@ -320,6 +324,10 @@ function handleDeleteObjectClick() {
   var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
   if (!select || !list || !list.length) return;
   var id = select.value;
+  if (id === 'default') {
+    if (typeof showToast === 'function') showToast('Нельзя удалить базовый объект default', 'error', 4000);
+    return;
+  }
   var obj = list.filter(function (o) { return o.id === id; })[0];
   var name = (obj && obj.name) ? obj.name : id;
   if (!confirm('Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.')) return;
@@ -430,8 +438,11 @@ function updateObjectSwitcher() {
     var name = (obj.name || obj.id || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + (obj.id === currentId ? ' selected' : '') + '>' + name + '</option>';
   }).join('');
+  var deleteBtn = document.getElementById('deleteObjectBtn');
+  if (deleteBtn) deleteBtn.disabled = (select.value === 'default');
   select.onchange = function () {
     var id = select.value;
+    if (deleteBtn) deleteBtn.disabled = (id === 'default');
     if (id && typeof switchToObject === 'function') switchToObject(id);
   };
   if (addBtn && !addBtn.getAttribute('onclick')) {

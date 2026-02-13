@@ -14,6 +14,10 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <div id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения к серверу" title="Сервер не подключён" style="display: none;"></div>
+  <header id="app-header" class="app-header" aria-label="Шапка приложения">
+    <span id="app-version-header" class="app-version-header"></span>
+    <button type="button" id="app-header-server-btn" class="app-header-server-btn" style="display: none;" onclick="typeof navigate === 'function' && navigate('sync')" title="Синхронизация с сервером">Сервер</button>
+  </header>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
     <div class="print-header-strip"></div>
@@ -39,7 +43,7 @@
   <div id="auth-screen" class="screen">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
-      <div class="auth-server-block">
+      <div id="auth-server-block" class="auth-server-block" style="display: none;">
         <label for="serverApiBaseInput">Адрес сервера API</label>
         <input type="text" id="serverApiBaseInput" placeholder="http://IP:3000 (для VPS без SSL — только http)" />
         <button type="button" class="small-btn" onclick="saveServerBaseUrl()">Сохранить адрес</button>
@@ -643,6 +647,11 @@
         <button type="button" class="small-btn" onclick="typeof disconnectFromServer === 'function' && disconnectFromServer()">Отключиться от сервера</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
+        <div class="sync-progress-label" id="syncProgressLabel">Синхронизация…</div>
+        <div class="sync-progress-bar-wrap"><div class="sync-progress-bar" id="syncProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div>
+        <div class="sync-progress-text" id="syncProgressText">0 / 0</div>
+      </div>
       <div class="sync-server-bases">
         <h3>Базы на сервере</h3>
         <p class="sync-server-bases-hint">Загрузить выбранную базу в новый объект (указать название) или заменить данные в существующем.</p>
