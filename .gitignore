@@ -25,3 +25,8 @@ Thumbs.db
 
 # Server deploy (local IP, do not commit)
 server/server-address.txt
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

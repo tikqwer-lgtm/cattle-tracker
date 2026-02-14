@@ -219,6 +219,42 @@
     }
   }
 
+  function bindAuthControls() {
+    var connectionBtn = document.getElementById('app-header-connection-btn');
+    if (connectionBtn && !connectionBtn.dataset.authBound) {
+      connectionBtn.dataset.authBound = '1';
+      connectionBtn.addEventListener('click', function () {
+        if (typeof global.navigate === 'function') global.navigate('sync');
+        else if (typeof window.navigate === 'function') window.navigate('sync');
+      });
+    }
+    var loginForm = document.getElementById('authLoginForm');
+    if (loginForm && !loginForm.dataset.authBound) {
+      loginForm.dataset.authBound = '1';
+      loginForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        handleLogin(ev);
+        return false;
+      });
+    }
+    var regForm = document.getElementById('authRegisterForm');
+    if (regForm && !regForm.dataset.authBound) {
+      regForm.dataset.authBound = '1';
+      regForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        handleRegister(ev);
+        return false;
+      });
+    }
+    var skipBtn = document.getElementById('auth-skip-btn');
+    if (skipBtn && !skipBtn.dataset.authBound) {
+      skipBtn.dataset.authBound = '1';
+      skipBtn.addEventListener('click', function () {
+        skipAuth();
+      });
+    }
+  }
+
   function getDefaultLocalUsername() {
     var api = typeof global !== 'undefined' && global.electronAPI;
     if (api && typeof api.getOsUsername === 'function') {
@@ -238,6 +274,7 @@
     var skipBtn = document.getElementById('auth-skip-btn');
     if (skipBtn) skipBtn.style.display = base ? 'none' : '';
     initAuthUsernameSelect();
+    bindAuthControls();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }

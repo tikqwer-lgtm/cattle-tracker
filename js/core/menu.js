@@ -551,6 +551,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 if (typeof window !== 'undefined') {
+  window.navigate = navigate;
   window.addEventListener('hashchange', syncRouteToScreen);
 }
 
