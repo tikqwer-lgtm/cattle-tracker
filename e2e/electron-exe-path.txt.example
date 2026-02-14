@@ -1,0 +1,3 @@
+# Одна строка: папка с приложением или полный путь к Учёт коров.exe
+# Пример (папка): D:\VScode\УчетКоров\cattle-tracker-desktop
+# Пример (exe):   D:\VScode\УчетКоров\cattle-tracker-desktop\Учёт коров.exe

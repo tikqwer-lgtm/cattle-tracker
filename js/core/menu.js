@@ -112,6 +112,7 @@ function navigate(screenId, options) {
     }
   }
   if (screenId === 'auth') {
+    if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
     if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
     requestAnimationFrame(function () {
       setTimeout(function () {

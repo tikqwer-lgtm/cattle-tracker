@@ -15,7 +15,7 @@
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <span id="app-version-header" class="app-version-header"></span>
-    <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки.">
+    <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
       <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
     </button>
   </header>
@@ -26,7 +26,7 @@
       <div class="print-header-milk"></div>
       <div class="print-header-content">
         <div class="print-logo">
-          <img src="icons/logo.png" alt="" width="64" height="64" class="print-logo-img" />
+          <img src="icons/icon.svg" alt="" width="64" height="64" class="print-logo-img" />
           <span class="print-company-name">Молочная компания «Генетика»</span>
         </div>
         <div class="print-details">
@@ -57,7 +57,7 @@
         <div class="form-actions">
           <button type="submit">Войти</button>
           <button type="button" onclick="showAuthRegister()">Регистрация</button>
-          <button type="button" id="auth-skip-btn" class="small-btn">Продолжить без входа</button>
+          <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Продолжить без входа</button>
         </div>
       </form>
       <form id="authRegisterForm" class="form" style="display: none;">
@@ -84,7 +84,7 @@
   <!-- ========== Меню (главный экран) ========== -->
   <div id="menu-screen" class="screen">
     <div class="menu-branding" aria-hidden="false">
-      <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
+      <img src="icons/icon.svg" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="app-version" class="app-version" data-default-version="1.4.4" aria-label="Версия приложения"></p>

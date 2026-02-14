@@ -30,3 +30,5 @@ server/server-address.txt
 test-results/
 playwright-report/
 playwright/.cache/
+# Локальный путь к exe приложения для e2e:electron (скопируйте в electron-exe-path.txt)
+e2e/electron-exe-path.txt

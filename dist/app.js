@@ -1371,8 +1371,8 @@ if (typeof module !== 'undefined' && module.exports) {
     if (connectionBtn && !connectionBtn.dataset.authBound) {
       connectionBtn.dataset.authBound = '1';
       connectionBtn.addEventListener('click', function () {
-        if (typeof global.navigate === 'function') global.navigate('sync');
-        else if (typeof window.navigate === 'function') window.navigate('sync');
+        var nav = (typeof global !== 'undefined' && global.navigate) || (typeof window !== 'undefined' && window.navigate);
+        if (typeof nav === 'function') nav('sync');
       });
     }
     var loginForm = document.getElementById('authLoginForm');
@@ -1403,7 +1403,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function getDefaultLocalUsername() {
-    var api = typeof global !== 'undefined' && global.electronAPI;
+    var g = typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : null);
+    var api = g && (g.electronAPI || g.electronapi);
     if (api && typeof api.getOsUsername === 'function') {
       return api.getOsUsername().then(function (u) {
         return 'admin(' + (u || 'local') + ')';
@@ -1562,11 +1563,15 @@ if (typeof module !== 'undefined' && module.exports) {
     return false;
   }
   function skipAuth() {
-    if (useApi) return;
+    var nav = (typeof global !== 'undefined' && global.navigate) || (typeof window !== 'undefined' && window.navigate);
     getDefaultLocalUsername().then(function (username) {
       saveCurrentUser({ id: 'local_admin', username: username, role: 'admin' });
       updateAuthBar();
-      if (typeof navigate === 'function') navigate('menu');
+      if (typeof nav === 'function') nav('menu');
+    }).catch(function () {
+      saveCurrentUser({ id: 'local_admin', username: 'admin(local)', role: 'admin' });
+      updateAuthBar();
+      if (typeof nav === 'function') nav('menu');
     });
   }
   function handleLogout() {
@@ -1597,6 +1602,7 @@ if (typeof module !== 'undefined' && module.exports) {
     window.getSavedServerBase = getSavedServerBase;
     window.initRegisterUsernameCheck = initRegisterUsernameCheck;
     window.fillAuthUsernameList = fillAuthUsernameList;
+    window.bindAuthControls = bindAuthControls;
   }
 
   if (typeof window !== 'undefined' && window.document) {
@@ -8538,6 +8544,7 @@ function navigate(screenId, options) {
     }
   }
   if (screenId === 'auth') {
+    if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
     if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
     requestAnimationFrame(function () {
       setTimeout(function () {
