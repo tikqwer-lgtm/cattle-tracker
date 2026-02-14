@@ -45,7 +45,7 @@
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
       <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
-      <form id="authLoginForm" class="form">
+      <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
         <label for="authUsernameSelect">Выбрать пользователя</label>
         <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
           <option value="">— Выберите из списка —</option>
@@ -60,7 +60,7 @@
           <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Продолжить без входа</button>
         </div>
       </form>
-      <form id="authRegisterForm" class="form" style="display: none;">
+      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
         <label for="regUsername">Логин</label>
         <input type="text" id="regUsername" required autocomplete="username" />
         <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>

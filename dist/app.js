@@ -6,7 +6,7 @@
  */
 (function (global) {
   'use strict';
-  var DEFAULT_SERVER_URL = ''; // например: 'http://192.168.1.10:3000'
+  var DEFAULT_SERVER_URL = 'http://31.130.155.149:3000';
   global.CATTLE_TRACKER_DEFAULT_SERVER_URL = DEFAULT_SERVER_URL;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -3349,7 +3349,11 @@ function initSyncServerBlock() {
   } else {
     updateConnectionIndicator(false);
     var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput && typeof getSavedServerBase === 'function') serverInput.value = getSavedServerBase() || '';
+    if (serverInput) {
+      var saved = typeof getSavedServerBase === 'function' ? getSavedServerBase() : '';
+      var def = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL) ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '') : '';
+      serverInput.value = saved || def || '';
+    }
   }
 }
 

@@ -462,7 +462,11 @@ function initSyncServerBlock() {
   } else {
     updateConnectionIndicator(false);
     var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput && typeof getSavedServerBase === 'function') serverInput.value = getSavedServerBase() || '';
+    if (serverInput) {
+      var saved = typeof getSavedServerBase === 'function' ? getSavedServerBase() : '';
+      var def = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL) ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '') : '';
+      serverInput.value = saved || def || '';
+    }
   }
 }
 
