@@ -91,11 +91,7 @@ function initApp() {
       }).catch(function () {});
     }
   }
-  var serverBtn = document.getElementById('app-header-server-btn');
-  if (serverBtn && typeof getSavedServerBase === 'function' && getSavedServerBase()) {
-    serverBtn.style.display = '';
   }
-}
 
 /**
  * Основная функция для добавления записи (вызывает другие модули)

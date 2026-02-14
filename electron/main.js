@@ -133,12 +133,15 @@ function createAppMenu() {
           label: 'Проверить обновления',
           click: () => {
             if (autoUpdater && app.isPackaged) {
+              const currentVer = app.getVersion();
               autoUpdater.checkForUpdates().then((r) => {
-                if (r && r.updateInfo) {
+                const newVer = r && r.updateInfo && r.updateInfo.version ? String(r.updateInfo.version).trim() : '';
+                const hasNewer = newVer && isVersionNewer(newVer, currentVer);
+                if (hasNewer) {
                   dialog.showMessageBox(mainWindow, {
                     type: 'info',
                     title: 'Обновление',
-                    message: 'Доступна версия ' + (r.updateInfo.version || '') + '. Скачивание…'
+                    message: 'Доступна новая версия ' + newVer + '. Разрешите скачивание в следующем окне.'
                   }).catch(() => {});
                 } else {
                   dialog.showMessageBox(mainWindow, {

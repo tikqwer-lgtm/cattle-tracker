@@ -66,7 +66,7 @@ function navigate(screenId, options) {
   }
 
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  if (screenId !== 'auth' && !currentUser) {
+  if (screenId !== 'auth' && screenId !== 'sync' && !currentUser) {
     screenId = 'auth';
   }
 

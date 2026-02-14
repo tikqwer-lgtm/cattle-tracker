@@ -57,18 +57,25 @@ body {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
-.app-header-server-btn {
-  display: none; /* показывается JS при наличии сохранённого сервера */
-  font-size: 0.85rem;
-  padding: 6px 12px;
-  border: 1px solid var(--color-primary-border);
+.app-header-connection-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
-  color: var(--color-primary);
   cursor: pointer;
 }
-.app-header-server-btn:hover {
-  background: var(--color-primary-light);
+.app-header-connection-btn:hover {
+  background: var(--color-bg-hover, rgba(0,0,0,0.04));
+}
+.app-header-connection-btn .connection-indicator {
+  width: 12px;
+  height: 12px;
+  margin: 0;
 }
 
 .offline-indicator {

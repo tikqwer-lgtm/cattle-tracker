@@ -231,10 +231,6 @@
 
   function initUsers() {
     var base = getSavedServerBase();
-    var serverBlock = document.getElementById('auth-server-block');
-    if (serverBlock) serverBlock.style.display = base ? 'none' : '';
-    var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput) serverInput.value = base;
     var authHint = document.getElementById('auth-api-hint');
     if (authHint) authHint.style.display = base ? '' : 'none';
     var userDataHint = document.getElementById('auth-user-data-hint');

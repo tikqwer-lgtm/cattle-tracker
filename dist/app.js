@@ -1378,10 +1378,6 @@ if (typeof module !== 'undefined' && module.exports) {
 
   function initUsers() {
     var base = getSavedServerBase();
-    var serverBlock = document.getElementById('auth-server-block');
-    if (serverBlock) serverBlock.style.display = base ? 'none' : '';
-    var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput) serverInput.value = base;
     var authHint = document.getElementById('auth-api-hint');
     if (authHint) authHint.style.display = base ? '' : 'none';
     var userDataHint = document.getElementById('auth-user-data-hint');
@@ -2618,11 +2614,7 @@ function initApp() {
       }).catch(function () {});
     }
   }
-  var serverBtn = document.getElementById('app-header-server-btn');
-  if (serverBtn && typeof getSavedServerBase === 'function' && getSavedServerBase()) {
-    serverBtn.style.display = '';
   }
-}
 
 /**
  * Основная функция для добавления записи (вызывает другие модули)
@@ -2922,9 +2914,7 @@ function updateConnectionIndicator(connected) {
     el.setAttribute('aria-label', connected ? 'Подключено к серверу' : 'Сервер не подключён');
     el.title = title;
   });
-  var globalEl = document.getElementById('connection-indicator-global');
-  if (globalEl) globalEl.style.display = '';
-}
+  }
 
 function updateSyncServerStatus(message, isError) {
   var el = document.getElementById('syncServerStatus');
@@ -3315,8 +3305,8 @@ function initSyncServerBlock() {
     renderSyncServerBasesList();
   } else {
     updateConnectionIndicator(false);
-    var globalEl = document.getElementById('connection-indicator-global');
-    if (globalEl) globalEl.style.display = '';
+    var serverInput = document.getElementById('serverApiBaseInput');
+    if (serverInput && typeof getSavedServerBase === 'function') serverInput.value = getSavedServerBase() || '';
   }
 }
 
@@ -8465,7 +8455,7 @@ function navigate(screenId, options) {
   }
 
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  if (screenId !== 'auth' && !currentUser) {
+  if (screenId !== 'auth' && screenId !== 'sync' && !currentUser) {
     screenId = 'auth';
   }
 

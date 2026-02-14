@@ -228,12 +228,33 @@
   align-items: center;
   flex-wrap: wrap;
 }
-#connection-indicator-global {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  width: 16px;
-  height: 16px;
-  z-index: 9999;
-  margin: 0;
+.sync-server-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sync-server-url-row label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  margin-bottom: 4px;
+  width: 100%;
+}
+.sync-server-url-row input {
+  flex: 1 1 200px;
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+.sync-server-url-row .action-btn {
+  flex: 0 0 auto;
+}
+.sync-server-hint {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.35;
 }

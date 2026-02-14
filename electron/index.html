@@ -13,10 +13,11 @@
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
-  <div id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения к серверу" title="Сервер не подключён" style="display: none;"></div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <span id="app-version-header" class="app-version-header"></span>
-    <button type="button" id="app-header-server-btn" class="app-header-server-btn" style="display: none;" onclick="typeof navigate === 'function' && navigate('sync')" title="Синхронизация с сервером">Сервер</button>
+    <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" onclick="typeof navigate === 'function' && navigate('sync')" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки.">
+      <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+    </button>
   </header>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
   <div id="print-header" class="print-header" aria-hidden="true">
@@ -43,12 +44,6 @@
   <div id="auth-screen" class="screen active">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
-      <div id="auth-server-block" class="auth-server-block" style="display: none;">
-        <label for="serverApiBaseInput">Адрес сервера API</label>
-        <input type="text" id="serverApiBaseInput" placeholder="http://localhost:3000 или http://IP:3000" />
-        <button type="button" class="small-btn" onclick="saveServerBaseUrl()">Сохранить адрес</button>
-        <p class="auth-server-hint">Укажите адрес сервера — учётные записи будут храниться на нём и не пропадут после обновления приложения.</p>
-      </div>
       <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
       <form id="authLoginForm" class="form" onsubmit="return handleLogin(event)">
         <label for="authUsernameSelect">Выбрать пользователя</label>
@@ -624,14 +619,19 @@
     <button type="button" onclick="navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран синхронизации -->
+  <!-- Экран синхронизации (настройки сервера: адрес, подключение/отключение) -->
   <div id="sync-screen" class="screen">
-    <h1>🔄 Синхронизация</h1>
-    <!-- Кнопка подключения к серверу (когда ещё не подключён) -->
+    <h1>🔄 Настройки сервера</h1>
+    <!-- Блок когда сервер ещё не подключён: адрес и подключение -->
     <div id="sync-connect-block" class="sync-server-section">
+      <div class="sync-server-url-row">
+        <label for="serverApiBaseInput">Адрес сервера API</label>
+        <input type="text" id="serverApiBaseInput" placeholder="http://localhost:3000 или http://IP:3000" />
+        <button type="button" class="action-btn" id="syncSaveServerBtn" onclick="typeof saveServerBaseUrl === 'function' && saveServerBaseUrl()">Сохранить и подключиться</button>
+      </div>
+      <p class="sync-server-hint">Учётные записи хранятся на сервере и не теряются после обновления приложения.</p>
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
-        <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof connectToServer === 'function' && connectToServer()">Подключиться к серверу</button>
       </div>
     </div>
     <!-- Секция для режима API: обновление с сервера и статус -->

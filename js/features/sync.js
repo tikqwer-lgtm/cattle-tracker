@@ -70,9 +70,7 @@ function updateConnectionIndicator(connected) {
     el.setAttribute('aria-label', connected ? 'Подключено к серверу' : 'Сервер не подключён');
     el.title = title;
   });
-  var globalEl = document.getElementById('connection-indicator-global');
-  if (globalEl) globalEl.style.display = '';
-}
+  }
 
 function updateSyncServerStatus(message, isError) {
   var el = document.getElementById('syncServerStatus');
@@ -463,8 +461,8 @@ function initSyncServerBlock() {
     renderSyncServerBasesList();
   } else {
     updateConnectionIndicator(false);
-    var globalEl = document.getElementById('connection-indicator-global');
-    if (globalEl) globalEl.style.display = '';
+    var serverInput = document.getElementById('serverApiBaseInput');
+    if (serverInput && typeof getSavedServerBase === 'function') serverInput.value = getSavedServerBase() || '';
   }
 }
 
