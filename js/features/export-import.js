@@ -7,7 +7,7 @@ function importData(event) {
   var file = event && event.target && event.target.files && event.target.files[0];
   if (!file) return;
   if (typeof window.importBackupFromFile !== 'function') {
-    alert('Импорт JSON недоступен. Убедитесь, что загружен модуль резервного копирования.');
+    if (typeof showToast === 'function') showToast('Импорт JSON недоступен. Убедитесь, что загружен модуль резервного копирования.', 'error'); else alert('Импорт JSON недоступен. Убедитесь, что загружен модуль резервного копирования.');
     if (event.target) event.target.value = '';
     return;
   }
@@ -28,20 +28,20 @@ function handleImportFile(event) {
   if (!file) return;
   var name = (file.name || '').toLowerCase();
   if (!name.endsWith('.csv') && !name.endsWith('.xlsx')) {
-    alert('Выберите файл CSV или XLSX.');
+    if (typeof showToast === 'function') showToast('Выберите файл CSV или XLSX.', 'error'); else alert('Выберите файл CSV или XLSX.');
     event.target.value = '';
     return;
   }
   parseFileToHeadersAndRows(file).then(function (parsed) {
     if (!parsed.headers || parsed.headers.length === 0 || !parsed.rows) {
-      alert('В файле нет заголовков или данных.');
+      if (typeof showToast === 'function') showToast('В файле нет заголовков или данных.', 'error'); else alert('В файле нет заголовков или данных.');
       event.target.value = '';
       return;
     }
     openImportMappingModal(parsed.headers, parsed.rows);
     event.target.value = '';
   }).catch(function (err) {
-    alert('Ошибка: ' + (err && err.message ? err.message : String(err)));
+    if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : String(err)), 'error'); else alert('Ошибка: ' + (err && err.message ? err.message : String(err)));
     event.target.value = '';
   });
 }
@@ -440,7 +440,7 @@ function importFromCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
   if (typeof Papa === 'undefined') {
-    alert('❌ Библиотека PapaParse не загружена.');
+    if (typeof showToast === 'function') showToast('Библиотека PapaParse не загружена.', 'error'); else alert('❌ Библиотека PapaParse не загружена.');
     event.target.value = '';
     return;
   }
@@ -448,7 +448,7 @@ function importFromCSV(event) {
   reader.onload = function () {
     var buffer = reader.result;
     if (!buffer || !(buffer instanceof ArrayBuffer)) {
-      alert('❌ Не удалось прочитать файл');
+      if (typeof showToast === 'function') showToast('Не удалось прочитать файл', 'error'); else alert('❌ Не удалось прочитать файл');
       event.target.value = '';
       return;
     }
@@ -470,23 +470,23 @@ function importFromCSV(event) {
           Papa.parse(csvString, {
             encoding: 'UTF-8', header: false, skipEmptyLines: true, delimiter: delimiter, newline: '', quoteChar: '"', escapeChar: '"',
             complete: function (results2) { processImportData(results2.data, delimiter, event); },
-            error: function (error) { alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : '')); event.target.value = ''; }
+            error: function (error) { if (typeof showToast === 'function') showToast('Ошибка при разборе файла: ' + (error && error.message ? error.message : ''), 'error'); else alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : '')); event.target.value = ''; }
           });
           return;
         }
         processImportData(data, delimiter, event);
       },
-      error: function (error) { alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : '')); event.target.value = ''; }
+      error: function (error) { if (typeof showToast === 'function') showToast('Ошибка при разборе файла: ' + (error && error.message ? error.message : ''), 'error'); else alert('❌ Ошибка при разборе файла: ' + (error && error.message ? error.message : '')); event.target.value = ''; }
     });
   };
-  reader.onerror = function () { alert('❌ Ошибка при чтении файла'); event.target.value = ''; };
+  reader.onerror = function () { if (typeof showToast === 'function') showToast('Ошибка при чтении файла', 'error'); else alert('❌ Ошибка при чтении файла'); event.target.value = ''; };
   reader.readAsArrayBuffer(file);
 }
 function importFromExcelWide(event) {
   var file = event.target.files[0];
   if (!file) return;
   if (typeof XLSX === 'undefined') {
-    alert('❌ Библиотека SheetJS (XLSX) не загружена.');
+    if (typeof showToast === 'function') showToast('Библиотека SheetJS (XLSX) не загружена.', 'error'); else alert('❌ Библиотека SheetJS (XLSX) не загружена.');
     event.target.value = '';
     return;
   }
@@ -498,7 +498,7 @@ function importFromExcelWide(event) {
       var ws = wb.Sheets[wb.SheetNames[0]];
       var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
       if (!rows || rows.length < 2) {
-        alert('❌ В файле нет данных.');
+        if (typeof showToast === 'function') showToast('В файле нет данных.', 'error'); else alert('❌ В файле нет данных.');
         event.target.value = '';
         return;
       }

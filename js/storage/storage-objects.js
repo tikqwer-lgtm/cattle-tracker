@@ -1,10 +1,24 @@
-// storage-objects.js — объекты/базы, текущий объект, миграция
+// storage-objects.js — объекты/базы, текущий объект, миграция.
+// Единственное место объявления массива записей (entries). Замена содержимого — через replaceEntriesWith().
 
 var OBJECTS_KEY = 'cattleTracker_objects';
 var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
 
 let entries = [];
 if (typeof window !== 'undefined') window.entries = entries;
+
+/**
+ * Заменяет содержимое массива записей и синхронизирует с window.entries.
+ * Единая точка замены (вместо прямого присваивания entries = ...).
+ * @param {Array} arr - новый массив записей (или пустой массив)
+ */
+function replaceEntriesWith(arr) {
+  entries.length = 0;
+  if (arr && Array.isArray(arr) && arr.length > 0) {
+    for (var i = 0; i < arr.length; i++) entries.push(arr[i]);
+  }
+  if (typeof window !== 'undefined') window.entries = entries;
+}
 
 function getCurrentObjectId() {
   try {
@@ -121,4 +135,5 @@ if (typeof window !== 'undefined') {
   window.addObject = addObject;
   window.updateObject = updateObject;
   window.deleteObject = deleteObject;
+  window.replaceEntriesWith = replaceEntriesWith;
 }

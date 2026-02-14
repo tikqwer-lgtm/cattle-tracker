@@ -199,16 +199,23 @@
     container.querySelectorAll('[data-restore]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var key = btn.getAttribute('data-restore');
-        if (!confirm('Восстановить эту копию? Текущие данные будут заменены.')) return;
-        var r = restoreBackup(key);
-        if (r.ok) {
-          if (typeof showToast === 'function') showToast('Восстановлено записей: ' + r.count, 'success');
-          else alert('Восстановлено');
-          renderBackupUI(containerId);
-        } else {
-          if (typeof showToast === 'function') showToast(r.message || 'Ошибка', 'error');
-          else alert(r.message);
+        function doRestore() {
+          var r = restoreBackup(key);
+          if (r.ok) {
+            if (typeof showToast === 'function') showToast('Восстановлено записей: ' + r.count, 'success');
+            else alert('Восстановлено');
+            renderBackupUI(containerId);
+          } else {
+            if (typeof showToast === 'function') showToast(r.message || 'Ошибка', 'error');
+            else alert(r.message);
+          }
         }
+        if (typeof showConfirmModal === 'function') {
+          showConfirmModal('Восстановить эту копию? Текущие данные будут заменены.').then(function (ok) { if (ok) doRestore(); });
+          return;
+        }
+        if (!confirm('Восстановить эту копию? Текущие данные будут заменены.')) return;
+        doRestore();
       });
     });
     container.querySelectorAll('[data-delete]').forEach(function (btn) {

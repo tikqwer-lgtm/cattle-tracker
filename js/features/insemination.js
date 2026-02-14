@@ -178,7 +178,7 @@ function addInseminationEntry() {
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
 
   if (!cattleId) {
-    alert('Заполните номер коровы!');
+    if (typeof showToast === 'function') showToast('Заполните номер коровы!', 'error'); else alert('Заполните номер коровы!');
     return;
   }
 
@@ -186,14 +186,14 @@ function addInseminationEntry() {
   const entry = entries.find(e => e.cattleId === cattleId);
   
   if (!entry) {
-    alert('Корова с таким номером не найдена!');
+    if (typeof showToast === 'function') showToast('Корова с таким номером не найдена!', 'error'); else alert('Корова с таким номером не найдена!');
     return;
   }
 
   if (inseminationDate && typeof validateDateNotFuture === 'function') {
     var err = validateDateNotFuture(inseminationDate, 'Дата осеменения');
     if (err) {
-      alert(err);
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : err, 'error'); else alert(err);
       return;
     }
   }
@@ -251,7 +251,7 @@ function addInseminationEntry() {
   document.getElementById('inseminatorInsem').value = '';
   document.getElementById('codeInsem').value = '';
 
-  alert('Данные осеменения добавлены!');
+  if (typeof showToast === 'function') showToast('Данные осеменения добавлены!', 'success'); else alert('Данные осеменения добавлены!');
 }
 
 /**

@@ -3,6 +3,9 @@
   "version": "1.4.4",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
+    "build": "node scripts/build.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "echo Open index.html in browser or run server",
     "server": "cd server && npm start",
     "electron": "cd electron && npm start",
@@ -12,10 +15,14 @@
     "cap:ios": "cap run ios"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0",
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/ios": "^6.0.0"
+    "@capacitor/ios": "^6.0.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
+    "globals": "^17.3.0",
+    "vitest": "^4.0.18"
   },
   "capacitor": {
     "appId": "com.cattletracker.app",

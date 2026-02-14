@@ -428,7 +428,8 @@ function renderSyncServerBasesList() {
     var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
     list.forEach(function (obj) {
       var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      var dateStr = formatServerDate(obj.last_updated_at || obj.lastUpdatedAt || obj.created_at);
+      var dateRaw = obj.last_updated_at || obj.lastUpdatedAt || obj.created_at;
+      var dateStr = formatServerDate(dateRaw);
       var lastUserRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
       var lastUser = lastUserRaw !== null && lastUserRaw !== '' ? String(lastUserRaw).replace(/</g, '&lt;') : '—';
       var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;

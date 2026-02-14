@@ -82,7 +82,77 @@ function showUpdateProgress(percent, downloadPath, bytesPerSecond) {
 }
 
 /**
- * Подтверждение действия с кастомным текстом
+ * Модальное подтверждение (замена confirm): возвращает Promise<boolean>.
+ * ОК → true, Отмена / Escape → false. Focus trap и закрытие по Escape.
+ * @param {string} message - Текст вопроса
+ * @param {{ confirmText?: string, cancelText?: string }} [options]
+ * @returns {Promise<boolean>}
+ */
+function showConfirmModal(message, options) {
+  var confirmText = (options && options.confirmText) || 'ОК';
+  var cancelText = (options && options.cancelText) || 'Отмена';
+  var resolved = false;
+  var focusBefore = document.activeElement;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'confirm-modal-title');
+
+  var text = (message || 'Продолжить?').replace(/</g, '&lt;');
+  overlay.innerHTML =
+    '<div class="confirm-modal">' +
+    '<p id="confirm-modal-title">' + text + '</p>' +
+    '<div class="confirm-modal-actions">' +
+    '<button type="button" class="small-btn confirm-cancel">' + cancelText.replace(/</g, '&lt;') + '</button>' +
+    '<button type="button" class="btn primary confirm-ok">' + confirmText.replace(/</g, '&lt;') + '</button>' +
+    '</div></div>';
+
+  var dialog = overlay.querySelector('.confirm-modal');
+  var btnOk = overlay.querySelector('.confirm-ok');
+  var btnCancel = overlay.querySelector('.confirm-cancel');
+
+  function finish(result) {
+    if (resolved) return;
+    resolved = true;
+    overlay.remove();
+    if (focusBefore && typeof focusBefore.focus === 'function') focusBefore.focus();
+    resolvePromise(result);
+  }
+
+  var resolvePromise;
+  var promise = new Promise(function (resolve) { resolvePromise = resolve; });
+
+  btnOk.addEventListener('click', function () { finish(true); });
+  btnCancel.addEventListener('click', function () { finish(false); });
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) finish(false);
+  });
+  overlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    if (e.key === 'Tab') {
+      var focusable = [btnCancel, btnOk];
+      var i = focusable.indexOf(document.activeElement);
+      if (i === -1) return;
+      if (e.shiftKey) {
+        e.preventDefault();
+        focusable[i === 0 ? focusable.length - 1 : i - 1].focus();
+      } else {
+        e.preventDefault();
+        focusable[i === focusable.length - 1 ? 0 : i + 1].focus();
+      }
+    }
+  });
+
+  document.body.appendChild(overlay);
+  btnOk.focus();
+  return promise;
+}
+
+/**
+ * Подтверждение действия (синхронная обёртка для совместимости — использует нативный confirm).
+ * Для нового кода предпочтительно showConfirmModal (возвращает Promise).
  * @param {string} message
  * @returns {boolean}
  */

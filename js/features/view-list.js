@@ -52,7 +52,8 @@ function updateViewList() {
   var tableContainer = document.getElementById('viewEntriesList');
   if (!tableContainer) return;
 
-  var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
+  var listFilteredFn = (typeof window !== 'undefined' && typeof window.getListViewFilteredEntries === 'function') ? window.getListViewFilteredEntries : (typeof getFilteredEntries === 'function' ? getFilteredEntries : null);
+  var baseList = listFilteredFn ? listFilteredFn() : ((typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : (entries || []));
   var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
   if (listToShow && listToShow.length > 0 && viewListSortKey) {
     listToShow = listToShow.slice();
@@ -79,7 +80,17 @@ function updateViewList() {
         btns.forEach(function (b) { b.disabled = true; });
       }
     }
-    tableContainer.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
+    var emptyHtml = '<p>Нет записей' + noResultsHint + '</p>';
+    if (baseList.length === 0 && entries && entries.length > 0 && typeof resetFiltersToDefault === 'function') {
+      emptyHtml += '<p><button type="button" class="action-btn" id="viewListResetFiltersBtn">Сбросить фильтры и показать все записи</button></p>';
+    }
+    tableContainer.innerHTML = emptyHtml;
+    var resetFiltersBtn = document.getElementById('viewListResetFiltersBtn');
+    if (resetFiltersBtn) {
+      resetFiltersBtn.addEventListener('click', function () {
+        if (typeof resetFiltersToDefault === 'function') resetFiltersToDefault();
+      });
+    }
     var scrollBtnHide = document.getElementById('viewScrollToTopBtn');
     if (scrollBtnHide) scrollBtnHide.style.display = 'none';
     initViewFieldsSettings();
@@ -297,7 +308,7 @@ function initViewFieldsSettings() {
     var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
       .map(function (el) { return el.value; });
     if (checked.length === 0) {
-      alert('Выберите хотя бы одно поле.');
+      if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
       return;
     }
     try {
@@ -340,13 +351,13 @@ function initViewFieldsSettings() {
     saveTemplateBtn.addEventListener('click', function () {
       var name = (templateNameInput.value || '').trim();
       if (!name) {
-        alert('Введите название шаблона.');
+        if (typeof showToast === 'function') showToast('Введите название шаблона.', 'error'); else alert('Введите название шаблона.');
         return;
       }
       var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
         .map(function (el) { return el.value; });
       if (checked.length === 0) {
-        alert('Выберите хотя бы одно поле.');
+        if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
         return;
       }
       var list = getFieldTemplates();
@@ -530,7 +541,7 @@ function _assertBulkSelectionUI() {
 }
 
 function _handleViewListKeydown(ev) {
-  var sortTh = ev.target.closest('th[data-sort-key]');
+  var sortTh = ev.target.closest('th[data-sort-key], .view-virtual-head-cell[data-sort-key]');
   if (sortTh && (ev.key === 'Enter' || ev.key === ' ')) {
     ev.preventDefault();
     var key = sortTh.getAttribute('data-sort-key');

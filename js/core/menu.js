@@ -335,20 +335,28 @@ function handleDeleteObjectClick() {
   }
   var obj = list.filter(function (o) { return o.id === id; })[0];
   var name = (obj && obj.name) ? obj.name : id;
-  if (!confirm('Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.')) return;
-  if (typeof deleteObject !== 'function') return;
-  var p = deleteObject(id);
-  if (p && typeof p.then === 'function') {
-    p.then(function () {
+  var msg = 'Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.';
+  var doDelete = function () {
+    if (typeof deleteObject !== 'function') return;
+    var p = deleteObject(id);
+    if (p && typeof p.then === 'function') {
+      p.then(function () {
+        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+        if (typeof showToast === 'function') showToast('Объект удалён', 'info');
+      }).catch(function (err) {
+        var m = err && err.message ? err.message : 'Ошибка удаления';
+        if (typeof showToast === 'function') showToast(m, 'error', 5000);
+      });
+    } else {
       if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
-      if (typeof showToast === 'function') showToast('Объект удалён', 'info');
-    }).catch(function (err) {
-      var msg = err && err.message ? err.message : 'Ошибка удаления';
-      if (typeof showToast === 'function') showToast(msg, 'error', 5000);
-    });
-  } else {
-    if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+    }
+  };
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal(msg).then(function (ok) { if (ok) doDelete(); });
+    return;
   }
+  if (!confirm(msg)) return;
+  doDelete();
 }
 
 /**

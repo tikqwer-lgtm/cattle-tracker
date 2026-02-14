@@ -164,11 +164,20 @@ function renderProtocolsScreen(containerId) {
   container.querySelectorAll('.delete-protocol-btn').forEach(function (btn) {
     btn.onclick = function () {
       var id = btn.getAttribute('data-id');
-      if (id && confirm('Удалить этот протокол?')) {
-        deleteProtocol(id);
-        window._protocolsEditingId = null;
-        if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+      if (!id) return;
+      if (typeof showConfirmModal === 'function') {
+        showConfirmModal('Удалить этот протокол?').then(function (ok) {
+          if (!ok) return;
+          deleteProtocol(id);
+          window._protocolsEditingId = null;
+          if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+        });
+        return;
       }
+      if (!confirm('Удалить этот протокол?')) return;
+      deleteProtocol(id);
+      window._protocolsEditingId = null;
+      if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
     };
   });
 

@@ -52,7 +52,8 @@ function updateViewList() {
   var tableContainer = document.getElementById('viewEntriesList');
   if (!tableContainer) return;
 
-  var baseList = (typeof getFilteredEntries === 'function') ? getFilteredEntries() : (entries || []);
+  var listFilteredFn = (typeof window !== 'undefined' && typeof window.getListViewFilteredEntries === 'function') ? window.getListViewFilteredEntries : (typeof getFilteredEntries === 'function' ? getFilteredEntries : null);
+  var baseList = listFilteredFn ? listFilteredFn() : ((typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : (entries || []));
   var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
   if (listToShow && listToShow.length > 0 && viewListSortKey) {
     listToShow = listToShow.slice();
@@ -79,7 +80,17 @@ function updateViewList() {
         btns.forEach(function (b) { b.disabled = true; });
       }
     }
-    tableContainer.innerHTML = '<p>Нет записей' + noResultsHint + '</p>';
+    var emptyHtml = '<p>Нет записей' + noResultsHint + '</p>';
+    if (baseList.length === 0 && entries && entries.length > 0 && typeof resetFiltersToDefault === 'function') {
+      emptyHtml += '<p><button type="button" class="action-btn" id="viewListResetFiltersBtn">Сбросить фильтры и показать все записи</button></p>';
+    }
+    tableContainer.innerHTML = emptyHtml;
+    var resetFiltersBtn = document.getElementById('viewListResetFiltersBtn');
+    if (resetFiltersBtn) {
+      resetFiltersBtn.addEventListener('click', function () {
+        if (typeof resetFiltersToDefault === 'function') resetFiltersToDefault();
+      });
+    }
     var scrollBtnHide = document.getElementById('viewScrollToTopBtn');
     if (scrollBtnHide) scrollBtnHide.style.display = 'none';
     initViewFieldsSettings();

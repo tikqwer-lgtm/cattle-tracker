@@ -104,7 +104,7 @@ function addEntry() {
   console.log("Добавление записи...");
   var cattleId = (document.getElementById("cattleId") && document.getElementById("cattleId").value || '').trim();
   if (!cattleId) {
-    alert("Заполните номер коровы!");
+    if (typeof showToast === 'function') showToast('Заполните номер коровы!', 'error'); else alert('Заполните номер коровы!');
     return;
   }
   var entry = getDefaultCowEntry();
@@ -121,12 +121,12 @@ function addEntry() {
       clearForm();
       console.log("Запись добавлена:", entry);
     }).catch(function (err) {
-      alert(err && err.message ? err.message : "Ошибка сохранения на сервере");
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения на сервере', 'error'); else alert(err && err.message ? err.message : 'Ошибка сохранения на сервере');
     });
     return;
   }
   if (entries.some(function (e) { return e.cattleId === cattleId; })) {
-    alert("Корова с таким номером уже существует!");
+    if (typeof showToast === 'function') showToast('Корова с таким номером уже существует!', 'error'); else alert('Корова с таким номером уже существует!');
     return;
   }
   entries.unshift(entry);
@@ -144,7 +144,7 @@ function saveCurrentEntry() {
   console.log("Сохранение записи...");
   var cattleId = (document.getElementById('cattleId') && document.getElementById('cattleId').value || '').trim();
   if (!cattleId) {
-    alert('Заполните номер коровы!');
+    if (typeof showToast === 'function') showToast('Заполните номер коровы!', 'error'); else alert('Заполните номер коровы!');
     return;
   }
   if (window.currentEditingId) {
@@ -186,7 +186,7 @@ function saveCurrentEntry() {
       if (typeof navigate === 'function') navigate('view');
       console.log("Запись сохранена:", entry);
     }).catch(function (err) {
-      alert(err && err.message ? err.message : "Ошибка сохранения на сервере");
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения на сервере', 'error'); else alert(err && err.message ? err.message : 'Ошибка сохранения на сервере');
     });
     return;
   }

@@ -16,6 +16,8 @@ npm start
 
 ## Десктоп (Electron)
 
+**Исходный код веб-приложения** — в корне репозитория (`js/`, `css/`, `index.html`). Перед сборкой Electron копирует его в `electron/` скриптом `electron/copy-web.js` (в т.ч. папка `dist/` после `npm run build`). **Правки вносите только в корневые `js/` и `css/`**, не в `electron/js/` и `electron/css/` — они перезаписываются при сборке.
+
 ```bash
 cd electron
 npm install

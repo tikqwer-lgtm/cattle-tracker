@@ -680,41 +680,8 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Константы и утилиты -->
-  <script src="js/utils/constants.js"></script>
-  <script src="js/utils/utils.js"></script>
-  <script src="js/core/events.js"></script>
-  <!-- API и хранилище -->
-  <script src="js/api/api-client.js"></script>
-  <script src="js/storage/storage-objects.js"></script>
-  <script src="js/storage/storage-entries.js"></script>
-  <script src="js/storage/storage-integrity.js"></script>
-  <script src="js/storage/storage.js"></script>
-  <script src="js/core/core.js"></script>
-  <script src="js/core/users.js"></script>
-  <!-- UI и операции с формами -->
-  <script src="js/ui/ui-helpers.js"></script>
-  <script src="js/ui/cow-operations.js"></script>
-  <script src="js/utils/voice-handler.js"></script>
-  <script src="js/core/app.js"></script>
-  <!-- Фичи: синхронизация, экспорт/импорт, экраны -->
-  <script src="js/features/sync.js"></script>
-  <script src="js/features/export-import-parse.js"></script>
-  <script src="js/features/export-import.js"></script>
-  <script src="js/features/export-excel.js"></script>
-  <script src="js/features/insemination.js"></script>
-  <script src="js/features/view-cow.js"></script>
-  <script src="js/ui/field-config.js"></script>
-  <script src="js/features/search-filter.js"></script>
-  <script src="js/features/notifications.js"></script>
-  <script src="js/features/analytics-calc.js"></script>
-  <script src="js/features/analytics.js"></script>
-  <script src="js/features/backup.js"></script>
-  <script src="js/features/view-list-fields.js"></script>
-  <script src="js/features/view-list.js"></script>
-  <script src="js/features/protocols.js"></script>
-  <!-- Навигация и меню — подключать последним -->
-  <script src="js/core/menu.js"></script>
+  <!-- Бандл приложения (собрать: npm run build) -->
+  <script src="dist/app.js"></script>
   <script>
   (function() {
     function setPrintHeaderDate() {

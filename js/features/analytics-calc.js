@@ -234,3 +234,19 @@ function monthLabel(m) {
   var names = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
   return names[m.start.getMonth()] + ' ' + m.start.getFullYear();
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    parseDate: parseDate,
+    getPeriodBounds: getPeriodBounds,
+    addDays: addDays,
+    getInseminationDates: getInseminationDates,
+    daysBetween: daysBetween,
+    calculateCR: calculateCR,
+    calculateHDR: calculateHDR,
+    calculatePR: calculatePR,
+    isPregnant: isPregnant,
+    averageServicePeriod: averageServicePeriod,
+    generateReport: generateReport
+  };
+}

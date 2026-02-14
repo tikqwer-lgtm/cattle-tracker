@@ -5,7 +5,7 @@
  */
 function cleanAllEntries() {
   if (!entries || entries.length === 0) {
-    alert('Нет данных для очистки');
+    if (typeof showToast === 'function') showToast('Нет данных для очистки', 'info'); else alert('Нет данных для очистки');
     return;
   }
 
@@ -52,15 +52,14 @@ function cleanAllEntries() {
     cleanedEntries.push(cleaned);
   }
 
-  entries = cleanedEntries;
-  if (typeof window !== 'undefined') window.entries = entries;
+  if (typeof replaceEntriesWith === 'function') replaceEntriesWith(cleanedEntries); else { entries = cleanedEntries; if (typeof window !== 'undefined') window.entries = entries; }
   const afterCount = entries.length;
 
   try {
     saveLocally();
   } catch (error) {
     console.error('Ошибка сохранения после очистки:', error);
-    alert('Ошибка сохранения данных после очистки. Проверьте консоль.');
+    if (typeof showToast === 'function') showToast('Ошибка сохранения данных после очистки. Проверьте консоль.', 'error'); else alert('Ошибка сохранения данных после очистки. Проверьте консоль.');
     return;
   }
 
@@ -74,9 +73,9 @@ function cleanAllEntries() {
   console.log('Очистка завершена. Было: ' + beforeCount + ', стало: ' + afterCount + ', удалено: ' + removedCount + ', очищено: ' + cleanedCount);
 
   if (removedCount > 0 || cleanedCount > 0) {
-    alert('✅ Очистка завершена.\nОчищено записей: ' + cleanedCount + '\nУдалено поврежденных: ' + removedCount + '\nОсталось валидных: ' + afterCount);
+    if (typeof showToast === 'function') showToast('Очистка завершена. Очищено: ' + cleanedCount + ', удалено поврежденных: ' + removedCount + ', осталось: ' + afterCount, 'success', 5000); else alert('✅ Очистка завершена.\nОчищено записей: ' + cleanedCount + '\nУдалено поврежденных: ' + removedCount + '\nОсталось валидных: ' + afterCount);
   } else {
-    alert('✅ Проверка завершена.\nВсе записи валидны: ' + afterCount);
+    if (typeof showToast === 'function') showToast('Проверка завершена. Все записи валидны: ' + afterCount, 'success'); else alert('✅ Проверка завершена.\nВсе записи валидны: ' + afterCount);
   }
 }
 
@@ -170,7 +169,7 @@ function checkDataIntegrity() {
  */
 function forceCleanDamagedEntries() {
   if (!entries || entries.length === 0) {
-    alert('Нет данных для очистки');
+    if (typeof showToast === 'function') showToast('Нет данных для очистки', 'info'); else alert('Нет данных для очистки');
     return;
   }
 
@@ -212,15 +211,14 @@ function forceCleanDamagedEntries() {
     validEntries.push(cleaned);
   }
 
-  entries = validEntries;
-  if (typeof window !== 'undefined') window.entries = entries;
+  if (typeof replaceEntriesWith === 'function') replaceEntriesWith(validEntries); else { entries = validEntries; if (typeof window !== 'undefined') window.entries = entries; }
   const afterCount = entries.length;
 
   try {
     saveLocally();
   } catch (error) {
     console.error('Ошибка сохранения:', error);
-    alert('Ошибка сохранения данных. Проверьте консоль.');
+    if (typeof showToast === 'function') showToast('Ошибка сохранения данных. Проверьте консоль.', 'error'); else alert('Ошибка сохранения данных. Проверьте консоль.');
     return;
   }
 
@@ -233,7 +231,7 @@ function forceCleanDamagedEntries() {
 
   console.log('Принудительная очистка завершена. Было: ' + beforeCount + ', стало: ' + afterCount + ', удалено: ' + removedCount);
 
-  alert('✅ Принудительная очистка завершена.\nУдалено поврежденных записей: ' + removedCount + '\nОсталось валидных: ' + afterCount);
+  if (typeof showToast === 'function') showToast('Принудительная очистка завершена. Удалено: ' + removedCount + ', осталось: ' + afterCount, 'success', 5000); else alert('✅ Принудительная очистка завершена.\nУдалено поврежденных записей: ' + removedCount + '\nОсталось валидных: ' + afterCount);
 }
 
 /**
@@ -241,8 +239,7 @@ function forceCleanDamagedEntries() {
  */
 function deleteAllData() {
   const beforeCount = entries.length;
-  entries = [];
-  if (typeof window !== 'undefined') window.entries = entries;
+  if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries.length = 0; if (typeof window !== 'undefined') window.entries = entries; }
   try {
     var keysToRemove = [];
     for (var i = 0; i < localStorage.length; i++) {
@@ -254,7 +251,7 @@ function deleteAllData() {
     keysToRemove.forEach(function (k) { localStorage.removeItem(k); });
   } catch (e) {
     console.error('Ошибка при удалении данных:', e);
-    alert('Ошибка при удалении данных. Проверьте консоль.');
+    if (typeof showToast === 'function') showToast('Ошибка при удалении данных. Проверьте консоль.', 'error'); else alert('Ошибка при удалении данных. Проверьте консоль.');
     return;
   }
   if (typeof window.CattleTrackerEvents !== 'undefined') {
@@ -262,5 +259,5 @@ function deleteAllData() {
   }
   if (typeof updateList === 'function') updateList();
   if (typeof updateViewList === 'function') updateViewList();
-  alert('✅ Все данные удалены.\nУдалено записей: ' + beforeCount);
+  if (typeof showToast === 'function') showToast('Все данные удалены. Удалено записей: ' + beforeCount, 'success'); else alert('✅ Все данные удалены.\nУдалено записей: ' + beforeCount);
 }

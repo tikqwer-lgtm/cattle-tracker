@@ -41,3 +41,8 @@ Server runs on `http://localhost:3000`. Set `PORT` to change.
 - `POST /api/chat` — чат-консультант: body `{ messages: [{ role, content }, ...] }`, возвращает `{ content }`. Контекст — документация приложения (README, инструкции). Требуется переменная окружения **`DEEPSEEK_API_KEY`** (API DeepSeek); без неё маршрут возвращает 503.
 
 Database: SQLite at `server/data/cattle.db`. Schema is created on first start.
+
+## Безопасность и формат ответов
+
+- **Rate limiting:** для маршрутов `/api/auth` действует ограничение: не более 30 запросов с одного IP за 15 минут. При превышении возвращается `429` и `{ error: "Слишком много попыток входа..." }`.
+- **Ошибки API:** ответы об ошибках имеют единый формат `{ error: string }` (при необходимости с полем `code`). Клиент отображает `data.error || data.message`.

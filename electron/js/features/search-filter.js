@@ -129,7 +129,7 @@
    * @returns {Array}
    */
   function applySearchAndFilter(list) {
-    if (!list) list = (typeof entries !== 'undefined' ? entries : []);
+    if (!list || !list.length) list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : (typeof entries !== 'undefined' ? entries : []);
     var step = searchEntries(searchQuery, list);
     return filterEntries(filters, step);
   }
@@ -138,7 +138,12 @@
    * Возвращает массив записей для отображения (с учётом поиска и фильтров)
    */
   function getFilteredEntries() {
-    var list = (typeof entries !== 'undefined' ? entries : []);
+    if (typeof window !== 'undefined' && window._forceAllEntriesForViewList) {
+      window._forceAllEntriesForViewList = false;
+      var all = (window.entries && Array.isArray(window.entries)) ? window.entries : [];
+      return all;
+    }
+    var list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : (typeof entries !== 'undefined' ? entries : []);
     return applySearchAndFilter(list);
   }
 
@@ -278,16 +283,31 @@
     if (container) renderSearchFilterUI('search-filter-container');
   }
 
+  /**
+   * Сбрасывает поиск и фильтры, сохраняет в localStorage, обновляет UI и список.
+   */
+  function resetFiltersToDefault() {
+    searchQuery = '';
+    filters = { status: [], lactation: null, dateFrom: '', dateTo: '', synced: null, group: '', bull: '' };
+    saveFilters();
+    if (typeof window !== 'undefined') window._forceAllEntriesForViewList = true;
+    var container = document.getElementById('search-filter-container');
+    if (container) renderSearchFilterUI('search-filter-container');
+    if (typeof updateViewList === 'function') updateViewList();
+  }
+
   if (typeof window !== 'undefined') {
     window.searchEntries = searchEntries;
     window.filterEntries = filterEntries;
     window.applySearchAndFilter = applySearchAndFilter;
     window.getFilteredEntries = getFilteredEntries;
+    window.getListViewFilteredEntries = getFilteredEntries;
     window.setSearchQuery = setSearchQuery;
     window.setFilters = setFilters;
     window.getFilters = getFilters;
     window.renderSearchFilterUI = renderSearchFilterUI;
     window.initSearchFilter = initSearchFilter;
+    window.resetFiltersToDefault = resetFiltersToDefault;
   }
 
   if (typeof window !== 'undefined' && window.document) {

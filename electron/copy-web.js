@@ -49,13 +49,20 @@ for (const f of files) {
     console.log('  ', f);
   }
 }
-// Копируем icons как app-icons, чтобы electron-builder не принимал папку "icons" за иконки приложения (.ico)
-['css', 'js', 'lib'].forEach(dir => {
+// Сборка бандла в корне (dist/app.js) и копирование dist
+const { execSync } = require('child_process');
+try {
+  execSync('node scripts/build.js', { cwd: root, stdio: 'inherit' });
+} catch (e) {
+  console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
+}
+['css', 'js', 'lib', 'dist'].forEach(dir => {
   if (fs.existsSync(path.join(root, dir))) {
     copyDir(dir);
     console.log('  ', dir + '/');
   }
 });
+// Копируем icons как app-icons, чтобы electron-builder не принимал папку "icons" за иконки приложения (.ico)
 if (fs.existsSync(path.join(root, 'icons'))) {
   copyDirTo('icons', 'app-icons');
   console.log('  ', 'app-icons/ (из icons/)');

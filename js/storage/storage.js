@@ -69,9 +69,7 @@ if (useApi) {
     return loadObjectsFromApi().then(function () {
       var objectId = getCurrentObjectId();
       return window.CattleTrackerApi.loadEntries(objectId).then(function (list) {
-        entries.length = 0;
-        (list || []).forEach(function (e) { entries.push(e); });
-        if (typeof window !== 'undefined') window.entries = entries;
+        if (typeof replaceEntriesWith === 'function') replaceEntriesWith(list || []); else { entries.length = 0; (list || []).forEach(function (e) { entries.push(e); }); if (typeof window !== 'undefined') window.entries = entries; }
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('entries:updated', entries);
         }
@@ -79,8 +77,7 @@ if (useApi) {
         return entries;
       }).catch(function (err) {
         console.error('Ошибка загрузки записей с API:', err);
-        entries.length = 0;
-        if (typeof window !== 'undefined') window.entries = entries;
+        if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries.length = 0; if (typeof window !== 'undefined') window.entries = entries; }
         if (typeof updateList === 'function') updateList();
         throw err;
       });

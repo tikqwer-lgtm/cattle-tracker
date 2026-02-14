@@ -338,7 +338,7 @@
       updateAuthBar();
       if (typeof navigate === 'function') navigate('menu');
     } else {
-      if (typeof showToast === 'function') showToast(result.message || 'Ошибка входа', 'error'); else alert(result.message || 'Ошибка входа');
+      if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка входа', 'error'); else alert(result.error || result.message || 'Ошибка входа');
     }
     return false;
   }
@@ -362,7 +362,7 @@
       if (typeof showToast === 'function') showToast('Регистрация успешна. Войдите.', 'success'); else alert('Регистрация успешна. Войдите.');
       showAuthLogin();
     } else {
-      if (typeof showToast === 'function') showToast(result.message || 'Ошибка', 'error'); else alert(result.message || 'Ошибка');
+      if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка', 'error'); else alert(result.error || result.message || 'Ошибка');
     }
     return false;
   }
