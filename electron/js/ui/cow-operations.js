@@ -7,7 +7,7 @@
 function editEntry(cattleId) {
   const entry = entries.find(e => e.cattleId === cattleId);
   if (!entry) {
-    alert('Запись не найдена!');
+    if (typeof showToast === 'function') showToast('Запись не найдена!', 'error'); else alert('Запись не найдена!');
     return;
   }
 
@@ -37,30 +37,35 @@ function editEntry(cattleId) {
  * @param {string} cattleId - Номер коровы
  */
 function deleteEntry(cattleId) {
-  if (!confirm('Удалить запись о корове ' + cattleId + '?')) {
-    return;
-  }
-  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.deleteEntryViaApi === 'function';
-  if (useApi) {
-    window.deleteEntryViaApi(cattleId).then(function () {
+  var doDelete = function () {
+    var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.deleteEntryViaApi === 'function';
+    if (useApi) {
+      window.deleteEntryViaApi(cattleId).then(function () {
+        updateList();
+        if (typeof updateViewList === 'function') updateViewList();
+        if (typeof showToast === 'function') showToast('Запись удалена', 'success'); else alert('Запись удалена');
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка удаления', 'error'); else alert(err && err.message ? err.message : 'Ошибка удаления');
+      });
+      return;
+    }
+    var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
+    if (index !== -1) {
+      entries.splice(index, 1);
+      saveLocally();
       updateList();
       if (typeof updateViewList === 'function') updateViewList();
-      alert('Запись удалена');
-    }).catch(function (err) {
-      alert(err && err.message ? err.message : 'Ошибка удаления');
-    });
+      if (typeof showToast === 'function') showToast('Запись удалена', 'success'); else alert('Запись удалена');
+    } else {
+      if (typeof showToast === 'function') showToast('Запись не найдена!', 'error'); else alert('Запись не найдена!');
+    }
+  };
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal('Удалить запись о корове ' + cattleId + '?').then(function (ok) { if (ok) doDelete(); });
     return;
   }
-  var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
-  if (index !== -1) {
-    entries.splice(index, 1);
-    saveLocally();
-    updateList();
-    if (typeof updateViewList === 'function') updateViewList();
-    alert('Запись удалена');
-  } else {
-    alert('Запись не найдена!');
-  }
+  if (!confirm('Удалить запись о корове ' + cattleId + '?')) return;
+  doDelete();
 }
 
 /**
@@ -73,49 +78,54 @@ function deleteSelectedEntries() {
         return checkbox.getAttribute('data-cattle-id');
       });
   if (!selectedCattleIds || selectedCattleIds.length === 0) {
-    alert('Нет выделенных записей для удаления');
+    if (typeof showToast === 'function') showToast('Нет выделенных записей для удаления', 'info'); else alert('Нет выделенных записей для удаления');
     return;
   }
   var count = selectedCattleIds.length;
   var confirmMessage = 'Вы уверены, что хотите удалить ' + count + (count === 1 ? ' запись' : count < 5 ? ' записи' : ' записей') + '?';
-  if (!confirm(confirmMessage)) return;
-
-  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.loadLocally === 'function';
-  if (useApi) {
-    var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
-    var promises = selectedCattleIds.map(function (id) {
-      return window.CattleTrackerApi.deleteEntry(objectId, id);
+  var doDeleteSelected = function () {
+    var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.loadLocally === 'function';
+    if (useApi) {
+      var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
+      var promises = selectedCattleIds.map(function (id) {
+        return window.CattleTrackerApi.deleteEntry(objectId, id);
+      });
+      Promise.all(promises).then(function () {
+        return window.loadLocally();
+      }).then(function () {
+        updateList();
+        if (typeof updateViewList === 'function') updateViewList();
+        if (typeof updateHerdStats === 'function') updateHerdStats();
+        if (typeof showToast === 'function') showToast('Удалено записей: ' + count, 'success'); else alert('Удалено записей: ' + count);
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка удаления', 'error'); else alert(err && err.message ? err.message : 'Ошибка удаления');
+      });
+      return;
+    }
+    var deletedCount = 0;
+    selectedCattleIds.forEach(function (cattleId) {
+      var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
+      if (index !== -1) {
+        entries.splice(index, 1);
+        deletedCount++;
+      }
     });
-    Promise.all(promises).then(function () {
-      return window.loadLocally();
-    }).then(function () {
+    if (deletedCount > 0) {
+      saveLocally();
       updateList();
       if (typeof updateViewList === 'function') updateViewList();
       if (typeof updateHerdStats === 'function') updateHerdStats();
-      alert('Удалено записей: ' + count);
-    }).catch(function (err) {
-      alert(err && err.message ? err.message : 'Ошибка удаления');
-    });
+      if (typeof showToast === 'function') showToast('Удалено записей: ' + deletedCount, 'success'); else alert('Удалено записей: ' + deletedCount);
+    } else {
+      if (typeof showToast === 'function') showToast('Не удалось найти записи для удаления', 'info'); else alert('Не удалось найти записи для удаления');
+    }
+  };
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal(confirmMessage).then(function (ok) { if (ok) doDeleteSelected(); });
     return;
   }
-
-  var deletedCount = 0;
-  selectedCattleIds.forEach(function (cattleId) {
-    var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
-    if (index !== -1) {
-      entries.splice(index, 1);
-      deletedCount++;
-    }
-  });
-  if (deletedCount > 0) {
-    saveLocally();
-    updateList();
-    if (typeof updateViewList === 'function') updateViewList();
-    if (typeof updateHerdStats === 'function') updateHerdStats();
-    alert('Удалено записей: ' + deletedCount);
-  } else {
-    alert('Не удалось найти записи для удаления');
-  }
+  if (!confirm(confirmMessage)) return;
+  doDeleteSelected();
 }
 
 /**

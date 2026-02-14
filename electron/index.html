@@ -45,11 +45,12 @@
     <div id="auth-form-container" class="auth-form-container">
       <div id="auth-server-block" class="auth-server-block" style="display: none;">
         <label for="serverApiBaseInput">Адрес сервера API</label>
-        <input type="text" id="serverApiBaseInput" placeholder="http://IP:3000 (для VPS без SSL — только http)" />
+        <input type="text" id="serverApiBaseInput" placeholder="http://localhost:3000 или http://IP:3000" />
         <button type="button" class="small-btn" onclick="saveServerBaseUrl()">Сохранить адрес</button>
+        <p class="auth-server-hint">Укажите адрес сервера — учётные записи будут храниться на нём и не пропадут после обновления приложения.</p>
       </div>
       <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
-      <form id="authLoginForm" class="form" onsubmit="handleLogin(event)">
+      <form id="authLoginForm" class="form" onsubmit="return handleLogin(event)">
         <label for="authUsernameSelect">Выбрать пользователя</label>
         <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
           <option value="">— Выберите из списка —</option>
@@ -61,9 +62,10 @@
         <div class="form-actions">
           <button type="submit">Войти</button>
           <button type="button" onclick="showAuthRegister()">Регистрация</button>
+          <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof skipAuth === 'function' && skipAuth()">Продолжить без входа</button>
         </div>
       </form>
-      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="handleRegister(event)">
+      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="return handleRegister(event)">
         <label for="regUsername">Логин</label>
         <input type="text" id="regUsername" required autocomplete="username" />
         <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
@@ -680,41 +682,8 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Константы и утилиты -->
-  <script src="js/utils/constants.js"></script>
-  <script src="js/utils/utils.js"></script>
-  <script src="js/core/events.js"></script>
-  <!-- API и хранилище -->
-  <script src="js/api/api-client.js"></script>
-  <script src="js/storage/storage-objects.js"></script>
-  <script src="js/storage/storage-entries.js"></script>
-  <script src="js/storage/storage-integrity.js"></script>
-  <script src="js/storage/storage.js"></script>
-  <script src="js/core/core.js"></script>
-  <script src="js/core/users.js"></script>
-  <!-- UI и операции с формами -->
-  <script src="js/ui/ui-helpers.js"></script>
-  <script src="js/ui/cow-operations.js"></script>
-  <script src="js/utils/voice-handler.js"></script>
-  <script src="js/core/app.js"></script>
-  <!-- Фичи: синхронизация, экспорт/импорт, экраны -->
-  <script src="js/features/sync.js"></script>
-  <script src="js/features/export-import-parse.js"></script>
-  <script src="js/features/export-import.js"></script>
-  <script src="js/features/export-excel.js"></script>
-  <script src="js/features/insemination.js"></script>
-  <script src="js/features/view-cow.js"></script>
-  <script src="js/ui/field-config.js"></script>
-  <script src="js/features/search-filter.js"></script>
-  <script src="js/features/notifications.js"></script>
-  <script src="js/features/analytics-calc.js"></script>
-  <script src="js/features/analytics.js"></script>
-  <script src="js/features/backup.js"></script>
-  <script src="js/features/view-list-fields.js"></script>
-  <script src="js/features/view-list.js"></script>
-  <script src="js/features/protocols.js"></script>
-  <!-- Навигация и меню — подключать последним -->
-  <script src="js/core/menu.js"></script>
+  <!-- Бандл приложения (собрать: npm run build) -->
+  <script src="dist/app.js"></script>
   <script>
   (function() {
     function setPrintHeaderDate() {

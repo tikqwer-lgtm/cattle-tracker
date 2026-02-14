@@ -1,5 +1,5 @@
 /* Service Worker — оффлайн и кэширование. При релизе увеличивайте версию в CACHE_NAME. */
-var CACHE_NAME = 'cattle-tracker-v4';
+var CACHE_NAME = 'cattle-tracker-v5';
 var urlsToCache = [
   './',
   './index.html',
@@ -22,36 +22,7 @@ var urlsToCache = [
   './css/sync.css',
   './css/view-cow.css',
   './css/print.css',
-  './js/utils/constants.js',
-  './js/utils/utils.js',
-  './js/core/events.js',
-  './js/api/api-client.js',
-  './js/storage/storage-objects.js',
-  './js/storage/storage-entries.js',
-  './js/storage/storage-integrity.js',
-  './js/storage/storage.js',
-  './js/core/core.js',
-  './js/core/users.js',
-  './js/ui/ui-helpers.js',
-  './js/ui/cow-operations.js',
-  './js/utils/voice-handler.js',
-  './js/core/app.js',
-  './js/core/menu.js',
-  './js/features/sync.js',
-  './js/features/export-import-parse.js',
-  './js/features/export-import.js',
-  './js/features/export-excel.js',
-  './js/features/insemination.js',
-  './js/features/view-cow.js',
-  './js/features/search-filter.js',
-  './js/features/notifications.js',
-  './js/features/analytics-calc.js',
-  './js/features/analytics.js',
-  './js/features/backup.js',
-  './js/features/view-list-fields.js',
-  './js/features/view-list.js',
-  './js/ui/field-config.js',
-  './js/features/protocols.js'
+  './dist/app.js'
 ];
 
 self.addEventListener('install', function (event) {

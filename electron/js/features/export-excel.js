@@ -269,12 +269,12 @@ function openExportDialog() {
     saveTemplateBtn.addEventListener('click', function () {
       var name = (templateNameInput.value || '').trim();
       if (!name) {
-        alert('Введите название шаблона.');
+        if (typeof showToast === 'function') showToast('Введите название шаблона.', 'error'); else alert('Введите название шаблона.');
         return;
       }
       var checked = Array.prototype.slice.call(modal.querySelectorAll('.export-field-checkbox:checked')).map(function (el) { return el.value; });
       if (checked.length === 0) {
-        alert('Выберите хотя бы одно поле.');
+        if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
         return;
       }
       var list = getExportFieldTemplates();
@@ -290,7 +290,7 @@ function openExportDialog() {
     exportBtn.addEventListener('click', function () {
       var checked = Array.prototype.slice.call(modal.querySelectorAll('.export-field-checkbox:checked')).map(function (el) { return el.value; });
       if (checked.length === 0) {
-        alert('Выберите хотя бы одно поле для листа «Коровы».');
+        if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле для листа «Коровы».', 'error'); else alert('Выберите хотя бы одно поле для листа «Коровы».');
         return;
       }
       try {

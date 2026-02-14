@@ -219,13 +219,28 @@
     }
   }
 
+  function getDefaultLocalUsername() {
+    var api = typeof global !== 'undefined' && global.electronAPI;
+    if (api && typeof api.getOsUsername === 'function') {
+      return api.getOsUsername().then(function (u) {
+        return 'admin(' + (u || 'local') + ')';
+      }).catch(function () { return 'admin(local)'; });
+    }
+    return Promise.resolve('admin(local)');
+  }
+
   function initUsers() {
+    var base = getSavedServerBase();
+    var serverBlock = document.getElementById('auth-server-block');
+    if (serverBlock) serverBlock.style.display = base ? 'none' : '';
     var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput) serverInput.value = getSavedServerBase();
+    if (serverInput) serverInput.value = base;
     var authHint = document.getElementById('auth-api-hint');
-    if (authHint) authHint.style.display = getSavedServerBase() ? '' : 'none';
+    if (authHint) authHint.style.display = base ? '' : 'none';
     var userDataHint = document.getElementById('auth-user-data-hint');
-    if (userDataHint) userDataHint.style.display = getSavedServerBase() ? '' : 'none';
+    if (userDataHint) userDataHint.style.display = base ? '' : 'none';
+    var skipBtn = document.getElementById('auth-skip-btn');
+    if (skipBtn) skipBtn.style.display = base ? 'none' : '';
     initAuthUsernameSelect();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
@@ -338,7 +353,7 @@
       updateAuthBar();
       if (typeof navigate === 'function') navigate('menu');
     } else {
-      if (typeof showToast === 'function') showToast(result.message || 'Ошибка входа', 'error'); else alert(result.message || 'Ошибка входа');
+      if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка входа', 'error'); else alert(result.error || result.message || 'Ошибка входа');
     }
     return false;
   }
@@ -362,11 +377,17 @@
       if (typeof showToast === 'function') showToast('Регистрация успешна. Войдите.', 'success'); else alert('Регистрация успешна. Войдите.');
       showAuthLogin();
     } else {
-      if (typeof showToast === 'function') showToast(result.message || 'Ошибка', 'error'); else alert(result.message || 'Ошибка');
+      if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка', 'error'); else alert(result.error || result.message || 'Ошибка');
     }
     return false;
   }
   function skipAuth() {
+    if (useApi) return;
+    getDefaultLocalUsername().then(function (username) {
+      saveCurrentUser({ id: 'local_admin', username: username, role: 'admin' });
+      updateAuthBar();
+      if (typeof navigate === 'function') navigate('menu');
+    });
   }
   function handleLogout() {
     if (useApi) global.CattleTrackerApi.logout();

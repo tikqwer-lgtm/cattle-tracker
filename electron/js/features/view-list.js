@@ -308,7 +308,7 @@ function initViewFieldsSettings() {
     var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
       .map(function (el) { return el.value; });
     if (checked.length === 0) {
-      alert('Выберите хотя бы одно поле.');
+      if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
       return;
     }
     try {
@@ -351,13 +351,13 @@ function initViewFieldsSettings() {
     saveTemplateBtn.addEventListener('click', function () {
       var name = (templateNameInput.value || '').trim();
       if (!name) {
-        alert('Введите название шаблона.');
+        if (typeof showToast === 'function') showToast('Введите название шаблона.', 'error'); else alert('Введите название шаблона.');
         return;
       }
       var checked = Array.prototype.slice.call(modal.querySelectorAll('.view-fields-checkbox:checked'))
         .map(function (el) { return el.value; });
       if (checked.length === 0) {
-        alert('Выберите хотя бы одно поле.');
+        if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
         return;
       }
       var list = getFieldTemplates();
@@ -541,7 +541,7 @@ function _assertBulkSelectionUI() {
 }
 
 function _handleViewListKeydown(ev) {
-  var sortTh = ev.target.closest('th[data-sort-key]');
+  var sortTh = ev.target.closest('th[data-sort-key], .view-virtual-head-cell[data-sort-key]');
   if (sortTh && (ev.key === 'Enter' || ev.key === ' ')) {
     ev.preventDefault();
     var key = sortTh.getAttribute('data-sort-key');

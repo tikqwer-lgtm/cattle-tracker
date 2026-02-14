@@ -91,8 +91,7 @@ function loadLocally() {
     ensureObjectsAndMigration();
     const stored = localStorage.getItem(getStorageKey());
     if (!stored) {
-      entries = [];
-      if (typeof window !== 'undefined') window.entries = entries;
+      if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries = []; if (typeof window !== 'undefined') window.entries = entries; }
       if (typeof window.CattleTrackerEvents !== 'undefined') {
         window.CattleTrackerEvents.emit('entries:updated', entries);
       }
@@ -141,8 +140,7 @@ function loadLocally() {
       if (entry.group === undefined) entry.group = '';
     }
 
-    entries = cleanedEntries;
-    if (typeof window !== 'undefined') window.entries = entries;
+    if (typeof replaceEntriesWith === 'function') replaceEntriesWith(cleanedEntries); else { entries = cleanedEntries; if (typeof window !== 'undefined') window.entries = entries; }
 
     if (entries.length !== rawEntries.length || migrated) {
       console.log('При загрузке очищено записей: ' + (rawEntries.length - entries.length));
@@ -158,8 +156,7 @@ function loadLocally() {
     }
   } catch (error) {
     console.error('Ошибка загрузки из localStorage:', error);
-    entries = [];
-    if (typeof window !== 'undefined') window.entries = entries;
+    if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries.length = 0; if (typeof window !== 'undefined') window.entries = entries; }
     try {
       localStorage.removeItem(getStorageKey());
     } catch (e) {

@@ -296,18 +296,21 @@
     if (typeof updateViewList === 'function') updateViewList();
   }
 
-  if (typeof window !== 'undefined') {
-    window.searchEntries = searchEntries;
-    window.filterEntries = filterEntries;
-    window.applySearchAndFilter = applySearchAndFilter;
-    window.getFilteredEntries = getFilteredEntries;
-    window.getListViewFilteredEntries = getFilteredEntries;
-    window.setSearchQuery = setSearchQuery;
-    window.setFilters = setFilters;
-    window.getFilters = getFilters;
-    window.renderSearchFilterUI = renderSearchFilterUI;
-    window.initSearchFilter = initSearchFilter;
-    window.resetFiltersToDefault = resetFiltersToDefault;
+  var globalObj = (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));
+  globalObj.searchEntries = searchEntries;
+  globalObj.filterEntries = filterEntries;
+  globalObj.applySearchAndFilter = applySearchAndFilter;
+  globalObj.getFilteredEntries = getFilteredEntries;
+  globalObj.getListViewFilteredEntries = getFilteredEntries;
+  globalObj.setSearchQuery = setSearchQuery;
+  globalObj.setFilters = setFilters;
+  globalObj.getFilters = getFilters;
+  globalObj.renderSearchFilterUI = renderSearchFilterUI;
+  globalObj.initSearchFilter = initSearchFilter;
+  globalObj.resetFiltersToDefault = resetFiltersToDefault;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { searchEntries: searchEntries, filterEntries: filterEntries, applySearchAndFilter: applySearchAndFilter };
   }
 
   if (typeof window !== 'undefined' && window.document) {

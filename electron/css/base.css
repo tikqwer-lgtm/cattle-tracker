@@ -145,6 +145,39 @@ h1 {
   to { transform: rotate(360deg); }
 }
 
+/* Модальное окно подтверждения (замена confirm) */
+.confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.confirm-modal {
+  background: var(--color-bg, #fff);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-width: 420px;
+  width: 90%;
+}
+.confirm-modal p {
+  margin: 0 0 16px 0;
+  font-size: 1em;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.confirm-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* Контейнер тостов (стопка сверху) */
 .toast-container {
   position: fixed;

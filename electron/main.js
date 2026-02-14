@@ -6,6 +6,7 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { pathToFileURL } = require('url');
 
 const WINDOW_STATE_FILE = 'window-state.json';
@@ -238,6 +239,14 @@ function createWindow() {
 }
 
 ipcMain.handle('get-app-version', () => Promise.resolve(app.getVersion()));
+
+ipcMain.handle('get-os-username', () => {
+  try {
+    return Promise.resolve((os.userInfo && os.userInfo().username) || process.env.USERNAME || process.env.USER || 'local');
+  } catch (e) {
+    return Promise.resolve('local');
+  }
+});
 
 function isVersionNewer(newVer, currentVer) {
   if (!newVer || !currentVer) return false;
