@@ -1,0 +1,10 @@
+/* style.css - Главный файл стилей */
+
+/* Подключение модульных CSS-файлов */
+@import 'base.css';
+@import 'layout.css';
+@import 'components.css';
+@import 'forms.css';
+@import 'sync.css';
+@import 'responsive.css';
+@import 'view-cow.css';

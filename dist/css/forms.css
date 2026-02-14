@@ -1,0 +1,132 @@
+/* forms.css - Стили форм */
+
+.form-button {
+  margin-top: 20px;
+  padding: 15px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.form-actions button {
+  padding: 12px 20px;
+  font-size: 1em;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+#saveButton {
+  background: var(--color-primary);
+  color: white;
+}
+
+#cancelButton {
+  background: #999;
+  color: white;
+}
+
+#cancelButton:hover,
+.back-button:hover {
+  background: #777;
+}
+
+#saveButton:hover {
+  background: var(--color-primary-hover);
+}
+
+.form button:hover {
+  background: var(--color-primary-hover);
+}
+
+.server-url-block {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0;
+}
+.server-url-block label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+}
+.server-url-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.server-url-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.6rem;
+  font-size: 1rem;
+}
+.server-url-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.backup-actions {
+  margin-bottom: 1rem;
+}
+
+/* Редактор карточки: компактная сетка в несколько столбцов */
+.form-cow-editor {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr minmax(140px, auto) 1fr;
+  gap: 0.75rem 1.25rem;
+  align-items: start;
+  max-width: 920px;
+}
+.form-cow-editor label {
+  margin: 0;
+}
+.form-cow-editor .form-actions {
+  grid-column: 1 / -1;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+.form-cow-editor textarea {
+  min-height: 60px;
+}
+
+/* Обёртка формы с секциями */
+.form-cow-editor-wrap {
+  max-width: 920px;
+}
+.form-cow-section {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1rem 0.5rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated, #f8f9fa);
+}
+.form-cow-section legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.form-cow-editor-wrap .form-actions {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .form-cow-editor {
+    grid-template-columns: 1fr;
+  }
+}

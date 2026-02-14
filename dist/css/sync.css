@@ -1,0 +1,260 @@
+/* sync.css - Стили синхронизации */
+
+.sync-controls {
+  margin-top: 20px;
+  padding: 15px;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-primary-border);
+}
+
+.sync-controls button,
+.sync-controls label {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 0.9em;
+}
+
+.sync-controls input[type="file"] {
+  display: none;
+}
+
+.sync-controls label {
+  display: inline-block;
+  cursor: pointer;
+  padding: 8px 12px;
+  width: auto;
+}
+
+.sync-controls button:hover {
+  background: var(--color-primary-hover);
+}
+
+.sync-status {
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+
+.sync-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--color-bg-elevated, #f8f9fa);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+}
+.sync-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+.sync-section-hint {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+}
+.sync-backup-actions-row {
+  margin-bottom: 12px;
+}
+.sync-backup-actions-row .action-btn { margin-right: 8px; }
+
+/* Секция синхронизации с сервером API */
+.sync-server-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-primary-border);
+}
+
+.sync-server-controls {
+  margin-bottom: 8px;
+}
+
+.sync-server-status {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+
+.sync-server-status-error {
+  color: var(--color-danger, #c00);
+}
+
+.sync-server-bases {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+.sync-server-bases h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+}
+.sync-server-bases-hint {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+}
+.sync-server-bases-list .sync-loading,
+.sync-server-bases-list .sync-empty {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.sync-bases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.sync-bases-table th,
+.sync-bases-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.sync-bases-table th {
+  font-weight: 600;
+}
+.sync-bases-table th:nth-child(4) { text-align: right; }
+.sync-bases-actions {
+  white-space: nowrap;
+}
+.sync-bases-actions .small-btn {
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+.sync-bases-table td:nth-child(1) { min-width: 120px; }
+.sync-bases-table td:nth-child(2) { min-width: 130px; }
+.sync-bases-table td:nth-child(3) { min-width: 100px; }
+.sync-bases-table td:nth-child(4) { min-width: 60px; text-align: right; }
+
+/* Прогресс синхронизации */
+.sync-progress-block {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+.sync-progress-label {
+  font-size: 0.9em;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+.sync-progress-bar-wrap {
+  height: 10px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.sync-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, #5a8fd9 100%);
+  border-radius: 5px;
+  transition: width 0.25s ease;
+}
+.sync-progress-text {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+}
+
+.sync-replace-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.sync-replace-modal {
+  background: var(--color-bg, #fff);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-width: 400px;
+  width: 90%;
+}
+.sync-replace-modal h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+.sync-replace-modal p {
+  margin: 0 0 12px 0;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+.sync-replace-select {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 1em;
+}
+.sync-replace-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Индикатор подключения к серверу (лампочка) */
+.connection-indicator {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.connection-indicator--connected {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+.connection-indicator--disconnected {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+.sync-connect-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sync-server-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sync-server-url-row label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  margin-bottom: 4px;
+  width: 100%;
+}
+.sync-server-url-row input {
+  flex: 1 1 200px;
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+.sync-server-url-row .action-btn {
+  flex: 0 0 auto;
+}
+.sync-server-hint {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.35;
+}

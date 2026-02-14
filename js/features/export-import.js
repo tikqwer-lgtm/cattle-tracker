@@ -623,3 +623,4 @@ function processImportData(data, delimiter, event) {
   alert(message);
   event.target.value = '';
 }
+export {};

@@ -60,7 +60,7 @@ if (fs.existsSync(electronIndex)) {
 // Сборка бандла в корне (dist/app.js) и копирование dist
 const { execSync } = require('child_process');
 try {
-  execSync('node scripts/build.js', { cwd: root, stdio: 'inherit' });
+  execSync('npm run build', { cwd: root, stdio: 'inherit' });
 } catch (e) {
   console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
 }

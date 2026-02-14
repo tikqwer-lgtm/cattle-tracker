@@ -1,0 +1,25 @@
+{
+  "name": "Учёт коров",
+  "short_name": "Коровы",
+  "description": "Учёт коров на ферме. ООО Молочная компания «Генетика». Осеменение, отёл, аналитика.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8f9fa",
+  "theme_color": "#3d6eb5",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -2,20 +2,10 @@
  * Unit-тесты для логики поиска и фильтрации (search-filter).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createRequire } from 'module';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-
-let searchEntries, filterEntries;
+import { searchEntries, filterEntries } from '../js/features/search-filter.js';
 
 beforeAll(() => {
   global.entries = [];
-  const m = require(path.join(__dirname, '../js/features/search-filter.js'));
-  searchEntries = m.searchEntries;
-  filterEntries = m.filterEntries;
 });
 
 describe('searchEntries', () => {

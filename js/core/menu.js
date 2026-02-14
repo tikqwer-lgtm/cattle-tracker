@@ -565,3 +565,4 @@ window.addEventListener('load', () => {
     updateHerdStats();
   }
 });
+export {};

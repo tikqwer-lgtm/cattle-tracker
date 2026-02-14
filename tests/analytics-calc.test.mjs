@@ -2,18 +2,10 @@
  * Unit-тесты для расчётов аналитики (analytics-calc).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createRequire } from 'module';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-
-let calc;
+import * as calc from '../js/features/analytics-calc.js';
 
 beforeAll(() => {
   global.entries = [];
-  calc = require(path.join(__dirname, '../js/features/analytics-calc.js'));
 });
 
 describe('parseDate', () => {

@@ -312,9 +312,10 @@ if (typeof window.electronAPI !== 'undefined') {
 // Экспорт для других модулей
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    entries,
-    nowFormatted,
+    entries: window.entries,
+    nowFormatted: window.nowFormatted,
     addEntry,
     saveCurrentEntry
   };
 }
+export {};

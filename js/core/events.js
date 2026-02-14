@@ -55,3 +55,4 @@
     module.exports = CattleTrackerEvents;
   }
 })(typeof window !== 'undefined' ? window : this);
+export {};

@@ -74,3 +74,4 @@ function getVisibleViewFields() {
   VIEW_LIST_FIELDS.forEach(function (f) { map[f.key] = f; });
   return keys.map(function (k) { return map[k]; }).filter(Boolean);
 }
+export {};

@@ -41,11 +41,11 @@ function cleanEntry(entry) {
  */
 function saveLocally() {
   try {
-    const cleanedEntries = entries.map(entry => cleanEntry(entry));
+    const cleanedEntries = window.entries.map(entry => cleanEntry(entry));
     const jsonData = JSON.stringify(cleanedEntries);
-    localStorage.setItem(getStorageKey(), jsonData);
+    localStorage.setItem(window.getStorageKey(), jsonData);
     if (typeof window.CattleTrackerEvents !== 'undefined') {
-      window.CattleTrackerEvents.emit('entries:updated', entries);
+      window.CattleTrackerEvents.emit('entries:updated', window.entries);
     }
   } catch (error) {
     console.error('Ошибка сохранения в localStorage:', error);
@@ -88,14 +88,14 @@ function entryHasBinaryChars(entry) {
  */
 function loadLocally() {
   try {
-    ensureObjectsAndMigration();
-    const stored = localStorage.getItem(getStorageKey());
+    window.ensureObjectsAndMigration();
+    const stored = localStorage.getItem(window.getStorageKey());
     if (!stored) {
-      if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries = []; if (typeof window !== 'undefined') window.entries = entries; }
+      if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; }
       if (typeof window.CattleTrackerEvents !== 'undefined') {
-        window.CattleTrackerEvents.emit('entries:updated', entries);
+        window.CattleTrackerEvents.emit('entries:updated', window.entries);
       }
-      if (typeof updateList === 'function') updateList();
+      if (typeof window.updateList === 'function') window.updateList();
       return;
     }
 
@@ -140,25 +140,25 @@ function loadLocally() {
       if (entry.group === undefined) entry.group = '';
     }
 
-    if (typeof replaceEntriesWith === 'function') replaceEntriesWith(cleanedEntries); else { entries = cleanedEntries; if (typeof window !== 'undefined') window.entries = entries; }
+    if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(cleanedEntries); else { window.entries.length = 0; cleanedEntries.forEach(function (e) { window.entries.push(e); }); }
 
-    if (entries.length !== rawEntries.length || migrated) {
-      console.log('При загрузке очищено записей: ' + (rawEntries.length - entries.length));
+    if (window.entries.length !== rawEntries.length || migrated) {
+      console.log('При загрузке очищено записей: ' + (rawEntries.length - window.entries.length));
       saveLocally();
     }
 
-    console.log('Загружено из localStorage:', entries.length, 'записей');
+    console.log('Загружено из localStorage:', window.entries.length, 'записей');
     if (typeof window.CattleTrackerEvents !== 'undefined') {
-      window.CattleTrackerEvents.emit('entries:updated', entries);
+      window.CattleTrackerEvents.emit('entries:updated', window.entries);
     }
-    if (typeof updateList === 'function') {
-      updateList();
+    if (typeof window.updateList === 'function') {
+      window.updateList();
     }
   } catch (error) {
     console.error('Ошибка загрузки из localStorage:', error);
-    if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries.length = 0; if (typeof window !== 'undefined') window.entries = entries; }
+    if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; }
     try {
-      localStorage.removeItem(getStorageKey());
+      localStorage.removeItem(window.getStorageKey());
     } catch (e) {
       console.error('Не удалось очистить localStorage:', e);
     }
@@ -190,7 +190,7 @@ function getDefaultCowEntry() {
       name: '',
       startDate: ''
     },
-    dateAdded: typeof nowFormatted === 'function' ? nowFormatted() : '',
+    dateAdded: typeof window.nowFormatted === 'function' ? window.nowFormatted() : '',
     synced: false,
     userId: '',
     lastModifiedBy: '',
@@ -206,14 +206,23 @@ function getDefaultCowEntry() {
 function pushActionHistory(entry, action, details) {
   if (!entry) return;
   if (!entry.actionHistory) entry.actionHistory = [];
-  var userName = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().username : 'Admin';
-  var dateTime = typeof nowFormatted === 'function' ? nowFormatted() : new Date().toISOString();
+  var userName = (typeof window.getCurrentUser === 'function' && window.getCurrentUser()) ? window.getCurrentUser().username : 'Admin';
+  var dateTime = typeof window.nowFormatted === 'function' ? window.nowFormatted() : new Date().toISOString();
   entry.actionHistory.push({ dateTime: dateTime, userName: userName, action: action, details: details || '' });
 }
 
 if (typeof window !== 'undefined') {
   window.pushActionHistory = pushActionHistory;
+  window.loadLocally = loadLocally;
+  window.saveLocally = saveLocally;
+  window.getDefaultCowEntry = getDefaultCowEntry;
+  window.cleanEntry = cleanEntry;
+  window.cleanString = cleanString;
+  window.hasBinaryChars = hasBinaryChars;
+  window.entryHasBinaryChars = entryHasBinaryChars;
+  window.isGarbageString = isGarbageString;
 }
+export {};
 
 /**
  * Проверяет, является ли строка "мусорной"

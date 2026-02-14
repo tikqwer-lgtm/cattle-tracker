@@ -250,3 +250,4 @@ if (typeof module !== 'undefined' && module.exports) {
     generateReport: generateReport
   };
 }
+export { parseDate, getPeriodBounds, addDays, daysBetween, calculatePR, isPregnant, generateReport };

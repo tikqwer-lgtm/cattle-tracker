@@ -9,99 +9,99 @@ if (useApi) {
       return _objectsCache;
     });
   }
-  getCurrentObjectId = function () { return window.CattleTrackerApi.getCurrentObjectId(); };
-  setCurrentObjectId = function (id) { window.CattleTrackerApi.setCurrentObjectId(id); };
-  getObjectsList = function () { return _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }]; };
-  ensureObjectsAndMigration = function () { return loadObjectsFromApi(); };
+  window.getCurrentObjectId = function () { return window.CattleTrackerApi.getCurrentObjectId(); };
+  window.setCurrentObjectId = function (id) { window.CattleTrackerApi.setCurrentObjectId(id); };
+  window.getObjectsList = function () { return _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }]; };
+  window.ensureObjectsAndMigration = function () { return loadObjectsFromApi(); };
 
-  addObject = function (name) {
+  window.addObject = function (name) {
     return window.CattleTrackerApi.addObject(name).then(function (id) {
       return loadObjectsFromApi().then(function () {
-        switchToObject(id);
+        window.switchToObject(id);
         return id;
       });
     });
   };
 
-  updateObject = function (id, payload) {
+  window.updateObject = function (id, payload) {
     return window.CattleTrackerApi.updateObject(id, payload || {}).then(function () {
       return loadObjectsFromApi();
     });
   };
 
-  deleteObject = function (id) {
-    var currentId = getCurrentObjectId();
+  window.deleteObject = function (id) {
+    var currentId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteObject(id).then(function () {
       return loadObjectsFromApi().then(function () {
         var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
         if (currentId === id && list.length) {
-          switchToObject(list[0].id);
+          window.switchToObject(list[0].id);
         } else if (currentId === id) {
-          setCurrentObjectId('default');
-          if (typeof loadLocally === 'function') loadLocally();
+          window.setCurrentObjectId('default');
+          if (typeof window.loadLocally === 'function') window.loadLocally();
         }
-        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+        if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
       });
     });
   };
 
-  switchToObject = function (objectId) {
-    setCurrentObjectId(objectId);
-    var p = loadLocally();
+  window.switchToObject = function (objectId) {
+    window.setCurrentObjectId(objectId);
+    var p = window.loadLocally();
     if (p && typeof p.then === 'function') {
       p.then(function () {
-        if (typeof updateHerdStats === 'function') updateHerdStats();
-        if (typeof updateViewList === 'function') updateViewList();
+        if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+        if (typeof window.updateViewList === 'function') window.updateViewList();
         if (typeof window.CattleTrackerEvents !== 'undefined') {
-          window.CattleTrackerEvents.emit('entries:updated', entries);
+          window.CattleTrackerEvents.emit('entries:updated', window.entries);
         }
       });
     } else {
-      if (typeof updateHerdStats === 'function') updateHerdStats();
-      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+      if (typeof window.updateViewList === 'function') window.updateViewList();
       if (typeof window.CattleTrackerEvents !== 'undefined') {
-        window.CattleTrackerEvents.emit('entries:updated', entries);
+        window.CattleTrackerEvents.emit('entries:updated', window.entries);
       }
     }
   };
 
-  loadLocally = function () {
+  window.loadLocally = function () {
     return loadObjectsFromApi().then(function () {
-      var objectId = getCurrentObjectId();
+      var objectId = window.getCurrentObjectId();
       return window.CattleTrackerApi.loadEntries(objectId).then(function (list) {
-        if (typeof replaceEntriesWith === 'function') replaceEntriesWith(list || []); else { entries.length = 0; (list || []).forEach(function (e) { entries.push(e); }); if (typeof window !== 'undefined') window.entries = entries; }
+        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list || []); else { window.entries.length = 0; (list || []).forEach(function (e) { window.entries.push(e); }); if (typeof window !== 'undefined') window.entries = window.entries; }
         if (typeof window.CattleTrackerEvents !== 'undefined') {
-          window.CattleTrackerEvents.emit('entries:updated', entries);
+          window.CattleTrackerEvents.emit('entries:updated', window.entries);
         }
-        if (typeof updateList === 'function') updateList();
-        return entries;
+        if (typeof window.updateList === 'function') window.updateList();
+        return window.entries;
       }).catch(function (err) {
         console.error('Ошибка загрузки записей с API:', err);
-        if (typeof replaceEntriesWith === 'function') replaceEntriesWith([]); else { entries.length = 0; if (typeof window !== 'undefined') window.entries = entries; }
-        if (typeof updateList === 'function') updateList();
+        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }
+        if (typeof window.updateList === 'function') window.updateList();
         throw err;
       });
     });
   };
 
-  saveLocally = function () { /* no-op when API */ };
+  window.saveLocally = function () { /* no-op when API */ };
 
   function createEntryViaApi(entry) {
-    var objectId = getCurrentObjectId();
+    var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.createEntry(objectId, entry).then(function () {
-      return loadLocally();
+      return window.loadLocally();
     });
   }
   function updateEntryViaApi(cattleId, entry) {
-    var objectId = getCurrentObjectId();
+    var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.updateEntry(objectId, cattleId, entry).then(function () {
-      return loadLocally();
+      return window.loadLocally();
     });
   }
   function deleteEntryViaApi(cattleId) {
-    var objectId = getCurrentObjectId();
+    var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteEntry(objectId, cattleId).then(function () {
-      return loadLocally();
+      return window.loadLocally();
     });
   }
   window.createEntryViaApi = createEntryViaApi;
@@ -111,25 +111,4 @@ if (useApi) {
   window.loadLocally = loadLocally;
 }
 
-window.checkDataIntegrity = checkDataIntegrity;
-window.cleanAllEntries = cleanAllEntries;
-window.forceCleanDamagedEntries = forceCleanDamagedEntries;
-window.deleteAllData = deleteAllData;
-window.getCurrentObjectId = getCurrentObjectId;
-window.getObjectsList = getObjectsList;
-window.switchToObject = switchToObject;
-window.addObject = addObject;
-window.updateObject = updateObject;
-window.deleteObject = deleteObject;
-window.ensureObjectsAndMigration = ensureObjectsAndMigration;
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    entries: entries,
-    saveLocally: saveLocally,
-    loadLocally: loadLocally,
-    getDefaultCowEntry: getDefaultCowEntry,
-    checkDataIntegrity: checkDataIntegrity,
-    cleanAllEntries: cleanAllEntries
-  };
-}
+export {};

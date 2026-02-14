@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Учёт коров — расширенный функционал</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3d6eb5" />
+  <!-- Подключение основных стилей -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/print.css" media="print" />
+</head>
+<body>
+  <div id="root"></div>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
+  <header id="app-header" class="app-header" aria-label="Шапка приложения">
+    <span id="app-version-header" class="app-version-header"></span>
+    <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
+      <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+    </button>
+  </header>
+  <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
+  <div id="print-header" class="print-header" aria-hidden="true">
+    <div class="print-header-strip"></div>
+    <div class="print-header-body">
+      <div class="print-header-milk"></div>
+      <div class="print-header-content">
+        <div class="print-logo">
+          <img src="icons/icon.svg" alt="" width="64" height="64" class="print-logo-img" />
+          <span class="print-company-name">Молочная компания «Генетика»</span>
+        </div>
+        <div class="print-details">
+          <p>ООО Молочная компания «Генетика»</p>
+          <p>603137, г. Нижний Новгород, ул. 40 лет Победы, д.&nbsp;17</p>
+          <p>тел. 8 (831) 466 17 78, e-mail: info@mkg-nn.ru</p>
+        </div>
+      </div>
+      <div class="print-doc-title" id="print-doc-title">Опись стада</div>
+      <div class="print-doc-date" id="print-doc-date"></div>
+    </div>
+  </div>
+
+  <!-- ========== Вход и регистрация (обязательно при запуске) ========== -->
+  <div id="auth-screen" class="screen active">
+    <h1>Вход</h1>
+    <div id="auth-form-container" class="auth-form-container">
+      <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
+      <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
+        <label for="authUsernameSelect">Выбрать пользователя</label>
+        <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
+          <option value="">— Выберите из списка —</option>
+        </select>
+        <label for="authUsername">Логин</label>
+        <input type="text" id="authUsername" required autocomplete="username" />
+        <label for="authPassword">Пароль</label>
+        <input type="password" id="authPassword" autocomplete="current-password" required />
+        <div class="form-actions">
+          <button type="submit">Войти</button>
+          <button type="button" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
+          <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Продолжить без входа</button>
+        </div>
+      </form>
+      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
+        <label for="regUsername">Логин</label>
+        <input type="text" id="regUsername" required autocomplete="username" />
+        <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
+        <label for="regPassword">Пароль</label>
+        <input type="password" id="regPassword" autocomplete="new-password" required />
+        <label for="regRole">Роль</label>
+        <select id="regRole">
+          <option value="admin" selected>Администратор</option>
+          <option value="operator">Оператор</option>
+          <option value="viewer">Только просмотр</option>
+        </select>
+        <div class="form-actions">
+          <button type="submit">Зарегистрироваться</button>
+          <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
+        </div>
+      </form>
+      <p id="auth-user-data-hint" class="auth-user-data-hint" style="display: none;">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+    </div>
+  </div>
+
+  <!-- ========== Меню (главный экран) ========== -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-branding" aria-hidden="false">
+      <img src="icons/icon.svg" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
+      <span class="menu-branding-text">Молочная компания «Генетика»</span>
+    </div>
+    <p id="app-version" class="app-version" data-default-version="1.4.4" aria-label="Версия приложения"></p>
+    <h1>Меню</h1>
+    <div id="auth-bar" class="auth-bar" style="display: none;">
+      <span id="authBarUser"></span>
+      <button type="button" class="small-btn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">Выйти</button>
+    </div>
+
+    <!-- Переключатель объектов (баз) -->
+    <div id="object-switcher" class="object-switcher">
+      <label for="currentObjectSelect">Объект:</label>
+      <select id="currentObjectSelect" class="object-select" title="Выберите базу для работы"></select>
+      <button type="button" class="small-btn" id="editObjectBtn" title="Изменить название базы" onclick="typeof window.handleEditObjectClick === 'function' && window.handleEditObjectClick()">Изменить</button>
+      <button type="button" class="small-btn" id="deleteObjectBtn" title="Удалить базу" onclick="typeof window.handleDeleteObjectClick === 'function' && window.handleDeleteObjectClick()">Удалить</button>
+      <button type="button" class="small-btn add-object-btn" id="addObjectBtn" title="Добавить новую базу" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">+ Добавить объект</button>
+    </div>
+
+    <!-- Статистика стада -->
+    <div class="herd-stats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalCows">0</div>
+        <div class="stat-label">Всего коров</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="pregnantCows">0</div>
+        <div class="stat-label">Стельных</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="dryCows">0</div>
+        <div class="stat-label">В сухостое</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="inseminatedCows">0</div>
+        <div class="stat-label">Осеменённых</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="cullCows">0</div>
+        <div class="stat-label">На брак</div>
+      </div>
+    </div>
+    <div class="herd-stats herd-stats-percents" id="herdStatsPercentsRow" aria-hidden="true">
+      <div class="stat-item"><div class="stat-value" id="pregnantCowsPct">0%</div><div class="stat-label">Стельных</div></div>
+      <div class="stat-item"><div class="stat-value" id="dryCowsPct">0%</div><div class="stat-label">В сухостое</div></div>
+      <div class="stat-item"><div class="stat-value" id="inseminatedCowsPct">0%</div><div class="stat-label">Осеменённых</div></div>
+      <div class="stat-item"><div class="stat-value" id="cullCowsPct">0%</div><div class="stat-label">На брак</div></div>
+      <div class="stat-item"><div class="stat-value" id="notInseminatedCowsPct">0%</div><div class="stat-label">Не осемененные</div></div>
+    </div>
+
+    <!-- Краткие уведомления -->
+    <div id="menu-notifications" class="menu-notifications">
+      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-expanded="false">
+        <span>Уведомления</span>
+        <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
+      </button>
+      <div class="menu-notifications-body" id="menuNotificationsBody" hidden></div>
+    </div>
+
+    <!-- Кнопки действий по группам (главное меню — одна кнопка на группу) -->
+    <div class="action-buttons">
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('data')" class="action-btn menu-group-btn">
+          <span>📁</span>
+          <span>Работа с данными</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('actions')" class="action-btn menu-group-btn">
+          <span>🐄</span>
+          <span>Действия</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('analytics')" class="action-btn menu-group-btn">
+          <span>📊</span>
+          <span>Аналитика</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
+          <span>🔔</span>
+          <span>Уведомления и планы</span>
+          <span class="menu-notifications-button-badge" id="menuNotificationsButtonBadge" style="display: none;"></span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('settings')" class="action-btn menu-group-btn">
+          <span>⚙️</span>
+          <span>Настройки</span>
+        </button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
+  </div>
+
+  <!-- ========== Подменю и формы действий (осеменение, отёл, УЗИ) ========== -->
+  <div id="submenu-screen" class="screen">
+    <h1 id="submenu-title">Подменю</h1>
+    <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран ввода осеменения -->
+  <div id="insemination-screen" class="screen">
+    <h1>➕ Ввести осеменение</h1>
+    <form class="form" onsubmit="addInseminationEntry(); return false;">
+      <label for="cattleIdInsemInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdInsemInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdInsemList" class="autocomplete-list"></ul>
+        <select id="cattleIdInsem" style="display: none;">
+          <option value="">Выберите корову</option>
+        </select>
+      </div>
+
+      <label for="inseminationDateInsem">Дата осеменения</label>
+      <input type="date" id="inseminationDateInsem" />
+
+      <label for="attemptNumberInsem">Номер попытки</label>
+      <input type="number" id="attemptNumberInsem" value="1" />
+
+      <label for="bullInsem">Бык</label>
+      <input type="text" id="bullInsem" />
+
+      <label for="inseminatorInsem">Техник ИО</label>
+      <input type="text" id="inseminatorInsem" />
+
+      <label for="codeInsem">Код осеменения</label>
+      <input type="text" id="codeInsem" />
+
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" id="cancelButtonInsem">Отмена</button>
+        <button type="submit" id="saveButtonInsem">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Запуск (начало сухостоя) -->
+  <div id="dry-screen" class="screen">
+    <h1>🐄 Запуск (начало сухостоя)</h1>
+    <form class="form" onsubmit="saveDryRunEntry(); return false;">
+      <label for="cattleIdDryInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdDryInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdDryList" class="autocomplete-list"></ul>
+      </div>
+      <label for="dryStartDateInput">Дата начала сухостоя</label>
+      <input type="date" id="dryStartDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Отел -->
+  <div id="calving-screen" class="screen">
+    <h1>🐄 Отел</h1>
+    <form class="form" onsubmit="saveCalvingEntry(); return false;">
+      <label for="cattleIdCalvingInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdCalvingInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdCalvingList" class="autocomplete-list"></ul>
+      </div>
+      <label for="calvingDateInput">Дата отёла</label>
+      <input type="date" id="calvingDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Поставить на протокол -->
+  <div id="protocol-assign-screen" class="screen">
+    <h1>📋 Поставить на протокол</h1>
+    <form class="form" onsubmit="saveProtocolAssignEntry(); return false;">
+      <label for="cattleIdProtocolInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdProtocolInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdProtocolList" class="autocomplete-list"></ul>
+      </div>
+      <label for="protocolSelectAssign">Протокол</label>
+      <select id="protocolSelectAssign">
+        <option value="">— Выберите протокол —</option>
+      </select>
+      <label for="protocolStartDateInput">Дата постановки на протокол</label>
+      <input type="date" id="protocolStartDateInput" />
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: УЗИ (проверка на стельность) -->
+  <div id="uzi-screen" class="screen">
+    <h1>🩺 УЗИ (проверка на стельность)</h1>
+    <form class="form" onsubmit="saveUziEntry(); return false;">
+      <label for="cattleIdUziInput">Номер коровы *</label>
+      <div class="autocomplete">
+        <input type="text" id="cattleIdUziInput" placeholder="Введите номер или выберите из списка" required />
+        <ul id="cattleIdUziList" class="autocomplete-list"></ul>
+      </div>
+      <label for="uziDateInput">Дата проверки на стельность</label>
+      <input type="date" id="uziDateInput" />
+      <label for="uziResultSelect">Результат</label>
+      <select id="uziResultSelect">
+        <option value="">— Выберите —</option>
+        <option value="Не стельная">Не стельная</option>
+        <option value="Стельная">Стельная</option>
+      </select>
+      <label for="uziSpecialistInput">Специалист</label>
+      <input type="text" id="uziSpecialistInput" placeholder="Кто проводил УЗИ" />
+      <label for="uziDaysFromInsemination">Дней от осеменения</label>
+      <input type="text" id="uziDaysFromInsemination" readonly placeholder="—" style="background: var(--color-bg-elevated);" />
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- ========== Форма добавления/редактирования животного ========== -->
+  <div id="add-screen" class="screen">
+    <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
+    <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
+      <fieldset class="form-cow-section">
+        <legend>Основные данные</legend>
+        <div class="form-cow-editor">
+          <label for="cattleId">Номер коровы *</label>
+          <input type="text" id="cattleId" required />
+          <label for="nickname">Кличка</label>
+          <input type="text" id="nickname" />
+          <label for="group">Группа</label>
+          <input type="text" id="group" placeholder="Место размещения" />
+          <label for="birthDate">Дата рождения</label>
+          <input type="date" id="birthDate" />
+          <label for="lactation">Лактация</label>
+          <input type="number" id="lactation" min="1" max="20" placeholder="—" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Отел и осеменение</legend>
+        <div class="form-cow-editor">
+          <label for="calvingDate">Дата отёла</label>
+          <input type="date" id="calvingDate" />
+          <label for="inseminationDate">Дата осеменения</label>
+          <input type="date" id="inseminationDate" />
+          <label for="attemptNumber">Номер попытки</label>
+          <input type="number" id="attemptNumber" value="1" />
+          <label for="bull">Бык</label>
+          <input type="text" id="bull" />
+          <label for="inseminator">Техник ИО</label>
+          <input type="text" id="inseminator" />
+          <label for="code">Код</label>
+          <input type="text" id="code" />
+          <label for="status">Статус</label>
+          <select id="status">
+            <option value="">—</option>
+            <option>Осемененная</option>
+            <option>Холостая</option>
+            <option>Стельная</option>
+            <option>Сухостой</option>
+            <option>Отёл</option>
+            <option>Брак</option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Сухостой и протокол</legend>
+        <div class="form-cow-editor">
+          <label for="dryStartDate">Начало сухостоя</label>
+          <input type="date" id="dryStartDate" />
+          <label for="vwp">ПДО (дней от отёла до 1-го осеменения)</label>
+          <input type="text" id="vwp" readonly placeholder="—" title="Рассчитывается автоматически" />
+          <label for="protocolName">Протокол</label>
+          <input type="text" id="protocolName" />
+          <label for="protocolStartDate">Начало протокола</label>
+          <input type="date" id="protocolStartDate" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Выбытие и примечание</legend>
+        <div class="form-cow-editor">
+          <label for="exitDate">Дата выбытия</label>
+          <input type="date" id="exitDate" />
+          <label for="note">Примечание</label>
+          <textarea id="note"></textarea>
+        </div>
+      </fieldset>
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.clearForm === 'function' && window.clearForm();" id="clearFormButton" aria-label="Очистить форму" style="display: none;">Очистить форму</button>
+        <button type="button" onclick="typeof window.cancelEdit === 'function' && window.cancelEdit()" id="cancelButton" aria-label="Отмена">Отмена</button>
+        <button type="submit" id="saveButton" aria-label="Сохранить запись">Сохранить</button>
+      </div>
+    </form>
+
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
+  </div>
+
+  <!-- ========== Просмотр списка и карточка животного ========== -->
+  <div id="view-screen" class="screen view-screen">
+    <!-- Верхний блок: закреплён при прокрутке списка -->
+    <div class="view-screen-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
+      <h1>📋 Список всех животных</h1>
+      <button type="button" class="small-btn" id="viewEditorModeBtn" title="Включить редактирование полей прямо в списке">✎ Режим редактора</button>
+      <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
+      <div id="search-filter-container" class="search-filter-container"></div>
+      <div id="viewBulkActions" class="view-bulk-actions"></div>
+    </div>
+    <div id="viewEntriesList" class="view-entries-wrapper"></div>
+    <button type="button" id="viewScrollToTopBtn" class="scroll-to-top-btn" aria-label="Вверх" style="display: none;">↑ Вверх</button>
+  </div>
+
+  <!-- Экран просмотра карточки животного -->
+  <div id="view-cow-screen" class="screen view-cow-screen">
+    <div class="view-cow-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('view')" class="back-button view-cow-back">Назад к списку</button>
+      <h1>🔍 Просмотр животного</h1>
+    </div>
+    <div id="viewCowCard" class="view-cow-body"></div>
+  </div>
+
+  <!-- Экран «Все осеменения» -->
+  <div id="all-inseminations-screen" class="screen">
+    <div class="view-screen-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+      <h1>📑 Все осеменения</h1>
+      <div id="allInseminationsFilterContainer" class="search-filter-container"></div>
+    </div>
+    <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
+  </div>
+
+  <!-- ========== Уведомления, планы, аналитика ========== -->
+  <div id="notifications-screen" class="screen">
+    <h1>🔔 Уведомления и планы</h1>
+    <div id="notification-center-container"></div>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран списка задач -->
+  <div id="tasks-screen" class="screen">
+    <h1>📋 Список задач</h1>
+    <div id="tasksScreenContainer" class="tasks-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран аналитики -->
+  <div id="analytics-screen" class="screen">
+    <h1>📊 Аналитика</h1>
+    <div class="analytics-controls">
+      <label>Период: <select id="analyticsPeriod">
+        <option value="month">Месяц</option>
+        <option value="quarter">Квартал</option>
+        <option value="year">Год</option>
+        <option value="custom">Произвольный</option>
+      </select></label>
+      <span id="analyticsCustomDates" class="analytics-custom-dates" style="display: none;">
+        <label>С: <input type="date" id="analyticsDateFrom"></label>
+        <label>По: <input type="date" id="analyticsDateTo"></label>
+      </span>
+      <label>ПДО (дн.): <input type="number" id="analyticsPdo" min="0" max="365" value="50" class="analytics-pdo-input"></label>
+      <label>Разбивка: <select id="analyticsBreakdown">
+        <option value="">Нет</option>
+        <option value="group">По группам</option>
+        <option value="lactation">По лактациям</option>
+        <option value="inseminator">По осеменаторам</option>
+        <option value="bull">По быкам</option>
+      </select></label>
+      <button type="button" id="analyticsRefreshBtn" class="small-btn">Обновить</button>
+    </div>
+    <div id="analyticsIndicators" class="analytics-indicators"></div>
+    <div id="analyticsBreakdownTable" class="analytics-breakdown-table-wrapper" style="display: none;"></div>
+    <div id="analyticsCharts" class="analytics-charts"></div>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран интервального анализа -->
+  <div id="interval-analysis-screen" class="screen">
+    <h1>📈 Интервальный анализ</h1>
+    <p class="analytics-interval-intro">Распределение интервалов между осеменениями (внутри одной лактации). Телки — лактация 0.</p>
+    <div id="intervalAnalysisFilter" class="analytics-interval-filter"></div>
+    <div id="intervalAnalysisTable" class="analytics-interval-table-wrapper"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
+  <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden data-editing-id="">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="addObjectModalTitle">Новая база (объект)</h2>
+        <button type="button" class="small-btn" id="addObjectModalCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="view-fields-modal-body" style="padding: 1rem 0;">
+        <label for="addObjectNameInput">Название</label>
+        <input type="text" id="addObjectNameInput" class="view-fields-template-input" placeholder="Новая база" value="Новая база" style="width: 100%; margin-top: 0.25rem;" />
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="addObjectModalCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="addObjectModalOkBtn">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Настройка полей -->
+  <div id="viewFieldsSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2>Настройка полей</h2>
+        <button type="button" class="small-btn" id="viewFieldsCloseBtn">Закрыть</button>
+      </div>
+      <div id="viewFieldsList" class="view-fields-list"></div>
+      <div class="view-fields-templates-section" id="viewFieldsTemplatesSection">
+        <h3 class="view-fields-templates-title">Шаблоны</h3>
+        <div id="viewFieldsTemplatesList" class="view-fields-templates-list"></div>
+        <div class="view-fields-templates-save">
+          <input type="text" id="viewFieldsTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" />
+          <button type="button" class="small-btn" id="viewFieldsSaveTemplateBtn">Сохранить текущий набор</button>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="viewFieldsResetBtn">Сбросить</button>
+        <button type="button" class="action-btn" id="viewFieldsSaveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: История действий карточки животного -->
+  <div id="viewCowActionHistoryModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2>История действий</h2>
+        <button type="button" class="small-btn" id="viewCowActionHistoryCloseBtn">Закрыть</button>
+      </div>
+      <div id="viewCowActionHistoryList" class="view-fields-list" style="max-height: 60vh; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Настройка экспорта -->
+  <div id="exportSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportSettingsModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="exportSettingsModalTitle">Настройка экспорта</h2>
+        <button type="button" class="small-btn" id="exportSettingsCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="export-settings-body">
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Колонки листа «Коровы»</h3>
+          <div class="export-settings-actions-row">
+            <button type="button" class="small-btn" id="exportSelectAllBtn">Выбрать все</button>
+            <button type="button" class="small-btn" id="exportResetBtn">Сбросить</button>
+          </div>
+          <div id="exportFieldsList" class="view-fields-list"></div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Шаблоны экспорта</h3>
+          <div id="exportTemplatesList" class="view-fields-templates-list"></div>
+          <div class="view-fields-templates-save">
+            <input type="text" id="exportTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" aria-label="Название шаблона экспорта" />
+            <button type="button" class="small-btn" id="exportSaveTemplateBtn">Сохранить набор</button>
+          </div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Дополнительные листы</h3>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeInseminations" checked /> Включить лист «Осеменения»</label>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeTasks" /> Включить лист «Список задач»</label>
+          <div id="exportTasksPeriodRow" class="export-tasks-period" style="display: none;">
+            <label>Период задач: с <input type="date" id="exportTasksDateFrom" aria-label="Дата начала периода задач" /></label>
+            <label>по <input type="date" id="exportTasksDateTo" aria-label="Дата окончания периода задач" /></label>
+          </div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="exportSettingsCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="exportSettingsExportBtn">Экспортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: маппинг столбцов при импорте CSV/Excel -->
+  <div id="importMappingModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="importMappingModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="importMappingModalTitle">Сопоставление столбцов импорта</h2>
+        <button type="button" class="small-btn" id="importMappingCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="import-mapping-body">
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Столбец с номером животного (обязательно)</h3>
+          <select id="importMappingCattleColumn" class="import-mapping-cattle-select" aria-label="Выберите столбец с номером животного">
+            <option value="">— Выберите столбец —</option>
+          </select>
+        </div>
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Сопоставление остальных столбцов с полями программы</h3>
+          <div id="importMappingFieldsList" class="import-mapping-fields-list"></div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="importMappingCloseBtn2">Отмена</button>
+        <button type="button" class="action-btn" id="importMappingImportBtn">Импортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Подсказки при первом запуске -->
+  <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="first-run-hints-content">
+      <h2>Добро пожаловать</h2>
+      <ul>
+        <li>Выберите объект (базу) вверху и добавляйте новые кнопкой «Добавить объект».</li>
+        <li>Уведомления доступны на главном экране и в разделе «Уведомления».</li>
+        <li>Раздел «Работа с данными» содержит список всех животных и импорт/экспорт.</li>
+      </ul>
+      <div class="first-run-hints-actions">
+        <button type="button" class="small-btn" id="firstRunHintsSkip">Не показывать снова</button>
+        <button type="button" class="action-btn" id="firstRunHintsClose">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="protocols-screen" class="screen">
+    <h1>📋 Протоколы синхронизации</h1>
+    <div id="protocols-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран синхронизации (настройки сервера: адрес, подключение/отключение) -->
+  <div id="sync-screen" class="screen">
+    <h1>🔄 Настройки сервера</h1>
+    <!-- Блок когда сервер ещё не подключён: адрес и подключение -->
+    <div id="sync-connect-block" class="sync-server-section">
+      <div class="sync-server-url-row">
+        <label for="serverApiBaseInput">Адрес сервера API</label>
+        <input type="text" id="serverApiBaseInput" placeholder="http://localhost:3000 или http://IP:3000" />
+        <button type="button" class="action-btn" id="syncSaveServerBtn" onclick="typeof window.saveServerBaseUrl === 'function' && window.saveServerBaseUrl()">Сохранить и подключиться</button>
+      </div>
+      <p class="sync-server-hint">Учётные записи хранятся на сервере и не теряются после обновления приложения.</p>
+      <div class="sync-server-controls sync-connect-row">
+        <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+      </div>
+    </div>
+    <!-- Секция для режима API: обновление с сервера и статус -->
+    <div id="sync-server-block" class="sync-server-section" style="display: none;">
+      <div class="sync-server-controls">
+        <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+        <button type="button" class="action-btn" onclick="typeof window.refreshFromServer === 'function' && window.refreshFromServer()">Обновить с сервера</button>
+        <button type="button" class="small-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться от сервера</button>
+      </div>
+      <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
+        <div class="sync-progress-label" id="syncProgressLabel">Синхронизация…</div>
+        <div class="sync-progress-bar-wrap"><div class="sync-progress-bar" id="syncProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div>
+        <div class="sync-progress-text" id="syncProgressText">0 / 0</div>
+      </div>
+      <div class="sync-server-bases">
+        <h3>Базы на сервере</h3>
+        <p class="sync-server-bases-hint">Загрузить выбранную базу в новый объект (указать название) или заменить данные в существующем.</p>
+        <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
+      </div>
+    </div>
+    <div id="sync-backup-section" class="sync-section">
+      <h3>Резервное копирование</h3>
+      <p class="sync-section-hint">Создать копию в браузере, экспорт в JSON или восстановление из файла/списка.</p>
+      <div class="sync-backup-actions-row">
+        <button type="button" class="action-btn small" onclick="typeof window.handleCheckForUpdates === 'function' && window.handleCheckForUpdates()">Проверить обновления</button>
+      </div>
+      <div id="sync-backup-container"></div>
+    </div>
+    <div id="syncStatus" class="sync-status"></div>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Подключение скриптов в правильном порядке -->
+  <!-- Режим API: если в настройках сохранён адрес сервера, включаем работу с API -->
+  <script>
+  (function() {
+    try {
+      var base = (localStorage.getItem('cattleTracker_apiBase') || '').trim().replace(/\/$/, '');
+      if (base) {
+        window.CATTLE_TRACKER_USE_API = true;
+        window.CATTLE_TRACKER_API_BASE = base;
+      }
+    } catch (e) {}
+  })();
+  </script>
+  <!-- Внешние библиотеки: PapaParse (CSV), Chart.js (графики), SheetJS (xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Бандл приложения (собрать: npm run build) -->
+  <script src="app.js"></script>
+  <script>
+  (function() {
+    function setPrintHeaderDate() {
+      var el = document.getElementById('print-doc-date');
+      if (el) el.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    window.addEventListener('beforeprint', setPrintHeaderDate);
+  })();
+  </script>
+</body>
+</html>

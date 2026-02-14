@@ -1,0 +1,166 @@
+/* view-cow.css — Стили карточки просмотра животного */
+
+/* Экран карточки: верхняя панель закреплена, контент прокручивается */
+.view-cow-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.view-cow-screen.active {
+  display: flex !important;
+}
+
+.view-cow-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-bg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-cow-back {
+  flex-shrink: 0;
+}
+
+.view-cow-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.view-cow-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.cow-card {
+  background: var(--color-bg-elevated);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  max-width: 800px;
+  margin: 20px auto;
+}
+
+.cow-card h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: 10px;
+}
+
+.cow-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cow-details-grid strong {
+  color: var(--color-primary);
+}
+
+.cow-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+.cow-card-actions .small-btn {
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 0.95em;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-primary-border, #ccc);
+  background: var(--color-primary-light, #e8f4fc);
+  color: var(--color-text, #333);
+}
+.cow-card-actions .small-btn:hover {
+  background: var(--color-primary, #2c5282);
+  color: #fff;
+  border-color: var(--color-primary, #2c5282);
+}
+.cow-card-actions .small-btn.cow-card-back {
+  background: transparent;
+  color: var(--color-text-muted, #666);
+  border-color: var(--color-border, #ddd);
+}
+.cow-card-actions .small-btn.cow-card-back:hover {
+  background: var(--color-bg, #f5f5f5);
+  color: var(--color-text, #333);
+}
+
+/* Ячейка с кнопкой «Все осеменения» */
+.cow-details-cell-with-button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cow-insemination-toggle {
+  margin-left: 4px;
+}
+
+/* Блок таблицы истории осеменений в карточке */
+.cow-insemination-history {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.cow-insemination-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cow-insemination-table th,
+.cow-insemination-table td {
+  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.cow-insemination-table th {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
+
+.cow-insemination-table tr:nth-child(even) {
+  background: var(--color-bg);
+}
+
+.cow-insemination-empty {
+  margin: 12px 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+  .cow-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cow-card {
+    margin: 10px;
+    padding: 15px;
+  }
+}

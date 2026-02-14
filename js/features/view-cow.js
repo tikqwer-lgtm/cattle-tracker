@@ -549,3 +549,4 @@ function renderAllInseminationsScreen() {
 
 // Список записей с групповым выделением рисуется в menu.js (updateViewList).
 // Открытие карточки животного — по кнопке «Карточка» в строке или по вызову viewCow(cattleId).
+export {};

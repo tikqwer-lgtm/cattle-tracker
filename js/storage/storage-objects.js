@@ -79,9 +79,9 @@ function ensureObjectsAndMigration() {
 
 function switchToObject(objectId) {
   setCurrentObjectId(objectId);
-  if (typeof loadLocally === 'function') loadLocally();
-  if (typeof updateHerdStats === 'function') updateHerdStats();
-  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof window.loadLocally === 'function') window.loadLocally();
+  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+  if (typeof window.updateViewList === 'function') window.updateViewList();
   if (typeof window.CattleTrackerEvents !== 'undefined') {
     window.CattleTrackerEvents.emit('entries:updated', entries);
   }
@@ -124,16 +124,23 @@ function deleteObject(id) {
   if (currentId === id) {
     var nextId = list[0] ? list[0].id : 'default';
     setCurrentObjectId(nextId);
-    if (typeof loadLocally === 'function') loadLocally();
+    if (typeof window.loadLocally === 'function') window.loadLocally();
   }
-  if (typeof updateHerdStats === 'function') updateHerdStats();
-  if (typeof updateViewList === 'function') updateViewList();
+  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+  if (typeof window.updateViewList === 'function') window.updateViewList();
   return Promise.resolve(true);
 }
 
 if (typeof window !== 'undefined') {
+  window.getCurrentObjectId = getCurrentObjectId;
+  window.setCurrentObjectId = setCurrentObjectId;
+  window.getObjectsList = getObjectsList;
+  window.getStorageKey = getStorageKey;
+  window.ensureObjectsAndMigration = ensureObjectsAndMigration;
+  window.switchToObject = switchToObject;
   window.addObject = addObject;
   window.updateObject = updateObject;
   window.deleteObject = deleteObject;
   window.replaceEntriesWith = replaceEntriesWith;
 }
+export {};

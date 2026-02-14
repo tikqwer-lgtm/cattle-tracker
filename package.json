@@ -3,7 +3,7 @@
   "version": "1.4.4",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
-    "build": "node scripts/build.js",
+    "build": "vite build",
     "test": "vitest run tests/",
     "test:watch": "vitest",
     "e2e": "playwright test",
@@ -22,20 +22,29 @@
     "cap:ios": "cap run ios"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
     "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0",
     "@capacitor/ios": "^6.0.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "eslint": "^10.0.0",
     "globals": "^17.3.0",
     "serve": "^14.2.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
     "vitest": "^4.0.18"
   },
   "capacitor": {
     "appId": "com.cattletracker.app",
     "appName": "Учёт коров",
-    "webDir": "."
+    "webDir": "dist"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
