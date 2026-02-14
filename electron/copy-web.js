@@ -49,6 +49,14 @@ for (const f of files) {
     console.log('  ', f);
   }
 }
+// В скопированном index.html заменить путь к бандлу на web/app.js (в asar нет dist/ из-за output: "dist")
+const electronIndex = path.join(dest, 'index.html');
+if (fs.existsSync(electronIndex)) {
+  let html = fs.readFileSync(electronIndex, 'utf8');
+  html = html.replace(/src="dist\/app\.js"/g, 'src="web/app.js"');
+  fs.writeFileSync(electronIndex, html);
+  console.log('  index.html: dist/app.js → web/app.js');
+}
 // Сборка бандла в корне (dist/app.js) и копирование dist
 const { execSync } = require('child_process');
 try {
@@ -56,12 +64,23 @@ try {
 } catch (e) {
   console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
 }
-['css', 'js', 'lib', 'dist'].forEach(dir => {
+['css', 'js', 'lib'].forEach(dir => {
   if (fs.existsSync(path.join(root, dir))) {
     copyDir(dir);
     console.log('  ', dir + '/');
   }
 });
+// Копируем бандл в web/ (не dist/), чтобы electron-builder не конфликтовал с directories.output: "dist"
+const rootDist = path.join(root, 'dist');
+if (fs.existsSync(rootDist)) {
+  const webDir = path.join(dest, 'web');
+  fs.mkdirSync(webDir, { recursive: true });
+  const appJs = path.join(rootDist, 'app.js');
+  if (fs.existsSync(appJs)) {
+    fs.copyFileSync(appJs, path.join(webDir, 'app.js'));
+    console.log('  web/app.js (из dist/)');
+  }
+}
 // Копируем icons как app-icons, чтобы electron-builder не принимал папку "icons" за иконки приложения (.ico)
 if (fs.existsSync(path.join(root, 'icons'))) {
   copyDirTo('icons', 'app-icons');

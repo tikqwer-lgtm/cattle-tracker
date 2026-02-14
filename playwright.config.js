@@ -6,6 +6,7 @@ const useElectron = process.env.E2E_ELECTRON === '1' || process.env.E2E_ELECTRON
 
 module.exports = defineConfig({
   testDir: './e2e',
+  testIgnore: useElectron ? [] : ['**/smoke-electron.spec.js'],
   globalTeardown: useElectron ? path.join(__dirname, 'e2e', 'teardown-electron.js') : undefined,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

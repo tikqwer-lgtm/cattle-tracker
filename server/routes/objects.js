@@ -33,8 +33,8 @@ router.delete('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) 
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });
-  const ok = db.deleteObject(id);
-  if (!ok) return res.status(404).json({ error: 'Объект не найден' });
+  db.deleteObject(id);
+  // 204 в любом случае: объект удалён или его не было на сервере (создан только локально / уже удалён)
   res.status(204).send();
 });
 

@@ -283,7 +283,9 @@
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
         updateAuthBar();
-        if (currentUser && typeof navigate === 'function') navigate('menu');
+        // В Electron при запуске не переключаем на меню — показываем экран входа
+        var isElectron = typeof window !== 'undefined' && window.electronAPI;
+        if (currentUser && typeof navigate === 'function' && !isElectron) navigate('menu');
       }).catch(function () {
         currentUser = null;
         updateAuthBar();
@@ -292,7 +294,9 @@
     }
     loadCurrentUser();
     updateAuthBar();
-    if (getCurrentUser() && typeof navigate === 'function') navigate('menu');
+    // В Electron при запуске не переключаем на меню — показываем экран входа
+    var isElectron = typeof window !== 'undefined' && window.electronAPI;
+    if (getCurrentUser() && typeof navigate === 'function' && !isElectron) navigate('menu');
   }
 
   function updateAuthBar() {

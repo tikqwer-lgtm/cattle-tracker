@@ -545,7 +545,11 @@ function initAddObjectModal() {
 document.addEventListener('DOMContentLoaded', function () {
   initAddObjectModal();
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  if (currentUser) {
+  // В Electron при каждом запуске показываем экран входа (удобно для проверки авторизации)
+  var isElectron = typeof window !== 'undefined' && window.electronAPI;
+  if (isElectron) {
+    navigate('auth');
+  } else if (currentUser) {
     syncRouteToScreen();
   } else {
     navigate('auth');
