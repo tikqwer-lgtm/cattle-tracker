@@ -320,4 +320,7 @@
       initSearchFilter();
     }
   }
-})(typeof window !== 'undefined' ? window : this);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {}));
+const _g = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+export const searchEntries = _g.searchEntries;
+export const filterEntries = _g.filterEntries;

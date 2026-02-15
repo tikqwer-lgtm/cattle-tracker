@@ -28,23 +28,23 @@
   };
 
   CattleTracker.prototype.load = function () {
-    if (typeof loadLocally === 'function') {
-      loadLocally();
+    if (typeof global.loadLocally === 'function') {
+      global.loadLocally();
     }
     this.emitEntriesUpdated();
   };
 
   CattleTracker.prototype.save = function () {
-    if (typeof saveLocally === 'function') {
-      saveLocally();
+    if (typeof global.saveLocally === 'function') {
+      global.saveLocally();
     }
     this.emitEntriesUpdated();
   };
 
   // Глобальный экземпляр будет инициализирован после загрузки storage.js
   function getInstance() {
-    if (!global.CattleTrackerInstance && typeof entries !== 'undefined') {
-      global.CattleTrackerInstance = new CattleTracker(entries);
+    if (!global.CattleTrackerInstance && typeof global.entries !== 'undefined') {
+      global.CattleTrackerInstance = new CattleTracker(global.entries);
     }
     return global.CattleTrackerInstance;
   }
@@ -56,3 +56,4 @@
     module.exports = { CattleTracker, getCattleTracker: getInstance };
   }
 })(typeof window !== 'undefined' ? window : this);
+export {};

@@ -463,10 +463,16 @@
   }
 
   if (typeof window !== 'undefined' && window.document) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initUsers);
-    } else {
+    function runInit() {
       initUsers();
+      setTimeout(initUsers, 150);
+      setTimeout(initUsers, 600);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', runInit);
+    } else {
+      runInit();
     }
   }
 })(typeof window !== 'undefined' ? window : this);
+export {};

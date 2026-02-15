@@ -746,3 +746,4 @@ window.toggleRowSelection = toggleRowSelection;
 window.updateSelectedCount = updateSelectedCount;
 window.getSelectedCattleIds = getSelectedCattleIds;
 window.refreshViewListVisible = refreshViewListVisible;
+export {};

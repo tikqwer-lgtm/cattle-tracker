@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/print.css" media="print" />
 </head>
 <body>
+  <div id="root"></div>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
@@ -684,68 +685,6 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Бандл приложения (собрать: npm run build) -->
   <script src="web/app.js"></script>
-  <script>
-  (function() {
-    // Заглушки, если бандл не загрузился (exe: ERR_FILE_NOT_FOUND на dist/app.js)
-    if (typeof window.navigate !== 'function') {
-      window.navigate = function(id) {
-        document.querySelectorAll('.screen').forEach(function(el) { el.classList.remove('active'); });
-        var s = document.getElementById(id + '-screen'); if (s) s.classList.add('active');
-      };
-    }
-    if (typeof window.showAuthRegister !== 'function') {
-      window.showAuthRegister = function() {
-        var f1 = document.getElementById('authLoginForm'); var f2 = document.getElementById('authRegisterForm');
-        if (f1) f1.style.display = 'none'; if (f2) f2.style.display = '';
-      };
-    }
-    if (typeof window.showAuthLogin !== 'function') {
-      window.showAuthLogin = function() {
-        var f1 = document.getElementById('authLoginForm'); var f2 = document.getElementById('authRegisterForm');
-        if (f1) f1.style.display = ''; if (f2) f2.style.display = 'none';
-      };
-    }
-    if (typeof window.navigateToSubmenu !== 'function') {
-      window.navigateToSubmenu = function() { if (typeof window.navigate === 'function') window.navigate('menu'); };
-    }
-    // Привязка кнопок авторизации с повторными попытками
-    function ensureAuthHandlers() {
-      var skipBtn = document.getElementById('auth-skip-btn');
-      if (skipBtn && !skipBtn.dataset.authBound) {
-        skipBtn.dataset.authBound = '1';
-        skipBtn.addEventListener('click', function() {
-          if (typeof window.skipAuth === 'function') { window.skipAuth(); return; }
-          try {
-            localStorage.setItem('cattleTracker_currentUser', JSON.stringify({ id: 'local_admin', username: 'admin(local)', role: 'admin' }));
-          } catch (e) {}
-          if (typeof window.navigate === 'function') window.navigate('menu');
-          else {
-            document.querySelectorAll('.screen').forEach(function(el) { el.classList.remove('active'); });
-            var s = document.getElementById('menu-screen'); if (s) s.classList.add('active');
-          }
-        });
-      }
-      var connBtn = document.getElementById('app-header-connection-btn');
-      if (connBtn && !connBtn.dataset.authBound) {
-        connBtn.dataset.authBound = '1';
-        connBtn.addEventListener('click', function() {
-          if (typeof window.navigate === 'function') window.navigate('sync');
-          else {
-            document.querySelectorAll('.screen').forEach(function(el) { el.classList.remove('active'); });
-            var s = document.getElementById('sync-screen'); if (s) s.classList.add('active');
-          }
-        });
-      }
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() { ensureAuthHandlers(); setTimeout(ensureAuthHandlers, 150); setTimeout(ensureAuthHandlers, 600); });
-    } else {
-      ensureAuthHandlers();
-      setTimeout(ensureAuthHandlers, 150);
-      setTimeout(ensureAuthHandlers, 600);
-    }
-  })();
-  </script>
   <script>
   (function() {
     function setPrintHeaderDate() {

@@ -329,3 +329,4 @@ function downloadTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
+export {};

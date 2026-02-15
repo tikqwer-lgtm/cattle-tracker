@@ -490,3 +490,4 @@ if (typeof window !== 'undefined') {
     initSyncServerBlock();
   }
 }
+export {};

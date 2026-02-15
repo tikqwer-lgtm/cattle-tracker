@@ -29,3 +29,9 @@ function validateDateNotFuture(dateStr, fieldLabel) {
   if (d > today) return (fieldLabel || 'Дата') + ' не может быть в будущем';
   return null;
 }
+if (typeof window !== 'undefined') {
+  window.formatDate = formatDate;
+  window.nowFormatted = nowFormatted;
+  window.validateDateNotFuture = validateDateNotFuture;
+}
+export {};

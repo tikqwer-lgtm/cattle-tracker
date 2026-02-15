@@ -90,7 +90,7 @@ function hasLactationOnePlus(entry) {
 }
 
 function getFilteredEntries(period, dateFrom, dateTo, pdo) {
-  var list = typeof entries !== 'undefined' ? entries : [];
+  var list = (typeof window !== 'undefined' && window.entries) ? window.entries : [];
   var bounds = getPeriodBounds(period, dateFrom, dateTo);
   pdo = parseInt(pdo, 10) || 0;
   return list.filter(function (e) {
@@ -235,6 +235,18 @@ function monthLabel(m) {
   return names[m.start.getMonth()] + ' ' + m.start.getFullYear();
 }
 
+if (typeof window !== 'undefined') {
+  window.getFilteredEntries = getFilteredEntries;
+  window.calculateCR = calculateCR;
+  window.calculateHDR = calculateHDR;
+  window.calculatePR = calculatePR;
+  window.generateReport = generateReport;
+  window.getPeriodBounds = getPeriodBounds;
+  window.isBrak = isBrak;
+  window.getBreakdownKey = getBreakdownKey;
+  window.getMonthsInRange = getMonthsInRange;
+  window.monthLabel = monthLabel;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     parseDate: parseDate,
@@ -250,3 +262,4 @@ if (typeof module !== 'undefined' && module.exports) {
     generateReport: generateReport
   };
 }
+export { parseDate, getPeriodBounds, addDays, daysBetween, calculatePR, isPregnant, generateReport };

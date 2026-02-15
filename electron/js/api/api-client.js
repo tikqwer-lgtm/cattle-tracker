@@ -174,3 +174,4 @@
     global.CattleTrackerApi = api;
   }
 })(typeof window !== 'undefined' ? window : this);
+export {};

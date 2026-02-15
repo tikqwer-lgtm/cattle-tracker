@@ -228,24 +228,8 @@
         if (typeof nav === 'function') nav('sync');
       });
     }
-    var loginForm = document.getElementById('authLoginForm');
-    if (loginForm && !loginForm.dataset.authBound) {
-      loginForm.dataset.authBound = '1';
-      loginForm.addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        handleLogin(ev);
-        return false;
-      });
-    }
-    var regForm = document.getElementById('authRegisterForm');
-    if (regForm && !regForm.dataset.authBound) {
-      regForm.dataset.authBound = '1';
-      regForm.addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        handleRegister(ev);
-        return false;
-      });
-    }
+    // Формы входа и регистрации уже обрабатываются через onsubmit в index.html (window.handleLogin/handleRegister).
+    // Дублировать addEventListener('submit') не нужно — иначе окно подтверждения всплывает дважды.
     var skipBtn = document.getElementById('auth-skip-btn');
     if (skipBtn && !skipBtn.dataset.authBound) {
       skipBtn.dataset.authBound = '1';
@@ -463,10 +447,15 @@
   }
 
   if (typeof window !== 'undefined' && window.document) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initUsers);
-    } else {
+    function runInit() {
       initUsers();
+      setTimeout(initUsers, 150);
+      setTimeout(initUsers, 600);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', runInit);
+    } else {
+      runInit();
     }
   }
 })(typeof window !== 'undefined' ? window : this);

@@ -29,3 +29,9 @@ var LIMITS = {
   maxBackups: 10,
   notificationHistoryMax: 200
 };
+if (typeof window !== 'undefined') {
+  window.CATTLE_TRACKER_PREFIX = CATTLE_TRACKER_PREFIX;
+  window.STORAGE_KEYS = STORAGE_KEYS;
+  window.LIMITS = LIMITS;
+}
+export {};

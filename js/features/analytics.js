@@ -17,11 +17,11 @@
     chartInstances = [];
 
     var pdoVal = (report && report.pdo !== undefined) ? report.pdo : (pdo || 0);
-    var list = getFilteredEntries(report.period, report.dateFrom, report.dateTo, pdoVal);
+    var list = window.getFilteredEntries(report.period, report.dateFrom, report.dateTo, pdoVal);
     var statusCounts = {};
     list.forEach(function (e) {
       var s = (e.status || '—').toString();
-      if (isBrak(e)) return;
+      if (window.isBrak(e)) return;
       statusCounts[s] = (statusCounts[s] || 0) + 1;
     });
 
@@ -163,7 +163,7 @@
   }
 
   function updatePeriodDatesFromPreset(period) {
-    var bounds = getPeriodBounds(period, null, null);
+    var bounds = window.getPeriodBounds(period, null, null);
     var dateFromEl = document.getElementById('analyticsDateFrom');
     var dateToEl = document.getElementById('analyticsDateTo');
     if (dateFromEl) dateFromEl.value = bounds.start.toISOString().slice(0, 10);
@@ -184,7 +184,7 @@
 
     if (period !== 'custom') updatePeriodDatesFromPreset(period);
 
-    var report = generateReport(period, dateFrom, dateTo, pdo);
+    var report = window.generateReport(period, dateFrom, dateTo, pdo);
     var indicatorsEl = document.getElementById('analyticsIndicators');
     if (indicatorsEl) {
       indicatorsEl.innerHTML =
@@ -201,10 +201,10 @@
     var breakdownTableEl = document.getElementById('analyticsBreakdownTable');
     if (breakdownTableEl) {
       if (breakdownBy) {
-        var list = getFilteredEntries(period, dateFrom, dateTo, pdo);
+        var list = window.getFilteredEntries(period, dateFrom, dateTo, pdo);
         var groups = {};
         list.forEach(function (e) {
-          var k = getBreakdownKey(e, breakdownBy);
+          var k = window.getBreakdownKey(e, breakdownBy);
           if (!groups[k]) groups[k] = [];
           groups[k].push(e);
         });
@@ -212,7 +212,7 @@
         var rows = [];
         Object.keys(groups).sort().forEach(function (k) {
           var subList = groups[k];
-          var subReport = generateReport(period, dateFrom, dateTo, pdo, subList);
+          var subReport = window.generateReport(period, dateFrom, dateTo, pdo, subList);
           rows.push({
             key: k,
             pr: subReport.pr,
@@ -236,15 +236,15 @@
     }
 
     var monthlyData = [];
-    var bounds = getPeriodBounds(period, dateFrom, dateTo);
-    var months = getMonthsInRange(bounds);
+    var bounds = window.getPeriodBounds(period, dateFrom, dateTo);
+    var months = window.getMonthsInRange(bounds);
     months.forEach(function (m) {
       var fromStr = m.start.toISOString().slice(0, 10);
       var toStr = m.end.toISOString().slice(0, 10);
-      var listM = getFilteredEntries('custom', fromStr, toStr, pdo);
-      var r = generateReport('custom', fromStr, toStr, pdo, listM);
+      var listM = window.getFilteredEntries('custom', fromStr, toStr, pdo);
+      var r = window.generateReport('custom', fromStr, toStr, pdo, listM);
       monthlyData.push({
-        label: monthLabel(m),
+        label: window.monthLabel(m),
         pr: r.pr,
         cr: r.cr,
         hdr: r.hdr
@@ -414,15 +414,11 @@
   }
 
   if (typeof window !== 'undefined') {
-    window.calculatePR = function (hdr, cr) { return calculatePR(hdr, cr); };
-    window.calculateCR = calculateCR;
-    window.calculateHDR = calculateHDR;
-    window.generateReport = generateReport;
     window.renderCharts = renderCharts;
     window.renderAnalyticsScreen = renderAnalyticsScreen;
     window.renderIntervalAnalysisScreen = renderIntervalAnalysisScreen;
-    window.getAnalyticsFilteredEntries = getFilteredEntries;
-    window.getPeriodBounds = getPeriodBounds;
+    window.getAnalyticsFilteredEntries = window.getFilteredEntries;
+    window.getPeriodBounds = window.getPeriodBounds;
   }
 
   if (typeof window !== 'undefined' && window.document) {

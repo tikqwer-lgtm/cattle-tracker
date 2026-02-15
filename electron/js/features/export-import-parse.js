@@ -292,3 +292,4 @@ function parseFileToHeadersAndRows(file) {
     reader.readAsArrayBuffer(file);
   });
 }
+export {};

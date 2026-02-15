@@ -298,3 +298,4 @@ document.addEventListener('click', (e) => {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { getInseminationAttempt, addInseminationEntry };
 }
+export {};
