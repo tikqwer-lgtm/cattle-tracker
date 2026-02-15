@@ -267,9 +267,18 @@
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
         updateAuthBar();
-        // В Electron при запуске не переключаем на меню — показываем экран входа
         var isElectron = typeof window !== 'undefined' && window.electronAPI;
-        if (currentUser && typeof navigate === 'function' && !isElectron) navigate('menu');
+        if (currentUser && typeof navigate === 'function' && !isElectron) {
+          if (typeof window.loadLocally === 'function') {
+            window.loadLocally().then(function () {
+              if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+              if (typeof window.updateViewList === 'function') window.updateViewList();
+              navigate('menu');
+            }).catch(function () { navigate('menu'); });
+          } else {
+            navigate('menu');
+          }
+        }
       }).catch(function () {
         currentUser = null;
         updateAuthBar();
@@ -362,7 +371,19 @@
         }
         if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
         updateAuthBar();
-        if (typeof navigate === 'function') navigate('menu');
+        var loadAndShow = function () {
+          if (typeof window.loadLocally === 'function') {
+            return window.loadLocally().then(function () {
+              if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+              if (typeof window.updateViewList === 'function') window.updateViewList();
+              if (typeof navigate === 'function') navigate('menu');
+            }).catch(function () {
+              if (typeof navigate === 'function') navigate('menu');
+            });
+          }
+          if (typeof navigate === 'function') navigate('menu');
+        };
+        loadAndShow();
       }).catch(function (err) {
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);

@@ -21,6 +21,7 @@ function connectToServer() {
   }
   try {
     localStorage.setItem('cattleTracker_apiBase', url);
+    localStorage.setItem('cattleTracker_useApiMode', '1');
     if (typeof showToast === 'function') showToast('Подключение… Перезагрузка.', 'info');
     location.reload();
   } catch (e) {
@@ -37,6 +38,7 @@ function disconnectFromServer() {
       if (!ok) return;
       try {
         localStorage.removeItem('cattleTracker_apiBase');
+        localStorage.removeItem('cattleTracker_useApiMode');
         if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
         location.reload();
       } catch (e) {
@@ -48,6 +50,7 @@ function disconnectFromServer() {
   if (!confirm('Отключиться от сервера? Приложение перейдёт на локальные данные и перезагрузится.')) return;
   try {
     localStorage.removeItem('cattleTracker_apiBase');
+    localStorage.removeItem('cattleTracker_useApiMode');
     if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
     location.reload();
   } catch (e) {

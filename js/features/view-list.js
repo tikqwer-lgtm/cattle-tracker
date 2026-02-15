@@ -150,7 +150,7 @@ function updateViewList() {
       </thead>
       <tbody>
         ${listToShow.map((entry, index) => {
-          const safeCattleId = viewListEscapeHtml(entry.cattleId);
+          const safeCattleId = window.viewListEscapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
           const cells = fields.map(field => {
             const v = field.render(entry);
@@ -256,7 +256,7 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     var html = '';
     for (var i = start; i < end; i++) {
       var entry = listToShow[i];
-      var safeCattleId = viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
+      var safeCattleId = window.viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
       var checked = viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
       var cells = fields.map(function (field) {
         var v = field.render(entry);
@@ -746,4 +746,5 @@ window.toggleRowSelection = toggleRowSelection;
 window.updateSelectedCount = updateSelectedCount;
 window.getSelectedCattleIds = getSelectedCattleIds;
 window.refreshViewListVisible = refreshViewListVisible;
+window.updateViewList = updateViewList;
 export {};

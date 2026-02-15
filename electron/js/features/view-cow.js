@@ -330,7 +330,7 @@ function deleteActionHistoryItem(cattleId, index) {
  */
 function getAllInseminationsFlat() {
   var flat = [];
-  var list = typeof entries !== 'undefined' ? entries : [];
+  var list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : [];
   for (var i = 0; i < list.length; i++) {
     var entry = list[i];
     var rows = getInseminationListForEntry(entry);
@@ -549,4 +549,8 @@ function renderAllInseminationsScreen() {
 
 // Список записей с групповым выделением рисуется в menu.js (updateViewList).
 // Открытие карточки животного — по кнопке «Карточка» в строке или по вызову viewCow(cattleId).
+if (typeof window !== 'undefined') {
+  window.renderAllInseminationsScreen = renderAllInseminationsScreen;
+  window.viewCow = viewCow;
+}
 export {};

@@ -17,6 +17,7 @@
     "server": "cd server && npm start",
     "electron": "cd electron && npm start",
     "electron:dist": "cd electron && npm run dist",
+    "installer": "npm run build && npm run electron:dist",
     "cap:sync": "cap sync",
     "cap:android": "cap run android",
     "cap:ios": "cap run ios"

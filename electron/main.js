@@ -212,17 +212,9 @@ function createWindow() {
     mainWindow = null;
   });
 
-  ipcMain.on('set-window-mode', (_event, mode) => {
+  ipcMain.on('set-window-mode', (_event, _mode) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    const primary = screen.getPrimaryDisplay();
-    const work = primary.workArea;
-    if (mode === 'menu') {
-      const maxW = Math.min(560, work.width);
-      const maxH = Math.min(680, work.height);
-      mainWindow.setMaximumSize(maxW, maxH);
-    } else {
-      mainWindow.setMaximumSize(16384, 16384);
-    }
+    mainWindow.setMaximumSize(16384, 16384);
   });
 
   const ses = mainWindow.webContents.session;

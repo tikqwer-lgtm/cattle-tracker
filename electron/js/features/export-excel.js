@@ -329,4 +329,8 @@ function downloadTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
+if (typeof window !== 'undefined') {
+  window.exportToExcel = exportToExcel;
+  window.downloadTemplate = downloadTemplate;
+}
 export {};

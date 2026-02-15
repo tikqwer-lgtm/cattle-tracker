@@ -40,7 +40,6 @@ var MENU_GROUPS = {
   settings: {
     title: 'Настройки',
     buttons: [
-      { icon: '👤', text: 'Войти / Пользователи', onclick: "navigate('auth')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
       { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
     ]
@@ -99,8 +98,8 @@ function navigate(screenId, options) {
       if (typeof refreshViewListVisible === 'function') refreshViewListVisible();
     }, 0);
   }
-  if (screenId === 'all-inseminations' && typeof renderAllInseminationsScreen === 'function') {
-    renderAllInseminationsScreen();
+  if (screenId === 'all-inseminations' && typeof window.renderAllInseminationsScreen === 'function') {
+    window.renderAllInseminationsScreen();
   }
   if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
     renderNotificationCenter('notification-center-container');
@@ -468,7 +467,7 @@ function updateObjectSwitcher() {
  * Обновляет статистику стада на главном экране
  */
 function updateHerdStats() {
-  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(entries || []) : (entries || []);
+  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
   if (!list || list.length === 0) {
     var totalEl = document.getElementById('totalCows');
     if (totalEl) totalEl.textContent = '0';

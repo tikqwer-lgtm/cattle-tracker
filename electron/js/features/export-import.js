@@ -623,4 +623,7 @@ function processImportData(data, delimiter, event) {
   alert(message);
   event.target.value = '';
 }
+if (typeof window !== 'undefined') {
+  window.handleImportFile = handleImportFile;
+}
 export {};

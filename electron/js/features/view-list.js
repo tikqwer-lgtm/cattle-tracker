@@ -53,7 +53,7 @@ function updateViewList() {
   if (!tableContainer) return;
 
   var listFilteredFn = (typeof window !== 'undefined' && typeof window.getListViewFilteredEntries === 'function') ? window.getListViewFilteredEntries : (typeof getFilteredEntries === 'function' ? getFilteredEntries : null);
-  var baseList = listFilteredFn ? listFilteredFn() : ((typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : (entries || []));
+  var baseList = listFilteredFn ? listFilteredFn() : (window.entries && Array.isArray(window.entries) ? window.entries : []);
   var listToShow = (typeof getVisibleEntries === 'function') ? getVisibleEntries(baseList) : baseList;
   if (listToShow && listToShow.length > 0 && viewListSortKey) {
     listToShow = listToShow.slice();
@@ -71,7 +71,7 @@ function updateViewList() {
     '</div></div>';
 
   if (!listToShow || listToShow.length === 0) {
-    var noResultsHint = (baseList.length === 0 && entries && entries.length > 0) ? ' (поиск/фильтр не дали результатов)' : ((entries && entries.length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
+    var noResultsHint = (baseList.length === 0 && (window.entries || []).length > 0) ? ' (поиск/фильтр не дали результатов)' : (((window.entries || []).length > 0 && listToShow.length === 0 && baseList.length > 0) ? ' (нет доступа)' : '');
     if (bulkContainer) bulkContainer.innerHTML = bulkBarHtml;
     if (bulkContainer) {
       var bar = bulkContainer.querySelector('.bulk-actions-bar');
@@ -81,7 +81,7 @@ function updateViewList() {
       }
     }
     var emptyHtml = '<p>Нет записей' + noResultsHint + '</p>';
-    if (baseList.length === 0 && entries && entries.length > 0 && typeof resetFiltersToDefault === 'function') {
+    if (baseList.length === 0 && (window.entries || []).length > 0 && typeof resetFiltersToDefault === 'function') {
       emptyHtml += '<p><button type="button" class="action-btn" id="viewListResetFiltersBtn">Сбросить фильтры и показать все записи</button></p>';
     }
     tableContainer.innerHTML = emptyHtml;
@@ -150,7 +150,7 @@ function updateViewList() {
       </thead>
       <tbody>
         ${listToShow.map((entry, index) => {
-          const safeCattleId = viewListEscapeHtml(entry.cattleId);
+          const safeCattleId = window.viewListEscapeHtml(entry.cattleId);
           const checkboxId = `entry-checkbox-${index}`;
           const cells = fields.map(field => {
             const v = field.render(entry);
@@ -256,7 +256,7 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     var html = '';
     for (var i = start; i < end; i++) {
       var entry = listToShow[i];
-      var safeCattleId = viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
+      var safeCattleId = window.viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
       var checked = viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
       var cells = fields.map(function (field) {
         var v = field.render(entry);
@@ -466,7 +466,7 @@ function _setCellDisplay(td, entry, fieldKey) {
 
 function startInlineEdit(td, cattleId, fieldKey) {
   if (!td || !cattleId || !fieldKey || !VIEW_LIST_EDITABLE_KEYS[fieldKey]) return;
-  var entriesList = typeof entries !== 'undefined' ? entries : [];
+  var entriesList = window.entries && Array.isArray(window.entries) ? window.entries : [];
   var entry = entriesList.find(function (e) { return e.cattleId === cattleId; });
   if (!entry) return;
   var fieldType = VIEW_LIST_EDITABLE_KEYS[fieldKey];
@@ -746,4 +746,5 @@ window.toggleRowSelection = toggleRowSelection;
 window.updateSelectedCount = updateSelectedCount;
 window.getSelectedCattleIds = getSelectedCattleIds;
 window.refreshViewListVisible = refreshViewListVisible;
+window.updateViewList = updateViewList;
 export {};

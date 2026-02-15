@@ -22,9 +22,9 @@ test.describe('Страница входа [Electron]', () => {
     await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible();
   });
 
-  test('кнопка «Продолжить без входа» присутствует', async ({ page }) => {
+  test('кнопка «Без авторизации» присутствует', async ({ page }) => {
     await waitForAuth(page);
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
   });
 });
 
@@ -78,9 +78,9 @@ test.describe('Сценарий 1: Вход — логин, регистраци
       }
     }
 
-    // 3. Вход без авторизации (Продолжить без входа); в Electron переключаем меню через DOM
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
-    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    // 3. Вход без авторизации (Без авторизации); в Electron переключаем меню через DOM
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
+    await page.getByRole('button', { name: 'Без авторизации' }).click();
     await page.evaluate(() => {
       document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
       const menuScreen = document.getElementById('menu-screen');
@@ -155,8 +155,8 @@ test.describe('Сценарий 2: Настройки сервера и вход
     await expect(page.getByRole('heading', { name: 'Вход' })).toBeVisible({ timeout: 10000 });
 
     // 4. Войти без пароля
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
-    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
+    await page.getByRole('button', { name: 'Без авторизации' }).click();
     await expect(page.locator('#menu-screen.active')).toBeVisible();
   });
 });
@@ -164,7 +164,7 @@ test.describe('Сценарий 2: Настройки сервера и вход
 test.describe('Сценарий 3: Список животных и экран протоколов [Electron]', () => {
   test('после входа: список всех животных и протоколы синхронизации отображаются', async ({ page }) => {
     await waitForAuth(page);
-    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    await page.getByRole('button', { name: 'Без авторизации' }).click();
     await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 8000 });
 
     // Переход в «Список всех животных» (Работа с данными → Список всех животных или через navigate)

@@ -74,4 +74,8 @@ function getVisibleViewFields() {
   VIEW_LIST_FIELDS.forEach(function (f) { map[f.key] = f; });
   return keys.map(function (k) { return map[k]; }).filter(Boolean);
 }
+if (typeof window !== 'undefined') {
+  window.getVisibleViewFields = getVisibleViewFields;
+  window.viewListEscapeHtml = viewListEscapeHtml;
+}
 export {};

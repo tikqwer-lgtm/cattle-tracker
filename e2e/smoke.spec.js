@@ -15,9 +15,9 @@ test.describe('Страница входа', () => {
     await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible();
   });
 
-  test('кнопка «Продолжить без входа» присутствует', async ({ page }) => {
+  test('кнопка «Без авторизации» присутствует', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
   });
 });
 
@@ -66,16 +66,16 @@ test.describe('Сценарий 1: Вход — логин, регистраци
       }
     }
 
-    // 3. Вход без авторизации (Продолжить без входа)
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
-    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    // 3. Вход без авторизации (Без авторизации)
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
+    await page.getByRole('button', { name: 'Без авторизации' }).click();
     await expect(page.locator('#menu-screen.active')).toBeVisible();
   });
 });
 
 test.describe('Сценарий 2: Настройки сервера и вход без пароля', () => {
   test('открыть настройки сервера, подключиться/отключиться, оставить отключённым, войти без пароля', async ({ page }) => {
-    // Чистое состояние: без сохранённого сервера, чтобы была кнопка «Продолжить без входа»
+    // Чистое состояние: без сохранённого сервера, чтобы была кнопка «Без авторизации»
     await page.goto('/');
     await page.evaluate(() => {
       try {
@@ -111,8 +111,8 @@ test.describe('Сценарий 2: Настройки сервера и вход
     await expect(page.getByRole('heading', { name: 'Вход' })).toBeVisible({ timeout: 10000 });
 
     // 4. Войти без пароля
-    await expect(page.getByRole('button', { name: 'Продолжить без входа' })).toBeVisible();
-    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    await expect(page.getByRole('button', { name: 'Без авторизации' })).toBeVisible();
+    await page.getByRole('button', { name: 'Без авторизации' }).click();
     await expect(page.locator('#menu-screen.active')).toBeVisible();
   });
 });
