@@ -160,3 +160,36 @@ test.describe('Сценарий 2: Настройки сервера и вход
     await expect(page.locator('#menu-screen.active')).toBeVisible();
   });
 });
+
+test.describe('Сценарий 3: Список животных и экран протоколов [Electron]', () => {
+  test('после входа: список всех животных и протоколы синхронизации отображаются', async ({ page }) => {
+    await waitForAuth(page);
+    await page.getByRole('button', { name: 'Продолжить без входа' }).click();
+    await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 8000 });
+
+    // Переход в «Список всех животных» (Работа с данными → Список всех животных или через navigate)
+    await page.evaluate(() => {
+      if (typeof window.navigate === 'function') window.navigate('view');
+    });
+    await page.waitForTimeout(800);
+    await expect(page.locator('#view-screen.active')).toBeVisible({ timeout: 5000 });
+    const viewList = page.locator('#viewEntriesList');
+    await expect(viewList).toBeVisible();
+    // Контейнер списка заполнен: либо таблица, либо сообщение «Нет записей»
+    const hasTable = await page.locator('.entries-table').isVisible().catch(() => false);
+    const hasEmptyMsg = await page.getByText(/Нет записей/).isVisible().catch(() => false);
+    expect(hasTable || hasEmptyMsg).toBeTruthy();
+
+    // Переход в «Протоколы синхронизации» (Настройки → Протоколы или через navigate)
+    await page.evaluate(() => {
+      if (typeof window.navigate === 'function') window.navigate('protocols');
+    });
+    await page.waitForTimeout(800);
+    const protocolsContainer = page.locator('#protocols-container');
+    await expect(protocolsContainer).toBeVisible();
+    // Экран протоколов заполнен: заголовок «Список протоколов» или кнопка «Добавить протокол»
+    const hasProtocolsTitle = await page.getByRole('heading', { name: 'Список протоколов' }).isVisible().catch(() => false);
+    const hasAddProtocolBtn = await page.getByRole('button', { name: /Добавить протокол/ }).isVisible().catch(() => false);
+    expect(hasProtocolsTitle || hasAddProtocolBtn).toBeTruthy();
+  });
+});

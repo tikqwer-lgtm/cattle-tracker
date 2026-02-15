@@ -1,12 +1,18 @@
 // protocols.js — справочник протоколов синхронизации (схемы гормональной терапии)
 
 var PROTOCOLS_STORAGE_KEY = 'cattleTracker_protocols';
+var _protocolsCache = [];
+
+function useApi() {
+  return typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.getCurrentObjectId === 'function';
+}
 
 /**
- * Возвращает массив протоколов из localStorage
+ * Возвращает массив протоколов (из API-кэша или localStorage)
  * @returns {Array<{id: string, name: string, steps: Array<{day: number, drug: string}>}>}
  */
 function getProtocols() {
+  if (useApi()) return _protocolsCache;
   try {
     var raw = localStorage.getItem(PROTOCOLS_STORAGE_KEY);
     if (!raw) return [];
@@ -54,16 +60,26 @@ function getProtocolById(id) {
 /**
  * Добавляет протокол
  * @param {Object} protocol - { name, steps: [{ day, drug }] }
- * @returns {Object} добавленный протокол с id
+ * @returns {Object|Promise<Object>} добавленный протокол с id
  */
 function addProtocol(protocol) {
+  var steps = Array.isArray(protocol && protocol.steps) ? protocol.steps.map(function (s) {
+    return { day: parseInt(s.day, 10) || 0, drug: String(s.drug || '').trim() };
+  }) : [];
+  var name = (protocol && protocol.name) ? String(protocol.name).trim() : '';
+  if (useApi()) {
+    var objectId = window.getCurrentObjectId();
+    var item = { id: nextProtocolId(), name: name, steps: steps };
+    return window.CattleTrackerApi.createProtocol(objectId, item).then(function (created) {
+      _protocolsCache.push(created);
+      return created;
+    });
+  }
   var list = getProtocols();
   var item = {
     id: nextProtocolId(),
-    name: (protocol && protocol.name) ? String(protocol.name).trim() : '',
-    steps: Array.isArray(protocol && protocol.steps) ? protocol.steps.map(function (s) {
-      return { day: parseInt(s.day, 10) || 0, drug: String(s.drug || '').trim() };
-    }) : []
+    name: name,
+    steps: steps
   };
   list.push(item);
   saveProtocols(list);
@@ -74,15 +90,30 @@ function addProtocol(protocol) {
  * Обновляет протокол по id
  * @param {string} id
  * @param {Object} protocol - { name, steps }
+ * @returns {Object|Promise<Object>|undefined}
  */
 function updateProtocol(id, protocol) {
+  var name = (protocol && protocol.name) ? String(protocol.name).trim() : null;
+  var steps = Array.isArray(protocol && protocol.steps) ? protocol.steps.map(function (s) {
+    return { day: parseInt(s.day, 10) || 0, drug: String(s.drug || '').trim() };
+  }) : null;
+  if (useApi()) {
+    var objectId = window.getCurrentObjectId();
+    return window.CattleTrackerApi.updateProtocol(objectId, id, { name: name, steps: steps }).then(function (updated) {
+      for (var i = 0; i < _protocolsCache.length; i++) {
+        if (_protocolsCache[i].id === id) {
+          _protocolsCache[i] = updated;
+          break;
+        }
+      }
+      return updated;
+    });
+  }
   var list = getProtocols();
   for (var i = 0; i < list.length; i++) {
     if (list[i].id === id) {
-      list[i].name = (protocol && protocol.name) ? String(protocol.name).trim() : list[i].name;
-      list[i].steps = Array.isArray(protocol && protocol.steps) ? protocol.steps.map(function (s) {
-        return { day: parseInt(s.day, 10) || 0, drug: String(s.drug || '').trim() };
-      }) : list[i].steps;
+      if (name != null) list[i].name = name;
+      if (steps != null) list[i].steps = steps;
       saveProtocols(list);
       return list[i];
     }
@@ -92,8 +123,15 @@ function updateProtocol(id, protocol) {
 /**
  * Удаляет протокол по id
  * @param {string} id
+ * @returns {void|Promise<void>}
  */
 function deleteProtocol(id) {
+  if (useApi()) {
+    var objectId = window.getCurrentObjectId();
+    return window.CattleTrackerApi.deleteProtocol(objectId, id).then(function () {
+      _protocolsCache = _protocolsCache.filter(function (p) { return p.id !== id; });
+    });
+  }
   var list = getProtocols().filter(function (p) { return p.id !== id; });
   saveProtocols(list);
 }
@@ -103,6 +141,23 @@ function deleteProtocol(id) {
  * @param {string} containerId - id контейнера (например 'protocols-container')
  */
 function renderProtocolsScreen(containerId) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (useApi()) {
+    window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
+      _protocolsCache = (list || []).slice();
+      renderProtocolsScreenInner(containerId);
+    }).catch(function () {
+      _protocolsCache = [];
+      renderProtocolsScreenInner(containerId);
+    });
+    return;
+  }
+  renderProtocolsScreenInner(containerId);
+}
+
+function renderProtocolsScreenInner(containerId) {
   var container = document.getElementById(containerId);
   if (!container) return;
 
@@ -149,15 +204,15 @@ function renderProtocolsScreen(containerId) {
 
   document.getElementById('protocols-add-btn').onclick = function () {
     window._protocolsEditingId = null;
-    navigate('protocols');
-    if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+    if (typeof window.navigate === 'function') window.navigate('protocols');
+    if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
   };
 
   container.querySelectorAll('.edit-protocol-btn').forEach(function (btn) {
     btn.onclick = function () {
       window._protocolsEditingId = btn.getAttribute('data-id');
-      navigate('protocols');
-      if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+      if (typeof window.navigate === 'function') window.navigate('protocols');
+      if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
     };
   });
 
@@ -165,19 +220,26 @@ function renderProtocolsScreen(containerId) {
     btn.onclick = function () {
       var id = btn.getAttribute('data-id');
       if (!id) return;
+      var doDelete = function () {
+        var p = deleteProtocol(id);
+        window._protocolsEditingId = null;
+        if (p && typeof p.then === 'function') {
+          p.then(function () {
+            if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
+          });
+        } else {
+          if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
+        }
+      };
       if (typeof showConfirmModal === 'function') {
         showConfirmModal('Удалить этот протокол?').then(function (ok) {
           if (!ok) return;
-          deleteProtocol(id);
-          window._protocolsEditingId = null;
-          if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+          doDelete();
         });
         return;
       }
       if (!confirm('Удалить этот протокол?')) return;
-      deleteProtocol(id);
-      window._protocolsEditingId = null;
-      if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+      doDelete();
     };
   });
 
@@ -189,8 +251,8 @@ function renderProtocolsScreen(containerId) {
 
   document.getElementById('protocol-cancel-btn').onclick = function () {
     window._protocolsEditingId = null;
-    navigate('protocols');
-    if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
+    if (typeof window.navigate === 'function') window.navigate('protocols');
+    if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
   };
 
   document.getElementById('protocol-form').onsubmit = function (e) {
@@ -201,15 +263,33 @@ function renderProtocolsScreen(containerId) {
       if (typeof showToast === 'function') showToast('Введите название протокола', 'error');
       return;
     }
+    var done = function () {
+      window._protocolsEditingId = null;
+      if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
+    };
     if (editingId) {
-      updateProtocol(editingId, { name: name, steps: steps });
-      if (typeof showToast === 'function') showToast('Протокол сохранён', 'success');
+      var up = updateProtocol(editingId, { name: name, steps: steps });
+      if (up && typeof up.then === 'function') {
+        up.then(function () {
+          if (typeof showToast === 'function') showToast('Протокол сохранён', 'success');
+          done();
+        });
+      } else {
+        if (typeof showToast === 'function') showToast('Протокол сохранён', 'success');
+        done();
+      }
     } else {
-      addProtocol({ name: name, steps: steps });
-      if (typeof showToast === 'function') showToast('Протокол добавлен', 'success');
+      var add = addProtocol({ name: name, steps: steps });
+      if (add && typeof add.then === 'function') {
+        add.then(function () {
+          if (typeof showToast === 'function') showToast('Протокол добавлен', 'success');
+          done();
+        });
+      } else {
+        if (typeof showToast === 'function') showToast('Протокол добавлен', 'success');
+        done();
+      }
     }
-    window._protocolsEditingId = null;
-    if (typeof renderProtocolsScreen === 'function') renderProtocolsScreen(containerId);
   };
 }
 
@@ -252,5 +332,8 @@ function renderProtocolStepsList(steps) {
       renderProtocolStepsList(steps);
     };
   });
+}
+if (typeof window !== 'undefined') {
+  window.renderProtocolsScreen = renderProtocolsScreen;
 }
 export {};

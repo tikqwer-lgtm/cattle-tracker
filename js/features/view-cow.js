@@ -330,7 +330,7 @@ function deleteActionHistoryItem(cattleId, index) {
  */
 function getAllInseminationsFlat() {
   var flat = [];
-  var list = typeof entries !== 'undefined' ? entries : [];
+  var list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : [];
   for (var i = 0; i < list.length; i++) {
     var entry = list[i];
     var rows = getInseminationListForEntry(entry);

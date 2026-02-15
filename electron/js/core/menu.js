@@ -557,6 +557,11 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 if (typeof window !== 'undefined') {
   window.navigate = navigate;
+  window.navigateToSubmenu = navigateToSubmenu;
+  window.handleAddObjectClick = handleAddObjectClick;
+  window.handleEditObjectClick = handleEditObjectClick;
+  window.handleDeleteObjectClick = handleDeleteObjectClick;
+  window.updateObjectSwitcher = updateObjectSwitcher;
   window.addEventListener('hashchange', syncRouteToScreen);
 }
 

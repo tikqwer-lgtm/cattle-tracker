@@ -253,4 +253,7 @@ function renderProtocolStepsList(steps) {
     };
   });
 }
+if (typeof window !== 'undefined') {
+  window.renderProtocolsScreen = renderProtocolsScreen;
+}
 export {};

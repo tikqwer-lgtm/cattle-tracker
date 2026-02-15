@@ -468,7 +468,7 @@ function updateObjectSwitcher() {
  * Обновляет статистику стада на главном экране
  */
 function updateHerdStats() {
-  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(entries || []) : (entries || []);
+  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
   if (!list || list.length === 0) {
     var totalEl = document.getElementById('totalCows');
     if (totalEl) totalEl.textContent = '0';
@@ -557,6 +557,11 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 if (typeof window !== 'undefined') {
   window.navigate = navigate;
+  window.navigateToSubmenu = navigateToSubmenu;
+  window.handleAddObjectClick = handleAddObjectClick;
+  window.handleEditObjectClick = handleEditObjectClick;
+  window.handleDeleteObjectClick = handleDeleteObjectClick;
+  window.updateObjectSwitcher = updateObjectSwitcher;
   window.addEventListener('hashchange', syncRouteToScreen);
 }
 

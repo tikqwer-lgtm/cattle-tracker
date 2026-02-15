@@ -107,6 +107,22 @@
     return request('DELETE', '/api/objects/' + encodeURIComponent(id));
   }
 
+  function getProtocols(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/protocols');
+  }
+
+  function createProtocol(objectId, protocol) {
+    return request('POST', '/api/objects/' + encodeURIComponent(objectId) + '/protocols', protocol || {});
+  }
+
+  function updateProtocol(objectId, protocolId, protocol) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/protocols/' + encodeURIComponent(protocolId), protocol || {});
+  }
+
+  function deleteProtocol(objectId, protocolId) {
+    return request('DELETE', '/api/objects/' + encodeURIComponent(objectId) + '/protocols/' + encodeURIComponent(protocolId));
+  }
+
   function addObject(name) {
     return request('POST', '/api/objects', { name: (name || 'Новая база').trim() }).then(function (obj) {
       setCurrentObjectId(obj.id);
@@ -156,6 +172,10 @@
     createEntry: createEntry,
     updateEntry: updateEntry,
     deleteEntry: deleteEntry,
+    getProtocols: getProtocols,
+    createProtocol: createProtocol,
+    updateProtocol: updateProtocol,
+    deleteProtocol: deleteProtocol,
     getObjectsList: getObjectsList,
     getCurrentObjectId: getCurrentObjectId,
     setCurrentObjectId: setCurrentObjectId,

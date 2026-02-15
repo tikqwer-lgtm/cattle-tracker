@@ -99,6 +99,19 @@ function initSchema() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_entries_object ON entries(object_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id);`);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS protocols (
+      id TEXT NOT NULL,
+      object_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      steps_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (object_id, id),
+      FOREIGN KEY (object_id) REFERENCES objects(id)
+    );
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_protocols_object ON protocols(object_id);`);
+
   const row = getSql("SELECT 1 FROM objects WHERE id = 'default'");
   if (!row) {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");
@@ -159,6 +172,7 @@ function rowToEntry(row) {
     synced: Boolean(row.synced),
     userId: row.user_id || '',
     lastModifiedBy: row.last_modified_by || '',
+    updatedAt: row.updated_at || '',
     inseminationHistory: Array.isArray(inseminationHistory) ? inseminationHistory : []
   };
 }
@@ -270,6 +284,7 @@ function deleteObject(id) {
   const obj = getObjectById(id);
   if (!obj) return false;
   runSql('DELETE FROM entries WHERE object_id = ?', [id]);
+  runSql('DELETE FROM protocols WHERE object_id = ?', [id]);
   runSql('DELETE FROM objects WHERE id = ?', [id]);
   saveDb();
   return true;
@@ -344,6 +359,67 @@ function entryExists(objectId, cattleId) {
   return getSql('SELECT 1 FROM entries WHERE object_id = ? AND cattle_id = ?', [objectId, cattleId]);
 }
 
+function getProtocols(objectId) {
+  const rows = allSql('SELECT id, object_id, name, steps_json, created_at FROM protocols WHERE object_id = ? ORDER BY id', [objectId]);
+  return (rows || []).map((row) => {
+    let steps = [];
+    try {
+      if (row.steps_json) steps = JSON.parse(row.steps_json);
+    } catch (_) {}
+    return {
+      id: row.id,
+      name: row.name || '',
+      steps: Array.isArray(steps) ? steps : []
+    };
+  });
+}
+
+function getProtocolById(objectId, protocolId) {
+  const row = getSql('SELECT id, object_id, name, steps_json, created_at FROM protocols WHERE object_id = ? AND id = ?', [objectId, protocolId]);
+  if (!row) return null;
+  let steps = [];
+  try {
+    if (row.steps_json) steps = JSON.parse(row.steps_json);
+  } catch (_) {}
+  return {
+    id: row.id,
+    name: row.name || '',
+    steps: Array.isArray(steps) ? steps : []
+  };
+}
+
+function createProtocol(objectId, protocol) {
+  const id = String(protocol.id || ('p_' + Date.now()));
+  const name = (protocol.name || '').trim() || 'Без названия';
+  const steps = Array.isArray(protocol.steps) ? protocol.steps : [];
+  const stepsJson = JSON.stringify(steps);
+  runSql(
+    'INSERT INTO protocols (id, object_id, name, steps_json, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))',
+    [id, objectId, name, stepsJson]
+  );
+  saveDb();
+  return getProtocolById(objectId, id);
+}
+
+function updateProtocol(objectId, protocolId, protocol) {
+  const existing = getProtocolById(objectId, protocolId);
+  if (!existing) return null;
+  const name = (protocol.name != null ? String(protocol.name).trim() : null) || existing.name;
+  const steps = Array.isArray(protocol.steps) ? protocol.steps : existing.steps;
+  const stepsJson = JSON.stringify(steps);
+  runSql('UPDATE protocols SET name = ?, steps_json = ? WHERE object_id = ? AND id = ?', [name, stepsJson, objectId, protocolId]);
+  saveDb();
+  return getProtocolById(objectId, protocolId);
+}
+
+function deleteProtocol(objectId, protocolId) {
+  const existing = getProtocolById(objectId, protocolId);
+  if (!existing) return false;
+  runSql('DELETE FROM protocols WHERE object_id = ? AND id = ?', [objectId, protocolId]);
+  saveDb();
+  return true;
+}
+
 module.exports = {
   initDb,
   initSchema,
@@ -361,5 +437,10 @@ module.exports = {
   createEntry,
   updateEntry,
   deleteEntry,
-  entryExists
+  entryExists,
+  getProtocols,
+  getProtocolById,
+  createProtocol,
+  updateProtocol,
+  deleteProtocol
 };

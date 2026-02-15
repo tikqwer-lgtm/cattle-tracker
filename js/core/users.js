@@ -421,6 +421,10 @@
     updateAuthBar();
     if (typeof showToast === 'function') showToast('Выход выполнен', 'info'); else alert('Выход выполнен');
     if (typeof navigate === 'function') navigate('menu');
+    setTimeout(function () {
+      var el = document.getElementById('authPassword');
+      if (el) el.focus();
+    }, 200);
   }
 
   if (typeof window !== 'undefined') {

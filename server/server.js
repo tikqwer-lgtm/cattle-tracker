@@ -16,6 +16,7 @@ const db = require('./db');
 const authRoutes = require('./routes/auth');
 const objectsRoutes = require('./routes/objects');
 const entriesRoutes = require('./routes/entries');
+const protocolsRoutes = require('./routes/protocols');
 const chatRoutes = require('./routes/chat');
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/auth', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/objects', objectsRoutes);
 app.use('/api/objects', entriesRoutes);
+app.use('/api/objects', protocolsRoutes);
 app.use('/api', chatRoutes);
 
 app.get('/api/health', (req, res) => {
