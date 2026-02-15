@@ -141,8 +141,11 @@
       }
 
       var lastCalving = calvingDate;
-      if (lastCalving && !inseminationDate) {
-        var daysSinceCalving = daysBetween(lastCalving, new Date());
+      var daysSinceCalving = lastCalving ? daysBetween(lastCalving, new Date()) : 0;
+      var statusStr = (entry.status || '').toString();
+      var otelFirst60Only = statusStr.indexOf('Отёл') !== -1 && (daysSinceCalving < 60 || !lastCalving);
+      var excludeInsemination = statusStr.indexOf('Стельная') !== -1 || statusStr.indexOf('Брак') !== -1 || otelFirst60Only;
+      if (lastCalving && !inseminationDate && !excludeInsemination) {
         if (daysSinceCalving >= VWP_DAYS) {
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
@@ -496,7 +499,10 @@
         ev.preventDefault();
         ev.stopPropagation();
         var cattleId = btn.getAttribute('data-cattle-id');
-        if (cattleId && typeof viewCow === 'function') viewCow(cattleId);
+        if (cattleId) {
+          if (typeof window !== 'undefined') window._viewCowReturnTo = 'notifications';
+          if (typeof viewCow === 'function') viewCow(cattleId);
+        }
       });
     });
     updateNotificationIndicators();

@@ -257,7 +257,8 @@
     var userDataHint = document.getElementById('auth-user-data-hint');
     if (userDataHint) userDataHint.style.display = base ? '' : 'none';
     var skipBtn = document.getElementById('auth-skip-btn');
-    if (skipBtn) skipBtn.style.display = base ? 'none' : '';
+    var isElectron = typeof window !== 'undefined' && window.electronAPI;
+    if (skipBtn) skipBtn.style.display = (base && !isElectron) ? 'none' : '';
     initAuthUsernameSelect();
     bindAuthControls();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
@@ -387,6 +388,10 @@
       }).catch(function (err) {
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+        setTimeout(function () {
+          var pwdEl = document.getElementById('authPassword');
+          if (pwdEl) pwdEl.focus();
+        }, 100);
       });
       return false;
     }
@@ -397,6 +402,10 @@
       if (typeof navigate === 'function') navigate('menu');
     } else {
       if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка входа', 'error'); else alert(result.error || result.message || 'Ошибка входа');
+      setTimeout(function () {
+        var pwdEl = document.getElementById('authPassword');
+        if (pwdEl) pwdEl.focus();
+      }, 100);
     }
     return false;
   }

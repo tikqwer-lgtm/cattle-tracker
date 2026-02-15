@@ -4,7 +4,8 @@ var viewListSortKey = '';
 var viewListSortDir = 'asc';
 var VIEW_LIST_FIELDS_KEY = 'cattleTracker_viewList_visibleFields';
 var VIEW_LIST_FIELD_TEMPLATES_KEY = 'cattleTracker_viewList_fieldTemplates';
-var VIRTUAL_LIST_THRESHOLD = 200;
+/** Порог не используется: всегда таблица для единого стиля при любом фильтре */
+var VIRTUAL_LIST_THRESHOLD = Infinity;
 var VIRTUAL_ROW_HEIGHT = 40;
 var viewListSelectedIds = new Set();
 var viewListEditorMode = false;

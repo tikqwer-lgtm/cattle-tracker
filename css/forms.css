@@ -84,24 +84,43 @@
   margin-bottom: 1rem;
 }
 
-/* Редактор карточки: компактная сетка в несколько столбцов */
+/* Редактор карточки: строка = подпись + поле, без наползания */
 .form-cow-editor {
   display: grid;
-  grid-template-columns: minmax(140px, auto) 1fr minmax(140px, auto) 1fr;
-  gap: 0.75rem 1.25rem;
+  grid-template-columns: minmax(220px, 260px) 1fr;
+  gap: 0.5rem 1.25rem;
   align-items: start;
-  max-width: 920px;
+  max-width: 720px;
+}
+.form-cow-editor label + input:not([type="checkbox"]),
+.form-cow-editor label + select,
+.form-cow-editor label + textarea {
+  align-self: center;
+}
+.form-cow-editor label + textarea {
+  align-self: start;
 }
 .form-cow-editor label {
   margin: 0;
+  padding-right: 0.75rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+.form-cow-editor input,
+.form-cow-editor select,
+.form-cow-editor textarea {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.form-cow-editor textarea {
+  min-height: 60px;
+  resize: vertical;
 }
 .form-cow-editor .form-actions {
   grid-column: 1 / -1;
   margin-top: 0.75rem;
   margin-bottom: 0;
-}
-.form-cow-editor textarea {
-  min-height: 60px;
 }
 
 /* Обёртка формы с секциями */

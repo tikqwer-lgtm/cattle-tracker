@@ -216,6 +216,10 @@
       }).catch(function (err) {
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+        setTimeout(function () {
+          var pwdEl = document.getElementById('authPassword');
+          if (pwdEl) pwdEl.focus();
+        }, 100);
       });
       return false;
     }
@@ -226,6 +230,10 @@
       if (typeof navigate === 'function') navigate('menu');
     } else {
       if (typeof showToast === 'function') showToast(result.message || 'Ошибка входа', 'error'); else alert(result.message || 'Ошибка входа');
+      setTimeout(function () {
+        var pwdEl = document.getElementById('authPassword');
+        if (pwdEl) pwdEl.focus();
+      }, 100);
     }
     return false;
   }

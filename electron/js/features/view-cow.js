@@ -221,7 +221,7 @@ function viewCow(cattleId) {
     '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="Поставить на протокол">📋 Поставить на протокол</button> ' +
     '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> ' +
     '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
-    '<button type="button" onclick="navigate(\'view\')" class="small-btn cow-card-back" aria-label="Назад к списку">← Назад к списку</button>' +
+    '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">← Назад</button>' +
     '</div>' +
     '</div>';
 }
@@ -547,10 +547,21 @@ function renderAllInseminationsScreen() {
   });
 }
 
+/** Возврат с карточки: в уведомления или в список животных */
+function viewCowBack() {
+  var returnTo = (typeof window !== 'undefined' && window._viewCowReturnTo) ? window._viewCowReturnTo : null;
+  if (typeof window !== 'undefined') window._viewCowReturnTo = null;
+  if (returnTo && typeof navigate === 'function') navigate(returnTo);
+  else if (typeof navigate === 'function') navigate('view');
+}
+
 // Список записей с групповым выделением рисуется в menu.js (updateViewList).
 // Открытие карточки животного — по кнопке «Карточка» в строке или по вызову viewCow(cattleId).
 if (typeof window !== 'undefined') {
   window.renderAllInseminationsScreen = renderAllInseminationsScreen;
   window.viewCow = viewCow;
+  window.viewCowBack = viewCowBack;
+  window.toggleViewCowInseminationHistory = toggleViewCowInseminationHistory;
+  window.openViewCowActionHistory = openViewCowActionHistory;
 }
 export {};

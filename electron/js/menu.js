@@ -153,6 +153,12 @@ function syncRouteToScreen() {
   var hash = (typeof location !== 'undefined' && location.hash ? location.hash.slice(1) : '') || 'menu';
   var parts = hash.split('/');
   var screenId = parts[0] || 'menu';
+  var isElectron = typeof window !== 'undefined' && window.electronAPI;
+  var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (isElectron && !currentUser && (screenId === 'menu' || screenId === '')) {
+    screenId = 'auth';
+    if (typeof location !== 'undefined') location.hash = 'auth';
+  }
   if (screenId === 'view-cow' && parts[1]) {
     if (typeof viewCow === 'function') viewCow(parts[1]);
   } else {
@@ -359,7 +365,7 @@ function updateHerdStats() {
   }
 
   const totalCows = list.length;
-  const pregnantCows = list.filter(e => e.status && (e.status.includes('Стельная') || e.status.includes('Отёл'))).length;
+  const pregnantCows = list.filter(e => e.status && e.status.includes('Стельная')).length;
   const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
   const inseminatedCows = list.filter(e => e.status && (e.status.includes('Осеменен') || (e.status.toLowerCase && e.status.toLowerCase().includes('осеменен')))).length;
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;

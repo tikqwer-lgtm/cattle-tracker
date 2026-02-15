@@ -551,8 +551,11 @@ function saveUziEntry() {
   if (typeof viewCow === 'function') viewCow(cattleId);
 }
 
-// Делаем функцию массового удаления доступной глобально
-window.deleteSelectedEntries = deleteSelectedEntries;
+// Делаем функции доступными глобально (для inline onclick в карточке и т.д.)
+if (typeof window !== 'undefined') {
+  window.editEntry = editEntry;
+  window.deleteSelectedEntries = deleteSelectedEntries;
+}
 
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {
