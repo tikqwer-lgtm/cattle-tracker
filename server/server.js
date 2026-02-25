@@ -12,12 +12,14 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
+const bcrypt = require('bcryptjs');
 const db = require('./db');
 const authRoutes = require('./routes/auth');
 const objectsRoutes = require('./routes/objects');
 const entriesRoutes = require('./routes/entries');
 const protocolsRoutes = require('./routes/protocols');
 const chatRoutes = require('./routes/chat');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +52,7 @@ app.use('/api/objects', objectsRoutes);
 app.use('/api/objects', entriesRoutes);
 app.use('/api/objects', protocolsRoutes);
 app.use('/api', chatRoutes);
+app.use('/api', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
@@ -91,6 +94,12 @@ function listenOnPort(app, portStart) {
 async function start() {
   await db.initDb();
   db.initSchema();
+  if (!db.findUserByUsername('Panko')) {
+    const id = 'u_admin_panko';
+    const passwordHash = bcrypt.hashSync('123456', 10);
+    db.createUser(id, 'Panko', passwordHash, 'admin');
+    console.log('Created default admin user Panko');
+  }
   await listenOnPort(app, PORT);
 }
 

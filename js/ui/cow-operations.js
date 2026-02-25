@@ -350,6 +350,8 @@ function saveProtocolAssignEntry() {
   if (!entry.protocol) entry.protocol = {};
   entry.protocol.name = protocolName;
   entry.protocol.startDate = startDate || '';
+  var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -508,6 +510,8 @@ function saveUziEntry() {
   }
 
   if (!entry.uziHistory) entry.uziHistory = [];
+  var statusBefore = (entry.status || '').toString();
+  var eventTypeUzi = (statusBefore.indexOf('Осеменен') !== -1) ? 'УЗИ1' : (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ');
   var lastInsem = getLastInseminationDateBefore(entry, uziDate);
   var daysNum = null;
   if (daysFromInsemination != null && !isNaN(daysFromInsemination)) daysNum = daysFromInsemination;
@@ -529,7 +533,7 @@ function saveUziEntry() {
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'УЗИ', detailsStr);
+  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
 
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {

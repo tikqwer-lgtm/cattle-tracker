@@ -49,11 +49,13 @@ function initApp() {
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
-      if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
       var msg = (err && err.message) ? err.message : '';
       if (msg.indexOf('авторизац') !== -1 || msg.indexOf('401') !== -1) {
-        if (typeof showToast === 'function') showToast('Войдите в учётную запись: Настройки → Войти / Пользователи → логин и пароль → Войти (или Регистрация).', 'info', 8000);
-        if (typeof navigate === 'function') navigate('auth');
+        if (typeof showToast === 'function') showToast('Требуется вход: Настройки → Синхронизация или Войти → логин и пароль.', 'info', 8000);
+        if (typeof window.updateSyncServerStatus === 'function') window.updateSyncServerStatus('Требуется вход. Настройки → Синхронизация или Войти.', true);
+        if (typeof window.updateConnectionIndicator === 'function') window.updateConnectionIndicator(false);
+      } else {
+        if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
       }
     });
   } else {

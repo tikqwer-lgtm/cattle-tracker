@@ -16,6 +16,7 @@
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <span id="app-version-header" class="app-version-header"></span>
+    <button type="button" id="report-error-btn" class="app-header-report-error-btn" title="Сообщить об ошибке администратору" aria-label="Сообщить об ошибке" style="display: none;" onclick="typeof window.openReportErrorModal === 'function' && window.openReportErrorModal()">Сообщить об ошибке</button>
     <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
       <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
     </button>
@@ -27,7 +28,7 @@
       <div class="print-header-milk"></div>
       <div class="print-header-content">
         <div class="print-logo">
-          <img src="app-icons/icon.svg" alt="" width="64" height="64" class="print-logo-img" />
+          <img src="icons/icon.svg" alt="" width="64" height="64" class="print-logo-img" />
           <span class="print-company-name">Молочная компания «Генетика»</span>
         </div>
         <div class="print-details">
@@ -85,7 +86,7 @@
   <!-- ========== Меню (главный экран) ========== -->
   <div id="menu-screen" class="screen">
     <div class="menu-branding" aria-hidden="false">
-      <img src="app-icons/icon.svg" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
+      <img src="icons/icon.svg" alt="Молочная компания Генетика" class="menu-branding-logo" width="64" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="app-version" class="app-version" data-default-version="1.4.4" aria-label="Версия приложения"></p>
@@ -177,6 +178,12 @@
           <span>Настройки</span>
         </button>
       </div>
+      <div class="menu-section" id="admin-menu-section" style="display: none;">
+        <button onclick="typeof window.navigate === 'function' && window.navigate('admin')" class="action-btn menu-group-btn">
+          <span>🛠️</span>
+          <span>Администрирование</span>
+        </button>
+      </div>
     </div>
     <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="handleImportFile(event)">
   </div>
@@ -185,6 +192,36 @@
   <div id="submenu-screen" class="screen">
     <h1 id="submenu-title">Подменю</h1>
     <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран «Списки» (УЗИ, осеменение, уколы) -->
+  <div id="lists-screen" class="screen">
+    <h1>📋 Списки</h1>
+    <div id="lists-screen-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран «Список событий» -->
+  <div id="events-screen" class="screen">
+    <h1>📜 Список событий</h1>
+    <div id="events-screen-filters" class="events-filters"></div>
+    <div id="events-screen-container" class="events-screen-container"></div>
+    <div id="events-screen-actions" class="events-actions"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран администрирования (только для admin в режиме API) -->
+  <div id="admin-screen" class="screen">
+    <h1>Администрирование</h1>
+    <section class="admin-section">
+      <h2>Пользователи</h2>
+      <div id="admin-users-container" class="admin-list-container"></div>
+    </section>
+    <section class="admin-section">
+      <h2>Отчёты пользователей</h2>
+      <div id="admin-reports-container" class="admin-list-container"></div>
+    </section>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
@@ -598,6 +635,28 @@
     </div>
   </div>
 
+  <!-- Модалка «Сообщить об ошибке» -->
+  <div id="report-error-modal" class="view-fields-modal" role="dialog" aria-modal="true" aria-labelledby="report-error-modal-title" aria-hidden="true" hidden>
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="report-error-modal-title">Сообщить об ошибке</h2>
+        <button type="button" class="view-fields-modal-close" aria-label="Закрыть" onclick="typeof window.closeReportErrorModal === 'function' && window.closeReportErrorModal()">&times;</button>
+      </div>
+      <div class="view-fields-modal-body">
+        <label for="report-error-message">Опишите проблему или ошибку</label>
+        <textarea id="report-error-message" rows="4" placeholder="Что произошло? Что вы делали перед этим?"></textarea>
+        <label class="report-error-checkbox-label">
+          <input type="checkbox" id="report-error-include-diagnostics" checked />
+          Приложить диагностику (версия, экран, среда) — помогает при разборе проблем
+        </label>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" onclick="typeof window.closeReportErrorModal === 'function' && window.closeReportErrorModal()">Отмена</button>
+        <button type="button" class="action-btn" id="report-error-submit-btn" onclick="typeof window.submitReportError === 'function' && window.submitReportError()">Отправить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Подсказки при первом запуске -->
   <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="first-run-hints-content">
@@ -634,6 +693,7 @@
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
       </div>
+      <div id="syncConnectStatus" class="sync-connect-status" aria-live="polite"></div>
     </div>
     <!-- Секция для режима API: обновление с сервера и статус -->
     <div id="sync-server-block" class="sync-server-section" style="display: none;">

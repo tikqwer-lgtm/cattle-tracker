@@ -180,12 +180,21 @@
   }
 
   var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
+  var loginInProgress = false;
 
   function getSavedServerBase() {
     try {
       var s = localStorage.getItem('cattleTracker_apiBase');
       return (s && (s = (s + '').trim())) ? s : '';
     } catch (e) { return ''; }
+  }
+
+  function setConnectStatus(html, isError) {
+    var el = document.getElementById('syncConnectStatus');
+    if (!el) return;
+    el.innerHTML = html || '';
+    el.className = 'sync-connect-status' + (isError ? ' sync-connect-status--error' : ' sync-connect-status--progress');
+    if (!html) el.className = 'sync-connect-status';
   }
 
   function saveServerBaseUrl() {
@@ -201,22 +210,43 @@
       if (input) input.value = url;
       if (typeof showToast === 'function') showToast('На порту 3000 обычно работает HTTP. Используется http://…', 'info', 5000);
     }
-    if (url.indexOf('http://') === 0 && url.indexOf('localhost') === -1 && url.indexOf('127.0.0.1') === -1) {
-      if (!confirm('Для доступа из интернета рекомендуется HTTPS. Продолжить с HTTP?')) return;
-    }
-    var useApiNow = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API;
-    var hasLocalEntries = !useApiNow && typeof global !== 'undefined' && global.entries && Array.isArray(global.entries) && global.entries.length > 0;
-    if (hasLocalEntries && !confirm('После перезагрузки будут показаны данные с сервера (сейчас на сервере может не быть записей). Ваши локальные записи останутся в браузере, но не будут отображаться. Чтобы снова видеть их, уберите адрес сервера в Настройках. Рекомендуется создать резервную копию перед перезагрузкой. Продолжить?')) {
-      return;
-    }
-    try {
-      localStorage.setItem('cattleTracker_apiBase', url);
-      if (typeof showToast === 'function') showToast('Адрес сохранён. Перезагрузка…', 'info');
-      location.reload();
-    } catch (e) {
-      if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
-      else alert('Ошибка сохранения');
-    }
+    var btn = document.getElementById('syncSaveServerBtn');
+    if (btn) btn.disabled = true;
+    setConnectStatus('<span class="sync-connect-spinner" aria-hidden="true"></span> Проверка подключения…', false);
+    fetch(url + '/api/health').then(function (res) {
+      if (res.ok) {
+        setConnectStatus('<span class="sync-connect-spinner" aria-hidden="true"></span> Подключено. Сохранение…', false);
+        try {
+          localStorage.setItem('cattleTracker_apiBase', url);
+          localStorage.setItem('cattleTracker_useApiMode', '1');
+          setConnectStatus('', false);
+          if (typeof showToast === 'function') showToast('Подключено. Перезагрузка…', 'success');
+          location.reload();
+        } catch (e) {
+          setConnectStatus('Ошибка сохранения настроек.', true);
+          if (btn) btn.disabled = false;
+          if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
+        }
+      } else {
+        var reason = 'Сервер ответил с кодом ' + res.status;
+        res.text().then(function (t) {
+          if (t && t.length < 200) reason += ': ' + t;
+          setConnectStatus(reason, true);
+          if (btn) btn.disabled = false;
+          if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
+        }).catch(function () {
+          setConnectStatus(reason, true);
+          if (btn) btn.disabled = false;
+          if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
+        });
+      }
+    }).catch(function (err) {
+      var reason = (err && err.message) ? err.message : 'нет связи с сервером';
+      if (err && err.message && err.message.indexOf('Failed to fetch') !== -1) reason = 'Не удалось связаться с сервером (проверьте адрес и сеть)';
+      setConnectStatus(reason, true);
+      if (btn) btn.disabled = false;
+      if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
+    });
   }
 
   function bindAuthControls() {
@@ -264,6 +294,10 @@
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }
+    var authScreen = document.getElementById('auth-screen');
+    if (authScreen && authScreen.classList.contains('active')) {
+      setTimeout(focusAuthForm, 0);
+    }
     if (useApi) {
       global.CattleTrackerApi.getCurrentUser().then(function (u) {
         currentUser = u || null;
@@ -305,6 +339,16 @@
         bar.style.display = 'none';
       }
     }
+    var adminSection = document.getElementById('admin-menu-section');
+    if (adminSection) {
+      var showAdmin = user && user.role === 'admin' && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
+      adminSection.style.display = showAdmin ? '' : 'none';
+    }
+    var reportErrorBtn = document.getElementById('report-error-btn');
+    if (reportErrorBtn) {
+      var showReport = user && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
+      reportErrorBtn.style.display = showReport ? '' : 'none';
+    }
   }
 
   function initRegisterUsernameCheck() {
@@ -344,6 +388,20 @@
     });
   }
 
+  /** Ставит фокус на первое поле видимой формы входа/регистрации (следующий тик, чтобы DOM был готов). */
+  function focusAuthForm() {
+    requestAnimationFrame(function () {
+      var regForm = document.getElementById('authRegisterForm');
+      var regVisible = regForm && regForm.style.display !== 'none';
+      var el = regVisible
+        ? document.getElementById('regUsername')
+        : document.getElementById('authUsername');
+      if (el) {
+        el.focus({ preventScroll: false });
+      }
+    });
+  }
+
   function showAuthLogin() {
     var loginForm = document.getElementById('authLoginForm');
     var regForm = document.getElementById('authRegisterForm');
@@ -351,6 +409,7 @@
     if (loginForm) loginForm.style.display = '';
     if (regForm) regForm.style.display = 'none';
     if (checkEl) { checkEl.textContent = ''; checkEl.className = 'auth-username-check'; }
+    focusAuthForm();
   }
   function showAuthRegister() {
     var loginForm = document.getElementById('authLoginForm');
@@ -359,13 +418,21 @@
     if (loginForm) loginForm.style.display = 'none';
     if (regForm) regForm.style.display = '';
     if (checkEl) { checkEl.textContent = ''; checkEl.className = 'auth-username-check'; }
+    focusAuthForm();
   }
   function handleLogin(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
     var username = document.getElementById('authUsername') && document.getElementById('authUsername').value;
     var password = document.getElementById('authPassword') && document.getElementById('authPassword').value;
     if (useApi) {
+      if (loginInProgress) return false;
+      var form = document.getElementById('authLoginForm');
+      var submitBtn = form && form.querySelector('button[type="submit"]');
+      loginInProgress = true;
+      if (submitBtn) submitBtn.disabled = true;
       global.CattleTrackerApi.login(username, password).then(function (data) {
+        loginInProgress = false;
+        if (submitBtn) submitBtn.disabled = false;
         if (data && data.user) {
           saveCurrentUser(data.user);
           addLastUsername(data.user.username || username);
@@ -386,12 +453,18 @@
         };
         loadAndShow();
       }).catch(function (err) {
+        loginInProgress = false;
+        if (submitBtn) submitBtn.disabled = false;
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
         setTimeout(function () {
-          var pwdEl = document.getElementById('authPassword');
-          if (pwdEl) pwdEl.focus();
-        }, 100);
+          requestAnimationFrame(function () {
+            var pwdEl = document.getElementById('authPassword');
+            if (pwdEl) {
+              pwdEl.focus({ preventScroll: false });
+            }
+          });
+        }, 300);
       });
       return false;
     }
@@ -403,9 +476,13 @@
     } else {
       if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка входа', 'error'); else alert(result.error || result.message || 'Ошибка входа');
       setTimeout(function () {
-        var pwdEl = document.getElementById('authPassword');
-        if (pwdEl) pwdEl.focus();
-      }, 100);
+        requestAnimationFrame(function () {
+          var pwdEl = document.getElementById('authPassword');
+          if (pwdEl) {
+            pwdEl.focus({ preventScroll: false });
+          }
+        });
+      }, 300);
     }
     return false;
   }
@@ -469,6 +546,7 @@
     window.updateAuthBar = updateAuthBar;
     window.showAuthLogin = showAuthLogin;
     window.showAuthRegister = showAuthRegister;
+    window.focusAuthForm = focusAuthForm;
     window.handleLogin = handleLogin;
     window.handleRegister = handleRegister;
     window.skipAuth = skipAuth;

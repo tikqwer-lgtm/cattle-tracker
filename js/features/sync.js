@@ -477,6 +477,7 @@ if (typeof window !== 'undefined') {
   window.connectToServer = connectToServer;
   window.disconnectFromServer = disconnectFromServer;
   window.updateConnectionIndicator = updateConnectionIndicator;
+  window.updateSyncServerStatus = updateSyncServerStatus;
   window.refreshFromServer = refreshFromServer;
   window.syncCurrentBaseToServer = syncCurrentBaseToServer;
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;

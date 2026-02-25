@@ -356,9 +356,10 @@
     html += '<button type="button" class="small-btn tasks-period-btn" data-range="today">Сегодня</button>';
     html += '<button type="button" class="small-btn tasks-period-btn" data-range="tomorrow">Завтра</button>';
     html += '<button type="button" class="small-btn tasks-period-btn" data-range="week">Неделя вперёд</button>';
-    html += '<label>С <input type="date" id="tasksDateFrom" class="tasks-date-input" /></label>';
-    html += '<label>По <input type="date" id="tasksDateTo" class="tasks-date-input" /></label>';
+    html += '<label>С <input type="date" id="tasksDateFrom" class="tasks-date-input" value="' + (fromDate || '') + '" /></label>';
+    html += '<label>По <input type="date" id="tasksDateTo" class="tasks-date-input" value="' + (toDate || '') + '" /></label>';
     html += '</div>';
+    html += '<div class="tasks-list-actions"><button type="button" class="small-btn" id="tasksPrintBtn">Печать</button><button type="button" class="small-btn" id="tasksExcelBtn">Экспорт в Excel</button></div>';
     if (dates.length === 0) {
       html += '<p class="tasks-empty">Нет задач на выбранный период.</p>';
     } else {
@@ -416,6 +417,17 @@
     });
     if (toInput) toInput.addEventListener('change', function () {
       renderTasksList(containerEl, fromInput ? fromInput.value : undefined, toInput.value || undefined);
+    });
+    var printBtn = document.getElementById('tasksPrintBtn');
+    if (printBtn) printBtn.addEventListener('click', function () {
+      if (typeof global.print === 'function') global.print(); else window.print();
+    });
+    var excelBtn = document.getElementById('tasksExcelBtn');
+    if (excelBtn) excelBtn.addEventListener('click', function () {
+      var from = (fromInput && fromInput.value) || todayStr;
+      var to = (toInput && toInput.value) || todayStr;
+      var taskList = getProtocolTasks(from, to);
+      if (typeof global.exportListToExcel === 'function') global.exportListToExcel('Список_задач', taskList, ['date', 'cattleId', 'group', 'drug', 'protocolName'], ['Дата', 'Номер животного', 'Группа', 'Препарат/инъекция', 'Протокол']);
     });
   }
 

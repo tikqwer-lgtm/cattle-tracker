@@ -164,6 +164,26 @@
     return request('GET', '/api/auth/check-username?username=' + encodeURIComponent(u));
   }
 
+  function getUsers() {
+    return request('GET', '/api/admin/users').then(function (data) { return data.users || []; });
+  }
+
+  function deleteUser(id) {
+    return request('DELETE', '/api/admin/users/' + encodeURIComponent(id));
+  }
+
+  function submitReport(message, payload) {
+    return request('POST', '/api/reports', { message: message, payload: payload || null });
+  }
+
+  function getReports() {
+    return request('GET', '/api/reports').then(function (data) { return data.reports || []; });
+  }
+
+  function deleteReport(id) {
+    return request('DELETE', '/api/reports/' + encodeURIComponent(id));
+  }
+
   var api = {
     getBaseUrl: getBaseUrl,
     getToken: getToken,
@@ -187,7 +207,12 @@
     logout: logout,
     register: register,
     getCurrentUser: getCurrentUser,
-    checkUsername: checkUsername
+    checkUsername: checkUsername,
+    getUsers: getUsers,
+    deleteUser: deleteUser,
+    submitReport: submitReport,
+    getReports: getReports,
+    deleteReport: deleteReport
   };
 
   if (typeof global !== 'undefined') {

@@ -10,7 +10,9 @@ var MENU_GROUPS = {
       { icon: '📋', text: 'Шаблон импорта', onclick: 'downloadTemplate()' },
       { icon: '📥', text: 'Импорт из Excel', onclick: "document.getElementById('importFile').click()" },
       { icon: '📋', text: 'Список всех животных', onclick: "navigate('view')" },
-      { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" }
+      { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" },
+      { icon: '📋', text: 'Списки', onclick: "navigate('lists')" },
+      { icon: '📜', text: 'Список событий', onclick: "navigate('events')" }
     ]
   },
   actions: {
@@ -113,14 +115,9 @@ function navigate(screenId, options) {
   if (screenId === 'auth') {
     if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
     if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
-    requestAnimationFrame(function () {
-      setTimeout(function () {
-        var loginInput = document.getElementById('authUsername');
-        if (loginInput) {
-          loginInput.focus({ preventScroll: false });
-        }
-      }, 120);
-    });
+    setTimeout(function () {
+      if (typeof window.focusAuthForm === 'function') window.focusAuthForm();
+    }, 0);
   }
   if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
     renderTasksScreen();
@@ -133,6 +130,15 @@ function navigate(screenId, options) {
   }
   if (screenId === 'sync' && typeof renderBackupUI === 'function') {
     renderBackupUI('sync-backup-container');
+  }
+  if (screenId === 'admin' && typeof window.renderAdminScreen === 'function') {
+    window.renderAdminScreen();
+  }
+  if (screenId === 'lists' && typeof window.renderListsScreen === 'function') {
+    window.renderListsScreen();
+  }
+  if (screenId === 'events' && typeof window.renderEventsScreen === 'function') {
+    window.renderEventsScreen();
   }
   if (screenId === 'add') {
     var clearBtn = document.getElementById('clearFormButton');

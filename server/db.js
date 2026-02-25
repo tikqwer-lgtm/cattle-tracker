@@ -112,6 +112,18 @@ function initSchema() {
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_protocols_object ON protocols(object_id);`);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      message TEXT NOT NULL,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at);`);
+
   const row = getSql("SELECT 1 FROM objects WHERE id = 'default'");
   if (!row) {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");
@@ -219,6 +231,61 @@ function findUserByUsername(username) {
 
 function findUserById(id) {
   return getSql('SELECT id, username, role FROM users WHERE id = ?', [id]);
+}
+
+function getAllUsers() {
+  return allSql('SELECT id, username, role, created_at FROM users ORDER BY created_at');
+}
+
+function deleteUser(id) {
+  const user = findUserById(id);
+  if (!user) return false;
+  runSql('DELETE FROM users WHERE id = ?', [id]);
+  saveDb();
+  return true;
+}
+
+function createReport(userId, username, message, payloadJson) {
+  const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  runSql(
+    'INSERT INTO reports (id, user_id, username, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
+    [id, userId, username, message || '', payloadJson != null ? payloadJson : null]
+  );
+  saveDb();
+  return getReportById(id);
+}
+
+function getReportById(id) {
+  const row = getSql('SELECT id, user_id, username, message, payload_json, created_at FROM reports WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    message: row.message || '',
+    payload: row.payload_json,
+    createdAt: row.created_at
+  };
+}
+
+function getReports() {
+  const rows = allSql('SELECT id, user_id, username, message, payload_json, created_at FROM reports ORDER BY created_at DESC');
+  return (rows || []).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    message: row.message || '',
+    payload: row.payload_json,
+    createdAt: row.created_at
+  }));
+}
+
+function deleteReport(id) {
+  const report = getReportById(id);
+  if (!report) return false;
+  runSql('DELETE FROM reports WHERE id = ?', [id]);
+  saveDb();
+  return true;
 }
 
 function getObjects() {
@@ -426,6 +493,12 @@ module.exports = {
   createUser,
   findUserByUsername,
   findUserById,
+  getAllUsers,
+  deleteUser,
+  createReport,
+  getReportById,
+  getReports,
+  deleteReport,
   getObjects,
   getObjectsWithMeta,
   getObjectById,

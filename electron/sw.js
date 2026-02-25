@@ -4,7 +4,7 @@ var urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './app-icons/icon.svg',
+  './icons/icon.svg',
   './css/style.css',
   './css/base.css',
   './css/layout.css',

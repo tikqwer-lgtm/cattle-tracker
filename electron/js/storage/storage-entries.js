@@ -202,13 +202,27 @@ function getDefaultCowEntry() {
 
 /**
  * Добавляет запись в историю действий карточки животного.
+ * @param {Object} entry - запись животного
+ * @param {string} action - название действия (УЗИ, Осеменение, Постановка на протокол и т.д.)
+ * @param {string} [details] - текстовая строка с деталями
+ * @param {Object} [options] - опциональные поля для общего списка событий: eventType, result, attemptNumber, bull, inseminator, code, protocolName
  */
-function pushActionHistory(entry, action, details) {
+function pushActionHistory(entry, action, details, options) {
   if (!entry) return;
   if (!entry.actionHistory) entry.actionHistory = [];
   var userName = (typeof window.getCurrentUser === 'function' && window.getCurrentUser()) ? window.getCurrentUser().username : 'Admin';
   var dateTime = typeof window.nowFormatted === 'function' ? window.nowFormatted() : new Date().toISOString();
-  entry.actionHistory.push({ dateTime: dateTime, userName: userName, action: action, details: details || '' });
+  var item = { dateTime: dateTime, userName: userName, action: action, details: details || '' };
+  if (options && typeof options === 'object') {
+    if (options.eventType !== undefined) item.eventType = options.eventType;
+    if (options.result !== undefined) item.result = options.result;
+    if (options.attemptNumber !== undefined) item.attemptNumber = options.attemptNumber;
+    if (options.bull !== undefined) item.bull = options.bull;
+    if (options.inseminator !== undefined) item.inseminator = options.inseminator;
+    if (options.code !== undefined) item.code = options.code;
+    if (options.protocolName !== undefined) item.protocolName = options.protocolName;
+  }
+  entry.actionHistory.push(item);
 }
 
 if (typeof window !== 'undefined') {
