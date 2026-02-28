@@ -31,6 +31,12 @@ Server runs on `http://localhost:3000`. Set `PORT` to change.
 - `POST /api/auth/register` — body: `{ username, password, role? }`
 - `POST /api/auth/login` — body: `{ username, password }` → `{ user, token }`
 - `GET /api/auth/me` — requires `Authorization: Bearer <token>`
+- `GET /api/auth/check-username?username=...` — проверка занятости логина (без авторизации)
+- `GET /api/admin/users` — список пользователей (только admin), requires auth
+- `DELETE /api/admin/users/:id` — удаление пользователя (только admin)
+- `POST /api/reports` — отправить отчёт (body: `{ message, payload? }`), requires auth
+- `GET /api/reports` — список отчётов (только admin), requires auth
+- `DELETE /api/reports/:id` — удалить отчёт (только admin)
 - `GET /api/objects` — list objects
 - `POST /api/objects` — body: `{ name }`
 - `GET /api/objects/:id/entries` — list entries

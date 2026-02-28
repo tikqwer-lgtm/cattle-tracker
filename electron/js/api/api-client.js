@@ -43,9 +43,12 @@
       var isJson = contentType.indexOf('application/json') !== -1;
       var next = function () {
         if (res.ok) return isJson ? res.json() : Promise.resolve(null);
+        var msg = isJson ? null : 'Ошибка ' + res.status;
         return isJson ? res.json().then(function (data) {
-          throw new Error(data.message || data.error || 'Ошибка ' + res.status);
-        }) : Promise.reject(new Error('Ошибка ' + res.status));
+          var e = new Error(data.message || data.error || 'Ошибка ' + res.status);
+          e.status = res.status;
+          throw e;
+        }) : (function () { var e = new Error(msg); e.status = res.status; return Promise.reject(e); })();
       };
       return next();
     }).catch(function (err) {
@@ -161,11 +164,17 @@
   function checkUsername(username) {
     var u = (username || '').trim();
     if (!u) return Promise.resolve({ available: true });
-    return request('GET', '/api/auth/check-username?username=' + encodeURIComponent(u));
+    return request('GET', '/api/auth/check-username?username=' + encodeURIComponent(u)).catch(function (err) {
+      if (err && err.status === 404) return { available: true };
+      throw err;
+    });
   }
 
   function getUsers() {
-    return request('GET', '/api/admin/users').then(function (data) { return data.users || []; });
+    return request('GET', '/api/admin/users').then(function (data) { return data.users || []; }).catch(function (err) {
+      if (err && err.status === 404) return [];
+      throw err;
+    });
   }
 
   function deleteUser(id) {
@@ -177,7 +186,10 @@
   }
 
   function getReports() {
-    return request('GET', '/api/reports').then(function (data) { return data.reports || []; });
+    return request('GET', '/api/reports').then(function (data) { return data.reports || []; }).catch(function (err) {
+      if (err && err.status === 404) return [];
+      throw err;
+    });
   }
 
   function deleteReport(id) {

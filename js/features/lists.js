@@ -199,10 +199,10 @@
 
   function renderUziListSubScreen(sub) {
     var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     var weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 7);
-    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + String(weekEnd.getDate()).padStart(2, '0');
+    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
     var html = '<div class="list-sub-header"><h3>Список на УЗИ</h3>' +
       '<div class="list-filters">' +
       '<label>С <input type="date" id="uziListDateFrom" value="' + escapeHtml(todayStr) + '" /></label>' +
@@ -260,10 +260,10 @@
 
   function renderInseminationListSubScreen(sub) {
     var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     var weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 7);
-    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + String(weekEnd.getDate()).padStart(2, '0');
+    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
     var groups = getUniqueGroups();
     var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>'; }).join('');
     var html = '<div class="list-sub-header"><h3>Список на осеменение</h3>' +

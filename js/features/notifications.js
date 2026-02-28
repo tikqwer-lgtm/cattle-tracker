@@ -341,7 +341,7 @@
   function renderTasksList(containerEl, fromDate, toDate) {
     if (!containerEl) return;
     var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     if (!fromDate && !toDate) { fromDate = todayStr; toDate = todayStr; }
     var tasks = getProtocolTasks(fromDate, toDate);
     var byDate = {};
@@ -383,7 +383,7 @@
     }
     html += '</div>';
     containerEl.innerHTML = html;
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     function applyRange(range) {
       var from = '';
       var to = '';
@@ -392,12 +392,12 @@
       } else if (range === 'tomorrow') {
         var t2 = new Date(today);
         t2.setDate(t2.getDate() + 1);
-        from = to = t2.getFullYear() + '-' + String(t2.getMonth() + 1).padStart(2, '0') + String(t2.getDate()).padStart(2, '0');
+        from = to = t2.getFullYear() + '-' + String(t2.getMonth() + 1).padStart(2, '0') + '-' + String(t2.getDate()).padStart(2, '0');
       } else if (range === 'week') {
         from = todayStr;
         var t7 = new Date(today);
         t7.setDate(t7.getDate() + 7);
-        to = t7.getFullYear() + '-' + String(t7.getMonth() + 1).padStart(2, '0') + String(t7.getDate()).padStart(2, '0');
+        to = t7.getFullYear() + '-' + String(t7.getMonth() + 1).padStart(2, '0') + '-' + String(t7.getDate()).padStart(2, '0');
       }
       var fromEl = document.getElementById('tasksDateFrom');
       var toEl = document.getElementById('tasksDateTo');
