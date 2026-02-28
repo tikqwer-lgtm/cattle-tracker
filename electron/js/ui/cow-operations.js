@@ -218,14 +218,21 @@ function setupCattleAutocompleteFor(inputId, listId) {
   var input = document.getElementById(inputId);
   var list = document.getElementById(listId);
   if (!input || !list) return;
+  function getEntries() {
+    return (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries))
+      ? window.entries
+      : (typeof entries !== 'undefined' && Array.isArray(entries) ? entries : []);
+  }
   function populate() {
     list.innerHTML = '';
-    var filter = (input.value || '').toLowerCase();
-    if (!filter) return;
-    var matching = (entries || []).filter(function (e) {
-      return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
-        (e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
-    }).slice(0, 10);
+    var filter = (input.value || '').toLowerCase().trim();
+    var source = getEntries();
+    var matching = filter
+      ? source.filter(function (e) {
+          return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
+            (e.nickname && e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
+        }).slice(0, 10)
+      : source.slice(0, 10);
     matching.forEach(function (entry) {
       var li = document.createElement('li');
       li.textContent = entry.cattleId + (entry.nickname ? ' (' + entry.nickname + ')' : '');
@@ -238,8 +245,21 @@ function setupCattleAutocompleteFor(inputId, listId) {
     });
   }
   input.removeEventListener('input', input._cattleAutocompleteInput);
+  input.removeEventListener('focus', input._cattleAutocompleteFocus);
   input._cattleAutocompleteInput = populate;
   input.addEventListener('input', populate);
+  input._cattleAutocompleteFocus = function () {
+    populate();
+  };
+  input.addEventListener('focus', input._cattleAutocompleteFocus);
+  input.addEventListener('blur', function () {
+    setTimeout(function () {
+      list.innerHTML = '';
+    }, 200);
+  });
+  list.addEventListener('mousedown', function (e) {
+    e.preventDefault();
+  });
 }
 
 /**
@@ -389,7 +409,8 @@ function initCalvingScreen() {
 function initProtocolAssignScreen() {
   setupCattleAutocompleteFor('cattleIdProtocolInput', 'cattleIdProtocolList');
   var select = document.getElementById('protocolSelectAssign');
-  if (select && typeof getProtocols === 'function') {
+  function fillProtocolSelect() {
+    if (!select || typeof getProtocols !== 'function') return;
     var list = getProtocols();
     select.innerHTML = '<option value="">— Выберите протокол —</option>';
     list.forEach(function (p) {
@@ -398,6 +419,11 @@ function initProtocolAssignScreen() {
       opt.textContent = p.name || 'Без названия';
       select.appendChild(opt);
     });
+  }
+  if (typeof window.ensureProtocolsLoaded === 'function') {
+    window.ensureProtocolsLoaded(fillProtocolSelect);
+  } else {
+    fillProtocolSelect();
   }
   if (window._prefillCattleId) {
     var el = document.getElementById('cattleIdProtocolInput');

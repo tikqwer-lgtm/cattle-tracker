@@ -24,6 +24,26 @@ function getProtocols() {
 }
 
 /**
+ * В режиме API загружает протоколы с сервера в кэш, затем вызывает callback.
+ * В локальном режиме сразу вызывает callback. Используется при открытии экрана «Поставить на протокол».
+ * @param {function()} callback
+ */
+function ensureProtocolsLoaded(callback) {
+  if (!callback || typeof callback !== 'function') return;
+  if (!useApi()) {
+    callback();
+    return;
+  }
+  window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
+    _protocolsCache = (list || []).slice();
+    callback();
+  }).catch(function () {
+    _protocolsCache = [];
+    callback();
+  });
+}
+
+/**
  * Сохраняет массив протоколов в localStorage
  * @param {Array} arr
  */
@@ -335,5 +355,6 @@ function renderProtocolStepsList(steps) {
 }
 if (typeof window !== 'undefined') {
   window.renderProtocolsScreen = renderProtocolsScreen;
+  window.ensureProtocolsLoaded = ensureProtocolsLoaded;
 }
 export {};

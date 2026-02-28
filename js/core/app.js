@@ -76,20 +76,23 @@ function initApp() {
 
   var versionEl = document.getElementById('app-version');
   var versionHeaderEl = document.getElementById('app-version-header');
-  function setVersionText(text) {
-    if (versionEl) versionEl.textContent = text;
+  function setVersionText(text, versionValue) {
+    if (versionEl) {
+      versionEl.textContent = text;
+      if (versionValue != null) versionEl.setAttribute('data-default-version', String(versionValue));
+    }
     if (versionHeaderEl) versionHeaderEl.textContent = text;
   }
   if (versionEl || versionHeaderEl) {
     if (typeof window.electronAPI !== 'undefined' && window.electronAPI.getAppVersion) {
       window.electronAPI.getAppVersion().then(function (v) {
-        setVersionText('Версия ' + v);
+        setVersionText('Версия ' + v, v);
       });
     } else {
       var fallback = (versionEl && versionEl.getAttribute('data-default-version')) || '1.0.0';
-      setVersionText('Версия ' + fallback);
+      setVersionText('Версия ' + fallback, fallback);
       fetch('package.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (pkg) {
-        if (pkg && pkg.version) setVersionText('Версия ' + pkg.version);
+        if (pkg && pkg.version) setVersionText('Версия ' + pkg.version, pkg.version);
       }).catch(function () {});
     }
   }

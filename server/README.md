@@ -16,6 +16,21 @@ Server runs on `http://localhost:3000`. Set `PORT` to change.
 
 Автозапуск при старте Windows: поместите ярлык на `start-server.bat` в папку автозагрузки (`Win+R` → `shell:startup`).
 
+## Развёртывание на сервер (обновление кода)
+
+**Автоматически (PowerShell):** создайте `server/server-address.txt` по образцу `server-address.example.txt` (укажите `SERVER_IP=` и `USER=`). Затем из корня проекта выполните:
+```powershell
+.\server\scripts\deploy.ps1
+```
+Введите пароль SSH при запросе. На сервере должны существовать каталог `/root/cattle-tracker/server` и сервис systemd `cattle-tracker-api`.
+
+**Вручную:** скопируйте содержимое папки `server/` на сервер (без `node_modules` и `data`). На сервере:
+```bash
+cd /path/to/server
+npm install --omit=dev
+# перезапустите процесс (systemctl restart cattle-tracker-api, или pm2 restart, или заново node server.js)
+```
+
 ## Развёртывание в интернете (HTTPS)
 
 Для доступа из интернета сервер должен работать по **HTTPS**. Рекомендуемая схема:
