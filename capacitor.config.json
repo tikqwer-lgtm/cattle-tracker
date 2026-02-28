@@ -1,7 +1,7 @@
 {
   "appId": "com.cattletracker.app",
   "appName": "Учёт коров",
-  "webDir": ".",
+  "webDir": "dist",
   "server": {
     "androidScheme": "https"
   }

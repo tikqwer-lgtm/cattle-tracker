@@ -28,14 +28,23 @@ npm start
 
 ## Мобильные приложения (Capacitor)
 
+Capacitor использует собранный каталог `dist/` (`webDir: "dist"` в [capacitor.config.json](capacitor.config.json)). Перед синхронизацией и запуском на устройстве обязательно соберите веб-приложение.
+
 Из корня проекта:
 
 ```bash
 npm install
-npx cap add android
-# и/или: npx cap add ios
+npm run build
 npx cap sync
 npx cap run android
+# или для iOS (только на Mac): npx cap run ios
 ```
 
-Для публикации в магазины соберите проект в Android Studio / Xcode и настройте подписание.
+Платформы Android и iOS уже добавлены (`android/`, `ios/`). Если добавляли проект с нуля: `npx cap add android` и/или `npx cap add ios`, затем `npx cap sync`.
+
+**Требования для разработчика (сборка и запуск на устройстве):**
+
+- **Android:** [Android Studio](https://developer.android.com/studio) и Android SDK; телефон с включённой отладкой по USB или эмулятор.
+- **iOS:** Mac, [Xcode](https://developer.apple.com/xcode/); iPhone или симулятор iOS.
+
+При первом запуске на физическом устройстве может понадобиться один раз открыть нативный проект в Android Studio / Xcode и настроить подписание (Signing). Для публикации в магазины соберите и подпишите приложение в Android Studio / Xcode.

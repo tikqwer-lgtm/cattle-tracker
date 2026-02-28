@@ -219,9 +219,8 @@ function setupCattleAutocompleteFor(inputId, listId) {
   var list = document.getElementById(listId);
   if (!input || !list) return;
   function getEntries() {
-    return (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries))
-      ? window.entries
-      : (typeof entries !== 'undefined' && Array.isArray(entries) ? entries : []);
+    if (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) return window.entries;
+    return [];
   }
   function populate() {
     list.innerHTML = '';
@@ -409,9 +408,11 @@ function initCalvingScreen() {
 function initProtocolAssignScreen() {
   setupCattleAutocompleteFor('cattleIdProtocolInput', 'cattleIdProtocolList');
   var select = document.getElementById('protocolSelectAssign');
+  var getProtocolsFn = typeof window.getProtocols === 'function' ? window.getProtocols : (typeof getProtocols === 'function' ? getProtocols : null);
   function fillProtocolSelect() {
-    if (!select || typeof getProtocols !== 'function') return;
-    var list = getProtocols();
+    if (!select || !getProtocolsFn) return;
+    var list = getProtocolsFn();
+    if (!Array.isArray(list)) list = [];
     select.innerHTML = '<option value="">— Выберите протокол —</option>';
     list.forEach(function (p) {
       var opt = document.createElement('option');

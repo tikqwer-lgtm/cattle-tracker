@@ -356,5 +356,6 @@ function renderProtocolStepsList(steps) {
 if (typeof window !== 'undefined') {
   window.renderProtocolsScreen = renderProtocolsScreen;
   window.ensureProtocolsLoaded = ensureProtocolsLoaded;
+  window.getProtocols = getProtocols;
 }
 export {};

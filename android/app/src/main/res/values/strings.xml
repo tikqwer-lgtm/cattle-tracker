@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Учёт коров</string>
+    <string name="title_activity_main">Учёт коров</string>
+    <string name="package_name">com.cattletracker.app</string>
+    <string name="custom_url_scheme">com.cattletracker.app</string>
+</resources>
