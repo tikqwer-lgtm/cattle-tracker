@@ -22,6 +22,14 @@
   --shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Пустой React-корень не должен перехватывать клики и фокус (поля ввода должны всегда принимать ввод) */
+#root {
+  pointer-events: none;
+}
+#root > * {
+  pointer-events: auto;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--color-bg);

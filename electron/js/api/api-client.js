@@ -41,14 +41,25 @@
     return fetch(base + path, opts).then(function (res) {
       var contentType = res.headers.get('Content-Type') || '';
       var isJson = contentType.indexOf('application/json') !== -1;
+      var isAdminOrReports = path.indexOf('/api/admin') !== -1 || path.indexOf('/api/reports') !== -1;
+      var isProtocols = path.indexOf('/protocols') !== -1;
+      var msg404 = isProtocols
+        ? 'Протоколы синхронизации недоступны на этом сервере. Обновите сервер до актуальной версии.'
+        : (isAdminOrReports ? 'Админ-панель и отчёты недоступны на этом сервере. Обновите сервер до актуальной версии.' : null);
       var next = function () {
         if (res.ok) return isJson ? res.json() : Promise.resolve(null);
         var msg = isJson ? null : 'Ошибка ' + res.status;
         return isJson ? res.json().then(function (data) {
           var e = new Error(data.message || data.error || 'Ошибка ' + res.status);
           e.status = res.status;
+          if (res.status === 404 && msg404) e.message = msg404;
           throw e;
-        }) : (function () { var e = new Error(msg); e.status = res.status; return Promise.reject(e); })();
+        }) : (function () {
+          var e = new Error(msg);
+          e.status = res.status;
+          if (res.status === 404 && msg404) e.message = msg404;
+          return Promise.reject(e);
+        })();
       };
       return next();
     }).catch(function (err) {
@@ -171,10 +182,7 @@
   }
 
   function getUsers() {
-    return request('GET', '/api/admin/users').then(function (data) { return data.users || []; }).catch(function (err) {
-      if (err && err.status === 404) return [];
-      throw err;
-    });
+    return request('GET', '/api/admin/users').then(function (data) { return data.users || []; });
   }
 
   function deleteUser(id) {
@@ -186,10 +194,7 @@
   }
 
   function getReports() {
-    return request('GET', '/api/reports').then(function (data) { return data.reports || []; }).catch(function (err) {
-      if (err && err.status === 404) return [];
-      throw err;
-    });
+    return request('GET', '/api/reports').then(function (data) { return data.reports || []; });
   }
 
   function deleteReport(id) {

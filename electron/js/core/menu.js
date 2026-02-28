@@ -116,7 +116,11 @@ function navigate(screenId, options) {
     if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
     if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
     setTimeout(function () {
-      if (typeof window.focusAuthForm === 'function') window.focusAuthForm();
+      var authScreen = document.getElementById('auth-screen');
+      var active = document.activeElement;
+      if (typeof window.focusAuthForm === 'function' && (!authScreen || !active || !authScreen.contains(active))) {
+        window.focusAuthForm();
+      }
     }, 0);
   }
   if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
