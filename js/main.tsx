@@ -45,6 +45,15 @@ import './features/report-error.js';
 import './features/lists.js';
 import './core/menu.js';
 
+import { App as CapApp } from '@capacitor/app';
+try {
+  CapApp.addListener('backButton', () => {
+    if (typeof (window as any)._handleBackButton === 'function') {
+      (window as any)._handleBackButton();
+    }
+  });
+} catch (_) {}
+
 import { createRoot } from 'react-dom/client';
 import App from './App';
 

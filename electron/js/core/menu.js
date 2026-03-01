@@ -56,6 +56,10 @@ function navigateToSubmenu(groupId) {
   navigate('submenu');
 }
 
+var _navStack = [];
+var _isNavigatingBack = false;
+var _currentScreenId = null;
+
 /**
  * Навигация между экранами
  * @param {string} screenId - id экрана (без суффикса -screen)
@@ -70,6 +74,13 @@ function navigate(screenId, options) {
   if (screenId !== 'auth' && screenId !== 'sync' && !currentUser) {
     screenId = 'auth';
   }
+
+  if (!_isNavigatingBack && _currentScreenId && _currentScreenId !== screenId) {
+    _navStack.push(_currentScreenId);
+    if (_navStack.length > 50) _navStack.splice(0, _navStack.length - 50);
+  }
+  _isNavigatingBack = false;
+  _currentScreenId = screenId;
 
   document.querySelectorAll('.screen').forEach(el => {
     el.classList.remove('active');
@@ -177,6 +188,19 @@ function navigate(screenId, options) {
   var newHash = '#' + (screenId || 'menu');
   if (screenId === 'view-cow' && options && options.cattleId) newHash += '/' + String(options.cattleId).replace(/[#/]/g, '');
   if (typeof location !== 'undefined' && location.hash !== newHash) location.hash = newHash;
+}
+
+/**
+ * Возврат на предыдущий экран (из навигационного стека)
+ */
+function navigateBack() {
+  if (_navStack.length > 0) {
+    _isNavigatingBack = true;
+    var prevScreen = _navStack.pop();
+    navigate(prevScreen);
+    return true;
+  }
+  return false;
 }
 
 function syncRouteToScreen() {
@@ -577,12 +601,35 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 if (typeof window !== 'undefined') {
   window.navigate = navigate;
+  window.navigateBack = navigateBack;
   window.navigateToSubmenu = navigateToSubmenu;
   window.handleAddObjectClick = handleAddObjectClick;
   window.handleEditObjectClick = handleEditObjectClick;
   window.handleDeleteObjectClick = handleDeleteObjectClick;
   window.updateObjectSwitcher = updateObjectSwitcher;
   window.addEventListener('hashchange', syncRouteToScreen);
+
+  var _backExitPending = false;
+  window._handleBackButton = function () {
+    if (navigateBack()) return;
+    if (_backExitPending) {
+      try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          window.Capacitor.Plugins.App.exitApp();
+        } else if (navigator.app && navigator.app.exitApp) {
+          navigator.app.exitApp();
+        }
+      } catch (_) {}
+      return;
+    }
+    _backExitPending = true;
+    if (typeof showToast === 'function') showToast('Нажмите «Назад» ещё раз для выхода', 'info');
+    setTimeout(function () { _backExitPending = false; }, 2000);
+  };
+  document.addEventListener('backbutton', function (e) {
+    e.preventDefault();
+    window._handleBackButton();
+  });
 }
 
 window.addEventListener('load', () => {

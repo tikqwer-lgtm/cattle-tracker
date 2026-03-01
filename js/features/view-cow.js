@@ -202,25 +202,6 @@ function viewCow(cattleId) {
     ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Техник ИО</th><th>Дней от предыдущего</th><th>Код</th></tr></thead><tbody>' + historyRows + '</tbody></table>'
     : '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
 
-  var lactHist = entry.lactationHistory || [];
-  var lactRows = lactHist.map(function (l) {
-    var dryDur = l.dryDuration != null ? String(l.dryDuration) : '—';
-    var insemCount = Array.isArray(l.inseminationHistory) ? l.inseminationHistory.length : (l.inseminationDate ? 1 : 0);
-    var lastUzi = (Array.isArray(l.uziHistory) && l.uziHistory.length > 0) ? l.uziHistory[l.uziHistory.length - 1].result : '—';
-    return '<tr><td>' + escapeHtmlCard(l.number) + '</td><td>' + (formatDate(l.calvingDate) || '—') + '</td><td>' + dryDur + '</td><td>' + insemCount + '</td><td>' + escapeHtmlCard(lastUzi) + '</td><td>' + escapeHtmlCard(l.bull) + '</td><td>' + escapeHtmlCard(l.inseminator) + '</td></tr>';
-  }).join('');
-  var lactationHistoryHtml = lactRows
-    ? '<table class="cow-insemination-table"><thead><tr><th>Лактация</th><th>Дата отёла</th><th>Длительность сухостоя (дн.)</th><th>Осеменений</th><th>УЗИ</th><th>Бык</th><th>Осеменатор</th></tr></thead><tbody>' + lactRows + '</tbody></table>'
-    : '<p class="cow-insemination-empty">Нет завершённых лактаций.</p>';
-
-  var uziHist = entry.uziHistory || [];
-  var uziRows = uziHist.map(function (u) {
-    return '<tr><td>' + (formatDate(u.date) || '—') + '</td><td>' + escapeHtmlCard(u.result) + '</td><td>' + escapeHtmlCard(u.specialist) + '</td><td>' + (u.daysFromInsemination != null ? String(u.daysFromInsemination) : '—') + '</td></tr>';
-  }).join('');
-  var uziHistoryTableHtml = uziRows
-    ? '<table class="cow-insemination-table"><thead><tr><th>Дата</th><th>Результат</th><th>Специалист</th><th>Дней от осеменения</th></tr></thead><tbody>' + uziRows + '</tbody></table>'
-    : '<p class="cow-insemination-empty">Нет данных УЗИ за текущую лактацию.</p>';
-
   var rawId = (entry.cattleId || '');
   var safeCattleId = rawId.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
@@ -252,10 +233,6 @@ function viewCow(cattleId) {
     '<div><strong>Изменено пользователем:</strong> ' + escapeHtmlCard(entry.lastModifiedBy) + '</div>' +
     '</div>' +
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
-    '<div class="cow-card-section"><button type="button" class="small-btn cow-insemination-toggle" onclick="toggleViewCowLactationHistory()">История лактаций</button></div>' +
-    '<div id="viewCowLactationHistory" class="cow-insemination-history" style="display:none;">' + lactationHistoryHtml + '</div>' +
-    '<div class="cow-card-section"><button type="button" class="small-btn cow-insemination-toggle" onclick="toggleViewCowUziHistory()">История УЗИ</button></div>' +
-    '<div id="viewCowUziHistory" class="cow-insemination-history" style="display:none;">' + uziHistoryTableHtml + '</div>' +
     '<div class="cow-card-actions">' +
     '<button type="button" onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn" aria-label="Редактировать">✏️ Редактировать</button> ' +
     '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
@@ -278,17 +255,6 @@ function toggleViewCowInseminationHistory() {
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-function toggleViewCowLactationHistory() {
-  var el = document.getElementById('viewCowLactationHistory');
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-function toggleViewCowUziHistory() {
-  var el = document.getElementById('viewCowUziHistory');
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
 
 /**
  * Открывает модальное окно истории действий по карточке животного

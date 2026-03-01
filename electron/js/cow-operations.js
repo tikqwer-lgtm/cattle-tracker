@@ -519,7 +519,8 @@ function saveUziEntry() {
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'УЗИ', detailsStr);
+  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (typeof _pushHist === 'function') _pushHist(entry, 'УЗИ', detailsStr);
 
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {

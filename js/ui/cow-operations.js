@@ -279,9 +279,10 @@ function saveDryRunEntry() {
   entry.dryStartDate = dryStartDate || '';
   entry.status = entry.status || '';
   if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
-  if (dryStartDate && typeof pushActionHistory === 'function') {
+  if (dryStartDate) {
     var detailsStr = 'Дата запуска: ' + dryStartDate;
-    pushActionHistory(entry, 'Запуск в сухостой', detailsStr, { eventType: 'Запуск в сухостой' });
+    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+    if (typeof _pushHist === 'function') _pushHist(entry, 'Запуск в сухостой', detailsStr, { eventType: 'Запуск в сухостой' });
   }
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
@@ -328,7 +329,8 @@ function saveCalvingEntry() {
     var prevLact = parseInt(entry.lactation, 10);
     entry.lactation = (isNaN(prevLact) ? 0 : prevLact) + 1;
     var detailsStr = 'Дата отёла: ' + calvingDate;
-    if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Отёл', detailsStr, { eventType: 'Отёл' });
+    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+    if (typeof _pushHist === 'function') _pushHist(entry, 'Отёл', detailsStr, { eventType: 'Отёл' });
     entry.inseminationDate = '';
     entry.attemptNumber = 1;
     entry.bull = '';
@@ -390,7 +392,8 @@ function saveProtocolAssignEntry() {
   entry.protocol.name = protocolName;
   entry.protocol.startDate = startDate || '';
   var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
+  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -586,7 +589,8 @@ function saveUziEntry() {
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
-  if (typeof pushActionHistory === 'function') pushActionHistory(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (typeof _pushHist === 'function') _pushHist(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
 
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
@@ -608,10 +612,18 @@ function saveUziEntry() {
   if (typeof viewCow === 'function') viewCow(cattleId);
 }
 
-// Делаем функции доступными глобально (для inline onclick в карточке и т.д.)
+// Делаем функции доступными глобально (для inline onsubmit/onclick в формах и карточке)
 if (typeof window !== 'undefined') {
   window.editEntry = editEntry;
   window.deleteSelectedEntries = deleteSelectedEntries;
+  window.saveUziEntry = saveUziEntry;
+  window.saveCalvingEntry = saveCalvingEntry;
+  window.saveDryRunEntry = saveDryRunEntry;
+  window.saveProtocolAssignEntry = saveProtocolAssignEntry;
+  window.initUziScreen = initUziScreen;
+  window.initDryScreen = initDryScreen;
+  window.initCalvingScreen = initCalvingScreen;
+  window.initProtocolAssignScreen = initProtocolAssignScreen;
 }
 
 // Экспорт функций
