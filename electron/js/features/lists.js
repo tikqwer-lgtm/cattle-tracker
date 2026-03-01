@@ -51,61 +51,75 @@
   }
 
   /**
-   * Список на УЗИ: УЗИ1 (осемененная, 32+ дней от осеменения), УЗИ2 (стельная, 60+ дней, 1 проверка)
-   * @param {string} fromDate - YYYY-MM-DD
-   * @param {string} toDate - YYYY-MM-DD
-   * @param {string} filterCowHeifer - 'cow' | 'heifer' | 'all'
+   * Список на УЗИ: одна дата. УЗИ1 (осемененная, на дату >= 32 дней от осеменения), УЗИ2 (стельная, на дату >= 60 дней, 1 проверка УЗИ1).
+   * @param {string} date - YYYY-MM-DD
+   * @param {Set|Array} [filterLactationSet] - если передан и не пуст, оставить только строки с lactation из набора; если пустой — вернуть []
    */
-  function getUziList(fromDate, toDate, filterCowHeifer) {
+  function getUziList(date, filterLactationSet) {
     var list = (typeof getVisibleEntries === 'function' ? getVisibleEntries(global.entries || []) : (global.entries || []));
-    var from = fromDate ? dateOnly(new Date(fromDate)).getTime() : 0;
-    var to = toDate ? dateOnly(new Date(toDate)).getTime() : Number.MAX_SAFE_INTEGER;
-    var getDaysPregnantFn = typeof getDaysPregnant === 'function' ? getDaysPregnant : function () { return null; };
+    var dateStr = date ? String(date).slice(0, 10) : (new Date().toISOString().slice(0, 10));
     var result = [];
     list.forEach(function (entry) {
-      if (!matchCowHeifer(entry, filterCowHeifer)) return;
       var status = (entry.status || '').toString();
       var uziHistory = entry.uziHistory || [];
-      var lastInsem = getLastInseminationOnOrBefore(entry, toDate || '9999-12-31');
+      var lastInsem = getLastInseminationOnOrBefore(entry, dateStr);
       var insemList = entry.inseminationHistory && entry.inseminationHistory.length > 0
         ? entry.inseminationHistory.slice()
-        : (entry.inseminationDate ? [{ date: entry.inseminationDate, attemptNumber: entry.attemptNumber ?? 1 }] : []);
+        : (entry.inseminationDate ? [{ date: entry.inseminationDate, attemptNumber: entry.attemptNumber ?? 1, inseminator: entry.inseminator }] : []);
       if (insemList.length > 0) insemList.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
       var lastInsemRec = insemList.length > 0 ? insemList[insemList.length - 1] : null;
       var insemDate = lastInsem || (lastInsemRec && lastInsemRec.date) || entry.inseminationDate || '';
       var attempt = (lastInsemRec && (lastInsemRec.attemptNumber !== undefined && lastInsemRec.attemptNumber !== null)) ? lastInsemRec.attemptNumber : (entry.attemptNumber ?? '—');
+      var inseminator = (lastInsemRec && (lastInsemRec.inseminator !== undefined && lastInsemRec.inseminator !== null && lastInsemRec.inseminator !== '')) ? lastInsemRec.inseminator : (entry.inseminator || '');
+      var lactation = entry.lactation !== undefined && entry.lactation !== null && entry.lactation !== '' ? entry.lactation : '';
 
       if (status.indexOf('Осеменен') !== -1 && lastInsem) {
-        var firstDay32 = new Date(parseDate(lastInsem));
-        firstDay32.setDate(firstDay32.getDate() + 32);
-        var firstDay32Time = dateOnly(firstDay32).getTime();
-        if (firstDay32Time <= to && firstDay32Time >= from) {
-          var daysFrom = daysBetween(lastInsem, toDate);
-          if (daysFrom === null) daysFrom = daysBetween(lastInsem, new Date().toISOString().slice(0, 10));
+        var daysFrom = daysBetween(lastInsem, dateStr);
+        if (daysFrom !== null && daysFrom >= 32) {
           result.push({
             cattleId: entry.cattleId || '',
             group: entry.group || '',
             inseminationDate: insemDate,
             daysFromInsemination: daysFrom,
             attemptNumber: attempt,
+            inseminator: inseminator || '—',
+            lactation: lactation,
             note: 'УЗИ1'
           });
         }
       }
       if (status.indexOf('Стельная') !== -1 && uziHistory.length === 1) {
-        var daysPreg = getDaysPregnantFn(entry);
-        if (daysPreg !== null && daysPreg > 60) {
+        var daysFromPreg = daysBetween(lastInsem, dateStr);
+        if (daysFromPreg !== null && daysFromPreg >= 60) {
           result.push({
             cattleId: entry.cattleId || '',
             group: entry.group || '',
             inseminationDate: insemDate,
-            daysFromInsemination: daysPreg,
+            daysFromInsemination: daysFromPreg,
             attemptNumber: attempt,
+            inseminator: inseminator || '—',
+            lactation: lactation,
             note: 'УЗИ2'
           });
         }
       }
     });
+    if (filterLactationSet !== undefined) {
+      var set = filterLactationSet && (filterLactationSet.size !== undefined ? filterLactationSet.size : filterLactationSet.length);
+      if (!set || set === 0) return [];
+      var has = function (val) {
+        if (filterLactationSet instanceof Set) return filterLactationSet.has(val);
+        for (var i = 0; i < filterLactationSet.length; i++) {
+          if (String(filterLactationSet[i]) === String(val)) return true;
+        }
+        return false;
+      };
+      result = result.filter(function (r) {
+        var lact = r.lactation;
+        if (lact === '' || lact === null || lact === undefined) return has('');
+        return has(lact) || has(String(lact));
+      });
+    }
     return result;
   }
 
@@ -197,18 +211,36 @@
     }
   }
 
+  var UZI_LIST_KEYS = ['cattleId', 'group', 'inseminationDate', 'daysFromInsemination', 'attemptNumber', 'inseminator', 'lactation', 'note'];
+  var UZI_LIST_HEADERS = ['Номер животного', 'Группа', 'Дата осеменения', 'Дни от осеменения', 'Попытка', 'Осеменатор', 'Лактация', 'Примечание'];
+
+  function sortUziListData(rows, key, dir) {
+    var mult = dir === 'desc' ? -1 : 1;
+    return rows.slice().sort(function (a, b) {
+      var va = a[key];
+      var vb = b[key];
+      var na = va === '' || va === null || va === undefined;
+      var nb = vb === '' || vb === null || vb === undefined;
+      if (na && nb) return 0;
+      if (na) return 1;
+      if (nb) return -1;
+      if (key === 'inseminationDate' || key === 'daysFromInsemination') {
+        var numA = key === 'daysFromInsemination' ? (Number(va) || 0) : (parseDate(va) ? parseDate(va).getTime() : 0);
+        var numB = key === 'daysFromInsemination' ? (Number(vb) || 0) : (parseDate(vb) ? parseDate(vb).getTime() : 0);
+        return mult * (numA < numB ? -1 : numA > numB ? 1 : 0);
+      }
+      return mult * String(va).localeCompare(String(vb));
+    });
+  }
+
   function renderUziListSubScreen(sub) {
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
     var html = '<div class="list-sub-header"><h3>Список на УЗИ</h3>' +
       '<div class="list-filters">' +
-      '<label>С <input type="date" id="uziListDateFrom" value="' + escapeHtml(todayStr) + '" /></label>' +
-      '<label>По <input type="date" id="uziListDateTo" value="' + escapeHtml(toStr) + '" /></label>' +
-      '<label>Категория: <select id="uziListCowHeifer"><option value="all">Все</option><option value="cow">Коровы</option><option value="heifer">Телки</option></select></label>' +
+      '<label>Дата <input type="date" id="uziListDate" value="' + escapeHtml(todayStr) + '" /></label>' +
       '</div>' +
+      '<div id="uziListLactationFilter" class="list-filters list-filters-lactation"></div>' +
       '<div class="list-actions list-actions-inline">' +
       '<button type="button" class="small-btn" id="uziListRefresh">Обновить</button>' +
       '<button type="button" class="small-btn" id="uziListPrint">Печать</button>' +
@@ -218,48 +250,144 @@
     sub.innerHTML = html;
     sub._activeRefresh = null;
     function refresh() {
-      var fromEl = sub.querySelector('#uziListDateFrom');
-      var toEl = sub.querySelector('#uziListDateTo');
-      var cowHeiferEl = sub.querySelector('#uziListCowHeifer');
-      var from = (fromEl && fromEl.value) || todayStr;
-      var to = (toEl && toEl.value) || toStr;
-      var filter = (cowHeiferEl && cowHeiferEl.value) || 'all';
-      var rows = getUziList(from, to, filter);
+      var dateEl = sub.querySelector('#uziListDate');
+      var dateStr = (dateEl && dateEl.value) ? dateEl.value : todayStr;
+      var fullRows = getUziList(dateStr);
+      var lactFilterEl = sub.querySelector('#uziListLactationFilter');
       var wrap = sub.querySelector('#uzi-list-table-wrap');
       if (!wrap) return;
+
+      if (fullRows.length === 0) {
+        if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
+        if (lactFilterEl) lactFilterEl.innerHTML = '';
+        wrap.innerHTML = '<p class="list-empty">Нет записей по заданным фильтрам.</p>';
+        wrap._listData = [];
+        return;
+      }
+
+      var lactSet = {};
+      fullRows.forEach(function (r) {
+        var L = (r.lactation === '' || r.lactation === null || r.lactation === undefined) ? '' : String(r.lactation);
+        lactSet[L] = true;
+      });
+      var lactList = Object.keys(lactSet).sort(function (a, b) {
+        var na = a === '' ? -1 : (parseInt(a, 10) || 0);
+        var nb = b === '' ? -1 : (parseInt(b, 10) || 0);
+        if (!isNaN(parseInt(a, 10)) && !isNaN(parseInt(b, 10))) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
+
+      var wasChecked = {};
+      if (lactFilterEl && lactFilterEl.querySelectorAll('.uzi-lactation-cb').length) {
+        lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) { wasChecked[cb.getAttribute('data-lactation')] = cb.checked; });
+      } else {
+        lactList.forEach(function (l) { wasChecked[l] = true; });
+      }
+      if (lactFilterEl) {
+        var lactHtml = '<span class="list-lactation-label">Лактация:</span> ';
+        lactList.forEach(function (l) {
+          var checked = wasChecked[l] ? ' checked' : '';
+          lactHtml += '<label class="list-lactation-cb-wrap"><input type="checkbox" class="uzi-lactation-cb" data-lactation="' + escapeHtml(l) + '"' + checked + ' /> ' + (l === '' ? '—' : escapeHtml(l)) + '</label> ';
+        });
+        lactHtml += '<button type="button" class="small-btn" id="uziLactSelectAll">Выделить все</button> <button type="button" class="small-btn" id="uziLactDeselectAll">Убрать все</button>';
+        lactFilterEl.innerHTML = lactHtml;
+        var selectAllBtn = lactFilterEl.querySelector('#uziLactSelectAll');
+        var deselectAllBtn = lactFilterEl.querySelector('#uziLactDeselectAll');
+        if (selectAllBtn) selectAllBtn.addEventListener('click', function () { lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) { cb.checked = true; }); refresh(); });
+        if (deselectAllBtn) deselectAllBtn.addEventListener('click', function () { lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) { cb.checked = false; }); refresh(); });
+        lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) {
+          cb.addEventListener('change', refresh);
+        });
+      }
+
+      var selected = [];
+      if (lactFilterEl) lactFilterEl.querySelectorAll('.uzi-lactation-cb:checked').forEach(function (cb) { selected.push(cb.getAttribute('data-lactation')); });
+      var rows = fullRows.filter(function (r) {
+        if (selected.length === 0) return false;
+        var L = (r.lactation === '' || r.lactation === null || r.lactation === undefined) ? '' : String(r.lactation);
+        return selected.indexOf(L) !== -1;
+      });
+
       if (rows.length === 0) {
         if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
         wrap.innerHTML = '<p class="list-empty">Нет записей по заданным фильтрам.</p>';
+        wrap._listData = [];
         return;
       }
+
+      var sortKey = (wrap._sortKey !== undefined) ? wrap._sortKey : 'cattleId';
+      var sortDir = (wrap._sortDir !== undefined) ? wrap._sortDir : 'asc';
+      rows = sortUziListData(rows, sortKey, sortDir);
+      wrap._listData = rows;
+      wrap._sortKey = sortKey;
+      wrap._sortDir = sortDir;
+
       if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
       var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
-      var thead = '<tr><th>Номер животного</th><th>Группа</th><th>Дата осеменения</th><th>Дни от осеменения</th><th>Попытка</th><th>Примечание</th></tr>';
+      function lactDisplay(l) { return (l === '' || l === null || l === undefined) ? '—' : String(l); }
+      function makeTh(key, label) {
+        var dir = (sortKey === key) ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        return '<th class="list-th-sortable" data-sort-key="' + escapeHtml(key) + '" role="button" tabindex="0">' + escapeHtml(label) + dir + '</th>';
+      }
+      var thead = '<tr>' + UZI_LIST_KEYS.map(function (k, i) { return makeTh(k, UZI_LIST_HEADERS[i]); }).join('') + '</tr>';
       var tbody = rows.map(function (r) {
-        return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(formatDateFn(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
+        return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(formatDateFn(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
       }).join('');
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
-      wrap._listData = rows;
       wrap._listType = 'uzi';
+
+      function applySortAndRender() {
+        var key = wrap._sortKey || 'cattleId';
+        var dir = wrap._sortDir || 'asc';
+        var sorted = sortUziListData(wrap._listData, key, dir);
+        wrap._listData = sorted;
+        var fmt = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
+        var tbodyEl = wrap.querySelector('tbody');
+        if (tbodyEl) tbodyEl.innerHTML = sorted.map(function (r) {
+          return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(fmt(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
+        }).join('');
+        var theadTr = wrap.querySelector('thead tr');
+        if (theadTr) theadTr.innerHTML = UZI_LIST_KEYS.map(function (k, i) {
+          var d = (wrap._sortKey === k) ? (wrap._sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+          return '<th class="list-th-sortable" data-sort-key="' + escapeHtml(k) + '" role="button" tabindex="0">' + escapeHtml(UZI_LIST_HEADERS[i]) + d + '</th>';
+        }).join('');
+        wrap.querySelectorAll('th.list-th-sortable').forEach(function (cell) {
+          cell.addEventListener('click', function onSortClick() {
+            var sortKey = cell.getAttribute('data-sort-key');
+            if (!sortKey) return;
+            wrap._sortDir = (wrap._sortKey === sortKey && wrap._sortDir === 'asc') ? 'desc' : 'asc';
+            wrap._sortKey = sortKey;
+            applySortAndRender();
+          });
+        });
+      }
+      wrap.querySelectorAll('th.list-th-sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+          var key = th.getAttribute('data-sort-key');
+          if (!key) return;
+          wrap._sortDir = (wrap._sortKey === key && wrap._sortDir === 'asc') ? 'desc' : 'asc';
+          wrap._sortKey = key;
+          applySortAndRender();
+        });
+      });
+
       if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
     sub._activeRefresh = refresh;
     refresh();
     var refreshBtn = sub.querySelector('#uziListRefresh');
     if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
-    var fromInput = sub.querySelector('#uziListDateFrom');
-    var toInput = sub.querySelector('#uziListDateTo');
-    if (fromInput) fromInput.addEventListener('change', refresh);
-    if (toInput) toInput.addEventListener('change', refresh);
+    var dateInput = sub.querySelector('#uziListDate');
+    if (dateInput) dateInput.addEventListener('change', refresh);
     var printBtn = sub.querySelector('#uziListPrint');
     if (printBtn) printBtn.addEventListener('click', function () {
       var wrap = sub.querySelector('#uzi-list-table-wrap');
-      if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на УЗИ', wrap._listData, ['cattleId', 'group', 'inseminationDate', 'daysFromInsemination', 'attemptNumber', 'note'], ['Номер животного', 'Группа', 'Дата осеменения', 'Дни от осеменения', 'Попытка', 'Примечание']);
+      if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на УЗИ', wrap._listData, UZI_LIST_KEYS, UZI_LIST_HEADERS);
     });
     var excelBtn = sub.querySelector('#uziListExcel');
     if (excelBtn) excelBtn.addEventListener('click', function () {
       var wrap = sub.querySelector('#uzi-list-table-wrap');
-      if (wrap && wrap._listData) exportListToExcel('Список_на_УЗИ', wrap._listData, ['cattleId', 'group', 'inseminationDate', 'daysFromInsemination', 'attemptNumber', 'note'], ['Номер животного', 'Группа', 'Дата осеменения', 'Дни от осеменения', 'Попытка', 'Примечание']);
+      if (wrap && wrap._listData) exportListToExcel('Список_на_УЗИ', wrap._listData, UZI_LIST_KEYS, UZI_LIST_HEADERS);
     });
   }
 
