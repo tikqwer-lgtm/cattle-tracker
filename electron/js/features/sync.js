@@ -8,54 +8,130 @@
 // --- Синхронизация с сервером API ---
 
 /**
+ * Проверяет, есть ли локальные записи с synced === false.
+ */
+function hasUnsyncedEntries() {
+  var list = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  return list.some(function (e) { return e && e.synced !== true; });
+}
+
+/**
+ * Показывает модальное окно выбора действий при наличии несинхронизированных данных.
+ * @param {function} onDone — вызывается после выбора (продолжить подключение).
+ */
+function showUnsyncedDataPrompt(onDone) {
+  var count = 0;
+  var list = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  list.forEach(function (e) { if (e && e.synced !== true) count++; });
+
+  var overlay = document.createElement('div');
+  overlay.className = 'sync-replace-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', 'Несинхронизированные данные');
+  overlay.innerHTML = '<div class="sync-replace-modal">' +
+    '<h4>Несинхронизированные данные</h4>' +
+    '<p>У вас есть <strong>' + count + '</strong> записей, не отправленных на сервер. Что сделать перед подключением?</p>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    '<button type="button" class="action-btn" data-action="backup">Сохранить резервную копию</button>' +
+    '<button type="button" class="action-btn" data-action="sync">Синхронизировать с сервером</button>' +
+    '<button type="button" class="small-btn" data-action="skip">Пропустить</button>' +
+    '</div></div>';
+
+  overlay.querySelector('[data-action="backup"]').onclick = function () {
+    if (typeof exportBackupToFile === 'function') exportBackupToFile();
+    overlay.remove();
+    document.body.style.overflow = '';
+    onDone('backup');
+  };
+  overlay.querySelector('[data-action="sync"]').onclick = function () {
+    overlay.remove();
+    document.body.style.overflow = '';
+    onDone('sync');
+  };
+  overlay.querySelector('[data-action="skip"]').onclick = function () {
+    overlay.remove();
+    document.body.style.overflow = '';
+    onDone('skip');
+  };
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) { overlay.remove(); document.body.style.overflow = ''; onDone('skip'); } });
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+}
+
+/**
  * Подключиться к серверу: взять адрес из конфига (CATTLE_TRACKER_DEFAULT_SERVER_URL),
- * сохранить в localStorage и перезагрузить. Если в конфиге пусто — подсказать ввести адрес в Настройках.
+ * проверить доступность, при наличии несинхронизированных данных — предложить действие,
+ * сохранить в localStorage и перезагрузить.
  */
 function connectToServer() {
   var url = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null)
     ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '')
     : '';
   if (!url) {
-    if (typeof showToast === 'function') showToast('Задайте адрес сервера в Настройки → Войти или укажите его в js/config.js.', 'info', 6000);
+    if (typeof showToast === 'function') showToast('Адрес сервера не задан в конфигурации.', 'error', 6000);
     return;
   }
-  try {
-    localStorage.setItem('cattleTracker_apiBase', url);
-    localStorage.setItem('cattleTracker_useApiMode', '1');
-    if (typeof showToast === 'function') showToast('Подключение… Перезагрузка.', 'info');
-    location.reload();
-  } catch (e) {
-    if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
-  }
+  if (typeof showToast === 'function') showToast('Проверка подключения…', 'info');
+  fetch(url + '/api/health').then(function (res) {
+    if (!res.ok) {
+      if (typeof showToast === 'function') showToast('Сервер недоступен (код ' + res.status + ')', 'error', 6000);
+      return;
+    }
+    function doConnect(syncAfter) {
+      try {
+        localStorage.setItem('cattleTracker_apiBase', url);
+        localStorage.setItem('cattleTracker_useApiMode', '1');
+        if (syncAfter) localStorage.setItem('cattleTracker_syncAfterConnect', '1');
+        if (typeof showToast === 'function') showToast('Подключено. Перезагрузка…', 'success');
+        location.reload();
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
+      }
+    }
+    if (hasUnsyncedEntries()) {
+      showUnsyncedDataPrompt(function (choice) {
+        doConnect(choice === 'sync');
+      });
+    } else {
+      doConnect(false);
+    }
+  }).catch(function (err) {
+    var reason = (err && err.message && err.message.indexOf('Failed to fetch') !== -1)
+      ? 'Не удалось связаться с сервером'
+      : (err && err.message ? err.message : 'нет связи');
+    if (typeof showToast === 'function') showToast('Ошибка: ' + reason, 'error', 6000);
+  });
 }
 
 /**
  * Отключиться от сервера: удалить адрес из localStorage и перезагрузить (режим локальных данных).
  */
-function disconnectFromServer() {
-  if (typeof showConfirmModal === 'function') {
-    showConfirmModal('Отключиться от сервера? Приложение перейдёт на локальные данные и перезагрузится.').then(function (ok) {
-      if (!ok) return;
-      try {
-        localStorage.removeItem('cattleTracker_apiBase');
-        localStorage.removeItem('cattleTracker_useApiMode');
-        if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
-        location.reload();
-      } catch (e) {
-        if (typeof showToast === 'function') showToast('Ошибка', 'error');
-      }
-    });
-    return;
-  }
-  if (!confirm('Отключиться от сервера? Приложение перейдёт на локальные данные и перезагрузится.')) return;
+function doDisconnect() {
   try {
+    var list = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+    list.forEach(function (e) { if (e) e.synced = false; });
+    if (typeof saveLocally === 'function') saveLocally();
     localStorage.removeItem('cattleTracker_apiBase');
     localStorage.removeItem('cattleTracker_useApiMode');
+    localStorage.removeItem('cattleTracker_syncAfterConnect');
+    if (typeof window.saveCurrentUser === 'function') window.saveCurrentUser(null);
     if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
     location.reload();
   } catch (e) {
     if (typeof showToast === 'function') showToast('Ошибка', 'error');
   }
+}
+
+function disconnectFromServer() {
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal('Отключиться от сервера? Данные останутся локально и будут помечены как несинхронизированные.').then(function (ok) {
+      if (!ok) return;
+      doDisconnect();
+    });
+    return;
+  }
+  if (!confirm('Отключиться от сервера? Данные останутся локально и будут помечены как несинхронизированные.')) return;
+  doDisconnect();
 }
 
 /**
@@ -155,6 +231,7 @@ function syncCurrentBaseToServer() {
     var index = 0;
     function next() {
       if (index >= localEntries.length) {
+        if (typeof saveLocally === 'function') saveLocally();
         finish();
         return window.loadLocally().then(function () {
           updateSyncServerStatus('Подключено к серверу. Данные синхронизированы.');
@@ -172,6 +249,7 @@ function syncCurrentBaseToServer() {
         ? window.CattleTrackerApi.updateEntry(objectId, cattleId, entry)
         : window.CattleTrackerApi.createEntry(objectId, entry);
       return p.then(function () {
+        entry.synced = true;
         index++;
         setSyncProgress(index, 'Синхронизация…');
         return next();
@@ -224,51 +302,195 @@ function formatServerDate(isoStr) {
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+var _syncBasesData = [];
+var _syncBasesSort = { key: 'name', dir: 'asc' };
+var _syncBasesFilterName = '';
+var _syncBasesFilterUser = '';
+
+function getCurrentUsername() {
+  if (typeof window.getCurrentUser === 'function') {
+    var u = window.getCurrentUser();
+    return u && u.username ? String(u.username) : '';
+  }
+  return '';
+}
+
+function renderSyncBasesFilters() {
+  var filterEl = document.getElementById('syncBasesFilter');
+  if (!filterEl) return;
+  filterEl.innerHTML =
+    '<div class="sync-bases-filter-row">' +
+    '<input type="text" id="syncFilterName" class="sync-filter-input" placeholder="Фильтр по названию" value="' + (_syncBasesFilterName || '').replace(/"/g, '&quot;') + '" />' +
+    '<input type="text" id="syncFilterUser" class="sync-filter-input" placeholder="Фильтр по пользователю" value="' + (_syncBasesFilterUser || '').replace(/"/g, '&quot;') + '" />' +
+    '</div>';
+  var nameInp = document.getElementById('syncFilterName');
+  var userInp = document.getElementById('syncFilterUser');
+  function onFilter() {
+    _syncBasesFilterName = (nameInp ? nameInp.value : '').trim().toLowerCase();
+    _syncBasesFilterUser = (userInp ? userInp.value : '').trim().toLowerCase();
+    renderSyncBasesTable();
+  }
+  if (nameInp) nameInp.addEventListener('input', onFilter);
+  if (userInp) userInp.addEventListener('input', onFilter);
+}
+
+function renderSyncBasesTable() {
+  var container = document.getElementById('syncServerBasesList');
+  if (!container) return;
+  var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+  var currentUser = getCurrentUsername();
+  var filtered = _syncBasesData.filter(function (obj) {
+    var n = (obj.name || '').toLowerCase();
+    var u = (obj._user || '').toLowerCase();
+    if (_syncBasesFilterName && n.indexOf(_syncBasesFilterName) === -1) return false;
+    if (_syncBasesFilterUser && u.indexOf(_syncBasesFilterUser) === -1) return false;
+    return true;
+  });
+  var sk = _syncBasesSort.key;
+  var sd = _syncBasesSort.dir === 'asc' ? 1 : -1;
+  filtered.sort(function (a, b) {
+    var va = '', vb = '';
+    if (sk === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+    else if (sk === 'date') { va = a._dateRaw || ''; vb = b._dateRaw || ''; }
+    else if (sk === 'user') { va = (a._user || '').toLowerCase(); vb = (b._user || '').toLowerCase(); }
+    else if (sk === 'count') { return (a._count - b._count) * sd; }
+    return va < vb ? -sd : (va > vb ? sd : 0);
+  });
+
+  var arrow = function (key) { return _syncBasesSort.key === key ? (_syncBasesSort.dir === 'asc' ? ' ▲' : ' ▼') : ''; };
+  var html = '<table class="sync-bases-table"><thead><tr>' +
+    '<th class="sync-sortable" data-sort="name">Название' + arrow('name') + '</th>' +
+    '<th class="sync-sortable" data-sort="date">Дата изменения' + arrow('date') + '</th>' +
+    '<th class="sync-sortable" data-sort="user">Пользователь' + arrow('user') + '</th>' +
+    '<th class="sync-sortable" data-sort="count">Записей' + arrow('count') + '</th>' +
+    '<th>Действия</th></tr></thead><tbody>';
+
+  filtered.forEach(function (obj) {
+    var safeName = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    var safeId = String(obj.id).replace(/'/g, "\\'");
+    var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    var isOwner = currentUser && obj._user && obj._user.toLowerCase() === currentUser.toLowerCase();
+    html += '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
+      '<td data-label="Название">' + safeName + '</td>' +
+      '<td data-label="Дата">' + obj._dateStr + '</td>' +
+      '<td data-label="Пользователь">' + (obj._user || '—').replace(/</g, '&lt;') + '</td>' +
+      '<td data-label="Записей">' + obj._count + '</td>' +
+      '<td class="sync-bases-actions" data-label="Действия">' +
+      '<button type="button" class="small-btn" onclick="showLoadBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Загрузить</button>' +
+      (isOwner ? ' <button type="button" class="small-btn sync-current-base-btn" onclick="syncCurrentBaseToServer()">Синхронизировать</button>' : '') +
+      '</td></tr>';
+  });
+
+  var currentOnServer = _syncBasesData.some(function (o) { return o.id === currentId; });
+  if (!currentOnServer && currentId) {
+    html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">' +
+      '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизировать</button>' +
+      '</td></tr>';
+  }
+
+  html += '</tbody></table>';
+  if (filtered.length === 0 && _syncBasesData.length === 0 && !currentId) {
+    container.innerHTML = '<p class="sync-empty">На сервере пока нет баз.</p>';
+    return;
+  }
+  container.innerHTML = html;
+
+  container.querySelectorAll('.sync-sortable').forEach(function (th) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function () {
+      var key = th.getAttribute('data-sort');
+      if (_syncBasesSort.key === key) {
+        _syncBasesSort.dir = _syncBasesSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        _syncBasesSort.key = key;
+        _syncBasesSort.dir = 'asc';
+      }
+      renderSyncBasesTable();
+    });
+  });
+}
+
 function renderSyncServerBasesList() {
   var container = document.getElementById('syncServerBasesList');
   if (!container || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
   container.innerHTML = '<p class="sync-loading">Загрузка списка…</p>';
   window.CattleTrackerApi.getObjectsList().then(function (list) {
-    var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
     list = list || [];
-    var currentOnServer = list.some(function (o) { return o.id === currentId; });
-    var html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
-    list.forEach(function (obj) {
-      var name = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      var dateRaw = obj.last_updated_at || obj.lastUpdatedAt || obj.created_at;
-      var dateStr = formatServerDate(dateRaw);
-      var lastUserRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
-      var lastUser = lastUserRaw !== null && lastUserRaw !== '' ? String(lastUserRaw).replace(/</g, '&lt;') : '—';
+    _syncBasesData = list.map(function (obj) {
+      var dateRaw = obj.last_updated_at || obj.lastUpdatedAt || obj.created_at || '';
+      var userRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
       var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;
-      var count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
-      html += '<tr><td>' + name + '</td><td>' + dateStr + '</td><td>' + lastUser + '</td><td>' + count + '</td><td class="sync-bases-actions">';
-      if (obj.id === currentId) {
-        html += '<button type="button" class="small-btn sync-current-base-btn" onclick="syncCurrentBaseToServer()">Синхронизация</button> ';
-      }
-      html += '<button type="button" class="small-btn" onclick="showImportNewObjectModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\', \'' + String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;') + '\')">Импорт в новый объект</button> ';
-      html += '<button type="button" class="small-btn" onclick="showReplaceBaseModal(\'' + String(obj.id).replace(/'/g, "\\'") + '\')">Импорт в существующий</button>';
-      html += '</td></tr>';
+      obj._dateRaw = dateRaw;
+      obj._dateStr = formatServerDate(dateRaw);
+      obj._user = (userRaw !== null && userRaw !== '') ? String(userRaw) : '';
+      obj._count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
+      return obj;
     });
-    if (!currentOnServer && currentId) {
-      html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
-      html += '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
-      html += '</td></tr>';
-    }
-    html += '</tbody></table>';
-    if (list.length === 0 && !currentId) {
-      container.innerHTML = '<p class="sync-empty">На сервере пока нет баз.</p>';
-      return;
-    }
-    if (list.length === 0) {
-      html = '<table class="sync-bases-table"><thead><tr><th>Название</th><th>Дата последнего изменения</th><th>Последний пользователь</th><th>Записей</th><th>Действия</th></tr></thead><tbody>';
-      html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">';
-      html += '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизация</button>';
-      html += '</td></tr></tbody></table>';
-    }
-    container.innerHTML = html;
+    renderSyncBasesFilters();
+    renderSyncBasesTable();
   }).catch(function (err) {
     container.innerHTML = '<p class="sync-server-status-error">Ошибка загрузки списка: ' + (err && err.message ? err.message : '') + '</p>';
   });
+}
+
+/**
+ * Показывает модалку выбора локальной базы для загрузки серверной базы.
+ */
+function showLoadBaseModal(sourceId, sourceName) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var localObjects = typeof window.getObjectsList === 'function' ? (window.getObjectsList() || []) : [];
+
+  var overlay = document.createElement('div');
+  overlay.className = 'sync-replace-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', 'Загрузка базы');
+  var optionsHtml = localObjects.map(function (o) {
+    return '<option value="' + String(o.id).replace(/"/g, '&quot;') + '">' + (o.name || o.id).replace(/</g, '&lt;') + '</option>';
+  }).join('');
+
+  overlay.innerHTML = '<div class="sync-replace-modal">' +
+    '<h4>Загрузить базу «' + String(sourceName || '').replace(/</g, '&lt;') + '»</h4>' +
+    '<p>Выберите локальную базу для загрузки данных или создайте новую:</p>' +
+    '<select id="syncLoadTargetSelect" class="sync-replace-select">' +
+    '<option value="__new__">+ Создать новую базу</option>' +
+    optionsHtml +
+    '</select>' +
+    '<div id="syncLoadNewNameWrap" style="margin-bottom:12px;">' +
+    '<input type="text" id="syncLoadNewName" class="sync-replace-select" placeholder="Название новой базы" value="' + String(sourceName || '').replace(/"/g, '&quot;') + '" />' +
+    '</div>' +
+    '<div class="sync-replace-actions">' +
+    '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
+    '<button type="button" class="action-btn" data-action="load">Загрузить</button>' +
+    '</div></div>';
+
+  var select = overlay.querySelector('#syncLoadTargetSelect');
+  var newNameWrap = overlay.querySelector('#syncLoadNewNameWrap');
+  function toggleNewName() {
+    if (newNameWrap) newNameWrap.style.display = select.value === '__new__' ? '' : 'none';
+  }
+  select.addEventListener('change', toggleNewName);
+  toggleNewName();
+
+  function close() { overlay.remove(); document.body.style.overflow = ''; }
+  overlay.querySelector('[data-action="cancel"]').onclick = close;
+  overlay.querySelector('[data-action="load"]').onclick = function () {
+    var targetVal = select.value;
+    if (targetVal === '__new__') {
+      var newName = (document.getElementById('syncLoadNewName') || {}).value;
+      if (!newName || !String(newName).trim()) {
+        if (typeof showToast === 'function') showToast('Введите название базы', 'error');
+        return;
+      }
+      close();
+      loadServerBaseIntoNewObject(sourceId, String(newName).trim());
+    } else {
+      close();
+      replaceServerBaseInObject(sourceId, targetVal);
+    }
+  };
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
 }
 
 /**
@@ -462,19 +684,23 @@ function initSyncServerBlock() {
   if (useApi) {
     updateSyncServerStatusFromHealth();
     renderSyncServerBasesList();
+    try {
+      if (localStorage.getItem('cattleTracker_syncAfterConnect') === '1') {
+        localStorage.removeItem('cattleTracker_syncAfterConnect');
+        setTimeout(function () {
+          if (typeof syncCurrentBaseToServer === 'function') syncCurrentBaseToServer();
+        }, 1500);
+      }
+    } catch (e) {}
   } else {
     updateConnectionIndicator(false);
-    var serverInput = document.getElementById('serverApiBaseInput');
-    if (serverInput) {
-      var saved = typeof getSavedServerBase === 'function' ? getSavedServerBase() : '';
-      var def = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL) ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '') : '';
-      serverInput.value = saved || def || '';
-    }
   }
 }
 
 if (typeof window !== 'undefined') {
   window.connectToServer = connectToServer;
+  window.hasUnsyncedEntries = hasUnsyncedEntries;
+  window.showUnsyncedDataPrompt = showUnsyncedDataPrompt;
   window.disconnectFromServer = disconnectFromServer;
   window.updateConnectionIndicator = updateConnectionIndicator;
   window.updateSyncServerStatus = updateSyncServerStatus;
@@ -483,6 +709,7 @@ if (typeof window !== 'undefined') {
   window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
   window.initSyncServerBlock = initSyncServerBlock;
   window.renderSyncServerBasesList = renderSyncServerBasesList;
+  window.showLoadBaseModal = showLoadBaseModal;
   window.loadServerBaseIntoNewObject = loadServerBaseIntoNewObject;
   window.showReplaceBaseModal = showReplaceBaseModal;
   window.replaceServerBaseInObject = replaceServerBaseInObject;

@@ -36,7 +36,7 @@ var VIEW_LIST_FIELDS_DEFAULT = [
   { key: 'calvingDate', label: 'Отёл', sortable: true, render: function (entry) { return formatDate(entry.calvingDate) || '—'; } },
   { key: 'dryStartDate', label: 'Сухостой', sortable: true, render: function (entry) { return formatDate(entry.dryStartDate) || '—'; } },
   { key: 'note', label: 'Примечание', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.note); } },
-  { key: 'synced', label: 'Синхронизация', sortable: true, render: function (entry) { return entry.synced ? '✅' : '🟡'; } }
+  { key: 'synced', label: 'Синхронизация', sortable: true, render: function (entry) { return entry.synced ? '<span title="Синхронизировано с сервером">✅</span>' : '<span title="Не синхронизировано">🟡</span>'; } }
 ];
 var VIEW_LIST_FIELDS = (typeof window.COW_FIELDS !== 'undefined' && window.COW_FIELDS.length > 0) ? window.COW_FIELDS : VIEW_LIST_FIELDS_DEFAULT;
 

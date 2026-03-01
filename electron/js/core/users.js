@@ -198,55 +198,9 @@
   }
 
   function saveServerBaseUrl() {
-    var input = document.getElementById('serverApiBaseInput');
-    var url = (input && input.value ? input.value : '').trim().replace(/\/$/, '');
-    if (!url) {
-      if (typeof showToast === 'function') showToast('Введите адрес сервера', 'error');
-      else alert('Введите адрес сервера');
-      return;
+    if (typeof window.connectToServer === 'function') {
+      window.connectToServer();
     }
-    if (url.indexOf('https://') === 0 && (url.indexOf(':3000') !== -1 || url.indexOf(':3001') !== -1)) {
-      url = url.replace(/^https:\/\//i, 'http://');
-      if (input) input.value = url;
-      if (typeof showToast === 'function') showToast('На порту 3000 обычно работает HTTP. Используется http://…', 'info', 5000);
-    }
-    var btn = document.getElementById('syncSaveServerBtn');
-    if (btn) btn.disabled = true;
-    setConnectStatus('<span class="sync-connect-spinner" aria-hidden="true"></span> Проверка подключения…', false);
-    fetch(url + '/api/health').then(function (res) {
-      if (res.ok) {
-        setConnectStatus('<span class="sync-connect-spinner" aria-hidden="true"></span> Подключено. Сохранение…', false);
-        try {
-          localStorage.setItem('cattleTracker_apiBase', url);
-          localStorage.setItem('cattleTracker_useApiMode', '1');
-          setConnectStatus('', false);
-          if (typeof showToast === 'function') showToast('Подключено. Перезагрузка…', 'success');
-          location.reload();
-        } catch (e) {
-          setConnectStatus('Ошибка сохранения настроек.', true);
-          if (btn) btn.disabled = false;
-          if (typeof showToast === 'function') showToast('Ошибка сохранения', 'error');
-        }
-      } else {
-        var reason = 'Сервер ответил с кодом ' + res.status;
-        res.text().then(function (t) {
-          if (t && t.length < 200) reason += ': ' + t;
-          setConnectStatus(reason, true);
-          if (btn) btn.disabled = false;
-          if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
-        }).catch(function () {
-          setConnectStatus(reason, true);
-          if (btn) btn.disabled = false;
-          if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
-        });
-      }
-    }).catch(function (err) {
-      var reason = (err && err.message) ? err.message : 'нет связи с сервером';
-      if (err && err.message && err.message.indexOf('Failed to fetch') !== -1) reason = 'Не удалось связаться с сервером (проверьте адрес и сеть)';
-      setConnectStatus(reason, true);
-      if (btn) btn.disabled = false;
-      if (typeof showToast === 'function') showToast('Подключение не удалось: ' + reason, 'error', 8000);
-    });
   }
 
   function bindAuthControls() {
@@ -274,21 +228,18 @@
     var api = g && (g.electronAPI || g.electronapi);
     if (api && typeof api.getOsUsername === 'function') {
       return api.getOsUsername().then(function (u) {
-        return 'admin(' + (u || 'local') + ')';
-      }).catch(function () { return 'admin(local)'; });
+        return (u || 'local') + ' (ПК)';
+      }).catch(function () { return 'local (ПК)'; });
     }
-    return Promise.resolve('admin(local)');
+    return Promise.resolve('local (ПК)');
   }
 
   function initUsers() {
     var base = getSavedServerBase();
-    var authHint = document.getElementById('auth-api-hint');
-    if (authHint) authHint.style.display = base ? '' : 'none';
-    var userDataHint = document.getElementById('auth-user-data-hint');
-    if (userDataHint) userDataHint.style.display = base ? '' : 'none';
-    var skipBtn = document.getElementById('auth-skip-btn');
-    var isElectron = typeof window !== 'undefined' && window.electronAPI;
-    if (skipBtn) skipBtn.style.display = (base && !isElectron) ? 'none' : '';
+    var localBlock = document.getElementById('auth-local-block');
+    var serverBlock = document.getElementById('auth-server-block');
+    if (localBlock) localBlock.style.display = useApi ? 'none' : '';
+    if (serverBlock) serverBlock.style.display = useApi ? '' : 'none';
     initAuthUsernameSelect();
     bindAuthControls();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
@@ -513,11 +464,11 @@
   function skipAuth() {
     var nav = (typeof global !== 'undefined' && global.navigate) || (typeof window !== 'undefined' && window.navigate);
     getDefaultLocalUsername().then(function (username) {
-      saveCurrentUser({ id: 'local_admin', username: username, role: 'admin' });
+      saveCurrentUser({ id: 'local_operator', username: username, role: 'operator' });
       updateAuthBar();
       if (typeof nav === 'function') nav('menu');
     }).catch(function () {
-      saveCurrentUser({ id: 'local_admin', username: 'admin(local)', role: 'admin' });
+      saveCurrentUser({ id: 'local_operator', username: 'operator(local)', role: 'operator' });
       updateAuthBar();
       if (typeof nav === 'function') nav('menu');
     });

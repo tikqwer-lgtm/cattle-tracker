@@ -228,7 +228,7 @@ function viewCow(cattleId) {
     '<div><strong>Протокол:</strong> ' + escapeHtmlCard((entry.protocol && entry.protocol.name) || entry.protocolName) + '</div>' +
     '<div><strong>Начало протокола:</strong> ' + (formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—') + '</div>' +
     '<div><strong>Примечание:</strong> ' + escapeHtmlCard(entry.note) + '</div>' +
-    '<div><strong>Синхронизация:</strong> ' + (entry.synced ? '✅' : '🟡') + '</div>' +
+    '<div><strong>Синхронизация:</strong> ' + (entry.synced ? '<span style="color:#16a34a">✅ Синхронизировано</span>' : '<span style="color:#ca8a04">🟡 Не синхронизировано</span>') + '</div>' +
     '<div><strong>Дата добавления:</strong> ' + escapeHtmlCard(entry.dateAdded) + '</div>' +
     '<div><strong>Изменено пользователем:</strong> ' + escapeHtmlCard(entry.lastModifiedBy) + '</div>' +
     '</div>' +

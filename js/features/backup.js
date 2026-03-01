@@ -142,43 +142,16 @@
   function renderBackupUI(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
-    var backups = listBackups();
     container.innerHTML =
-      '<div class="backup-actions">' +
-        '<button type="button" class="action-btn small" id="backupCreateBtn">Создать резервную копию</button>' +
-        '<button type="button" class="action-btn small" id="backupExportBtn">Экспорт в файл</button>' +
-        '<label class="backup-import-label">Импорт из файла <input type="file" id="backupImportInput" accept=".json" style="display:none"></label>' +
-      '</div>' +
-      '<div class="backup-list-header">Сохранённые копии (localStorage)</div>' +
-      '<ul class="backup-list">' +
-        (backups.length === 0
-          ? '<li class="backup-item backup-empty">Нет сохранённых копий</li>'
-          : backups.map(function (b) {
-              return '<li class="backup-item">' +
-                '<span class="backup-info">' + (b.createdAt || b.key) + ' — записей: ' + (b.count || 0) + '</span>' +
-                '<div class="backup-item-actions">' +
-                  '<button type="button" class="small-btn" data-restore="' + b.key + '">Восстановить</button>' +
-                  '<button type="button" class="small-btn delete" data-delete="' + b.key + '">Удалить</button>' +
-                '</div></li>';
-            }).join('')) +
-      '</ul>';
+      '<div class="backup-actions-compact">' +
+        '<button type="button" class="action-btn backup-btn" id="backupCreateBtn">Создать резервную копию</button>' +
+        '<label class="action-btn backup-btn backup-restore-label" tabindex="0">Восстановить<input type="file" id="backupImportInput" accept=".json" style="display:none"></label>' +
+      '</div>';
     var createBtn = document.getElementById('backupCreateBtn');
-    var exportBtn = document.getElementById('backupExportBtn');
     var importInput = document.getElementById('backupImportInput');
     if (createBtn) {
-      createBtn.addEventListener('click', function () {
-        var r = createBackup();
-        if (r.ok) {
-          if (typeof showToast === 'function') showToast('Копия создана, записей: ' + r.count, 'success');
-          else alert('Копия создана');
-          renderBackupUI(containerId);
-        } else {
-          if (typeof showToast === 'function') showToast(r.message || 'Ошибка', 'error');
-          else alert(r.message);
-        }
-      });
+      createBtn.addEventListener('click', exportBackupToFile);
     }
-    if (exportBtn) exportBtn.addEventListener('click', exportBackupToFile);
     if (importInput) {
       importInput.addEventListener('change', function () {
         var file = importInput.files && importInput.files[0];
@@ -187,7 +160,6 @@
           if (r.ok) {
             if (typeof showToast === 'function') showToast('Восстановлено записей: ' + r.count, 'success');
             else alert('Восстановлено');
-            renderBackupUI(containerId);
           } else {
             if (typeof showToast === 'function') showToast(r.message || 'Ошибка', 'error');
             else alert(r.message);
@@ -196,35 +168,6 @@
         });
       });
     }
-    container.querySelectorAll('[data-restore]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var key = btn.getAttribute('data-restore');
-        function doRestore() {
-          var r = restoreBackup(key);
-          if (r.ok) {
-            if (typeof showToast === 'function') showToast('Восстановлено записей: ' + r.count, 'success');
-            else alert('Восстановлено');
-            renderBackupUI(containerId);
-          } else {
-            if (typeof showToast === 'function') showToast(r.message || 'Ошибка', 'error');
-            else alert(r.message);
-          }
-        }
-        if (typeof showConfirmModal === 'function') {
-          showConfirmModal('Восстановить эту копию? Текущие данные будут заменены.').then(function (ok) { if (ok) doRestore(); });
-          return;
-        }
-        if (!confirm('Восстановить эту копию? Текущие данные будут заменены.')) return;
-        doRestore();
-      });
-    });
-    container.querySelectorAll('[data-delete]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var key = btn.getAttribute('data-delete');
-        deleteBackup(key);
-        renderBackupUI(containerId);
-      });
-    });
   }
 
   if (typeof window !== 'undefined') {

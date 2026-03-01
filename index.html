@@ -46,40 +46,49 @@
   <div id="auth-screen" class="screen active">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
-      <p id="auth-api-hint" class="auth-api-hint" style="display: none;">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
-      <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
-        <label for="authUsernameSelect">Выбрать пользователя</label>
-        <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
-          <option value="">— Выберите из списка —</option>
-        </select>
-        <label for="authUsername">Логин</label>
-        <input type="text" id="authUsername" required autocomplete="username" />
-        <label for="authPassword">Пароль</label>
-        <input type="password" id="authPassword" autocomplete="current-password" required />
-        <div class="form-actions">
-          <button type="submit">Войти</button>
-          <button type="button" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
-          <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Без авторизации</button>
+      <!-- Локальный режим (без сервера) -->
+      <div id="auth-local-block" class="auth-local-block">
+        <div class="form-actions auth-local-actions">
+          <button type="button" id="auth-skip-btn" class="action-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Войти без пароля</button>
+          <button type="button" id="auth-connect-server-btn" class="action-btn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
         </div>
-      </form>
-      <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
-        <label for="regUsername">Логин</label>
-        <input type="text" id="regUsername" required autocomplete="username" />
-        <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
-        <label for="regPassword">Пароль</label>
-        <input type="password" id="regPassword" autocomplete="new-password" required />
-        <label for="regRole">Роль</label>
-        <select id="regRole">
-          <option value="admin" selected>Администратор</option>
-          <option value="operator">Оператор</option>
-          <option value="viewer">Только просмотр</option>
-        </select>
-        <div class="form-actions">
-          <button type="submit">Зарегистрироваться</button>
-          <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
-        </div>
-      </form>
-      <p id="auth-user-data-hint" class="auth-user-data-hint" style="display: none;">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+      </div>
+      <!-- Серверный режим (API подключён) -->
+      <div id="auth-server-block" style="display: none;">
+        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
+        <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
+          <label for="authUsernameSelect">Выбрать пользователя</label>
+          <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
+            <option value="">— Выберите из списка —</option>
+          </select>
+          <label for="authUsername">Логин</label>
+          <input type="text" id="authUsername" required autocomplete="username" />
+          <label for="authPassword">Пароль</label>
+          <input type="password" id="authPassword" autocomplete="current-password" required />
+          <div class="form-actions">
+            <button type="submit">Войти</button>
+            <button type="button" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
+          </div>
+        </form>
+        <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
+          <label for="regUsername">Логин</label>
+          <input type="text" id="regUsername" required autocomplete="username" />
+          <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
+          <label for="regPassword">Пароль</label>
+          <input type="password" id="regPassword" autocomplete="new-password" required />
+          <label for="regRole">Роль</label>
+          <select id="regRole">
+            <option value="admin" selected>Администратор</option>
+            <option value="operator">Оператор</option>
+            <option value="viewer">Только просмотр</option>
+          </select>
+          <div class="form-actions">
+            <button type="submit">Зарегистрироваться</button>
+            <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
+          </div>
+        </form>
+        <p id="auth-user-data-hint" class="auth-user-data-hint">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+      </div>
     </div>
   </div>
 
@@ -679,28 +688,23 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран синхронизации (настройки сервера: адрес, подключение/отключение) -->
+  <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
-    <h1>🔄 Настройки сервера</h1>
-    <!-- Блок когда сервер ещё не подключён: адрес и подключение -->
+    <h1>🔄 Синхронизация</h1>
+    <!-- Блок когда сервер ещё не подключён -->
     <div id="sync-connect-block" class="sync-server-section">
-      <div class="sync-server-url-row">
-        <label for="serverApiBaseInput">Адрес сервера API</label>
-        <input type="text" id="serverApiBaseInput" placeholder="http://localhost:3000 или http://IP:3000" />
-        <button type="button" class="action-btn" id="syncSaveServerBtn" onclick="typeof window.saveServerBaseUrl === 'function' && window.saveServerBaseUrl()">Сохранить и подключиться</button>
-      </div>
-      <p class="sync-server-hint">Учётные записи хранятся на сервере и не теряются после обновления приложения.</p>
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+        <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
       </div>
       <div id="syncConnectStatus" class="sync-connect-status" aria-live="polite"></div>
     </div>
-    <!-- Секция для режима API: обновление с сервера и статус -->
+    <!-- Секция для режима API -->
     <div id="sync-server-block" class="sync-server-section" style="display: none;">
-      <div class="sync-server-controls">
+      <div class="sync-server-controls sync-connected-controls">
         <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
-        <button type="button" class="action-btn" onclick="typeof window.refreshFromServer === 'function' && window.refreshFromServer()">Обновить с сервера</button>
-        <button type="button" class="small-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться от сервера</button>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.updateSyncServerStatusFromHealth === 'function' && window.updateSyncServerStatusFromHealth()">Проверить статус</button>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
       <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
@@ -710,16 +714,12 @@
       </div>
       <div class="sync-server-bases">
         <h3>Базы на сервере</h3>
-        <p class="sync-server-bases-hint">Загрузить выбранную базу в новый объект (указать название) или заменить данные в существующем.</p>
+        <div id="syncBasesFilter" class="sync-bases-filter"></div>
         <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
       </div>
     </div>
     <div id="sync-backup-section" class="sync-section">
-      <h3>Резервное копирование</h3>
-      <p class="sync-section-hint">Создать копию в браузере, экспорт в JSON или восстановление из файла/списка.</p>
-      <div class="sync-backup-actions-row">
-        <button type="button" class="action-btn small" onclick="typeof window.handleCheckForUpdates === 'function' && window.handleCheckForUpdates()">Проверить обновления</button>
-      </div>
+      <h3>Резервное копирование (локальная утилита)</h3>
       <div id="sync-backup-container"></div>
     </div>
     <div id="syncStatus" class="sync-status"></div>

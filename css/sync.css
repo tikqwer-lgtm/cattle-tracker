@@ -62,6 +62,25 @@
 }
 .sync-backup-actions-row .action-btn { margin-right: 8px; }
 
+.backup-actions-compact {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.backup-btn {
+  flex: 1 1 0;
+  min-width: 160px;
+  text-align: center;
+  font-size: 0.95em;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.backup-restore-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Секция синхронизации с сервером API */
 .sync-server-section {
   margin-bottom: 20px;
@@ -73,6 +92,16 @@
 
 .sync-server-controls {
   margin-bottom: 8px;
+}
+.sync-connected-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sync-control-btn {
+  min-width: 160px;
+  text-align: center;
 }
 
 /* Ход подключения при нажатии «Сохранить и подключиться» */
@@ -129,10 +158,26 @@
   margin: 0 0 8px 0;
   font-size: 1.1em;
 }
-.sync-server-bases-hint {
-  font-size: 0.85em;
-  color: var(--color-text-muted);
-  margin: 0 0 12px 0;
+.sync-bases-filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.sync-filter-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+.sync-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sync-sortable:hover {
+  text-decoration: underline;
 }
 .sync-server-bases-list .sync-loading,
 .sync-server-bases-list .sync-empty {
@@ -166,6 +211,50 @@
 .sync-bases-table td:nth-child(2) { min-width: 130px; }
 .sync-bases-table td:nth-child(3) { min-width: 100px; }
 .sync-bases-table td:nth-child(4) { min-width: 60px; text-align: right; }
+
+/* Адаптив: карточный вид на мобильных */
+@media (max-width: 600px) {
+  .sync-bases-table thead { display: none; }
+  .sync-bases-table,
+  .sync-bases-table tbody,
+  .sync-bases-table tr,
+  .sync-bases-table td {
+    display: block;
+    width: 100%;
+  }
+  .sync-bases-table tr {
+    background: var(--color-bg-elevated, #f8f9fa);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .sync-bases-table td {
+    padding: 4px 0;
+    border-bottom: none;
+    min-width: unset !important;
+    text-align: left !important;
+  }
+  .sync-bases-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    display: inline;
+  }
+  .sync-bases-table td:last-child::before {
+    content: "";
+  }
+  .sync-bases-actions {
+    white-space: normal;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .sync-bases-actions .small-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
 
 /* Прогресс синхронизации */
 .sync-progress-block {
