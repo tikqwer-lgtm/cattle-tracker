@@ -490,9 +490,11 @@ function renderAllInseminationsScreen() {
     });
   }
   if (listToShow.length === 0) {
+    if (container._pinchZoomDestroy) { try { container._pinchZoomDestroy(); } catch (e) {} container._pinchZoomDestroy = null; }
     container.innerHTML = '<p class="cow-insemination-empty">Нет данных об осеменениях.' + (flat.length > 0 ? ' Измените фильтры.' : '') + '</p>';
     return;
   }
+  if (container._pinchZoomDestroy) { try { container._pinchZoomDestroy(); } catch (e) {} container._pinchZoomDestroy = null; }
   var sortAsc = allInseminationsSortDir === 'asc';
   var sortMark = function (key) {
     if (allInseminationsSortKey !== key) return '';
@@ -545,6 +547,7 @@ function renderAllInseminationsScreen() {
       }
     });
   });
+  if (typeof window.initPinchZoom === 'function') container._pinchZoomDestroy = window.initPinchZoom(container, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
 }
 
 /** Возврат с карточки: в уведомления или в список животных */

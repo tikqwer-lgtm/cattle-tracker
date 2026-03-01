@@ -36,7 +36,7 @@ function viteDistCopyPlugin() {
         const src = path.join(root, dir);
         if (fs.existsSync(src)) copyDirSync(src, path.join(distDir, dir));
       }
-      for (const f of ['manifest.json', 'sw.js']) {
+      for (const f of ['manifest.json', 'sw.js', 'package.json']) {
         const src = path.join(root, f);
         if (fs.existsSync(src)) fs.copyFileSync(src, path.join(distDir, f));
       }

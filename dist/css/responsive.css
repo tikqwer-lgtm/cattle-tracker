@@ -1,16 +1,26 @@
 /* responsive.css - Адаптивные стили */
 
-/* Адаптивность таблицы */
+/* Телефон: только вертикальная прокрутка страницы; в списках горизонтальная возможна при широкой таблице */
 @media (max-width: 768px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  body {
+    touch-action: pan-y;
+  }
+  .screen.active {
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
   .entries-table {
     font-size: 0.85em;
   }
-
   .entries-table th,
   .entries-table td {
     padding: 8px;
   }
-
   .entries-table .actions-cell {
     text-align: center;
   }
@@ -101,5 +111,9 @@
   .menu-branding-logo {
     width: 36px;
     height: 36px;
+  }
+  .menu-branding-logo-full {
+    width: auto;
+    max-height: 40px;
   }
 }

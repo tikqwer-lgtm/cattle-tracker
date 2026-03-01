@@ -98,7 +98,7 @@ npm install --omit=dev
 В PowerShell на ПК (подставьте IP сервера и путь к `server`):
 
 ```powershell
-scp -r D:\VScode\cattle-tracker\server root@IP_АДРЕС_СЕРВЕРА:/root/
+scp -r E:\VScode\cattle-tracker\server root@IP_АДРЕС_СЕРВЕРА:/root/
 ```
 
 Затем на сервере:

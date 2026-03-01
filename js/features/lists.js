@@ -227,9 +227,11 @@
       var wrap = document.getElementById('uzi-list-table-wrap');
       if (!wrap) return;
       if (rows.length === 0) {
+        if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
         wrap.innerHTML = '<p class="list-empty">Нет записей по заданным фильтрам.</p>';
         return;
       }
+      if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
       var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
       var thead = '<tr><th>Номер животного</th><th>Группа</th><th>Дата осеменения</th><th>Дни от осеменения</th><th>Попытка</th><th>Примечание</th></tr>';
       var tbody = rows.map(function (r) {
@@ -238,6 +240,7 @@
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
       wrap._listData = rows;
       wrap._listType = 'uzi';
+      if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
     refresh();
     var refreshBtn = document.getElementById('uziListRefresh');
@@ -294,10 +297,12 @@
       var wrap = document.getElementById('insem-list-table-wrap');
       if (!wrap) return;
       if (rows.length === 0) {
+        if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
         wrap.innerHTML = '<p class="list-empty">Нет записей по заданным фильтрам.</p>';
         wrap._listData = [];
         return;
       }
+      if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
       var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
       var thead = '<tr><th>Номер животного</th><th>Группа</th><th>Попытка</th><th>Протокол синхронизации</th><th>Бык</th><th>День лактации</th><th>Дата</th></tr>';
       var tbody = rows.map(function (r) {
@@ -306,6 +311,7 @@
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
       wrap._listData = rows;
       wrap._listType = 'insemination';
+      if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
     refresh();
     var refreshBtn = document.getElementById('insemListRefresh');

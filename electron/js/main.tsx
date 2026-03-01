@@ -3,6 +3,14 @@
  * Each module attaches its API to window for HTML and legacy code.
  */
 import './config.js';
+import { initPinchZoom } from './utils/pinch-zoom.js';
+
+declare global {
+  interface Window {
+    initPinchZoom?: typeof initPinchZoom;
+  }
+}
+window.initPinchZoom = initPinchZoom;
 import './utils/constants.js';
 import './utils/utils.js';
 import './core/events.js';

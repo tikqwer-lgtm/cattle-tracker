@@ -237,6 +237,10 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
       return '<div class="view-virtual-head-cell sortable-th' + sortClass(f.key) + '" data-sort-key="' + (f.key || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0">' + (f.label || '').replace(/</g, '&lt;') + sortMark(f.key) + '</div>';
     }).join('') +
     '</div>';
+  if (container._pinchZoomDestroy) {
+    try { container._pinchZoomDestroy(); } catch (e) {}
+    container._pinchZoomDestroy = null;
+  }
   container.innerHTML =
     '<div class="view-virtual-wrap">' +
     headHtml +
@@ -245,6 +249,9 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     '<div class="view-virtual-rows" id="viewVirtualRows"></div>' +
     '</div></div>';
   container._virtualData = { list: listToShow, fields: fields, renderVisible: null };
+  if (typeof window.initPinchZoom === 'function') {
+    container._pinchZoomDestroy = window.initPinchZoom(container, { innerSelector: '.view-virtual-wrap', minScale: 0.7, maxScale: 1.5 });
+  }
   function renderVisible() {
     var body = document.getElementById('viewVirtualBody');
     var viewport = document.getElementById('viewVirtualViewport');

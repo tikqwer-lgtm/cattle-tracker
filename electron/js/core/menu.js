@@ -115,6 +115,10 @@ function navigate(screenId, options) {
   if (screenId === 'auth') {
     if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
     if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
+    var serverInp = document.getElementById('serverApiBaseInput');
+    if (serverInp && !serverInp.value.trim() && typeof window.CATTLE_TRACKER_DEFAULT_SERVER_URL === 'string') {
+      serverInp.value = window.CATTLE_TRACKER_DEFAULT_SERVER_URL.trim().replace(/\/$/, '');
+    }
     setTimeout(function () {
       var authScreen = document.getElementById('auth-screen');
       var active = document.activeElement;

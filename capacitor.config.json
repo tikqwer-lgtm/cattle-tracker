@@ -3,6 +3,6 @@
   "appName": "Учёт коров",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "http"
   }
 }
