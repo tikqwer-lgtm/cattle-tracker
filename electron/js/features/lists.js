@@ -271,9 +271,12 @@
         lactSet[L] = true;
       });
       var lactList = Object.keys(lactSet).sort(function (a, b) {
-        var na = a === '' ? -1 : (parseInt(a, 10) || 0);
-        var nb = b === '' ? -1 : (parseInt(b, 10) || 0);
-        if (!isNaN(parseInt(a, 10)) && !isNaN(parseInt(b, 10))) return na - nb;
+        if (a === '') return -1;
+        if (b === '') return 1;
+        var na = parseInt(a, 10), nb = parseInt(b, 10);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        if (!isNaN(na)) return -1;
+        if (!isNaN(nb)) return 1;
         return String(a).localeCompare(String(b));
       });
 
@@ -284,17 +287,23 @@
         lactList.forEach(function (l) { wasChecked[l] = true; });
       }
       if (lactFilterEl) {
-        var lactHtml = '<span class="list-lactation-label">Лактация:</span> ';
-        lactList.forEach(function (l) {
+        var lactHtml = '<span class="list-lactation-toggle" role="button" tabindex="0" title="Нажмите: выделить все / убрать все">Лактация:</span> ';
+        lactList.forEach(function (l, idx) {
+          if (idx > 0) lactHtml += ' <span class="list-lactation-dot">.</span> ';
           var checked = wasChecked[l] ? ' checked' : '';
-          lactHtml += '<label class="list-lactation-cb-wrap"><input type="checkbox" class="uzi-lactation-cb" data-lactation="' + escapeHtml(l) + '"' + checked + ' /> ' + (l === '' ? '—' : escapeHtml(l)) + '</label> ';
+          var displayVal = (l === '' ? '—' : escapeHtml(l));
+          lactHtml += '<label class="list-lactation-cb-wrap"><input type="checkbox" class="uzi-lactation-cb" data-lactation="' + escapeHtml(l) + '"' + checked + ' /> ' + displayVal + '</label>';
         });
-        lactHtml += '<button type="button" class="small-btn" id="uziLactSelectAll">Выделить все</button> <button type="button" class="small-btn" id="uziLactDeselectAll">Убрать все</button>';
         lactFilterEl.innerHTML = lactHtml;
-        var selectAllBtn = lactFilterEl.querySelector('#uziLactSelectAll');
-        var deselectAllBtn = lactFilterEl.querySelector('#uziLactDeselectAll');
-        if (selectAllBtn) selectAllBtn.addEventListener('click', function () { lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) { cb.checked = true; }); refresh(); });
-        if (deselectAllBtn) deselectAllBtn.addEventListener('click', function () { lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) { cb.checked = false; }); refresh(); });
+        var lactToggle = lactFilterEl.querySelector('.list-lactation-toggle');
+        if (lactToggle) {
+          lactToggle.addEventListener('click', function () {
+            var cbs = lactFilterEl.querySelectorAll('.uzi-lactation-cb');
+            var allChecked = cbs.length > 0 && Array.prototype.every.call(cbs, function (cb) { return cb.checked; });
+            cbs.forEach(function (cb) { cb.checked = !allChecked; });
+            refresh();
+          });
+        }
         lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) {
           cb.addEventListener('change', refresh);
         });
@@ -331,9 +340,14 @@
       }
       var thead = '<tr>' + UZI_LIST_KEYS.map(function (k, i) { return makeTh(k, UZI_LIST_HEADERS[i]); }).join('') + '</tr>';
       var tbody = rows.map(function (r) {
-        return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(formatDateFn(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
+        var cid = (r.cattleId || '').replace(/"/g, '&quot;');
+        return '<tr data-cattle-id="' + cid + '"><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(formatDateFn(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
       }).join('');
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+      wrap.querySelector('tbody') && wrap.querySelector('tbody').addEventListener('click', function (e) {
+        var tr = e.target && e.target.closest ? e.target.closest('tr[data-cattle-id]') : null;
+        if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
+      });
       wrap._listType = 'uzi';
 
       function applySortAndRender() {
@@ -344,7 +358,8 @@
         var fmt = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
         var tbodyEl = wrap.querySelector('tbody');
         if (tbodyEl) tbodyEl.innerHTML = sorted.map(function (r) {
-          return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(fmt(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
+          var cid = (r.cattleId || '').replace(/"/g, '&quot;');
+          return '<tr data-cattle-id="' + cid + '"><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(fmt(r.inseminationDate)) + '</td><td>' + escapeHtml(r.daysFromInsemination) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.inseminator) + '</td><td>' + escapeHtml(lactDisplay(r.lactation)) + '</td><td>' + escapeHtml(r.note) + '</td></tr>';
         }).join('');
         var theadTr = wrap.querySelector('thead tr');
         if (theadTr) theadTr.innerHTML = UZI_LIST_KEYS.map(function (k, i) {
@@ -437,9 +452,14 @@
       var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
       var thead = '<tr><th>Номер животного</th><th>Группа</th><th>Попытка</th><th>Протокол синхронизации</th><th>Бык</th><th>День лактации</th><th>Дата</th></tr>';
       var tbody = rows.map(function (r) {
-        return '<tr><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.protocolName) + '</td><td>' + escapeHtml(r.bull) + '</td><td>' + escapeHtml(r.daysInMilk) + '</td><td>' + escapeHtml(formatDateFn(r.date)) + '</td></tr>';
+        var cid = (r.cattleId || '').replace(/"/g, '&quot;');
+        return '<tr data-cattle-id="' + cid + '"><td>' + escapeHtml(r.cattleId) + '</td><td>' + escapeHtml(r.group) + '</td><td>' + escapeHtml(r.attemptNumber) + '</td><td>' + escapeHtml(r.protocolName) + '</td><td>' + escapeHtml(r.bull) + '</td><td>' + escapeHtml(r.daysInMilk) + '</td><td>' + escapeHtml(formatDateFn(r.date)) + '</td></tr>';
       }).join('');
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+      wrap.querySelector('tbody') && wrap.querySelector('tbody').addEventListener('click', function (e) {
+        var tr = e.target && e.target.closest ? e.target.closest('tr[data-cattle-id]') : null;
+        if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
+      });
       wrap._listData = rows;
       wrap._listType = 'insemination';
       if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
@@ -586,7 +606,7 @@
     var filtersEl = document.getElementById('events-screen-filters');
     var actionsEl = document.getElementById('events-screen-actions');
     if (!container) return;
-    var eventTypes = ['', 'УЗИ1', 'УЗИ2', 'Осеменение', 'Постановка на протокол', 'УЗИ'];
+    var eventTypes = ['', 'УЗИ1', 'УЗИ2', 'Осеменение', 'Постановка на протокол', 'УЗИ', 'Отёл', 'Запуск в сухостой'];
     var typeOptions = '<option value="">Все события</option>' + eventTypes.filter(Boolean).map(function (t) { return '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>'; }).join('');
     var groups = getUniqueGroups();
     var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>'; }).join('');
@@ -630,9 +650,14 @@
         var insem = (e.eventType === 'Осеменение') ? (e.inseminator || '—') : '—';
         var code = (e.eventType === 'Осеменение') ? (e.code || '—') : '—';
         var protocol = (e.eventType === 'Постановка на протокол') ? (e.protocolName || '—') : '—';
-        return '<tr><td>' + escapeHtml(e.cattleId) + '</td><td>' + escapeHtml(e.group) + '</td><td>' + escapeHtml(e.lactation) + '</td><td>' + escapeHtml(e.dateTime) + '</td><td>' + escapeHtml(e.userName) + '</td><td>' + escapeHtml(e.eventType) + '</td><td>' + escapeHtml(result) + '</td><td>' + escapeHtml(attempt) + '</td><td>' + escapeHtml(bull) + '</td><td>' + escapeHtml(insem) + '</td><td>' + escapeHtml(code) + '</td><td>' + escapeHtml(protocol) + '</td></tr>';
+        var cid = (e.cattleId || '').replace(/"/g, '&quot;');
+        return '<tr data-cattle-id="' + cid + '"><td>' + escapeHtml(e.cattleId) + '</td><td>' + escapeHtml(e.group) + '</td><td>' + escapeHtml(e.lactation) + '</td><td>' + escapeHtml(e.dateTime) + '</td><td>' + escapeHtml(e.userName) + '</td><td>' + escapeHtml(e.eventType) + '</td><td>' + escapeHtml(result) + '</td><td>' + escapeHtml(attempt) + '</td><td>' + escapeHtml(bull) + '</td><td>' + escapeHtml(insem) + '</td><td>' + escapeHtml(code) + '</td><td>' + escapeHtml(protocol) + '</td></tr>';
       }).join('');
       container.innerHTML = '<table class="list-table events-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+      container.querySelector('tbody') && container.querySelector('tbody').addEventListener('click', function (ev) {
+        var tr = ev.target && ev.target.closest ? ev.target.closest('tr[data-cattle-id]') : null;
+        if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
+      });
     }
     refresh();
     var refreshBtn = document.getElementById('eventsFilterRefresh');

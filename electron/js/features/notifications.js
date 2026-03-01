@@ -121,17 +121,40 @@
     var notified = {};
     var out = [];
 
+    function getLastInseminationDate(e) {
+      var hist = e.inseminationHistory;
+      if (Array.isArray(hist) && hist.length > 0) {
+        var dates = hist.map(function (h) { return h && h.date; }).filter(Boolean);
+        if (dates.length > 0) return dates.reduce(function (a, b) { return a > b ? a : b; });
+      }
+      return e.inseminationDate || null;
+    }
+
+    function getExpectedCalvingDate(e) {
+      var lastInsem = getLastInseminationDate(e);
+      if (!lastInsem) return null;
+      var d = parseDate(lastInsem);
+      if (!d) return null;
+      d.setDate(d.getDate() + 280);
+      return d;
+    }
+
     list.forEach(function (entry) {
       var cattleId = entry.cattleId || '';
       var calvingDate = parseDate(entry.calvingDate);
+      var lastInsemDateStr = getLastInseminationDate(entry);
       var inseminationDate = parseDate(entry.inseminationDate);
+      var hasInseminationHistory = Array.isArray(entry.inseminationHistory) && entry.inseminationHistory.length > 0;
       var dryStartDate = parseDate(entry.dryStartDate);
       var exitDate = parseDate(entry.exitDate);
+      var statusStr = (entry.status || '').toString();
       if (exitDate && exitDate <= today) return;
 
-      if (calvingDate && calvingDate >= today) {
-        var daysToCalving = daysBetween(new Date(), calvingDate);
-        if (CALVING_REMINDER_DAYS.indexOf(daysToCalving) !== -1) {
+      var expectedCalving = (statusStr.indexOf('Стельная') !== -1) ? getExpectedCalvingDate(entry) : null;
+      var calvingForReminder = (expectedCalving && expectedCalving >= today) ? expectedCalving : (calvingDate && calvingDate >= today ? calvingDate : null);
+      if (calvingForReminder) {
+        var daysToCalving = daysBetween(new Date(), calvingForReminder);
+        if (daysToCalving !== null && CALVING_REMINDER_DAYS.indexOf(daysToCalving) !== -1) {
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
@@ -142,10 +165,9 @@
 
       var lastCalving = calvingDate;
       var daysSinceCalving = lastCalving ? daysBetween(lastCalving, new Date()) : 0;
-      var statusStr = (entry.status || '').toString();
       var otelFirst60Only = statusStr.indexOf('Отёл') !== -1 && (daysSinceCalving < 60 || !lastCalving);
       var excludeInsemination = statusStr.indexOf('Стельная') !== -1 || statusStr.indexOf('Брак') !== -1 || otelFirst60Only;
-      if (lastCalving && !inseminationDate && !excludeInsemination) {
+      if (lastCalving && !inseminationDate && !hasInseminationHistory && !excludeInsemination) {
         if (daysSinceCalving >= VWP_DAYS) {
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
@@ -155,13 +177,43 @@
         }
       }
 
-      if (calvingDate && calvingDate > today) {
-        var dryOffDue = daysBetween(new Date(), calvingDate);
-        if (dryOffDue <= VWP_DAYS && dryOffDue >= VWP_DAYS - 14) {
-          var key3 = 'dry_' + cattleId;
-          if (!notified[key3]) {
-            notified[key3] = true;
-            out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
+      var alreadyDry = statusStr.indexOf('Сухостой') !== -1 || (dryStartDate && dryStartDate <= today);
+      if (!alreadyDry) {
+        var calvingForDry = (expectedCalving && expectedCalving >= today) ? expectedCalving : (calvingDate && calvingDate > today ? calvingDate : null);
+        if (calvingForDry) {
+          var dryOffDue = daysBetween(new Date(), calvingForDry);
+          if (dryOffDue !== null && dryOffDue <= VWP_DAYS && dryOffDue >= VWP_DAYS - 14) {
+            var key3 = 'dry_' + cattleId;
+            if (!notified[key3]) {
+              notified[key3] = true;
+              out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
+            }
+          }
+        }
+      }
+
+      var lastInsemD = parseDate(lastInsemDateStr);
+      var uziHist = entry.uziHistory || [];
+      if (statusStr.indexOf('Осеменен') !== -1 && lastInsemD) {
+        var daysFromInsem = daysBetween(lastInsemD, new Date());
+        if (daysFromInsem !== null && daysFromInsem >= 32) {
+          var hasUziAfterLastInsem = uziHist.some(function (u) { var ud = parseDate(u.date); return ud && ud >= lastInsemD; });
+          if (!hasUziAfterLastInsem) {
+            var keyUzi1 = 'uzi1_' + cattleId;
+            if (!notified[keyUzi1]) {
+              notified[keyUzi1] = true;
+              out.push(createNotification('info', 'УЗИ1: корова ' + cattleId + ' (осеменена ' + daysFromInsem + ' дн. назад)', cattleId, { daysFromInsemination: daysFromInsem, category: 'other' }, { showToast: false, showSystem: false }));
+            }
+          }
+        }
+      }
+      if (statusStr.indexOf('Стельная') !== -1 && uziHist.length === 1 && lastInsemD) {
+        var daysFromInsem2 = daysBetween(lastInsemD, new Date());
+        if (daysFromInsem2 !== null && daysFromInsem2 >= 60) {
+          var keyUzi2 = 'uzi2_' + cattleId;
+          if (!notified[keyUzi2]) {
+            notified[keyUzi2] = true;
+            out.push(createNotification('info', 'УЗИ2: корова ' + cattleId + ' (стельность ' + daysFromInsem2 + ' дн.)', cattleId, { daysFromInsemination: daysFromInsem2, category: 'other' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -264,7 +316,7 @@
       html = '<ul class="menu-notifications-list">';
       items.forEach(function (n) {
         var cls = 'menu-notifications-item' + (n.read === false ? ' notification-item-unread' : '');
-        html += '<li class="' + cls + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '">' +
+        html += '<li class="' + cls + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
           '<div class="menu-notifications-message">' + (n.message || '').replace(/</g, '&lt;') + '</div>' +
           '<div class="menu-notifications-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</div>' +
           '</li>';
@@ -282,6 +334,8 @@
         if (markNotificationRead(id)) {
           renderNotificationSummary(containerId);
         }
+        var cid = item.getAttribute('data-cattle-id');
+        if (cid && typeof viewCow === 'function') viewCow(cid);
       });
     });
     var openBtn = body.querySelector('[data-action="open-notifications"]');

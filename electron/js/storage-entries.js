@@ -138,6 +138,7 @@ function loadLocally() {
       if (!entry.inseminationHistory) entry.inseminationHistory = [];
       if (!entry.actionHistory) entry.actionHistory = [];
       if (!entry.uziHistory) entry.uziHistory = [];
+      if (entry.lactationHistory === undefined) entry.lactationHistory = [];
       if (entry.group === undefined) entry.group = '';
     }
 
@@ -199,23 +200,70 @@ function getDefaultCowEntry() {
     lastModifiedBy: '',
     inseminationHistory: [],
     actionHistory: [],
-    uziHistory: []
+    uziHistory: [],
+    lactationHistory: []
   };
 }
 
 /**
- * Добавляет запись в историю действий карточки животного.
+ * Архивирует текущую лактацию в lactationHistory перед записью отёла.
  */
-function pushActionHistory(entry, action, details) {
+function archiveCurrentLactation(entry, newCalvingDate) {
+  if (!entry) return null;
+  if (!entry.lactationHistory) entry.lactationHistory = [];
+  var dryStartDate = entry.dryStartDate || '';
+  var dryDuration = null;
+  if (dryStartDate && newCalvingDate) {
+    var d1 = new Date(dryStartDate);
+    var d2 = new Date(newCalvingDate);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+      dryDuration = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+    }
+  }
+  var snapshot = {
+    number: parseInt(entry.lactation, 10) || 0,
+    calvingDate: newCalvingDate || '',
+    dryStartDate: dryStartDate,
+    dryDuration: dryDuration,
+    inseminationDate: entry.inseminationDate || '',
+    attemptNumber: entry.attemptNumber ?? 1,
+    bull: entry.bull || '',
+    inseminator: entry.inseminator || '',
+    code: entry.code || '',
+    inseminationHistory: Array.isArray(entry.inseminationHistory) ? entry.inseminationHistory.slice() : [],
+    uziHistory: Array.isArray(entry.uziHistory) ? entry.uziHistory.slice() : [],
+    status: entry.status || '',
+    protocol: entry.protocol && typeof entry.protocol === 'object' ? { name: entry.protocol.name || '', startDate: entry.protocol.startDate || '' } : { name: '', startDate: '' }
+  };
+  entry.lactationHistory.push(snapshot);
+  return snapshot;
+}
+
+/**
+ * Добавляет запись в историю действий карточки животного.
+ * @param {Object} [options] - eventType, result, attemptNumber, bull, inseminator, code, protocolName
+ */
+function pushActionHistory(entry, action, details, options) {
   if (!entry) return;
   if (!entry.actionHistory) entry.actionHistory = [];
   var userName = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().username : 'Admin';
   var dateTime = typeof nowFormatted === 'function' ? nowFormatted() : new Date().toISOString();
-  entry.actionHistory.push({ dateTime: dateTime, userName: userName, action: action, details: details || '' });
+  var item = { dateTime: dateTime, userName: userName, action: action, details: details || '' };
+  if (options && typeof options === 'object') {
+    if (options.eventType !== undefined) item.eventType = options.eventType;
+    if (options.result !== undefined) item.result = options.result;
+    if (options.attemptNumber !== undefined) item.attemptNumber = options.attemptNumber;
+    if (options.bull !== undefined) item.bull = options.bull;
+    if (options.inseminator !== undefined) item.inseminator = options.inseminator;
+    if (options.code !== undefined) item.code = options.code;
+    if (options.protocolName !== undefined) item.protocolName = options.protocolName;
+  }
+  entry.actionHistory.push(item);
 }
 
 if (typeof window !== 'undefined') {
   window.pushActionHistory = pushActionHistory;
+  window.archiveCurrentLactation = archiveCurrentLactation;
 }
 
 /**

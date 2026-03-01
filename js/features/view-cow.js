@@ -66,6 +66,22 @@ function getDaysPregnant(entry) {
 }
 
 /**
+ * Дни лактации: от даты отёла до сегодня.
+ * @param {Object} entry — запись животного
+ * @returns {number|null} — количество дней или null
+ */
+function getDaysInLactation(entry) {
+  if (!entry || !entry.calvingDate) return null;
+  var d = new Date(entry.calvingDate);
+  var today = new Date();
+  if (isNaN(d.getTime())) return null;
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  var diff = Math.round((today - d) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff : null;
+}
+
+/**
  * Парсит строку даты в timestamp (мс) для расчёта интервалов. Поддерживает YYYY-MM-DD, DD.MM.YYYY, DD.MM.YY.
  * @param {string} dateStr
  * @returns {number} timestamp или NaN
@@ -173,6 +189,8 @@ function viewCow(cattleId) {
   var pdoStr = (pdoVal === '—' || pdoVal === '') ? '—' : String(pdoVal);
   var daysPreg = getDaysPregnant(entry);
   var daysPregStr = (daysPreg === null || daysPreg === undefined) ? '—' : String(daysPreg);
+  var daysInLact = getDaysInLactation(entry);
+  var daysInLactStr = (daysInLact === null || daysInLact === undefined) ? '—' : String(daysInLact);
 
   var insemList = getInseminationListForEntry(entry);
   var historyRows = insemList.map(function (row) {
@@ -183,6 +201,25 @@ function viewCow(cattleId) {
   var historyTableHtml = insemList.length > 0
     ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Техник ИО</th><th>Дней от предыдущего</th><th>Код</th></tr></thead><tbody>' + historyRows + '</tbody></table>'
     : '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
+
+  var lactHist = entry.lactationHistory || [];
+  var lactRows = lactHist.map(function (l) {
+    var dryDur = l.dryDuration != null ? String(l.dryDuration) : '—';
+    var insemCount = Array.isArray(l.inseminationHistory) ? l.inseminationHistory.length : (l.inseminationDate ? 1 : 0);
+    var lastUzi = (Array.isArray(l.uziHistory) && l.uziHistory.length > 0) ? l.uziHistory[l.uziHistory.length - 1].result : '—';
+    return '<tr><td>' + escapeHtmlCard(l.number) + '</td><td>' + (formatDate(l.calvingDate) || '—') + '</td><td>' + dryDur + '</td><td>' + insemCount + '</td><td>' + escapeHtmlCard(lastUzi) + '</td><td>' + escapeHtmlCard(l.bull) + '</td><td>' + escapeHtmlCard(l.inseminator) + '</td></tr>';
+  }).join('');
+  var lactationHistoryHtml = lactRows
+    ? '<table class="cow-insemination-table"><thead><tr><th>Лактация</th><th>Дата отёла</th><th>Длительность сухостоя (дн.)</th><th>Осеменений</th><th>УЗИ</th><th>Бык</th><th>Осеменатор</th></tr></thead><tbody>' + lactRows + '</tbody></table>'
+    : '<p class="cow-insemination-empty">Нет завершённых лактаций.</p>';
+
+  var uziHist = entry.uziHistory || [];
+  var uziRows = uziHist.map(function (u) {
+    return '<tr><td>' + (formatDate(u.date) || '—') + '</td><td>' + escapeHtmlCard(u.result) + '</td><td>' + escapeHtmlCard(u.specialist) + '</td><td>' + (u.daysFromInsemination != null ? String(u.daysFromInsemination) : '—') + '</td></tr>';
+  }).join('');
+  var uziHistoryTableHtml = uziRows
+    ? '<table class="cow-insemination-table"><thead><tr><th>Дата</th><th>Результат</th><th>Специалист</th><th>Дней от осеменения</th></tr></thead><tbody>' + uziRows + '</tbody></table>'
+    : '<p class="cow-insemination-empty">Нет данных УЗИ за текущую лактацию.</p>';
 
   var rawId = (entry.cattleId || '');
   var safeCattleId = rawId.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -204,6 +241,7 @@ function viewCow(cattleId) {
     '<div><strong>Статус:</strong> ' + escapeHtmlCard(entry.status) + '</div>' +
     '<div><strong>Дата выбытия:</strong> ' + (formatDate(entry.exitDate) || '—') + '</div>' +
     '<div><strong>Начало сухостоя:</strong> ' + (formatDate(entry.dryStartDate) || '—') + '</div>' +
+    '<div><strong>Дни лактации:</strong> ' + daysInLactStr + '</div>' +
     '<div><strong>ПДО (дней от отёла до 1-го осеменения):</strong> ' + pdoStr + '</div>' +
     '<div><strong>Дни стельности:</strong> ' + daysPregStr + '</div>' +
     '<div><strong>Протокол:</strong> ' + escapeHtmlCard((entry.protocol && entry.protocol.name) || entry.protocolName) + '</div>' +
@@ -214,12 +252,17 @@ function viewCow(cattleId) {
     '<div><strong>Изменено пользователем:</strong> ' + escapeHtmlCard(entry.lastModifiedBy) + '</div>' +
     '</div>' +
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
+    '<div class="cow-card-section"><button type="button" class="small-btn cow-insemination-toggle" onclick="toggleViewCowLactationHistory()">История лактаций</button></div>' +
+    '<div id="viewCowLactationHistory" class="cow-insemination-history" style="display:none;">' + lactationHistoryHtml + '</div>' +
+    '<div class="cow-card-section"><button type="button" class="small-btn cow-insemination-toggle" onclick="toggleViewCowUziHistory()">История УЗИ</button></div>' +
+    '<div id="viewCowUziHistory" class="cow-insemination-history" style="display:none;">' + uziHistoryTableHtml + '</div>' +
     '<div class="cow-card-actions">' +
     '<button type="button" onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn" aria-label="Редактировать">✏️ Редактировать</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn" aria-label="Отел">🐄 Отел</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="Поставить на протокол">📋 Поставить на протокол</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn" aria-label="Отел">🐄 Отел</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="Поставить на протокол">📋 Поставить на протокол</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'insemination\');" class="small-btn" aria-label="Осеменение">💉 Осеменение</button> ' +
+    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> ' +
     '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
     '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">← Назад</button>' +
     '</div>' +
@@ -231,6 +274,18 @@ function viewCow(cattleId) {
  */
 function toggleViewCowInseminationHistory() {
   var el = document.getElementById('viewCowInseminationHistory');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleViewCowLactationHistory() {
+  var el = document.getElementById('viewCowLactationHistory');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleViewCowUziHistory() {
+  var el = document.getElementById('viewCowUziHistory');
   if (!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }

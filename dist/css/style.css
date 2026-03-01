@@ -49,7 +49,9 @@
 .list-table th { font-weight: 600; background: var(--table-header-bg, #f5f5f5); }
 .list-th-sortable { cursor: pointer; }
 .list-filters-lactation { flex-wrap: wrap; }
-.list-lactation-cb-wrap { margin-right: 0.5rem; }
+.list-lactation-toggle { cursor: pointer; text-decoration: underline; }
+.list-lactation-dot { margin: 0 0.15rem; color: var(--text-muted, #666); }
+.list-lactation-cb-wrap { margin-right: 0.25rem; }
 .list-empty { color: var(--text-muted, #666); margin: 1rem 0; }
 .events-filters { margin-bottom: 1rem; }
 .events-filters-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }

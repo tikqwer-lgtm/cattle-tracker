@@ -7,25 +7,17 @@
 // let entries = []; // Удалено: уже объявлено в storage.js
 
 /**
- * Возвращает номер попытки осеменения для коровы в текущей лактации
+ * Возвращает номер попытки осеменения для коровы в текущей лактации.
+ * inseminationHistory сбрасывается при отёле, поэтому содержит только осеменения текущей лактации.
  * @param {string} cattleId - номер коровы
- * @param {number} currentLactation - текущая лактация
+ * @param {number} [currentLactation] - не используется (оставлен для совместимости вызовов)
  * @returns {number} - следующий номер попытки
  */
 function getInseminationAttempt(cattleId, currentLactation) {
-  if (!Array.isArray(entries)) {
-    return 1;
-  }
-
-  const attemptsInLactation = entries
-    .filter(entry => 
-      entry.cattleId === cattleId && 
-      entry.lactation === currentLactation && 
-      entry.inseminationDate
-    )
-    .sort((a, b) => new Date(a.inseminationDate) - new Date(b.inseminationDate));
-
-  return attemptsInLactation.length + 1;
+  if (!Array.isArray(entries)) return 1;
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry || !Array.isArray(entry.inseminationHistory)) return 1;
+  return entry.inseminationHistory.length + 1;
 }
 
 /**
@@ -255,11 +247,32 @@ function addInseminationEntry() {
   document.getElementById('codeInsem').value = '';
 
   if (typeof showToast === 'function') showToast('Данные осеменения добавлены!', 'success'); else alert('Данные осеменения добавлены!');
+  if (typeof window !== 'undefined' && window._returnToViewCow) {
+    if (typeof navigate === 'function') navigate('view-cow');
+    if (typeof viewCow === 'function') viewCow(cattleId);
+    window._returnToViewCow = null;
+  } else if (typeof navigate === 'function') navigate('menu');
 }
 
 /**
  * Инициализация модуля осеменения
  */
+/**
+ * Инициализация экрана ввода осеменения при навигации. Заполняет номер коровы из _prefillCattleId.
+ */
+function initInseminationScreen() {
+  initCattleAutocomplete();
+  initInseminationAttemptListeners();
+  if (typeof window !== 'undefined' && window._prefillCattleId) {
+    var el = document.getElementById('cattleIdInsemInput');
+    if (el) { el.value = window._prefillCattleId; }
+    var sel = document.getElementById('cattleIdInsem');
+    if (sel) { sel.value = window._prefillCattleId; }
+    delete window._prefillCattleId;
+  }
+  autoFillInseminationAttempt();
+}
+
 function initInseminationModule() {
   // Проверяем, находимся ли мы на экране добавления
   if (document.getElementById('add-screen')?.classList.contains('active')) {

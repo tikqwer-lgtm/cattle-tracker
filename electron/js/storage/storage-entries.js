@@ -137,6 +137,7 @@ function loadLocally() {
       if (!entry.inseminationHistory) entry.inseminationHistory = [];
       if (!entry.actionHistory) entry.actionHistory = [];
       if (!entry.uziHistory) entry.uziHistory = [];
+      if (entry.lactationHistory === undefined) entry.lactationHistory = [];
       if (entry.group === undefined) entry.group = '';
     }
 
@@ -196,8 +197,47 @@ function getDefaultCowEntry() {
     lastModifiedBy: '',
     inseminationHistory: [],
     actionHistory: [],
-    uziHistory: []
+    uziHistory: [],
+    lactationHistory: []
   };
+}
+
+/**
+ * Архивирует текущую лактацию в lactationHistory перед записью отёла.
+ * Вычисляет dryDuration (дней сухостоя), копирует осеменения и УЗИ текущей лактации.
+ * @param {Object} entry - запись животного
+ * @param {string} newCalvingDate - дата отёла (завершение текущей лактации)
+ * @returns {Object} снимок архивированной лактации (уже добавлен в entry.lactationHistory)
+ */
+function archiveCurrentLactation(entry, newCalvingDate) {
+  if (!entry) return null;
+  if (!entry.lactationHistory) entry.lactationHistory = [];
+  var dryStartDate = entry.dryStartDate || '';
+  var dryDuration = null;
+  if (dryStartDate && newCalvingDate) {
+    var d1 = new Date(dryStartDate);
+    var d2 = new Date(newCalvingDate);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+      dryDuration = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+    }
+  }
+  var snapshot = {
+    number: parseInt(entry.lactation, 10) || 0,
+    calvingDate: newCalvingDate || '',
+    dryStartDate: dryStartDate,
+    dryDuration: dryDuration,
+    inseminationDate: entry.inseminationDate || '',
+    attemptNumber: entry.attemptNumber ?? 1,
+    bull: entry.bull || '',
+    inseminator: entry.inseminator || '',
+    code: entry.code || '',
+    inseminationHistory: Array.isArray(entry.inseminationHistory) ? entry.inseminationHistory.slice() : [],
+    uziHistory: Array.isArray(entry.uziHistory) ? entry.uziHistory.slice() : [],
+    status: entry.status || '',
+    protocol: entry.protocol && typeof entry.protocol === 'object' ? { name: entry.protocol.name || '', startDate: entry.protocol.startDate || '' } : { name: '', startDate: '' }
+  };
+  entry.lactationHistory.push(snapshot);
+  return snapshot;
 }
 
 /**
@@ -230,6 +270,7 @@ if (typeof window !== 'undefined') {
   window.loadLocally = loadLocally;
   window.saveLocally = saveLocally;
   window.getDefaultCowEntry = getDefaultCowEntry;
+  window.archiveCurrentLactation = archiveCurrentLactation;
   window.cleanEntry = cleanEntry;
   window.cleanString = cleanString;
   window.hasBinaryChars = hasBinaryChars;
