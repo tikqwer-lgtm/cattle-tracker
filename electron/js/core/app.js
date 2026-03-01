@@ -168,6 +168,7 @@ function saveCurrentEntry() {
     entry.lastModifiedBy = getCurrentUser().username;
   }
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
+  var wasEditingFromCard = !!window.currentEditingId;
   if (useApi) {
     var p;
     if (window.currentEditingId) {
@@ -184,7 +185,10 @@ function saveCurrentEntry() {
       updateList();
       if (typeof updateViewList === 'function') updateViewList();
       clearForm();
-      if (typeof navigate === 'function') navigate('view');
+      if (wasEditingFromCard && cattleId) {
+        if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
+        if (typeof viewCow === 'function') viewCow(cattleId);
+      } else if (typeof navigate === 'function') navigate('view');
       console.log("Запись сохранена:", entry);
     }).catch(function (err) {
       if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения на сервере', 'error'); else alert(err && err.message ? err.message : 'Ошибка сохранения на сервере');
@@ -208,7 +212,10 @@ function saveCurrentEntry() {
   updateList();
   if (typeof updateViewList === 'function') updateViewList();
   clearForm();
-  if (typeof navigate === 'function') navigate('view');
+  if (wasEditingFromCard && cattleId) {
+    if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
+    if (typeof viewCow === 'function') viewCow(cattleId);
+  } else if (typeof navigate === 'function') navigate('view');
   console.log("Запись сохранена:", entry);
 }
 

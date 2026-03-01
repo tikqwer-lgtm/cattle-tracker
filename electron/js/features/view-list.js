@@ -156,7 +156,7 @@ function updateViewList() {
           const cells = fields.map(field => {
             const v = field.render(entry);
             const show = (field.key === 'lactation' && (v === 0 || v === '0')) ? '0' : v;
-            var editable = viewListEditorMode && VIEW_LIST_EDITABLE_KEYS[field.key];
+            var editable = viewListEditorMode && (window.VIEW_LIST_EDITABLE_KEYS || {})[field.key];
             return `<td data-field-key="${field.key}" ${editable ? ' class="editable-cell"' : ''}>${show}</td>`;
           }).join('');
           return `
@@ -309,7 +309,7 @@ function initViewFieldsSettings() {
   btn.addEventListener('click', openViewFieldsSettings);
   if (closeBtn) closeBtn.addEventListener('click', closeViewFieldsSettings);
   if (resetBtn) resetBtn.addEventListener('click', function () {
-    try { localStorage.removeItem(VIEW_LIST_FIELDS_KEY); } catch (e) {}
+    try { localStorage.removeItem(window.VIEW_LIST_FIELDS_KEY || 'cattleTracker_viewList_visibleFields'); } catch (e) {}
     renderViewFieldsSettings();
   });
   if (saveBtn) saveBtn.addEventListener('click', function () {
@@ -320,7 +320,7 @@ function initViewFieldsSettings() {
       return;
     }
     try {
-      localStorage.setItem(VIEW_LIST_FIELDS_KEY, JSON.stringify(checked));
+      localStorage.setItem(window.VIEW_LIST_FIELDS_KEY || 'cattleTracker_viewList_visibleFields', JSON.stringify(checked));
     } catch (e) {}
     closeViewFieldsSettings();
     updateViewList();
@@ -330,10 +330,10 @@ function initViewFieldsSettings() {
     var applyBtn = ev.target.closest('.view-fields-template-apply');
     if (applyBtn && applyBtn.dataset.templateIndex !== undefined) {
       var idx = parseInt(applyBtn.dataset.templateIndex, 10);
-      var templates = getFieldTemplates();
+      var templates = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
       if (templates[idx] && templates[idx].fieldKeys && templates[idx].fieldKeys.length > 0) {
         try {
-          localStorage.setItem(VIEW_LIST_FIELDS_KEY, JSON.stringify(templates[idx].fieldKeys));
+          localStorage.setItem(window.VIEW_LIST_FIELDS_KEY || 'cattleTracker_viewList_visibleFields', JSON.stringify(templates[idx].fieldKeys));
         } catch (e) {}
         renderViewFieldsSettings();
         updateViewList();
@@ -344,7 +344,7 @@ function initViewFieldsSettings() {
     var deleteBtn = ev.target.closest('.view-fields-template-delete');
     if (deleteBtn && deleteBtn.dataset.templateIndex !== undefined) {
       var idxDel = parseInt(deleteBtn.dataset.templateIndex, 10);
-      var list = getFieldTemplates();
+      var list = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
       list.splice(idxDel, 1);
       saveFieldTemplates(list);
       renderViewFieldsSettings();
@@ -368,7 +368,7 @@ function initViewFieldsSettings() {
         if (typeof showToast === 'function') showToast('Выберите хотя бы одно поле.', 'error'); else alert('Выберите хотя бы одно поле.');
         return;
       }
-      var list = getFieldTemplates();
+      var list = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
       list.push({ name: name, fieldKeys: checked });
       saveFieldTemplates(list);
       templateNameInput.value = '';
@@ -381,8 +381,9 @@ function renderViewFieldsSettings() {
   var modal = document.getElementById('viewFieldsSettingsModal');
   var listEl = document.getElementById('viewFieldsList');
   if (!modal || !listEl) return;
-  var visible = getVisibleFieldKeys();
-  var html = VIEW_LIST_FIELDS.map(function (field) {
+  var visible = (typeof window.getVisibleFieldKeys === 'function' ? window.getVisibleFieldKeys() : []);
+  var fieldsList = window.VIEW_LIST_FIELDS || [];
+  var html = fieldsList.map(function (field) {
     var checked = visible.indexOf(field.key) !== -1;
     return '<label class="view-fields-item">' +
       '<input type="checkbox" class="view-fields-checkbox" value="' + field.key + '"' + (checked ? ' checked' : '') + ' />' +
@@ -393,7 +394,7 @@ function renderViewFieldsSettings() {
 
   var templatesListEl = document.getElementById('viewFieldsTemplatesList');
   if (templatesListEl) {
-    var templates = getFieldTemplates();
+    var templates = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
     templatesListEl.innerHTML = templates.length === 0
       ? '<p class="view-fields-templates-empty">Нет сохранённых шаблонов</p>'
       : templates.map(function (t, idx) {
@@ -473,17 +474,18 @@ function _setCellDisplay(td, entry, fieldKey) {
 }
 
 function startInlineEdit(td, cattleId, fieldKey) {
-  if (!td || !cattleId || !fieldKey || !VIEW_LIST_EDITABLE_KEYS[fieldKey]) return;
+  var editableKeys = window.VIEW_LIST_EDITABLE_KEYS || {};
+  if (!td || !cattleId || !fieldKey || !editableKeys[fieldKey]) return;
   var entriesList = window.entries && Array.isArray(window.entries) ? window.entries : [];
   var entry = entriesList.find(function (e) { return e.cattleId === cattleId; });
   if (!entry) return;
-  var fieldType = VIEW_LIST_EDITABLE_KEYS[fieldKey];
+  var fieldType = editableKeys[fieldKey];
   var currentVal = _getEntryRawValue(entry, fieldKey);
   var input;
   if (fieldType === 'select' && fieldKey === 'status') {
     input = document.createElement('select');
     input.className = 'view-list-inline-select';
-    STATUS_OPTIONS.forEach(function (opt) {
+    (window.STATUS_OPTIONS || []).forEach(function (opt) {
       var o = document.createElement('option');
       o.value = opt;
       o.textContent = opt;
@@ -636,7 +638,7 @@ function _handleViewListClick(ev) {
       if (row) {
         var cattleId = row.getAttribute('data-cattle-id');
         var fieldKey = cell.getAttribute('data-field-key');
-        if (cattleId && fieldKey && VIEW_LIST_EDITABLE_KEYS[fieldKey]) {
+        if (cattleId && fieldKey && (window.VIEW_LIST_EDITABLE_KEYS || {})[fieldKey]) {
           startInlineEdit(cell, cattleId, fieldKey);
         }
       }

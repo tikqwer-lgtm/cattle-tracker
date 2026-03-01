@@ -77,5 +77,11 @@ function getVisibleViewFields() {
 if (typeof window !== 'undefined') {
   window.getVisibleViewFields = getVisibleViewFields;
   window.viewListEscapeHtml = viewListEscapeHtml;
+  window.VIEW_LIST_EDITABLE_KEYS = VIEW_LIST_EDITABLE_KEYS;
+  window.getVisibleFieldKeys = getVisibleFieldKeys;
+  window.VIEW_LIST_FIELDS = VIEW_LIST_FIELDS;
+  window.VIEW_LIST_FIELDS_KEY = VIEW_LIST_FIELDS_KEY;
+  window.getFieldTemplates = getFieldTemplates;
+  window.STATUS_OPTIONS = STATUS_OPTIONS;
 }
 export {};
