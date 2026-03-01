@@ -33,13 +33,16 @@
 
 /* Экран «Списки» и списки событий */
 .lists-screen-container { margin: 1rem 0; }
-.lists-buttons { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
+.lists-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
+.lists-buttons .action-btn { padding: 0.5rem 0.75rem; font-size: 0.95rem; }
 .lists-sub-container { margin-top: 1rem; }
 .list-sub-header { margin-bottom: 1rem; }
 .list-sub-header h3 { font-size: 1.15rem; margin-bottom: 0.75rem; }
-.list-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.list-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
 .list-filters label { display: inline-flex; align-items: center; gap: 0.25rem; }
 .list-actions { margin-bottom: 0.75rem; }
+.list-actions-inline { display: flex; flex-wrap: nowrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+.list-actions-inline .small-btn { padding: 0.35rem 0.6rem; font-size: 0.85rem; }
 .list-table-wrap { overflow-x: auto; margin-top: 0.5rem; }
 .list-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .list-table th, .list-table td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-color, #ddd); }

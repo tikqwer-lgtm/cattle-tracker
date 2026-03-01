@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker",
-  "version": "1.4.4",
+  "version": "0.5.6",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
     "build": "vite build",
@@ -17,8 +17,10 @@
     "server": "cd server && npm start",
     "electron": "cd electron && npm start",
     "electron:dist": "cd electron && npm run dist",
-    "installer": "npm run build && npm run electron:dist",
+    "version:sync": "node scripts/sync-version.js",
+    "installer": "npm run version:sync && npm run build && npm run electron:dist",
     "cap:sync": "cap sync",
+    "apk": "npm run version:sync && npm run build && npx cap sync android",
     "cap:android": "cap run android",
     "cap:ios": "cap run ios"
   },

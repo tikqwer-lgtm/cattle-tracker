@@ -170,9 +170,9 @@
     if (!container) return;
     container.innerHTML =
       '<div class="lists-buttons">' +
-      '<button type="button" class="action-btn" data-list="uzi">🩺 Список на УЗИ</button>' +
-      '<button type="button" class="action-btn" data-list="insemination">🐄 Список на осеменение</button>' +
-      '<button type="button" class="action-btn" data-list="tasks">💉 Список на уколы</button>' +
+      '<button type="button" class="action-btn" data-list="uzi">🩺 УЗИ</button>' +
+      '<button type="button" class="action-btn" data-list="insemination">🐄 Осеменение</button>' +
+      '<button type="button" class="action-btn" data-list="tasks">💉 Уколы</button>' +
       '</div>' +
       '<div id="lists-sub-container" class="lists-sub-container"></div>';
     container.querySelectorAll('.lists-buttons button').forEach(function (btn) {
@@ -208,23 +208,24 @@
       '<label>С <input type="date" id="uziListDateFrom" value="' + escapeHtml(todayStr) + '" /></label>' +
       '<label>По <input type="date" id="uziListDateTo" value="' + escapeHtml(toStr) + '" /></label>' +
       '<label>Категория: <select id="uziListCowHeifer"><option value="all">Все</option><option value="cow">Коровы</option><option value="heifer">Телки</option></select></label>' +
-      '<button type="button" class="small-btn" id="uziListRefresh">Обновить</button>' +
       '</div>' +
-      '<div class="list-actions">' +
+      '<div class="list-actions list-actions-inline">' +
+      '<button type="button" class="small-btn" id="uziListRefresh">Обновить</button>' +
       '<button type="button" class="small-btn" id="uziListPrint">Печать</button>' +
       '<button type="button" class="small-btn" id="uziListExcel">Экспорт в Excel</button>' +
       '</div></div>' +
       '<div id="uzi-list-table-wrap" class="list-table-wrap"></div>';
     sub.innerHTML = html;
+    sub._activeRefresh = null;
     function refresh() {
-      var fromEl = document.getElementById('uziListDateFrom');
-      var toEl = document.getElementById('uziListDateTo');
-      var cowHeiferEl = document.getElementById('uziListCowHeifer');
+      var fromEl = sub.querySelector('#uziListDateFrom');
+      var toEl = sub.querySelector('#uziListDateTo');
+      var cowHeiferEl = sub.querySelector('#uziListCowHeifer');
       var from = (fromEl && fromEl.value) || todayStr;
       var to = (toEl && toEl.value) || toStr;
       var filter = (cowHeiferEl && cowHeiferEl.value) || 'all';
       var rows = getUziList(from, to, filter);
-      var wrap = document.getElementById('uzi-list-table-wrap');
+      var wrap = sub.querySelector('#uzi-list-table-wrap');
       if (!wrap) return;
       if (rows.length === 0) {
         if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
@@ -242,21 +243,22 @@
       wrap._listType = 'uzi';
       if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
+    sub._activeRefresh = refresh;
     refresh();
-    var refreshBtn = document.getElementById('uziListRefresh');
-    if (refreshBtn) refreshBtn.addEventListener('click', refresh);
-    var fromInput = document.getElementById('uziListDateFrom');
-    var toInput = document.getElementById('uziListDateTo');
+    var refreshBtn = sub.querySelector('#uziListRefresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
+    var fromInput = sub.querySelector('#uziListDateFrom');
+    var toInput = sub.querySelector('#uziListDateTo');
     if (fromInput) fromInput.addEventListener('change', refresh);
     if (toInput) toInput.addEventListener('change', refresh);
-    var printBtn = document.getElementById('uziListPrint');
+    var printBtn = sub.querySelector('#uziListPrint');
     if (printBtn) printBtn.addEventListener('click', function () {
-      var wrap = document.getElementById('uzi-list-table-wrap');
+      var wrap = sub.querySelector('#uzi-list-table-wrap');
       if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на УЗИ', wrap._listData, ['cattleId', 'group', 'inseminationDate', 'daysFromInsemination', 'attemptNumber', 'note'], ['Номер животного', 'Группа', 'Дата осеменения', 'Дни от осеменения', 'Попытка', 'Примечание']);
     });
-    var excelBtn = document.getElementById('uziListExcel');
+    var excelBtn = sub.querySelector('#uziListExcel');
     if (excelBtn) excelBtn.addEventListener('click', function () {
-      var wrap = document.getElementById('uzi-list-table-wrap');
+      var wrap = sub.querySelector('#uzi-list-table-wrap');
       if (wrap && wrap._listData) exportListToExcel('Список_на_УЗИ', wrap._listData, ['cattleId', 'group', 'inseminationDate', 'daysFromInsemination', 'attemptNumber', 'note'], ['Номер животного', 'Группа', 'Дата осеменения', 'Дни от осеменения', 'Попытка', 'Примечание']);
     });
   }
@@ -275,26 +277,27 @@
       '<label>По <input type="date" id="insemListDateTo" value="' + escapeHtml(toStr) + '" /></label>' +
       '<label>Категория: <select id="insemListCowHeifer"><option value="all">Все</option><option value="cow">Коровы</option><option value="heifer">Телки</option></select></label>' +
       '<label>Группа: <select id="insemListGroup">' + groupOptions + '</select></label>' +
-      '<button type="button" class="small-btn" id="insemListRefresh">Обновить</button>' +
       '</div>' +
-      '<div class="list-actions">' +
+      '<div class="list-actions list-actions-inline">' +
+      '<button type="button" class="small-btn" id="insemListRefresh">Обновить</button>' +
       '<button type="button" class="small-btn" id="insemListPrint">Печать</button>' +
       '<button type="button" class="small-btn" id="insemListExcel">Экспорт в Excel</button>' +
       '</div></div>' +
       '<div id="insem-list-table-wrap" class="list-table-wrap"></div>';
     sub.innerHTML = html;
+    sub._activeRefresh = null;
     function refresh() {
-      var fromEl = document.getElementById('insemListDateFrom');
-      var toEl = document.getElementById('insemListDateTo');
-      var cowHeiferEl = document.getElementById('insemListCowHeifer');
-      var groupEl = document.getElementById('insemListGroup');
+      var fromEl = sub.querySelector('#insemListDateFrom');
+      var toEl = sub.querySelector('#insemListDateTo');
+      var cowHeiferEl = sub.querySelector('#insemListCowHeifer');
+      var groupEl = sub.querySelector('#insemListGroup');
       var from = (fromEl && fromEl.value) || todayStr;
       var to = (toEl && toEl.value) || toStr;
       var filter = (cowHeiferEl && cowHeiferEl.value) || 'all';
       var groupVal = (groupEl && groupEl.value) || '';
       var filterGroups = groupVal ? [groupVal] : null;
       var rows = getInseminationProtocolList(from, to, filter, filterGroups);
-      var wrap = document.getElementById('insem-list-table-wrap');
+      var wrap = sub.querySelector('#insem-list-table-wrap');
       if (!wrap) return;
       if (rows.length === 0) {
         if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
@@ -313,23 +316,24 @@
       wrap._listType = 'insemination';
       if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
+    sub._activeRefresh = refresh;
     refresh();
-    var refreshBtn = document.getElementById('insemListRefresh');
-    if (refreshBtn) refreshBtn.addEventListener('click', refresh);
-    var fromInput = document.getElementById('insemListDateFrom');
-    var toInput = document.getElementById('insemListDateTo');
-    var groupInput = document.getElementById('insemListGroup');
+    var refreshBtn = sub.querySelector('#insemListRefresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
+    var fromInput = sub.querySelector('#insemListDateFrom');
+    var toInput = sub.querySelector('#insemListDateTo');
+    var groupInput = sub.querySelector('#insemListGroup');
     if (fromInput) fromInput.addEventListener('change', refresh);
     if (toInput) toInput.addEventListener('change', refresh);
     if (groupInput) groupInput.addEventListener('change', refresh);
-    var printBtn = document.getElementById('insemListPrint');
+    var printBtn = sub.querySelector('#insemListPrint');
     if (printBtn) printBtn.addEventListener('click', function () {
-      var wrap = document.getElementById('insem-list-table-wrap');
+      var wrap = sub.querySelector('#insem-list-table-wrap');
       if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
     });
-    var excelBtn = document.getElementById('insemListExcel');
+    var excelBtn = sub.querySelector('#insemListExcel');
     if (excelBtn) excelBtn.addEventListener('click', function () {
-      var wrap = document.getElementById('insem-list-table-wrap');
+      var wrap = sub.querySelector('#insem-list-table-wrap');
       if (wrap && wrap._listData) exportListToExcel('Список_на_осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
     });
   }
@@ -344,10 +348,26 @@
       });
     });
     if (typeof window.printListTableImpl === 'function') {
-      window.printListTableImpl(title, headers, data);
+      try {
+        window.printListTableImpl(title, headers, data);
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Печать на этом устройстве может быть недоступна', 'error');
+        else window.print();
+      }
     } else {
-      window.print();
+      try {
+        window.print();
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Печать на этом устройстве может быть недоступна', 'error');
+      }
     }
+  }
+
+  function s2ab(s) {
+    var buf = new ArrayBuffer(s.length);
+    var view = new Uint8Array(buf);
+    for (var i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+    return buf;
   }
 
   function exportListToExcel(sheetName, rows, keys, headers) {
@@ -368,7 +388,14 @@
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     var filename = (sheetName || 'list') + '_' + new Date().toISOString().slice(0, 10) + '.xlsx';
-    XLSX.writeFile(wb, filename);
+    var binary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+    var blob = new Blob([s2ab(binary)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
     if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
   }
 
