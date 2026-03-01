@@ -22,7 +22,7 @@ var MENU_GROUPS = {
       { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')" },
       { icon: '🐄', text: 'Отел', onclick: "navigate('calving')" },
       { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')" },
-      { icon: '📋', text: 'Поставить на протокол', onclick: "navigate('protocol-assign')" }
+      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')" }
     ]
   },
   analytics: {

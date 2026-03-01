@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Build output (Vite)
+dist/
+
 # Electron (dependencies and build output — too large for GitHub)
 electron/node_modules/
 electron/dist/
@@ -22,6 +25,7 @@ Thumbs.db
 # Env / secrets (optional)
 .env
 .env.local
+client_secret*.json
 
 # Server deploy (local IP, do not commit)
 server/server-address.txt

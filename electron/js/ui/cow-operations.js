@@ -589,13 +589,20 @@ function saveUziEntry() {
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
-  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-  if (typeof _pushHist === 'function') _pushHist(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+  var pushHistFn = (typeof window !== 'undefined' && window.pushActionHistory) ? window.pushActionHistory : (typeof pushActionHistory === 'function' ? pushActionHistory : null);
+  if (pushHistFn) pushHistFn(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
 
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
     }).then(function () {
+      var entryAfter = (typeof entries !== 'undefined' && entries && entries.find) ? entries.find(function (e) { return e.cattleId === cattleId; }) : null;
+      if (entryAfter && pushHistFn) {
+        var hasUzi = entryAfter.actionHistory && entryAfter.actionHistory.some(function (item) {
+          return item.action === 'УЗИ' && item.details && item.details.indexOf(uziDate) !== -1;
+        });
+        if (!hasUzi) pushHistFn(entryAfter, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+      }
       if (typeof showToast === 'function') showToast('Сохранено', 'success');
       if (typeof updateViewList === 'function') updateViewList();
       if (typeof navigate === 'function') navigate('view-cow');
