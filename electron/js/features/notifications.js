@@ -413,7 +413,8 @@
     html += '<label>С <input type="date" id="tasksDateFrom" class="tasks-date-input" value="' + (fromDate || '') + '" /></label>';
     html += '<label>По <input type="date" id="tasksDateTo" class="tasks-date-input" value="' + (toDate || '') + '" /></label>';
     html += '</div>';
-    html += '<div class="tasks-list-actions"><button type="button" class="small-btn" id="tasksPrintBtn">Печать</button><button type="button" class="small-btn" id="tasksExcelBtn">Экспорт в Excel</button></div>';
+    var tasksPrintHtml = (typeof window.isMobile === 'function' && window.isMobile()) ? '' : '<button type="button" class="small-btn" id="tasksPrintBtn">Печать</button>';
+    html += '<div class="tasks-list-actions">' + tasksPrintHtml + '<button type="button" class="small-btn" id="tasksExcelBtn">Экспорт в Excel</button></div>';
     if (dates.length === 0) {
       html += '<p class="tasks-empty">Нет задач на выбранный период.</p>';
     } else {
@@ -473,9 +474,11 @@
       renderTasksList(containerEl, fromInput ? fromInput.value : undefined, toInput.value || undefined);
     });
     var printBtn = document.getElementById('tasksPrintBtn');
-    if (printBtn) printBtn.addEventListener('click', function () {
-      if (typeof global.print === 'function') global.print(); else window.print();
-    });
+    if (printBtn) {
+      printBtn.addEventListener('click', function () {
+        if (typeof global.print === 'function') global.print(); else window.print();
+      });
+    }
     var excelBtn = document.getElementById('tasksExcelBtn');
     if (excelBtn) excelBtn.addEventListener('click', function () {
       var from = (fromInput && fromInput.value) || todayStr;
@@ -531,13 +534,7 @@
           '</div>' +
           '<div class="notification-groups">' + listHtml + '</div>' +
         '</section>' +
-        '<section class="notification-section plans-section" aria-labelledby="plans-section-title">' +
-          '<h2 id="plans-section-title" class="notification-section-title">Планы</h2>' +
-          '<div id="tasks-list-container" class="tasks-list-container"></div>' +
-        '</section>' +
       '</div>';
-    var tasksContainer = document.getElementById('tasks-list-container');
-    if (tasksContainer) renderTasksList(tasksContainer);
     var checkBtn = document.getElementById('notifCheckNow');
     var clearBtn = document.getElementById('notifClearHistory');
     if (checkBtn) {

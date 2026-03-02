@@ -13,8 +13,7 @@ declare global {
 window.initPinchZoom = initPinchZoom;
 import './utils/constants.js';
 import './utils/utils.js';
-import * as XLSX from 'xlsx';
-if (typeof window !== 'undefined') (window as any).XLSX = XLSX;
+// XLSX подключается в index.html скриптом (cdn), доступен как window.XLSX
 import './core/events.js';
 import './api/api-client.js';
 import './storage/storage-objects.js';

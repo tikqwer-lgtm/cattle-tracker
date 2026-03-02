@@ -59,11 +59,31 @@ function showUnsyncedDataPrompt(onDone) {
 }
 
 /**
+ * Отправить текущую базу на сервер: если уже подключён — вызвать uploadCurrentBaseToServer;
+ * если нет — подключиться с флагом «после подключения загрузить базу».
+ */
+function sendToServer() {
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
+  if (useApi) {
+    if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
+    return;
+  }
+  try {
+    localStorage.setItem('cattleTracker_uploadAfterConnect', '1');
+  } catch (e) {}
+  connectToServer();
+}
+
+/**
  * Подключиться к серверу: взять адрес из конфига (CATTLE_TRACKER_DEFAULT_SERVER_URL),
  * проверить доступность, при наличии несинхронизированных данных — предложить действие,
  * сохранить в localStorage и перезагрузить.
+ * @param {{ uploadAfterConnect?: boolean }} [opts] — если uploadAfterConnect: true, после перезагрузки будет вызван uploadCurrentBaseToServer
  */
-function connectToServer() {
+function connectToServer(opts) {
+  if (opts && opts.uploadAfterConnect) {
+    try { localStorage.setItem('cattleTracker_uploadAfterConnect', '1'); } catch (e) {}
+  }
   var url = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null)
     ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '')
     : '';
@@ -685,7 +705,12 @@ function initSyncServerBlock() {
     updateSyncServerStatusFromHealth();
     renderSyncServerBasesList();
     try {
-      if (localStorage.getItem('cattleTracker_syncAfterConnect') === '1') {
+      if (localStorage.getItem('cattleTracker_uploadAfterConnect') === '1') {
+        localStorage.removeItem('cattleTracker_uploadAfterConnect');
+        setTimeout(function () {
+          if (typeof uploadCurrentBaseToServer === 'function') uploadCurrentBaseToServer();
+        }, 1500);
+      } else if (localStorage.getItem('cattleTracker_syncAfterConnect') === '1') {
         localStorage.removeItem('cattleTracker_syncAfterConnect');
         setTimeout(function () {
           if (typeof syncCurrentBaseToServer === 'function') syncCurrentBaseToServer();
@@ -698,6 +723,7 @@ function initSyncServerBlock() {
 }
 
 if (typeof window !== 'undefined') {
+  window.sendToServer = sendToServer;
   window.connectToServer = connectToServer;
   window.hasUnsyncedEntries = hasUnsyncedEntries;
   window.showUnsyncedDataPrompt = showUnsyncedDataPrompt;

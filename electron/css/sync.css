@@ -330,6 +330,50 @@
   justify-content: flex-end;
 }
 
+/* Резервная копия — модалка «Скопировать в буфер» (мобильный fallback) */
+.backup-copy-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.backup-copy-modal {
+  background: var(--color-bg, #fff);
+  padding: 16px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+.backup-copy-modal h4 { margin: 0 0 8px 0; font-size: 1.1em; }
+.backup-copy-modal p { margin: 0 0 10px 0; font-size: 0.9em; color: var(--color-text-muted); }
+.backup-copy-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 8px;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+  font-size: 0.85em;
+  box-sizing: border-box;
+}
+.backup-copy-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* Индикатор подключения к серверу (лампочка) */
 .connection-indicator {
   display: inline-block;

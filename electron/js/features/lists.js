@@ -414,6 +414,8 @@
     var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
     var groups = getUniqueGroups();
     var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>'; }).join('');
+    var isMobile = typeof window.isMobile === 'function' && window.isMobile();
+    var printBtnHtml = isMobile ? '' : '<button type="button" class="small-btn" id="insemListPrint">Печать</button>';
     var html = '<div class="list-sub-header"><h3>Список на осеменение</h3>' +
       '<div class="list-filters">' +
       '<label>С <input type="date" id="insemListDateFrom" value="' + escapeHtml(todayStr) + '" /></label>' +
@@ -423,7 +425,7 @@
       '</div>' +
       '<div class="list-actions list-actions-inline">' +
       '<button type="button" class="small-btn" id="insemListRefresh">Обновить</button>' +
-      '<button type="button" class="small-btn" id="insemListPrint">Печать</button>' +
+      printBtnHtml +
       '<button type="button" class="small-btn" id="insemListExcel">Экспорт в Excel</button>' +
       '</div></div>' +
       '<div id="insem-list-table-wrap" class="list-table-wrap"></div>';
@@ -475,10 +477,12 @@
     if (toInput) toInput.addEventListener('change', refresh);
     if (groupInput) groupInput.addEventListener('change', refresh);
     var printBtn = sub.querySelector('#insemListPrint');
-    if (printBtn) printBtn.addEventListener('click', function () {
-      var wrap = sub.querySelector('#insem-list-table-wrap');
-      if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
-    });
+    if (printBtn) {
+      printBtn.addEventListener('click', function () {
+        var wrap = sub.querySelector('#insem-list-table-wrap');
+        if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
+      });
+    }
     var excelBtn = sub.querySelector('#insemListExcel');
     if (excelBtn) excelBtn.addEventListener('click', function () {
       var wrap = sub.querySelector('#insem-list-table-wrap');
