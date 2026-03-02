@@ -75,6 +75,7 @@ function getVisibleViewFields() {
   return keys.map(function (k) { return map[k]; }).filter(Boolean);
 }
 if (typeof window !== 'undefined') {
+  window.saveFieldTemplates = saveFieldTemplates;
   window.getVisibleViewFields = getVisibleViewFields;
   window.viewListEscapeHtml = viewListEscapeHtml;
   window.VIEW_LIST_EDITABLE_KEYS = VIEW_LIST_EDITABLE_KEYS;

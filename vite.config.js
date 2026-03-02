@@ -51,6 +51,7 @@ module.exports = {
     emptyOutDir: true,
     rollupOptions: {
       input: path.resolve(__dirname, 'js/main.tsx'),
+      external: ['@capacitor/app'],
       output: {
         entryFileNames: 'app.js',
         format: 'iife',

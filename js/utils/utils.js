@@ -29,9 +29,15 @@ function validateDateNotFuture(dateStr, fieldLabel) {
   if (d > today) return (fieldLabel || 'Дата') + ' не может быть в будущем';
   return null;
 }
+/** Определение мобильного устройства (узкий экран или touch). Используется для скрытия печати, режима редактора и т.д. */
+function isMobile() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(max-width: 768px)').matches || (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+}
 if (typeof window !== 'undefined') {
   window.formatDate = formatDate;
   window.nowFormatted = nowFormatted;
   window.validateDateNotFuture = validateDateNotFuture;
+  window.isMobile = isMobile;
 }
 export {};

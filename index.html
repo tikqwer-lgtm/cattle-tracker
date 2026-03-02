@@ -696,6 +696,7 @@
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
         <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
+        <button type="button" class="action-btn" id="syncSendToServerBtn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Отправить на сервер</button>
       </div>
       <div id="syncConnectStatus" class="sync-connect-status" aria-live="polite"></div>
     </div>

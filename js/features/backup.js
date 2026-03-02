@@ -92,13 +92,73 @@
       exportedAt: new Date().toISOString(),
       count: entries.length
     };
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var jsonStr = JSON.stringify(payload, null, 2);
+    var blob = new Blob([jsonStr], { type: 'application/json' });
+    var filename = 'cattle-tracker-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    var isMobile = typeof window.isMobile === 'function' && window.isMobile();
+
+    function revokeLater(url) {
+      setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+    }
+
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        var file = new File([blob], filename, { type: 'application/json' });
+        var canShare = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+        if (canShare) {
+          navigator.share({ title: 'Резервная копия', files: [file] }).then(function () {
+            if (typeof showToast === 'function') showToast('Резервная копия передана', 'success');
+          }).catch(function (err) {
+            if (err && err.name !== 'AbortError') showBackupCopyFallback(jsonStr, filename);
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'cattle-tracker-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    revokeLater(url);
+    if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+
+    if (isMobile) {
+      setTimeout(function () { showBackupCopyFallback(jsonStr, filename); }, 500);
+    }
+  }
+
+  function showBackupCopyFallback(jsonStr, filename) {
+    var overlay = document.createElement('div');
+    overlay.className = 'backup-copy-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'Скопировать резервную копию');
+    overlay.innerHTML =
+      '<div class="backup-copy-modal">' +
+        '<h4>Если файл не сохранился</h4>' +
+        '<p>Скопируйте данные в буфер обмена и сохраните вручную.</p>' +
+        '<textarea class="backup-copy-textarea" readonly rows="6"></textarea>' +
+        '<div class="backup-copy-actions">' +
+          '<button type="button" class="action-btn" id="backupCopyToClipboardBtn">Скопировать в буфер</button>' +
+          '<button type="button" class="small-btn" data-action="close">Закрыть</button>' +
+        '</div>' +
+      '</div>';
+    var textarea = overlay.querySelector('.backup-copy-textarea');
+    if (textarea) textarea.value = jsonStr;
+    overlay.querySelector('[data-action="close"]').addEventListener('click', function () {
+      overlay.remove();
+    });
+    overlay.querySelector('#backupCopyToClipboardBtn').addEventListener('click', function () {
+      try {
+        textarea.select();
+        document.execCommand('copy');
+        if (typeof showToast === 'function') showToast('Скопировано в буфер обмена', 'success');
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Не удалось скопировать', 'error');
+      }
+    });
+    document.body.appendChild(overlay);
   }
 
   function importBackupFromFile(file) {

@@ -45,14 +45,16 @@ import './features/report-error.js';
 import './features/lists.js';
 import './core/menu.js';
 
-import { App as CapApp } from '@capacitor/app';
-try {
-  CapApp.addListener('backButton', () => {
-    if (typeof (window as any)._handleBackButton === 'function') {
-      (window as any)._handleBackButton();
-    }
-  });
-} catch (_) {}
+// Capacitor backButton only in Capacitor runtime; dynamic import so Electron build doesn't require @capacitor/app
+import('@capacitor/app')
+  .then(({ App: CapApp }) => {
+    CapApp.addListener('backButton', () => {
+      if (typeof (window as any)._handleBackButton === 'function') {
+        (window as any)._handleBackButton();
+      }
+    });
+  })
+  .catch(() => {});
 
 import { createRoot } from 'react-dom/client';
 import App from './App';

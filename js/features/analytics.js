@@ -311,9 +311,9 @@
     var counts = {};
     INTERVAL_BUCKETS.forEach(function (b) { counts[b.label] = 0; });
     var noDataCount = 0;
-    var list = typeof entries !== 'undefined' ? entries : [];
+    var list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : [];
     var filterLact = filter && filter.lactation !== undefined && filter.lactation !== null && filter.lactation !== '' ? String(filter.lactation) : '';
-    var getList = typeof getInseminationListForEntry === 'function' ? getInseminationListForEntry : function () { return []; };
+    var getList = (typeof window.getInseminationListForEntry === 'function') ? window.getInseminationListForEntry : function () { return []; };
     for (var i = 0; i < list.length; i++) {
       var entry = list[i];
       if (filterLact !== '') {

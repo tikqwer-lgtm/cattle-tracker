@@ -346,7 +346,7 @@ function initViewFieldsSettings() {
       var idxDel = parseInt(deleteBtn.dataset.templateIndex, 10);
       var list = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
       list.splice(idxDel, 1);
-      saveFieldTemplates(list);
+      if (typeof window.saveFieldTemplates === 'function') window.saveFieldTemplates(list);
       renderViewFieldsSettings();
       ev.preventDefault();
       return;
@@ -370,7 +370,7 @@ function initViewFieldsSettings() {
       }
       var list = (typeof window.getFieldTemplates === 'function' ? window.getFieldTemplates() : []);
       list.push({ name: name, fieldKeys: checked });
-      saveFieldTemplates(list);
+      if (typeof window.saveFieldTemplates === 'function') window.saveFieldTemplates(list);
       templateNameInput.value = '';
       renderViewFieldsSettings();
     });
@@ -430,6 +430,13 @@ function closeViewFieldsSettings() {
 function initViewEditorModeButton() {
   var btn = document.getElementById('viewEditorModeBtn');
   if (!btn || btn.dataset.editorBound === '1') return;
+  if (typeof window.isMobile === 'function' && window.isMobile()) {
+    btn.style.display = 'none';
+    btn.dataset.editorBound = '1';
+    viewListEditorMode = false;
+    if (typeof updateViewList === 'function') updateViewList();
+    return;
+  }
   btn.dataset.editorBound = '1';
   btn.addEventListener('click', function () {
     viewListEditorMode = !viewListEditorMode;
