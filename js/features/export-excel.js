@@ -209,8 +209,13 @@ function openExportDialog() {
   renderExportDialog();
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
-  var firstFocus = document.querySelector('#exportSettingsModal .export-field-checkbox, #exportSettingsModal .small-btn');
-  if (firstFocus) firstFocus.focus();
+  setTimeout(function () {
+    var templateNameInput = document.getElementById('exportTemplateNameInput');
+    if (templateNameInput) templateNameInput.focus(); else {
+      var firstFocus = document.querySelector('#exportSettingsModal .export-field-checkbox, #exportSettingsModal .small-btn');
+      if (firstFocus) firstFocus.focus();
+    }
+  }, 0);
 
   var closeBtn = document.getElementById('exportSettingsCloseBtn');
   var cancelBtn = document.getElementById('exportSettingsCancelBtn');

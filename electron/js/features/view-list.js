@@ -209,11 +209,15 @@ function _setupScrollToTopForContainer(tableContainer) {
     scrollBtn._scrollContainer = null;
     scrollBtn._scrollHandler = null;
   }
-  scrollBtn.style.display = tableContainer.scrollTop > 200 ? '' : 'none';
+  var canScroll = tableContainer.scrollHeight > tableContainer.clientHeight + 200;
+  scrollBtn.style.display = (tableContainer.scrollTop > 200 || canScroll) ? '' : 'none';
   if (scrollBtn._scrollContainer !== tableContainer) {
     scrollBtn._scrollContainer = tableContainer;
     scrollBtn._scrollHandler = function () {
-      if (scrollBtn && scrollBtn._scrollContainer) scrollBtn.style.display = scrollBtn._scrollContainer.scrollTop > 200 ? '' : 'none';
+      if (!scrollBtn || !scrollBtn._scrollContainer) return;
+      var c = scrollBtn._scrollContainer;
+      var canScroll = c.scrollHeight > c.clientHeight + 200;
+      scrollBtn.style.display = (c.scrollTop > 200 || canScroll) ? '' : 'none';
     };
     tableContainer.addEventListener('scroll', scrollBtn._scrollHandler);
   }
@@ -415,8 +419,11 @@ function openViewFieldsSettings() {
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
   setTimeout(function () {
-    var first = modal.querySelector('.view-fields-checkbox, .view-fields-template-apply, #viewFieldsCloseBtn');
-    if (first) first.focus();
+    var templateNameInput = document.getElementById('viewFieldsTemplateNameInput');
+    if (templateNameInput) templateNameInput.focus(); else {
+      var first = modal.querySelector('.view-fields-checkbox, .view-fields-template-apply, #viewFieldsCloseBtn');
+      if (first) first.focus();
+    }
   }, 0);
 }
 

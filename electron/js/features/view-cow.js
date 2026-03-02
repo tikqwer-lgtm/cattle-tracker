@@ -223,7 +223,7 @@ function viewCow(cattleId) {
     '<div><strong>Дата выбытия:</strong> ' + (formatDate(entry.exitDate) || '—') + '</div>' +
     '<div><strong>Начало сухостоя:</strong> ' + (formatDate(entry.dryStartDate) || '—') + '</div>' +
     '<div><strong>Дни лактации:</strong> ' + daysInLactStr + '</div>' +
-    '<div><strong>ПДО (дней от отёла до 1-го осеменения):</strong> ' + pdoStr + '</div>' +
+    '<div><strong>ПДО:</strong> ' + pdoStr + '</div>' +
     '<div><strong>Дни стельности:</strong> ' + daysPregStr + '</div>' +
     '<div><strong>Протокол:</strong> ' + escapeHtmlCard((entry.protocol && entry.protocol.name) || entry.protocolName) + '</div>' +
     '<div><strong>Начало протокола:</strong> ' + (formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—') + '</div>' +
