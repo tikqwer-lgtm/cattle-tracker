@@ -24,26 +24,33 @@ function importData(event) {
 }
 
 function handleImportFile(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var name = (file.name || '').toLowerCase();
-  if (!name.endsWith('.csv') && !name.endsWith('.xlsx')) {
-    if (typeof showToast === 'function') showToast('Выберите файл CSV или XLSX.', 'error'); else alert('Выберите файл CSV или XLSX.');
-    event.target.value = '';
-    return;
-  }
-  parseFileToHeadersAndRows(file).then(function (parsed) {
-    if (!parsed.headers || parsed.headers.length === 0 || !parsed.rows) {
-      if (typeof showToast === 'function') showToast('В файле нет заголовков или данных.', 'error'); else alert('В файле нет заголовков или данных.');
-      event.target.value = '';
+  try {
+    var target = event && event.target;
+    var file = target && target.files && target.files[0];
+    if (!file) return;
+    var name = (file.name || '').toLowerCase();
+    if (!name.endsWith('.csv') && !name.endsWith('.xlsx')) {
+      if (typeof showToast === 'function') showToast('Выберите файл CSV или XLSX.', 'error'); else alert('Выберите файл CSV или XLSX.');
+      if (target) target.value = '';
       return;
     }
-    openImportMappingModal(parsed.headers, parsed.rows);
-    event.target.value = '';
-  }).catch(function (err) {
-    if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : String(err)), 'error'); else alert('Ошибка: ' + (err && err.message ? err.message : String(err)));
-    event.target.value = '';
-  });
+    parseFileToHeadersAndRows(file).then(function (parsed) {
+      if (!parsed.headers || parsed.headers.length === 0 || !parsed.rows) {
+        if (typeof showToast === 'function') showToast('В файле нет заголовков или данных.', 'error'); else alert('В файле нет заголовков или данных.');
+        if (target) target.value = '';
+        return;
+      }
+      openImportMappingModal(parsed.headers, parsed.rows);
+      if (target) target.value = '';
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : String(err)), 'error'); else alert('Ошибка: ' + (err && err.message ? err.message : String(err)));
+      if (target) target.value = '';
+    });
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Ошибка импорта: ' + (err && err.message ? err.message : String(err)), 'error');
+    else alert('Ошибка импорта: ' + (err && err.message ? err.message : String(err)));
+    if (event.target) event.target.value = '';
+  }
 }
 
 /**
@@ -310,13 +317,21 @@ function runImportWithMapping(rows, columnMapping, headers) {
  */
 function openImportMappingModal(headers, rows) {
   var modal = document.getElementById('importMappingModal');
-  if (!modal) return;
+  if (!modal) {
+    var msg = 'Окно сопоставления столбцов не найдено. Обновите страницу.';
+    if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+    return;
+  }
   var cattleSelect = document.getElementById('importMappingCattleColumn');
   var mappingList = document.getElementById('importMappingFieldsList');
   var importBtn = document.getElementById('importMappingImportBtn');
   var closeBtn = document.getElementById('importMappingCloseBtn');
   var closeBtn2 = document.getElementById('importMappingCloseBtn2');
-  if (!cattleSelect || !mappingList || !importBtn) return;
+  if (!cattleSelect || !mappingList || !importBtn) {
+    var msg2 = 'Не найдены элементы окна импорта. Обновите страницу.';
+    if (typeof showToast === 'function') showToast(msg2, 'error'); else alert(msg2);
+    return;
+  }
 
   modal._importHeaders = headers;
   modal._importRows = rows;
@@ -625,5 +640,17 @@ function processImportData(data, delimiter, event) {
 }
 if (typeof window !== 'undefined') {
   window.handleImportFile = handleImportFile;
+  function bindImportFileInput() {
+    var input = document.getElementById('importFile');
+    if (input && !input.dataset.importBound) {
+      input.dataset.importBound = '1';
+      input.addEventListener('change', handleImportFile);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindImportFileInput);
+  } else {
+    bindImportFileInput();
+  }
 }
 export {};
