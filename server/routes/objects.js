@@ -1,7 +1,8 @@
 /**
- * Objects (bases) routes: list (with meta), create, update, delete.
+ * Objects (bases) routes: list (with meta), create, update, delete (with password).
  */
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 const { requireAuth, requireRole } = require('../auth');
@@ -33,7 +34,7 @@ router.post('/import', requireAuth, requireRole('admin', 'operator'), (req, res)
   const entries = Array.isArray(body.entries) ? body.entries : [];
   const protocols = Array.isArray(body.protocols) ? body.protocols : [];
   const id = 'obj_' + Date.now();
-  db.createObject(id, name);
+  db.createObject(id, name, req.user.id);
   for (const entry of entries) {
     try {
       db.createEntry(entry, id);
@@ -54,7 +55,7 @@ router.post('/import', requireAuth, requireRole('admin', 'operator'), (req, res)
 router.post('/', requireAuth, requireRole('admin', 'operator'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
   const id = 'obj_' + Date.now();
-  db.createObject(id, name);
+  db.createObject(id, name, req.user.id);
   res.status(201).json({ id, name });
 });
 
@@ -69,12 +70,27 @@ router.put('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => 
   res.json({ id: obj.id, name: obj.name });
 });
 
-router.delete('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+// Удаление базы только создателем, с проверкой пароля
+router.delete('/:id', requireAuth, (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });
+  const obj = db.getObjectById(id);
+  if (!obj) return res.status(404).json({ error: 'Объект не найден' });
+  const list = db.getObjectsWithMeta();
+  const meta = list.find((o) => o.id === id);
+  const createdById = (meta && meta.created_by) || null;
+  if (createdById && createdById !== req.user.id) {
+    return res.status(403).json({ error: 'Удалить базу может только пользователь, который её создал' });
+  }
+  const password = (req.body && req.body.password) != null ? String(req.body.password) : '';
+  if (!password) return res.status(400).json({ error: 'Введите пароль для подтверждения удаления' });
+  const userRow = db.findUserByIdWithPassword(req.user.id);
+  if (!userRow || !userRow.password_hash) return res.status(403).json({ error: 'Пользователь не найден' });
+  if (!bcrypt.compareSync(password, userRow.password_hash)) {
+    return res.status(401).json({ error: 'Неверный пароль' });
+  }
   db.deleteObject(id);
-  // 204 в любом случае: объект удалён или его не было на сервере (создан только локально / уже удалён)
   res.status(204).send();
 });
 

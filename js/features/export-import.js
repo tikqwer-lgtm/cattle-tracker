@@ -1,4 +1,13 @@
 // export-import.js — импорт CSV/Excel/JSON, нормализация полей для импорта
+import {
+  parseFileToHeadersAndRows,
+  getImportMappingFields,
+  normalizeDateForStorage,
+  addDaysToDate,
+  decodeCsvFileContent,
+  normalizeStatusFromImport,
+  normalizePregnancyCheckResult
+} from './export-import-parse.js';
 
 /**
  * Импорт JSON с экрана «Синхронизация» (переиспользует логику резервной копии)

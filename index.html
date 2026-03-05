@@ -525,6 +525,16 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
+  <!-- Экран «Воспроизведение»: оплодотворяемость за период -->
+  <div id="reproduction-screen" class="screen">
+    <h1>🐄 Воспроизведение</h1>
+    <p class="analytics-interval-intro">Показатели оплодотворяемости: количество стельных из осеменённых в выбранный период (по текущей базе).</p>
+    <div id="reproductionFilters" class="analytics-interval-filter"></div>
+    <div id="reproductionIndicators" class="analytics-indicators"></div>
+    <div id="reproductionTable" class="analytics-interval-table-wrapper"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
   <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
   <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden data-editing-id="">
     <div class="view-fields-modal-content">
@@ -704,6 +714,7 @@
     <div id="sync-server-block" class="sync-server-section" style="display: none;">
       <div class="sync-server-controls sync-connected-controls">
         <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Отправить на сервер</button>
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.updateSyncServerStatusFromHealth === 'function' && window.updateSyncServerStatusFromHealth()">Проверить статус</button>
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
       </div>

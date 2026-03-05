@@ -121,6 +121,11 @@
     return request('DELETE', '/api/objects/' + encodeURIComponent(id));
   }
 
+  /** Удалить базу на сервере (только создатель). Пароль — подтверждение. */
+  function deleteObjectWithPassword(id, password) {
+    return request('DELETE', '/api/objects/' + encodeURIComponent(id), { password: password || '' });
+  }
+
   function getProtocols(objectId) {
     return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/protocols');
   }
@@ -220,6 +225,7 @@
     createObject: createObject,
     updateObject: updateObject,
     deleteObject: deleteObject,
+    deleteObjectWithPassword: deleteObjectWithPassword,
     login: login,
     logout: logout,
     register: register,

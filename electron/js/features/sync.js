@@ -59,13 +59,20 @@ function showUnsyncedDataPrompt(onDone) {
 }
 
 /**
- * Отправить текущую базу на сервер: если уже подключён — вызвать uploadCurrentBaseToServer;
- * если нет — подключиться с флагом «после подключения загрузить базу».
+ * Отправить текущую базу на сервер (с синхронизацией записей).
+ * Если уже подключён: текущая база есть на сервере — синхронизация; иначе — создание объекта и выгрузка.
+ * Если не подключён — подключиться и после перезагрузки выгрузить базу.
  */
 function sendToServer() {
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
   if (useApi) {
-    if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
+    var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+    var onServer = _syncBasesData && _syncBasesData.some(function (o) { return o.id === currentId; });
+    if (onServer && currentId) {
+      if (typeof window.syncCurrentBaseToServer === 'function') window.syncCurrentBaseToServer();
+    } else {
+      if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
+    }
     return;
   }
   try {
@@ -390,6 +397,7 @@ function renderSyncBasesTable() {
     var safeId = String(obj.id).replace(/'/g, "\\'");
     var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     var isOwner = currentUser && obj._user && obj._user.toLowerCase() === currentUser.toLowerCase();
+    var isCreator = currentUser && obj._creator && obj._creator.toLowerCase() === currentUser.toLowerCase();
     html += '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
       '<td data-label="Название">' + safeName + '</td>' +
       '<td data-label="Дата">' + obj._dateStr + '</td>' +
@@ -398,6 +406,7 @@ function renderSyncBasesTable() {
       '<td class="sync-bases-actions" data-label="Действия">' +
       '<button type="button" class="small-btn" onclick="showLoadBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Загрузить</button>' +
       (isOwner ? ' <button type="button" class="small-btn sync-current-base-btn" onclick="syncCurrentBaseToServer()">Синхронизировать</button>' : '') +
+      (isCreator ? ' <button type="button" class="small-btn sync-delete-base-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
       '</td></tr>';
   });
 
@@ -439,10 +448,12 @@ function renderSyncServerBasesList() {
     _syncBasesData = list.map(function (obj) {
       var dateRaw = obj.last_updated_at || obj.lastUpdatedAt || obj.created_at || '';
       var userRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
+      var creatorRaw = obj.created_by_username != null ? obj.created_by_username : (obj.createdByUsername != null ? obj.createdByUsername : null);
       var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;
       obj._dateRaw = dateRaw;
       obj._dateStr = formatServerDate(dateRaw);
       obj._user = (userRaw !== null && userRaw !== '') ? String(userRaw) : '';
+      obj._creator = (creatorRaw !== null && creatorRaw !== '') ? String(creatorRaw) : '';
       obj._count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
       return obj;
     });
@@ -511,6 +522,55 @@ function showLoadBaseModal(sourceId, sourceName) {
   overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
+}
+
+/**
+ * Модалка удаления базы на сервере: запрос пароля пользователя-создателя.
+ */
+function showDeleteBaseModal(baseId, baseName) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'sync-replace-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', 'Удаление базы');
+  var safeName = String(baseName || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  overlay.innerHTML = '<div class="sync-replace-modal">' +
+    '<h4>Удалить базу «' + safeName + '»?</h4>' +
+    '<p>Удаление необратимо. Все записи в этой базе на сервере будут удалены.</p>' +
+    '<p>Введите ваш пароль (пользователь, создавший базу):</p>' +
+    '<input type="password" id="syncDeleteBasePassword" class="sync-replace-select" placeholder="Пароль" autocomplete="current-password" style="margin-bottom:12px;" />' +
+    '<div class="sync-replace-actions">' +
+    '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
+    '<button type="button" class="action-btn" data-action="delete" style="background:var(--color-error, #c00);">Удалить</button>' +
+    '</div></div>';
+
+  function close() { overlay.remove(); document.body.style.overflow = ''; }
+  overlay.querySelector('[data-action="cancel"]').onclick = close;
+  overlay.querySelector('[data-action="delete"]').onclick = function () {
+    var pwdEl = document.getElementById('syncDeleteBasePassword');
+    var password = (pwdEl && pwdEl.value) ? String(pwdEl.value) : '';
+    if (!password) {
+      if (typeof showToast === 'function') showToast('Введите пароль', 'error');
+      return;
+    }
+    overlay.querySelector('[data-action="delete"]').disabled = true;
+    window.CattleTrackerApi.deleteObjectWithPassword(baseId, password).then(function () {
+      close();
+      if (typeof showToast === 'function') showToast('База удалена', 'success');
+      renderSyncServerBasesList();
+      if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Ошибка удаления', 'error');
+      overlay.querySelector('[data-action="delete"]').disabled = false;
+    });
+  };
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  setTimeout(function () {
+    var el = document.getElementById('syncDeleteBasePassword');
+    if (el) el.focus();
+  }, 100);
 }
 
 /**
@@ -736,6 +796,7 @@ if (typeof window !== 'undefined') {
   window.initSyncServerBlock = initSyncServerBlock;
   window.renderSyncServerBasesList = renderSyncServerBasesList;
   window.showLoadBaseModal = showLoadBaseModal;
+  window.showDeleteBaseModal = showDeleteBaseModal;
   window.loadServerBaseIntoNewObject = loadServerBaseIntoNewObject;
   window.showReplaceBaseModal = showReplaceBaseModal;
   window.replaceServerBaseInObject = replaceServerBaseInObject;

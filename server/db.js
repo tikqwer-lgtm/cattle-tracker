@@ -129,7 +129,21 @@ function initSchema() {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");
   }
   migrateEntriesMetaColumns();
+  migrateObjectsCreatedBy();
   saveDb();
+}
+
+/** Добавить колонку created_by в objects (автор базы для удаления по паролю). */
+function migrateObjectsCreatedBy() {
+  const info = allSql("PRAGMA table_info(objects)");
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  if (names.indexOf('created_by') === -1) {
+    try {
+      runSql('ALTER TABLE objects ADD COLUMN created_by TEXT');
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate objects created_by:', e.message);
+    }
+  }
 }
 
 /** Добавить колонки updated_at и last_modified_by в entries, если их нет (старые БД). */
@@ -233,6 +247,11 @@ function findUserById(id) {
   return getSql('SELECT id, username, role FROM users WHERE id = ?', [id]);
 }
 
+/** Для проверки пароля при удалении базы (только в auth/objects). */
+function findUserByIdWithPassword(id) {
+  return getSql('SELECT id, username, role, password_hash FROM users WHERE id = ?', [id]);
+}
+
 function getAllUsers() {
   return allSql('SELECT id, username, role, created_at FROM users ORDER BY created_at');
 }
@@ -302,15 +321,18 @@ function getRowVal(row, key) {
 }
 
 /**
- * Returns objects with entries_count, last_updated_at, last_modified_by from entries.
+ * Returns objects with entries_count, last_updated_at, last_modified_by, created_by, created_by_username.
  */
 function getObjectsWithMeta() {
   const sql = `
-    SELECT o.id, o.name, o.created_at,
+    SELECT o.id, o.name, o.created_at, o.created_by,
       (SELECT COUNT(*) FROM entries WHERE object_id = o.id) as entries_count,
       (SELECT updated_at FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_updated_at,
-      (SELECT last_modified_by FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_modified_by
-    FROM objects o ORDER BY o.created_at
+      (SELECT last_modified_by FROM entries WHERE object_id = o.id ORDER BY updated_at DESC LIMIT 1) as last_modified_by,
+      u.username as created_by_username
+    FROM objects o
+    LEFT JOIN users u ON u.id = o.created_by
+    ORDER BY o.created_at
   `;
   return allSql(sql).map(row => {
     const id = getRowVal(row, 'id');
@@ -319,10 +341,14 @@ function getObjectsWithMeta() {
     const lastUpdatedAt = getRowVal(row, 'last_updated_at');
     const lastModifiedBy = getRowVal(row, 'last_modified_by');
     const createdAt = getRowVal(row, 'created_at');
+    const createdBy = getRowVal(row, 'created_by');
+    const createdByUsername = getRowVal(row, 'created_by_username');
     return {
       id: id != null ? String(id) : '',
       name: name != null ? String(name) : '',
       created_at: createdAt != null ? String(createdAt) : null,
+      created_by: createdBy != null ? String(createdBy) : null,
+      created_by_username: createdByUsername != null ? String(createdByUsername) : null,
       entries_count: Number(entriesCount != null ? entriesCount : 0),
       last_updated_at: lastUpdatedAt != null ? String(lastUpdatedAt) : null,
       last_modified_by: lastModifiedBy != null ? String(lastModifiedBy) : null
@@ -334,8 +360,8 @@ function getObjectById(id) {
   return getSql('SELECT id, name FROM objects WHERE id = ?', [id]);
 }
 
-function createObject(id, name) {
-  runSql('INSERT INTO objects (id, name) VALUES (?, ?)', [id, name]);
+function createObject(id, name, createdByUserId) {
+  runSql('INSERT INTO objects (id, name, created_by) VALUES (?, ?, ?)', [id, name, createdByUserId || null]);
   saveDb();
 }
 
@@ -493,6 +519,7 @@ module.exports = {
   createUser,
   findUserByUsername,
   findUserById,
+  findUserByIdWithPassword,
   getAllUsers,
   deleteUser,
   createReport,

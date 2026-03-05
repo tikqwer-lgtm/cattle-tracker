@@ -292,4 +292,12 @@ function parseFileToHeadersAndRows(file) {
     reader.readAsArrayBuffer(file);
   });
 }
-export {};
+export {
+  parseFileToHeadersAndRows,
+  getImportMappingFields,
+  normalizeDateForStorage,
+  addDaysToDate,
+  decodeCsvFileContent,
+  normalizeStatusFromImport,
+  normalizePregnancyCheckResult
+};
