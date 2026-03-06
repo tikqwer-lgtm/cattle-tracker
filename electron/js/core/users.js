@@ -407,6 +407,9 @@
         loginInProgress = false;
         if (submitBtn) submitBtn.disabled = false;
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
+        if (err && err.status === 429) {
+          msg = 'Слишком много попыток входа. Подождите 15 минут или нажмите «Без авторизации» для локальной работы.';
+        }
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
         setTimeout(function () {
           requestAnimationFrame(function () {

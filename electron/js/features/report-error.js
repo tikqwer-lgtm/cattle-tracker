@@ -1,8 +1,12 @@
 /**
  * report-error.js — кнопка «Сообщить об ошибке» и модалка отправки отчёта администратору (режим API).
+ * В диагностику входят: последняя ошибка (onerror), буфер записей консоли (log/warn/error).
  */
 (function (global) {
   'use strict';
+
+  var CONSOLE_BUFFER_MAX = 500;
+  var CONSOLE_PAYLOAD_MAX_CHARS = 80000;
 
   if (typeof global !== 'undefined') {
     global.__lastCattleTrackerError = null;
@@ -14,6 +18,33 @@
       if (typeof origOnError === 'function') return origOnError.apply(this, arguments);
       return false;
     };
+
+    var consoleBuffer = [];
+    global.__cattleTrackerConsoleBuffer = consoleBuffer;
+    function serializeArg(a) {
+      if (a == null) return String(a);
+      if (typeof a === 'string') return a.length <= 500 ? a : a.slice(0, 500) + '…';
+      if (typeof a === 'number' || typeof a === 'boolean') return String(a);
+      try {
+        var s = JSON.stringify(a);
+        return s.length <= 500 ? s : s.slice(0, 500) + '…';
+      } catch (_) { return Object.prototype.toString.call(a); }
+    }
+    function pushConsole(level, args) {
+      try {
+        var text = Array.prototype.map.call(args, serializeArg).join(' ');
+        consoleBuffer.push({ t: Date.now(), level: level, text: text });
+        if (consoleBuffer.length > CONSOLE_BUFFER_MAX) consoleBuffer.shift();
+      } catch (_) {}
+    }
+    if (typeof global.console !== 'undefined') {
+      var origLog = global.console.log;
+      var origWarn = global.console.warn;
+      var origError = global.console.error;
+      global.console.log = function () { pushConsole('log', arguments); return origLog.apply(global.console, arguments); };
+      global.console.warn = function () { pushConsole('warn', arguments); return origWarn.apply(global.console, arguments); };
+      global.console.error = function () { pushConsole('error', arguments); return origError.apply(global.console, arguments); };
+    }
   }
 
   function getModal() {
@@ -80,6 +111,17 @@
       }
       if (global.__lastCattleTrackerError) {
         payload.lastError = global.__lastCattleTrackerError;
+      }
+      if (global.__cattleTrackerConsoleBuffer && global.__cattleTrackerConsoleBuffer.length > 0) {
+        var lines = global.__cattleTrackerConsoleBuffer.map(function (e) {
+          return '[' + new Date(e.t).toISOString() + '] [' + e.level + '] ' + e.text;
+        });
+        var joined = lines.join('\n');
+        if (joined.length > CONSOLE_PAYLOAD_MAX_CHARS) {
+          joined = joined.slice(-CONSOLE_PAYLOAD_MAX_CHARS);
+          payload.consoleLogTruncated = true;
+        }
+        payload.consoleLog = joined;
       }
     } catch (e) {
       payload.collectError = String(e && e.message);
