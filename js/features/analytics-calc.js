@@ -24,6 +24,8 @@ function getPeriodBounds(period, dateFrom, dateTo) {
     start.setMonth(start.getMonth() - 3);
   } else if (period === 'year') {
     start.setFullYear(start.getFullYear() - 1);
+  } else if (period === 'all') {
+    start = new Date(1970, 0, 1);
   } else {
     start.setMonth(start.getMonth() - 1);
   }
@@ -95,6 +97,18 @@ function getFilteredEntries(period, dateFrom, dateTo, pdo) {
   pdo = parseInt(pdo, 10) || 0;
   return list.filter(function (e) {
     if (isBrak(e)) return false;
+    if (period === 'year') {
+      var dInsem = parseDate(e.inseminationDate);
+      var dCalv = parseDate(e.calvingDate);
+      var dAdded = parseDate(e.dateAdded);
+      var d0 = dInsem || dCalv || dAdded;
+      if (!d0 || d0 < bounds.start || d0 > bounds.end) return false;
+      if (dCalv) {
+        var pdoEnd0 = addDays(dCalv, pdo);
+        if (pdoEnd0 > bounds.end) return false;
+      }
+      return true;
+    }
     if (!hasLactationOnePlus(e)) return false;
     var calv = parseDate(e.calvingDate);
     if (!calv) return false;

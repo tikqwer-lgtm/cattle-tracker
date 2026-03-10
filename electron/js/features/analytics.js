@@ -413,7 +413,7 @@
       '<tbody>' + rows.join('') + '</tbody></table>';
   }
 
-  /** Воспроизведение: оплодотворяемость за период. Фильтры: попытка, бык, лактация. */
+  /** Воспроизводство: оплодотворяемость за период. Фильтры: попытка, бык, лактация. */
   var reproductionFilter = {
     period: 'month',
     dateFrom: '',
@@ -429,12 +429,36 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
-  /** Проверяет, привело ли осеменение на дату insemDate к стельности (есть УЗИ «Стельная» после этой даты). */
+  /** Проверяет, привело ли осеменение на дату insemDate к стельности (УЗИ «Стельная» после этой даты, либо статус «Стельная» для последнего осеменения). */
   function inseminationResultedInPregnancy(entry, insemDateStr) {
-    var uziHistory = entry.uziHistory || [];
-    if (uziHistory.length === 0) return false;
     var insemD = parseDateRepr(insemDateStr);
     if (!insemD) return false;
+
+    var statusStr = (entry && entry.status != null) ? String(entry.status) : '';
+    if (statusStr.indexOf('Стельная') !== -1) {
+      var lastInsemTime = null;
+      var lastInsemRaw = null;
+      var insemList0 = entry && entry.inseminationHistory && entry.inseminationHistory.length > 0
+        ? entry.inseminationHistory
+        : (entry && entry.inseminationDate ? [{ date: entry.inseminationDate }] : []);
+      for (var k = 0; k < insemList0.length; k++) {
+        var rec0 = insemList0[k];
+        var dd0 = parseDateRepr(rec0 && rec0.date);
+        if (!dd0) continue;
+        var t0 = dd0.getTime();
+        if (lastInsemTime === null || t0 > lastInsemTime) {
+          lastInsemTime = t0;
+          lastInsemRaw = rec0.date;
+        }
+      }
+      if (lastInsemTime !== null) {
+        var lastD = parseDateRepr(lastInsemRaw);
+        if (lastD && lastD.getTime() === insemD.getTime()) return true;
+      }
+    }
+
+    var uziHistory = entry.uziHistory || [];
+    if (uziHistory.length === 0) return false;
     var afterInsem = uziHistory.filter(function (u) {
       var ud = parseDateRepr(u.date);
       return ud && ud > insemD;
@@ -450,7 +474,35 @@
     return r.indexOf('Стельная') !== -1 || r === 'Стел';
   }
 
-  /** Собирает все осеменения в периоде с учётом фильтров. Возвращает { events: [{ entry, date, attemptNumber, bull, lactation }], pregnantCount }. */
+  function hasLaterInsemination(entry, insemDateStr) {
+    var list = entry && entry.inseminationHistory && entry.inseminationHistory.length > 0
+      ? entry.inseminationHistory
+      : (entry && entry.inseminationDate ? [{ date: entry.inseminationDate }] : []);
+    var d0 = parseDateRepr(insemDateStr);
+    if (!d0 || list.length === 0) return false;
+    for (var i = 0; i < list.length; i++) {
+      var rec = list[i];
+      var d = parseDateRepr(rec && rec.date);
+      if (d && d > d0) return true;
+    }
+    return false;
+  }
+
+  function isConfirmedInsemination(entry, insemDateStr, boundsEnd) {
+    if (inseminationResultedInPregnancy(entry, insemDateStr)) return true;
+    if (hasLaterInsemination(entry, insemDateStr)) return true;
+    var d0 = parseDateRepr(insemDateStr);
+    var ref = boundsEnd || new Date();
+    if (d0) {
+      var a = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
+      var b = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+      var diffDays = Math.round((b - a) / (24 * 60 * 60 * 1000));
+      if (diffDays >= 40) return true;
+    }
+    return false;
+  }
+
+  /** Собирает все осеменения в периоде с учётом фильтров. Возвращает { events: [{ entry, date, attemptNumber, bull, lactation }], pregnantCount, unconfirmedAnimalsCount }. */
   function getReproductionData(period, dateFrom, dateTo, filters) {
     var bounds = window.getPeriodBounds(period, dateFrom, dateTo);
     var list = (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) ? window.entries : [];
@@ -483,14 +535,31 @@
         events.push({ entry: entry, date: rec.date, attemptNumber: attemptNum, bull: bullVal, lactation: lact });
       }
     }
-    var pregnantCount = 0;
+    var animalsUnconfirmed = {};
+    var getKey = function (ev) {
+      var e = ev.entry || {};
+      if (e.cattleId != null && e.cattleId !== '') return String(e.cattleId);
+      return String(list.indexOf(e));
+    };
     events.forEach(function (ev) {
+      var key = getKey(ev);
+      if (!isConfirmedInsemination(ev.entry, ev.date, bounds.end)) animalsUnconfirmed[key] = true;
+    });
+    var filteredEvents = events.filter(function (ev) {
+      var key = getKey(ev);
+      return !animalsUnconfirmed[key];
+    });
+    var pregnantCount = 0;
+    filteredEvents.forEach(function (ev) {
       if (inseminationResultedInPregnancy(ev.entry, ev.date)) pregnantCount++;
     });
+    var totalInseminations = filteredEvents.length;
+    var unconfirmedAnimalsCount = Object.keys(animalsUnconfirmed).length;
     return {
-      totalInseminations: events.length,
+      totalInseminations: totalInseminations,
       pregnantCount: pregnantCount,
-      percent: events.length > 0 ? Math.round((pregnantCount / events.length) * 1000) / 10 : 0
+      percent: totalInseminations > 0 ? Math.round((pregnantCount / totalInseminations) * 1000) / 10 : 0,
+      unconfirmedAnimalsCount: unconfirmedAnimalsCount
     };
   }
 
@@ -527,7 +596,7 @@
       '<div class="search-filter-bar analytics-interval-filter-bar">' +
         '<div class="filter-row">' +
           '<span class="filter-label">Период:</span>' +
-          '<select id="reproductionPeriod" class="analytics-interval-select"><option value="month"' + (reproductionFilter.period === 'month' ? ' selected' : '') + '>Месяц</option><option value="quarter"' + (reproductionFilter.period === 'quarter' ? ' selected' : '') + '>Квартал</option><option value="year"' + (reproductionFilter.period === 'year' ? ' selected' : '') + '>Год</option><option value="custom"' + (reproductionFilter.period === 'custom' ? ' selected' : '') + '>Произвольный</option></select>' +
+          '<select id="reproductionPeriod" class="analytics-interval-select"><option value="month"' + (reproductionFilter.period === 'month' ? ' selected' : '') + '>Месяц</option><option value="quarter"' + (reproductionFilter.period === 'quarter' ? ' selected' : '') + '>Квартал</option><option value="year"' + (reproductionFilter.period === 'year' ? ' selected' : '') + '>Год</option><option value="all"' + (reproductionFilter.period === 'all' ? ' selected' : '') + '>За всё время</option><option value="custom"' + (reproductionFilter.period === 'custom' ? ' selected' : '') + '>Произвольный</option></select>' +
           '<span id="reproductionCustomDates" style="display:none;">' +
           '<label>С: <input type="date" id="reproductionDateFrom" value="' + df + '" /></label>' +
           '<label>По: <input type="date" id="reproductionDateTo" value="' + dt + '" /></label>' +
@@ -596,16 +665,20 @@
     var data = getReproductionData(reproductionFilter.period, reproductionFilter.dateFrom, reproductionFilter.dateTo, reproductionFilter);
     var indicatorsEl = document.getElementById('reproductionIndicators');
     if (indicatorsEl) {
+      var starHtml = '';
+      if (data.unconfirmedAnimalsCount && data.unconfirmedAnimalsCount > 0) {
+        starHtml = '<span class="analytics-info-star" title="Животных с осеменением без проверки стельности (моложе 40 дней): ' + data.unconfirmedAnimalsCount + '">*</span>';
+      }
       indicatorsEl.innerHTML =
         '<div class="analytics-cards">' +
           '<div class="analytics-card"><div class="analytics-card-value">' + data.totalInseminations + '</div><div class="analytics-card-label">Осеменено в периоде (шт)</div></div>' +
           '<div class="analytics-card"><div class="analytics-card-value">' + data.pregnantCount + '</div><div class="analytics-card-label">Стельных из них (шт)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + data.percent + '%</div><div class="analytics-card-label">Оплодотворяемость (%)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value">' + data.percent + '%' + starHtml + '</div><div class="analytics-card-label">Оплодотворяемость (%)</div></div>' +
         '</div>';
     }
     var tableEl = document.getElementById('reproductionTable');
     if (tableEl) {
-      tableEl.innerHTML = '<p class="analytics-interval-intro">Период: с ' + (reproductionFilter.dateFrom || '—') + ' по ' + (reproductionFilter.dateTo || '—') + '. Данные по текущей базе с учётом всех осеменений и проверок на стельность (УЗИ).</p>';
+      tableEl.innerHTML = '<p class="analytics-interval-intro">Период: с ' + (reproductionFilter.dateFrom || '—') + ' по ' + (reproductionFilter.dateTo || '—') + '. Животные с осеменением без проверки стельности не входят в расчёт; их количество показывается при наведении на звёздочку рядом с показателем оплодотворяемости. Данные по текущей базе с учётом всех осеменений и проверок на стельность (УЗИ).</p>';
     }
   }
 

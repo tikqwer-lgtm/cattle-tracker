@@ -30,7 +30,7 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '📊', text: 'Аналитика', onclick: "navigate('analytics')" },
       { icon: '📈', text: 'Интервальный анализ', onclick: "navigate('interval-analysis')" },
-      { icon: '🐄', text: 'Воспроизведение', onclick: "navigate('reproduction')" }
+      { icon: '🐄', text: 'Воспроизводство', onclick: "navigate('reproduction')" }
     ]
   },
   notifications: {
