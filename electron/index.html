@@ -98,7 +98,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.11" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.12" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -513,6 +513,15 @@
     <div id="analyticsIndicators" class="analytics-indicators"></div>
     <div id="analyticsBreakdownTable" class="analytics-breakdown-table-wrapper" style="display: none;"></div>
     <div id="analyticsCharts" class="analytics-charts"></div>
+    <div id="endometritisDmgBlock" class="analytics-breakdown-table-wrapper" style="margin-top: 16px;">
+      <h2 style="margin: 8px 0;">Эндометрит ДМГ</h2>
+      <div class="analytics-controls" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap;">
+        <input type="file" id="endometritisDmgFile" accept=".xlsx" aria-label="Файл DC (.xlsx) для Эндометрит ДМГ" />
+        <button type="button" id="endometritisDmgCalcBtn" class="small-btn">Посчитать</button>
+        <span id="endometritisDmgStatus" style="color:#666;"></span>
+      </div>
+      <div id="endometritisDmgResults" style="margin-top: 10px;"></div>
+    </div>
     <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 

@@ -36,6 +36,7 @@ import './ui/field-config.js';
 import './features/search-filter.js';
 import './features/notifications.js';
 import './features/analytics-calc.js';
+import './features/analytics-endometritis-dmg.js';
 import './features/analytics.js';
 import './features/backup.js';
 import './features/view-list-fields.js';
