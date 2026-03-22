@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="css/print.css" media="print" />
 </head>
 <body>
+  <datalist id="datalist-farm-bulls"></datalist>
+  <datalist id="datalist-farm-technicians"></datalist>
   <div id="root"></div>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
@@ -234,6 +236,29 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
+  <!-- Настройки хозяйства (списки техников ИО и быков) -->
+  <div id="farm-settings-screen" class="screen">
+    <h1>Настройки хозяйства</h1>
+    <div class="farm-settings-wrap">
+      <section class="farm-settings-section">
+        <h2>Техники ИО</h2>
+        <p class="farm-settings-hint">По одному на строку. Используются как подсказки в поле «Техник ИО» при осеменении и в карточке коровы.</p>
+        <textarea id="farmSettingsTechnicians" class="farm-settings-textarea" rows="8" placeholder="Например: Иванов И.И."></textarea>
+      </section>
+      <section class="farm-settings-section">
+        <h2>Быки (справочник)</h2>
+        <p class="farm-settings-hint">Дополнительно к быкам из описи (поле «Бык» в данных животных). Подсказки в поле «Бык».</p>
+        <textarea id="farmSettingsBulls" class="farm-settings-textarea" rows="8" placeholder="По одному на строку"></textarea>
+      </section>
+      <section class="farm-settings-section">
+        <h2>Код осеменения</h2>
+        <p class="farm-settings-hint">В списке кода доступны «Охота», «Датчик» и все протоколы из раздела «Протоколы синхронизации».</p>
+      </section>
+      <button type="button" id="farmSettingsSaveBtn" class="action-batch-save-all">Сохранить</button>
+    </div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
   <!-- Экран ввода осеменения (пакетный) -->
   <div id="insemination-screen" class="screen">
     <h1>➕ Ввести осеменение</h1>
@@ -242,11 +267,15 @@
         <label for="inseminationDateInsem">Дата осеменения</label>
         <input type="date" id="inseminationDateInsem" />
         <label for="bullInsemBatch">Бык (для всех, если не указан в строке)</label>
-        <input type="text" id="bullInsemBatch" placeholder="Необязательно" />
+        <input type="text" id="bullInsemBatch" list="datalist-farm-bulls" placeholder="Ввод или выбор из списка" autocomplete="off" />
         <label for="inseminatorInsem">Техник ИО</label>
-        <input type="text" id="inseminatorInsem" />
+        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Ввод или выбор" autocomplete="off" />
         <label for="codeInsem">Код осеменения</label>
-        <input type="text" id="codeInsem" />
+        <select id="codeInsem">
+          <option value="">—</option>
+          <option value="Охота">Охота</option>
+          <option value="Датчик">Датчик</option>
+        </select>
       </div>
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Добавить по номеру</label>
@@ -254,12 +283,12 @@
           <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" />
           <ul id="inseminationBatchAddList" class="autocomplete-list"></ul>
         </div>
-        <p class="action-batch-modal-hint" style="margin-top:0.35rem;font-weight:normal;">После выбора коровы укажите попытку (по умолчанию следующая).</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите попытку (по умолчанию следующая).</p>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="inseminationBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Запуск (начало сухостоя), пакетный -->
@@ -280,7 +309,7 @@
       <div id="dryBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="dryBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Отёл, пакетный -->
@@ -297,12 +326,12 @@
           <input type="text" id="calvingBatchAddInput" placeholder="Номер коровы" />
           <ul id="calvingBatchAddList" class="autocomplete-list"></ul>
         </div>
-        <p class="action-batch-modal-hint" style="margin-top:0.35rem;font-weight:normal;">Можно указать телёнка (номер, пол, вес) или пропустить.</p>
+        <p class="action-batch-add-hint">Можно указать телёнка (номер, пол, вес) или пропустить.</p>
       </div>
       <div id="calvingBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="calvingBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: На протокол, пакетный -->
@@ -327,7 +356,7 @@
       <div id="protocolBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="protocolBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: УЗИ (пакетный) -->
@@ -346,12 +375,12 @@
           <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
           <ul id="uziBatchAddList" class="autocomplete-list"></ul>
         </div>
-        <p class="action-batch-modal-hint" style="margin-top:0.35rem;font-weight:normal;">После выбора коровы укажите результат УЗИ.</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="uziBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
   </div>
 
   <!-- ========== Форма добавления/редактирования животного ========== -->
@@ -383,11 +412,15 @@
           <label for="attemptNumber">Номер попытки</label>
           <input type="number" id="attemptNumber" value="1" />
           <label for="bull">Бык</label>
-          <input type="text" id="bull" />
+          <input type="text" id="bull" list="datalist-farm-bulls" autocomplete="off" />
           <label for="inseminator">Техник ИО</label>
-          <input type="text" id="inseminator" />
+          <input type="text" id="inseminator" list="datalist-farm-technicians" autocomplete="off" />
           <label for="code">Код</label>
-          <input type="text" id="code" />
+          <select id="code">
+            <option value="">—</option>
+            <option value="Охота">Охота</option>
+            <option value="Датчик">Датчик</option>
+          </select>
           <label for="status">Статус</label>
           <select id="status">
             <option value="">—</option>
@@ -547,7 +580,7 @@
       </div>
       <div class="view-fields-modal-body" style="padding: 1rem 0;">
         <label for="addObjectNameInput">Название</label>
-        <input type="text" id="addObjectNameInput" class="view-fields-template-input" placeholder="Новая база" value="Новая база" style="width: 100%; margin-top: 0.25rem;" />
+        <input type="text" id="addObjectNameInput" class="view-fields-template-input view-fields-template-input--block" placeholder="Новая база" value="Новая база" />
       </div>
       <div class="view-fields-actions">
         <button type="button" class="small-btn" id="addObjectModalCancelBtn">Отмена</button>

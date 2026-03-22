@@ -43,6 +43,7 @@ import './features/backup.js';
 import './features/view-list-fields.js';
 import './features/view-list.js';
 import './features/protocols.js';
+import './features/farm-settings.js';
 import './features/admin.js';
 import './features/report-error.js';
 import './features/lists.js';

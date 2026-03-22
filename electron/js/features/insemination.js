@@ -223,9 +223,10 @@ function addInseminationEntry() {
   }
 
   const attemptNumber = parseInt(document.getElementById('attemptNumberInsem')?.value) || 1;
-  const bull = document.getElementById('bullInsem')?.value || '';
+  const bull = document.getElementById('bullInsemBatch')?.value || document.getElementById('bullInsem')?.value || '';
   const inseminator = document.getElementById('inseminatorInsem')?.value || '';
-  const code = document.getElementById('codeInsem')?.value || '';
+  const codeEl = document.getElementById('codeInsem');
+  const code = codeEl ? (codeEl.tagName === 'SELECT' ? codeEl.value : (codeEl.value || '')) : '';
 
   try {
     applyInseminationToEntry(entry, { inseminationDate: inseminationDate, attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
@@ -259,10 +260,18 @@ function addInseminationEntry() {
   if (cattleIdInput) cattleIdInput.value = '';
   if (cattleIdSelect) cattleIdSelect.value = '';
   document.getElementById('inseminationDateInsem').value = '';
-  document.getElementById('attemptNumberInsem').value = '1';
-  document.getElementById('bullInsem').value = '';
+  const attInsem = document.getElementById('attemptNumberInsem');
+  if (attInsem) attInsem.value = '1';
+  const bullB = document.getElementById('bullInsemBatch');
+  if (bullB) bullB.value = '';
+  const bullO = document.getElementById('bullInsem');
+  if (bullO) bullO.value = '';
   document.getElementById('inseminatorInsem').value = '';
-  document.getElementById('codeInsem').value = '';
+  const codeE = document.getElementById('codeInsem');
+  if (codeE) {
+    if (codeE.tagName === 'SELECT') codeE.selectedIndex = 0;
+    else codeE.value = '';
+  }
 
   if (typeof showToast === 'function') showToast('Данные осеменения добавлены!', 'success'); else alert('Данные осеменения добавлены!');
   if (typeof window !== 'undefined' && window._returnToViewCow) {

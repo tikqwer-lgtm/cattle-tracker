@@ -17,4 +17,7 @@ declare interface Window {
   CATTLE_TRACKER_DEFAULT_SERVER_URL?: string;
   CattleTrackerApi?: unknown;
   CattleTrackerEvents?: { on: (a: string, b: () => void) => void; emit: (a: string, b: unknown) => void };
+  initFarmSettingsScreen?: () => void;
+  refreshFarmDatalists?: () => void;
+  fillAllInseminationCodeSelects?: () => void;
 }

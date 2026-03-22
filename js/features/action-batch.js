@@ -253,7 +253,8 @@
         renderUziDraft();
         toast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
-        if (typeof navigate === 'function') navigate('menu');
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
         toast(err && err.message ? err.message : 'Ошибка сохранения', 'error');
@@ -285,6 +286,23 @@
   // ——— Запуск (сухостой) ———
   var dryDraft = [];
 
+  function formatDateCell(d) {
+    if (!d) return '—';
+    if (typeof formatDate === 'function') return formatDate(d) || d;
+    return String(d);
+  }
+
+  function getLastInseminationDate(entry) {
+    if (!entry) return '';
+    var last = null;
+    if (entry.inseminationHistory && entry.inseminationHistory.length) {
+      var dates = entry.inseminationHistory.map(function (h) { return h.date; }).filter(Boolean);
+      if (dates.length) last = dates.reduce(function (a, b) { return a > b ? a : b; });
+    }
+    if (!last && entry.inseminationDate) last = entry.inseminationDate;
+    return last || '';
+  }
+
   function renderDryDraft() {
     var host = document.getElementById('dryBatchDraftTable');
     if (!host) return;
@@ -293,14 +311,31 @@
       return;
     }
     var rows = dryDraft.map(function (r) {
+      var entry = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+      var insemStr = '—';
+      var statusStr = '—';
+      var daysStr = '—';
+      if (entry) {
+        statusStr = escapeHtml(String(entry.status || '—'));
+        var lastInsem = getLastInseminationDate(entry);
+        insemStr = lastInsem ? escapeHtml(formatDateCell(lastInsem)) : '—';
+        var dp = typeof window.getDaysPregnant === 'function' ? window.getDaysPregnant(entry) : null;
+        daysStr = dp != null && dp !== '' ? String(dp) : '—';
+      }
       return (
         '<tr data-row-id="' + r.id + '" class="action-batch-draft-row">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
+        '<td>' + insemStr + '</td>' +
+        '<td>' + statusStr + '</td>' +
+        '<td>' + escapeHtml(daysStr) + '</td>' +
         '<td><button type="button" class="action-batch-row-remove" data-dry-remove="' + r.id + '">×</button></td>' +
         '</tr>'
       );
     }).join('');
-    host.innerHTML = '<table class="action-batch-table"><thead><tr><th>Номер</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+    host.innerHTML =
+      '<table class="action-batch-table action-batch-table--dry">' +
+      '<thead><tr><th>Номер</th><th>Дата осеменения</th><th>Статус</th><th>Дни стельности</th><th></th></tr></thead><tbody>' +
+      rows + '</tbody></table>';
     host.querySelectorAll('[data-dry-remove]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -350,7 +385,8 @@
         renderDryDraft();
         toast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
-        if (typeof navigate === 'function') navigate('menu');
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
         toast(err && err.message ? err.message : 'Ошибка', 'error');
@@ -464,7 +500,8 @@
         renderProtocolDraft();
         toast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
-        if (typeof navigate === 'function') navigate('menu');
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
         toast(err && err.message ? err.message : 'Ошибка', 'error');
@@ -553,7 +590,7 @@
       '<h3 class="action-batch-modal-title">Осеменение: ' + escapeHtml(cattleId) + '</h3>' +
       '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemModalAttempt" class="action-batch-modal-input" min="1" value="' + defAtt + '" /></label>' +
       '<label class="action-batch-modal-label">Бык (необязательно, общий можно задать выше)<br>' +
-      '<input type="text" id="insemModalBull" class="action-batch-modal-input" value="' + escapeHtml(bullDef) + '" /></label>' +
+      '<input type="text" id="insemModalBull" class="action-batch-modal-input" list="datalist-farm-bulls" autocomplete="off" value="' + escapeHtml(bullDef) + '" /></label>' +
       '<div class="action-batch-modal-actions">' +
       '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemModalOk">Добавить</button>' +
       '<button type="button" class="action-batch-btn" id="insemModalCancel">Отмена</button>' +
@@ -577,7 +614,7 @@
     openOverlay(
       '<h3 class="action-batch-modal-title">' + escapeHtml(r.cattleId) + '</h3>' +
       '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemEdAtt" class="action-batch-modal-input" min="1" value="' + (r.attemptNumber || 1) + '" /></label>' +
-      '<label class="action-batch-modal-label">Бык<br><input type="text" id="insemEdBull" class="action-batch-modal-input" value="' + escapeHtml(r.bull || '') + '" /></label>' +
+      '<label class="action-batch-modal-label">Бык<br><input type="text" id="insemEdBull" class="action-batch-modal-input" list="datalist-farm-bulls" autocomplete="off" value="' + escapeHtml(r.bull || '') + '" /></label>' +
       '<div class="action-batch-modal-actions">' +
       '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemEdOk">OK</button>' +
       '<button type="button" class="action-batch-btn" id="insemEdCancel">Отмена</button>' +
@@ -636,7 +673,8 @@
         renderInsemDraft();
         toast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
-        if (typeof navigate === 'function') navigate('menu');
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
         toast(err && err.message ? err.message : 'Ошибка', 'error');
@@ -647,6 +685,15 @@
     insemDraft = [];
     var dateEl = document.getElementById('inseminationDateInsem');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
+    function afterProtocols() {
+      if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
+      if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
+    }
+    if (typeof window.ensureProtocolsLoaded === 'function') {
+      window.ensureProtocolsLoaded(afterProtocols);
+    } else {
+      afterProtocols();
+    }
     if (typeof window.setupCattleAutocompleteFor === 'function') {
       window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
     }
@@ -841,7 +888,8 @@
         renderCalvingDraft();
         toast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
-        if (typeof navigate === 'function') navigate('menu');
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
         toast(err && err.message ? err.message : 'Ошибка', 'error');

@@ -133,6 +133,8 @@ function deleteSelectedEntries() {
  * @param {Object} entry - Запись коровы
  */
 function fillFormFromCowEntry(entry) {
+  if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
+  if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
   document.getElementById('cattleId').value = entry.cattleId || '';
   document.getElementById('nickname').value = entry.nickname || '';
   document.getElementById('group').value = entry.group || '';

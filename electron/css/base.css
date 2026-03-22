@@ -20,6 +20,10 @@
   --radius-card: 10px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.2);
+  /* Единый вид полей ввода */
+  --field-min-height: 42px;
+  --field-padding-x: 0.65rem;
+  --field-padding-y: 0.5rem;
 }
 
 /* Пустой React-корень не должен перехватывать клики и фокус (поля ввода должны всегда принимать ввод) */

@@ -43,6 +43,7 @@ var MENU_GROUPS = {
   settings: {
     title: 'Настройки',
     buttons: [
+      { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
       { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
     ]
@@ -101,6 +102,9 @@ function navigate(screenId, options) {
   }
   if (screenId === 'protocols' && typeof renderProtocolsScreen === 'function') {
     renderProtocolsScreen('protocols-container');
+  }
+  if (screenId === 'farm-settings' && typeof window.initFarmSettingsScreen === 'function') {
+    window.initFarmSettingsScreen();
   }
   if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
   if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();
@@ -201,6 +205,16 @@ function navigateBack() {
     return true;
   }
   return false;
+}
+
+/**
+ * Назад: предыдущий экран из стека; если стек пуст — подменю (не главное меню).
+ */
+function navigateBackOrFallback() {
+  if (_navStack.length > 0) {
+    return navigateBack();
+  }
+  if (typeof navigate === 'function') navigate('submenu');
 }
 
 function syncRouteToScreen() {
@@ -602,6 +616,7 @@ document.addEventListener('DOMContentLoaded', function () {
 if (typeof window !== 'undefined') {
   window.navigate = navigate;
   window.navigateBack = navigateBack;
+  window.navigateBackOrFallback = navigateBackOrFallback;
   window.navigateToSubmenu = navigateToSubmenu;
   window.handleAddObjectClick = handleAddObjectClick;
   window.handleEditObjectClick = handleEditObjectClick;

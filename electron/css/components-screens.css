@@ -490,10 +490,25 @@
   flex-wrap: wrap;
 }
 .view-fields-template-input {
-  padding: 6px 10px;
+  min-height: var(--field-min-height, 42px);
+  padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-width: 160px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text);
+}
+.view-fields-template-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px rgba(61, 110, 181, 0.18);
+}
+.view-fields-template-input--block {
+  width: 100%;
+  margin-top: 0.25rem;
 }
 .action-history-item {
   display: flex;
@@ -546,10 +561,20 @@
 .import-mapping-cattle-select {
   width: 100%;
   max-width: 360px;
-  padding: 8px 10px;
+  min-height: var(--field-min-height, 42px);
+  padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 1em;
+  font-family: inherit;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+.import-mapping-cattle-select:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px rgba(61, 110, 181, 0.18);
 }
 .import-mapping-fields-list {
   display: flex;
@@ -569,11 +594,21 @@
   white-space: nowrap;
 }
 .import-mapping-field-select {
-  padding: 6px 10px;
+  min-height: var(--field-min-height, 42px);
+  padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 0.95em;
   min-width: 0;
+  font-family: inherit;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+.import-mapping-field-select:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px rgba(61, 110, 181, 0.18);
 }
 
 .first-run-hints {

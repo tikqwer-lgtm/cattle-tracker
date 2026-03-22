@@ -36,9 +36,11 @@ function ensureProtocolsLoaded(callback) {
   }
   window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
     _protocolsCache = (list || []).slice();
+    notifyInseminationCodeSelects();
     callback();
   }).catch(function () {
     _protocolsCache = [];
+    notifyInseminationCodeSelects();
     callback();
   });
 }
@@ -49,6 +51,14 @@ function ensureProtocolsLoaded(callback) {
  */
 function saveProtocols(arr) {
   localStorage.setItem(PROTOCOLS_STORAGE_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+  notifyInseminationCodeSelects();
+}
+
+/** Обновить списки «Код осеменения» после изменения протоколов (локально и через API). */
+function notifyInseminationCodeSelects() {
+  if (typeof window !== 'undefined' && typeof window.fillAllInseminationCodeSelects === 'function') {
+    try { window.fillAllInseminationCodeSelects(); } catch (e) {}
+  }
 }
 
 /**
@@ -92,6 +102,7 @@ function addProtocol(protocol) {
     var item = { id: nextProtocolId(), name: name, steps: steps };
     return window.CattleTrackerApi.createProtocol(objectId, item).then(function (created) {
       _protocolsCache.push(created);
+      notifyInseminationCodeSelects();
       return created;
     });
   }
@@ -126,6 +137,7 @@ function updateProtocol(id, protocol) {
           break;
         }
       }
+      notifyInseminationCodeSelects();
       return updated;
     });
   }
@@ -150,6 +162,7 @@ function deleteProtocol(id) {
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteProtocol(objectId, id).then(function () {
       _protocolsCache = _protocolsCache.filter(function (p) { return p.id !== id; });
+      notifyInseminationCodeSelects();
     });
   }
   var list = getProtocols().filter(function (p) { return p.id !== id; });
@@ -167,9 +180,11 @@ function renderProtocolsScreen(containerId) {
   if (useApi()) {
     window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
       _protocolsCache = (list || []).slice();
+      notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     }).catch(function () {
       _protocolsCache = [];
+      notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     });
     return;
@@ -285,6 +300,7 @@ function renderProtocolsScreenInner(containerId) {
     }
     var done = function () {
       window._protocolsEditingId = null;
+      notifyInseminationCodeSelects();
       if (typeof window.renderProtocolsScreen === 'function') window.renderProtocolsScreen(containerId);
     };
     if (editingId) {
