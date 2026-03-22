@@ -239,7 +239,8 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
       var li = document.createElement('li');
       li.textContent = entry.cattleId + (entry.nickname ? ' (' + entry.nickname + ')' : '');
       li.dataset.value = entry.cattleId;
-      li.addEventListener('click', function () {
+      li.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
         input.value = entry.cattleId;
         list.innerHTML = '';
         if (typeof onPick === 'function') onPick(entry.cattleId);
@@ -258,7 +259,7 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   input.addEventListener('blur', function () {
     setTimeout(function () {
       list.innerHTML = '';
-    }, 200);
+    }, 280);
   });
   list.addEventListener('mousedown', function (e) {
     e.preventDefault();

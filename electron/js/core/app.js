@@ -46,6 +46,9 @@ function initApp() {
         showToast('В выбранной базе пока нет записей.', 'info', 4000);
       }
       if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
+      if (typeof window.refreshFarmDatalists === 'function') {
+        try { window.refreshFarmDatalists(); } catch (e) {}
+      }
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
@@ -72,6 +75,9 @@ function initApp() {
   }
   if (!useApi && typeof initInseminationModule === 'function') {
     initInseminationModule();
+  }
+  if (typeof window.refreshFarmDatalists === 'function') {
+    try { window.refreshFarmDatalists(); } catch (e) {}
   }
 
   var versionEl = document.getElementById('app-version');

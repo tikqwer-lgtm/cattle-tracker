@@ -11,8 +11,7 @@ function useApi() {
  * Возвращает массив протоколов (из API-кэша или localStorage)
  * @returns {Array<{id: string, name: string, steps: Array<{day: number, drug: string}>}>}
  */
-function getProtocols() {
-  if (useApi()) return _protocolsCache;
+function getProtocolsFromLocalStorage() {
   try {
     var raw = localStorage.getItem(PROTOCOLS_STORAGE_KEY);
     if (!raw) return [];
@@ -21,6 +20,16 @@ function getProtocols() {
   } catch (e) {
     return [];
   }
+}
+
+function getProtocols() {
+  if (useApi()) {
+    if (_protocolsCache && _protocolsCache.length) return _protocolsCache.slice();
+    var localFallback = getProtocolsFromLocalStorage();
+    if (localFallback.length) return localFallback;
+    return [];
+  }
+  return getProtocolsFromLocalStorage();
 }
 
 /**
@@ -195,6 +204,9 @@ function renderProtocolsScreen(containerId) {
 function renderProtocolsScreenInner(containerId) {
   var container = document.getElementById(containerId);
   if (!container) return;
+  if (typeof window !== 'undefined' && typeof window.refreshFarmDatalists === 'function') {
+    try { window.refreshFarmDatalists(); } catch (e) {}
+  }
 
   var list = getProtocols();
   var editingId = window._protocolsEditingId || null;
@@ -356,7 +368,7 @@ function renderProtocolStepsList(steps) {
     html += '<label class="step-label">День</label>';
     html += '<input type="number" class="step-day" value="' + (s.day || 0) + '" min="0" step="1" />';
     html += '<label class="step-label">Препарат</label>';
-    html += '<input type="text" class="step-drug" value="' + (s.drug || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" placeholder="Название инъекции" />';
+    html += '<input type="text" class="step-drug" list="datalist-farm-drugs" autocomplete="off" value="' + (s.drug || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" placeholder="Название инъекции" />';
     html += '<button type="button" class="small-btn remove-step-btn" aria-label="Удалить этап">✕</button>';
     html += '</div>';
   }
@@ -369,9 +381,47 @@ function renderProtocolStepsList(steps) {
     };
   });
 }
+/**
+ * Заполнение списков «Код осеменения» (пакетный экран и карточка коровы).
+ * Живёт здесь, чтобы всегда использовать актуальный getProtocols().
+ */
+function fillOneInseminationCodeSelect(sel, preserveValue) {
+  if (!sel || sel.tagName !== 'SELECT') return;
+  var current = preserveValue !== undefined ? preserveValue : sel.value;
+  sel.innerHTML = '';
+  var optEmpty = document.createElement('option');
+  optEmpty.value = '';
+  optEmpty.textContent = '—';
+  sel.appendChild(optEmpty);
+  function addOpt(val, label) {
+    var o = document.createElement('option');
+    o.value = val;
+    o.textContent = label || val;
+    sel.appendChild(o);
+  }
+  addOpt('Охота', 'Охота');
+  addOpt('Датчик', 'Датчик');
+  var list = getProtocols();
+  if (!Array.isArray(list)) list = [];
+  list.forEach(function (p) {
+    var name = (p && (p.name || p.id)) ? String(p.name || p.id).trim() : '';
+    if (!name || name === 'Охота' || name === 'Датчик') return;
+    addOpt(name, name);
+  });
+  if (current && Array.prototype.some.call(sel.options, function (o) { return o.value === current; })) {
+    sel.value = current;
+  }
+}
+
+function fillAllInseminationCodeSelects() {
+  fillOneInseminationCodeSelect(document.getElementById('codeInsem'));
+  fillOneInseminationCodeSelect(document.getElementById('code'));
+}
+
 if (typeof window !== 'undefined') {
   window.renderProtocolsScreen = renderProtocolsScreen;
   window.ensureProtocolsLoaded = ensureProtocolsLoaded;
   window.getProtocols = getProtocols;
+  window.fillAllInseminationCodeSelects = fillAllInseminationCodeSelects;
 }
 export {};

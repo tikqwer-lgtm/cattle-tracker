@@ -40,6 +40,18 @@ npx cap run android
 # или для iOS (только на Mac): npx cap run ios
 ```
 
+Команды `cap` и `npm run apk` выполняйте **из корня репозитория** (где лежит `capacitor.config.json`), не из папки `android/`.
+
+**Сборка APK с обновлением версии:** перед выкладкой на телефон можно поднять patch-версию в `package.json`, `versionCode` в Android и синхронизировать подписи:
+
+```bash
+npm run apk:release
+```
+
+Затем из папки `android`: `.\gradlew.bat assembleDebug` (Windows) — APK: `android/app/build/outputs/apk/debug/app-debug.apk`. Установка по USB: `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Отдельно только поднять версию без сборки: `npm run apk:bump` (скрипт `scripts/bump-version.js`).
+
 Платформы Android и iOS уже добавлены (`android/`, `ios/`). Если добавляли проект с нуля: `npx cap add android` и/или `npx cap add ios`, затем `npx cap sync`.
 
 **Требования для разработчика (сборка и запуск на устройстве):**

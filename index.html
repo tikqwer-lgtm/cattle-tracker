@@ -13,6 +13,7 @@
 <body>
   <datalist id="datalist-farm-bulls"></datalist>
   <datalist id="datalist-farm-technicians"></datalist>
+  <datalist id="datalist-farm-drugs"></datalist>
   <div id="root"></div>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
@@ -100,7 +101,7 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.12" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.13" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -249,6 +250,11 @@
         <h2>Быки (справочник)</h2>
         <p class="farm-settings-hint">Дополнительно к быкам из описи (поле «Бык» в данных животных). Подсказки в поле «Бык».</p>
         <textarea id="farmSettingsBulls" class="farm-settings-textarea" rows="8" placeholder="По одному на строку"></textarea>
+      </section>
+      <section class="farm-settings-section">
+        <h2>Список препаратов</h2>
+        <p class="farm-settings-hint">По одному на строку. Подсказки при вводе препарата в шагах протокола синхронизации (экран «Протоколы синхронизации»).</p>
+        <textarea id="farmSettingsDrugs" class="farm-settings-textarea" rows="8" placeholder="Например: ПГ 500, Эстрадиол"></textarea>
       </section>
       <section class="farm-settings-section">
         <h2>Код осеменения</h2>
