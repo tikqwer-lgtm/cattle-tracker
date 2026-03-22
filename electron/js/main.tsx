@@ -31,6 +31,7 @@ import './features/export-import-parse.js';
 import './features/export-import.js';
 import './features/export-excel.js';
 import './features/insemination.js';
+import './features/action-batch.js';
 import './features/view-cow.js';
 import './ui/field-config.js';
 import './features/search-filter.js';

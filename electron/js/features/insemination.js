@@ -14,8 +14,9 @@
  * @returns {number} - следующий номер попытки
  */
 function getInseminationAttempt(cattleId, currentLactation) {
-  if (!Array.isArray(entries)) return 1;
-  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  var list = (typeof window !== 'undefined' && window.entries) ? window.entries : (typeof entries !== 'undefined' ? entries : []);
+  if (!Array.isArray(list)) return 1;
+  var entry = list.find(function (e) { return e.cattleId === cattleId; });
   if (!entry || !Array.isArray(entry.inseminationHistory)) return 1;
   return entry.inseminationHistory.length + 1;
 }
@@ -45,14 +46,15 @@ if (document.getElementById('cattleId') && document.getElementById('insemination
  */
 function populateCattleAutocomplete(inputId, listId) {
   const input = document.getElementById(inputId);
-  const list = document.getElementById(listId);
-  if (!input || !list) return;
+  const listEl = document.getElementById(listId);
+  if (!input || !listEl) return;
 
   // Очищаем список
-  list.innerHTML = '';
+  listEl.innerHTML = '';
 
   const filter = input.value.toLowerCase();
-  const matchingEntries = entries.filter(entry => 
+  const entriesList = (typeof window !== 'undefined' && window.entries) ? window.entries : entries;
+  const matchingEntries = (Array.isArray(entriesList) ? entriesList : []).filter(entry => 
     entry.cattleId.toLowerCase().includes(filter) || 
     (entry.nickname && entry.nickname.toLowerCase().includes(filter))
   ).slice(0, 10); // Ограничиваем 10 результатами
@@ -63,7 +65,7 @@ function populateCattleAutocomplete(inputId, listId) {
     li.dataset.value = entry.cattleId;
     li.addEventListener('click', () => {
       input.value = entry.cattleId;
-      list.innerHTML = '';
+      listEl.innerHTML = '';
       // Синхронизируем со скрытым селектором
       const select = document.getElementById('cattleIdInsem');
       if (select) {
@@ -72,7 +74,7 @@ function populateCattleAutocomplete(inputId, listId) {
       // Вызываем авто-заполнение попытки напрямую
       autoFillInseminationAttempt();
     });
-    list.appendChild(li);
+    listEl.appendChild(li);
   });
 }
 
@@ -114,8 +116,8 @@ function autoFillInseminationAttempt() {
   const inseminationDate = document.getElementById('inseminationDateInsem')?.value;
 
   if (cattleId && inseminationDate) {
-    // Получаем текущую лактацию коровы
-    const entry = entries.find(e => e.cattleId === cattleId);
+    const list2 = (typeof window !== 'undefined' && window.entries) ? window.entries : entries;
+    const entry = Array.isArray(list2) ? list2.find(e => e.cattleId === cattleId) : null;
     const lactation = entry?.lactation || 1;
     
     const attempt = getInseminationAttempt(cattleId, lactation);
@@ -160,6 +162,35 @@ if (document.getElementById('cattleIdInsemInput') || document.getElementById('ca
 }
 
 /**
+ * Применяет осеменение к записи (без saveLocally / API).
+ */
+function applyInseminationToEntry(entry, data) {
+  if (!entry) throw new Error('Нет записи');
+  var inseminationDate = data.inseminationDate;
+  var attemptNumber = parseInt(data.attemptNumber, 10) || 1;
+  var bull = data.bull || '';
+  var inseminator = data.inseminator || '';
+  var code = data.code || '';
+  if (!entry.inseminationHistory) entry.inseminationHistory = [];
+  entry.inseminationHistory.push({
+    date: inseminationDate,
+    attemptNumber: attemptNumber,
+    bull: bull,
+    inseminator: inseminator,
+    code: code
+  });
+  entry.inseminationDate = inseminationDate;
+  entry.attemptNumber = attemptNumber;
+  entry.bull = bull;
+  entry.inseminator = inseminator;
+  entry.code = code;
+  entry.status = 'Осеменена';
+  var detailsStr = (inseminationDate ? 'Дата: ' + inseminationDate : '') + (attemptNumber ? ', попытка: ' + attemptNumber : '') + (bull ? ', бык: ' + bull : '') + (inseminator ? ', осеменатор: ' + inseminator : '') + (code ? ', код: ' + code : '');
+  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (typeof _pushHist === 'function') _pushHist(entry, 'Осеменение', detailsStr, { eventType: 'Осеменение', attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
+}
+
+/**
  * Добавляет запись осеменения для существующей коровы
  */
 function addInseminationEntry() {
@@ -175,7 +206,8 @@ function addInseminationEntry() {
   }
 
   // Ищем корову в списке записей
-  const entry = entries.find(e => e.cattleId === cattleId);
+  const list2 = (typeof window !== 'undefined' && window.entries) ? window.entries : entries;
+  const entry = Array.isArray(list2) ? list2.find(e => e.cattleId === cattleId) : null;
   
   if (!entry) {
     if (typeof showToast === 'function') showToast('Корова с таким номером не найдена!', 'error'); else alert('Корова с таким номером не найдена!');
@@ -195,27 +227,12 @@ function addInseminationEntry() {
   const inseminator = document.getElementById('inseminatorInsem')?.value || '';
   const code = document.getElementById('codeInsem')?.value || '';
 
-  // Добавляем в историю осеменений
-  if (!entry.inseminationHistory) entry.inseminationHistory = [];
-  entry.inseminationHistory.push({
-    date: inseminationDate,
-    attemptNumber: attemptNumber,
-    bull: bull,
-    inseminator: inseminator,
-    code: code
-  });
-
-  // Заполняем основные поля осеменения (последнее осеменение)
-  entry.inseminationDate = inseminationDate;
-  entry.attemptNumber = attemptNumber;
-  entry.bull = bull;
-  entry.inseminator = inseminator;
-  entry.code = code;
-  entry.status = 'Осеменена';
-
-  var detailsStr = (inseminationDate ? 'Дата: ' + inseminationDate : '') + (attemptNumber ? ', попытка: ' + attemptNumber : '') + (bull ? ', бык: ' + bull : '') + (inseminator ? ', осеменатор: ' + inseminator : '') + (code ? ', код: ' + code : '');
-  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-  if (typeof _pushHist === 'function') _pushHist(entry, 'Осеменение', detailsStr, { eventType: 'Осеменение', attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
+  try {
+    applyInseminationToEntry(entry, { inseminationDate: inseminationDate, attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
+  } catch (e) {
+    if (typeof showToast === 'function') showToast(e && e.message ? e.message : 'Ошибка', 'error'); else alert(e && e.message ? e.message : 'Ошибка');
+    return;
+  }
 
   // Сохраняем изменения
   try {
@@ -262,6 +279,10 @@ function addInseminationEntry() {
  * Инициализация экрана ввода осеменения при навигации. Заполняет номер коровы из _prefillCattleId.
  */
 function initInseminationScreen() {
+  if (typeof window.initActionBatchInseminationScreen === 'function') {
+    window.initActionBatchInseminationScreen();
+    return;
+  }
   initCattleAutocomplete();
   initInseminationAttemptListeners();
   if (typeof window !== 'undefined' && window._prefillCattleId) {
@@ -312,7 +333,12 @@ document.addEventListener('click', (e) => {
 });
 
 // Экспортируем функции, если используется модульная система
+if (typeof window !== 'undefined') {
+  window.applyInseminationToEntry = applyInseminationToEntry;
+  window.getInseminationAttempt = getInseminationAttempt;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getInseminationAttempt, addInseminationEntry };
+  module.exports = { getInseminationAttempt, addInseminationEntry, applyInseminationToEntry };
 }
 export {};

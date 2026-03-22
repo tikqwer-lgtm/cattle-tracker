@@ -198,7 +198,10 @@ function getDefaultCowEntry() {
     inseminationHistory: [],
     actionHistory: [],
     uziHistory: [],
-    lactationHistory: []
+    lactationHistory: [],
+    parentMother: '',
+    parentFather: '',
+    birthWeight: ''
   };
 }
 

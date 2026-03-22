@@ -213,8 +213,9 @@ function cancelEdit() {
  * Универсальное автодополнение по номеру коровы для экранов Запуск/Отел/Протокол
  * @param {string} inputId - id поля ввода
  * @param {string} listId - id списка подсказок
+ * @param {function(string): void} [onPick] - вызов после выбора коровы из списка
  */
-function setupCattleAutocompleteFor(inputId, listId) {
+function setupCattleAutocompleteFor(inputId, listId, onPick) {
   var input = document.getElementById(inputId);
   var list = document.getElementById(listId);
   if (!input || !list) return;
@@ -239,6 +240,7 @@ function setupCattleAutocompleteFor(inputId, listId) {
       li.addEventListener('click', function () {
         input.value = entry.cattleId;
         list.innerHTML = '';
+        if (typeof onPick === 'function') onPick(entry.cattleId);
       });
       list.appendChild(li);
     });
@@ -276,14 +278,7 @@ function saveDryRunEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
-  entry.dryStartDate = dryStartDate || '';
-  entry.status = entry.status || '';
-  if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
-  if (dryStartDate) {
-    var detailsStr = 'Дата запуска: ' + dryStartDate;
-    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-    if (typeof _pushHist === 'function') _pushHist(entry, 'Запуск в сухостой', detailsStr, { eventType: 'Запуск в сухостой' });
-  }
+  applyDryRunToEntry(entry, dryStartDate);
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -317,32 +312,13 @@ function saveCalvingEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
-  if (calvingDate && typeof validateDateNotFuture === 'function') {
-    var err = validateDateNotFuture(calvingDate, 'Дата отёла');
-    if (err) {
-      if (typeof showToast === 'function') showToast(err, 'error'); else alert(err);
-      return;
-    }
+  try {
+    applyCalvingToEntry(entry, calvingDate);
+  } catch (err) {
+    var msg = err && err.message ? err.message : String(err);
+    if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+    return;
   }
-  if (calvingDate) {
-    if (typeof window.archiveCurrentLactation === 'function') window.archiveCurrentLactation(entry, calvingDate);
-    var prevLact = parseInt(entry.lactation, 10);
-    entry.lactation = (isNaN(prevLact) ? 0 : prevLact) + 1;
-    var detailsStr = 'Дата отёла: ' + calvingDate;
-    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-    if (typeof _pushHist === 'function') _pushHist(entry, 'Отёл', detailsStr, { eventType: 'Отёл' });
-    entry.inseminationDate = '';
-    entry.attemptNumber = 1;
-    entry.bull = '';
-    entry.inseminator = '';
-    entry.code = '';
-    entry.inseminationHistory = [];
-    entry.uziHistory = [];
-    entry.dryStartDate = '';
-    entry.protocol = entry.protocol && typeof entry.protocol === 'object' ? { name: '', startDate: '' } : { name: '', startDate: '' };
-  }
-  entry.calvingDate = calvingDate || '';
-  if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -376,24 +352,18 @@ function saveProtocolAssignEntry() {
     if (typeof showToast === 'function') showToast('Выберите протокол', 'error'); else alert('Выберите протокол');
     return;
   }
-  if (startDate && typeof validateDateNotFuture === 'function') {
-    var errProto = validateDateNotFuture(startDate, 'Дата постановки на протокол');
-    if (errProto) {
-      if (typeof showToast === 'function') showToast(errProto, 'error'); else alert(errProto);
-      return;
-    }
-  }
   var entry = entries.find(function (e) { return e.cattleId === cattleId; });
   if (!entry) {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
-  if (!entry.protocol) entry.protocol = {};
-  entry.protocol.name = protocolName;
-  entry.protocol.startDate = startDate || '';
-  var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
-  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-  if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
+  try {
+    applyProtocolAssignToEntry(entry, protocolName, startDate);
+  } catch (err) {
+    var msgP = err && err.message ? err.message : String(err);
+    if (typeof showToast === 'function') showToast(msgP, 'error'); else alert(msgP);
+    return;
+  }
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
       if (typeof loadLocally === 'function') return loadLocally();
@@ -413,6 +383,10 @@ function saveProtocolAssignEntry() {
 }
 
 function initDryScreen() {
+  if (typeof window.initActionBatchDryScreen === 'function') {
+    window.initActionBatchDryScreen();
+    return;
+  }
   setupCattleAutocompleteFor('cattleIdDryInput', 'cattleIdDryList');
   if (window._prefillCattleId) {
     var el = document.getElementById('cattleIdDryInput');
@@ -423,6 +397,10 @@ function initDryScreen() {
 }
 
 function initCalvingScreen() {
+  if (typeof window.initActionBatchCalvingScreen === 'function') {
+    window.initActionBatchCalvingScreen();
+    return;
+  }
   setupCattleAutocompleteFor('cattleIdCalvingInput', 'cattleIdCalvingList');
   if (window._prefillCattleId) {
     var el = document.getElementById('cattleIdCalvingInput');
@@ -433,6 +411,10 @@ function initCalvingScreen() {
 }
 
 function initProtocolAssignScreen() {
+  if (typeof window.initActionBatchProtocolScreen === 'function') {
+    window.initActionBatchProtocolScreen();
+    return;
+  }
   setupCattleAutocompleteFor('cattleIdProtocolInput', 'cattleIdProtocolList');
   var select = document.getElementById('protocolSelectAssign');
   var getProtocolsFn = typeof window.getProtocols === 'function' ? window.getProtocols : (typeof getProtocols === 'function' ? getProtocols : null);
@@ -476,6 +458,143 @@ function getLastInseminationDateBefore(entry, beforeDate) {
   return dates.reduce(function (a, b) { return a > b ? a : b; });
 }
 
+/**
+ * Последняя запись осеменения строго до даты (для «Родитель О» при отёле).
+ * @returns {{ date: string, bull: string }|null}
+ */
+function getLastInseminationRecordBefore(entry, beforeDate) {
+  if (!entry || !beforeDate) return null;
+  var best = null;
+  if (entry.inseminationHistory && entry.inseminationHistory.length) {
+    entry.inseminationHistory.forEach(function (h) {
+      if (!h || !h.date || String(h.date) >= String(beforeDate)) return;
+      if (!best || String(h.date) > String(best.date)) best = { date: h.date, bull: (h.bull || '').toString() };
+    });
+  }
+  if (!best && entry.inseminationDate && String(entry.inseminationDate) < String(beforeDate)) {
+    best = { date: entry.inseminationDate, bull: (entry.bull || '').toString() };
+  }
+  return best;
+}
+
+/**
+ * Применяет УЗИ к записи (без сохранения на диск / API).
+ * @returns {{ eventTypeUzi: string, detailsStr: string }}
+ */
+function applyUziToEntry(entry, payload) {
+  var uziDate = payload.uziDate;
+  var result = payload.result;
+  var specialist = (payload.specialist || '').trim();
+  var daysFromInsemination = payload.daysFromInsemination;
+  if (!entry) throw new Error('Нет записи');
+  if (!uziDate || !result) throw new Error('Нет даты или результата УЗИ');
+  if (uziDate && typeof validateDateNotFuture === 'function') {
+    var errUziVal = validateDateNotFuture(uziDate, 'Дата УЗИ');
+    if (errUziVal) throw new Error(errUziVal);
+  }
+  if (!entry.uziHistory) entry.uziHistory = [];
+  var statusBefore = (entry.status || '').toString();
+  var eventTypeUzi = (statusBefore.indexOf('Осеменен') !== -1) ? 'УЗИ1' : (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ');
+  var lastInsem = getLastInseminationDateBefore(entry, uziDate);
+  var daysNum = null;
+  if (daysFromInsemination != null && !isNaN(daysFromInsemination)) daysNum = daysFromInsemination;
+  else if (lastInsem) {
+    var d1 = new Date(lastInsem);
+    var d2 = new Date(uziDate);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) daysNum = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+  }
+  entry.uziHistory.push({
+    date: uziDate,
+    result: result,
+    specialist: specialist,
+    daysFromInsemination: daysNum
+  });
+  if (result === 'Стельная') entry.status = 'Стельная';
+  if (result === 'Не стельная') entry.status = 'Холостая';
+  var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
+  var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
+  if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
+  var pushHistFn = (typeof window !== 'undefined' && window.pushActionHistory) ? window.pushActionHistory : (typeof pushActionHistory === 'function' ? pushActionHistory : null);
+  if (pushHistFn) pushHistFn(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+  return { eventTypeUzi: eventTypeUzi, detailsStr: detailsStr };
+}
+
+function applyDryRunToEntry(entry, dryStartDate) {
+  if (!entry) throw new Error('Нет записи');
+  entry.dryStartDate = dryStartDate || '';
+  entry.status = entry.status || '';
+  if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
+  if (dryStartDate) {
+    var detailsStr = 'Дата запуска: ' + dryStartDate;
+    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+    if (typeof _pushHist === 'function') _pushHist(entry, 'Запуск в сухостой', detailsStr, { eventType: 'Запуск в сухостой' });
+  }
+}
+
+function applyCalvingToEntry(entry, calvingDate) {
+  if (!entry) throw new Error('Нет записи');
+  if (calvingDate && typeof validateDateNotFuture === 'function') {
+    var err = validateDateNotFuture(calvingDate, 'Дата отёла');
+    if (err) throw new Error(err);
+  }
+  if (calvingDate) {
+    if (typeof window.archiveCurrentLactation === 'function') window.archiveCurrentLactation(entry, calvingDate);
+    var prevLact = parseInt(entry.lactation, 10);
+    entry.lactation = (isNaN(prevLact) ? 0 : prevLact) + 1;
+    var detailsStr = 'Дата отёла: ' + calvingDate;
+    var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+    if (typeof _pushHist === 'function') _pushHist(entry, 'Отёл', detailsStr, { eventType: 'Отёл' });
+    entry.inseminationDate = '';
+    entry.attemptNumber = 1;
+    entry.bull = '';
+    entry.inseminator = '';
+    entry.code = '';
+    entry.inseminationHistory = [];
+    entry.uziHistory = [];
+    entry.dryStartDate = '';
+    entry.protocol = entry.protocol && typeof entry.protocol === 'object' ? { name: '', startDate: '' } : { name: '', startDate: '' };
+  }
+  entry.calvingDate = calvingDate || '';
+  if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
+}
+
+function applyProtocolAssignToEntry(entry, protocolName, startDate) {
+  if (!entry) throw new Error('Нет записи');
+  if (!protocolName) throw new Error('Не выбран протокол');
+  if (startDate && typeof validateDateNotFuture === 'function') {
+    var errProto = validateDateNotFuture(startDate, 'Дата постановки на протокол');
+    if (errProto) throw new Error(errProto);
+  }
+  if (!entry.protocol) entry.protocol = {};
+  entry.protocol.name = protocolName;
+  entry.protocol.startDate = startDate || '';
+  var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
+  var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
+}
+
+/**
+ * Создаёт объект записи телёнка (ещё не в массиве entries).
+ */
+function buildCalfEntryFromCalving(motherId, calvingDate, calfId, calfSex, calfWeight, fatherBull) {
+  var def = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : {};
+  def.cattleId = String(calfId).trim();
+  def.birthDate = calvingDate || '';
+  def.status = (calfSex === 'Бык' || calfSex === 'бык') ? 'Бык' : 'Телка';
+  def.parentMother = String(motherId).trim();
+  def.parentFather = (fatherBull || '').toString();
+  def.birthWeight = calfWeight != null && calfWeight !== '' ? String(calfWeight).trim() : '';
+  def.lactation = '';
+  def.nickname = '';
+  def.calvingDate = '';
+  def.inseminationDate = '';
+  def.inseminationHistory = [];
+  def.uziHistory = [];
+  def.synced = false;
+  if (typeof window.nowFormatted === 'function') def.dateAdded = window.nowFormatted();
+  return def;
+}
+
 function updateUziDaysFromInsemination() {
   var cattleIdEl = document.getElementById('cattleIdUziInput');
   var dateEl = document.getElementById('uziDateInput');
@@ -507,6 +626,10 @@ function updateUziDaysFromInsemination() {
 }
 
 function initUziScreen() {
+  if (typeof window.initActionBatchUziScreen === 'function') {
+    window.initActionBatchUziScreen();
+    return;
+  }
   setupCattleAutocompleteFor('cattleIdUziInput', 'cattleIdUziList');
   if (window._prefillCattleId) {
     var el = document.getElementById('cattleIdUziInput');
@@ -565,32 +688,21 @@ function saveUziEntry() {
     return;
   }
 
-  if (!entry.uziHistory) entry.uziHistory = [];
-  var statusBefore = (entry.status || '').toString();
-  var eventTypeUzi = (statusBefore.indexOf('Осеменен') !== -1) ? 'УЗИ1' : (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ');
-  var lastInsem = getLastInseminationDateBefore(entry, uziDate);
-  var daysNum = null;
-  if (daysFromInsemination != null && !isNaN(daysFromInsemination)) daysNum = daysFromInsemination;
-  else if (lastInsem) {
-    var d1 = new Date(lastInsem);
-    var d2 = new Date(uziDate);
-    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) daysNum = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+  var applied;
+  try {
+    applied = applyUziToEntry(entry, {
+      uziDate: uziDate,
+      result: result,
+      specialist: specialist,
+      daysFromInsemination: daysFromInsemination
+    });
+  } catch (errApply) {
+    if (typeof showToast === 'function') showToast(errApply && errApply.message ? errApply.message : 'Ошибка', 'error'); else alert(errApply && errApply.message ? errApply.message : 'Ошибка');
+    return;
   }
-  entry.uziHistory.push({
-    date: uziDate,
-    result: result,
-    specialist: specialist,
-    daysFromInsemination: daysNum
-  });
-
-  if (result === 'Стельная') entry.status = 'Стельная';
-  if (result === 'Не стельная') entry.status = 'Холостая';
-
-  var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
-  var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
-  if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
+  var eventTypeUzi = applied.eventTypeUzi;
+  var detailsStr = applied.detailsStr;
   var pushHistFn = (typeof window !== 'undefined' && window.pushActionHistory) ? window.pushActionHistory : (typeof pushActionHistory === 'function' ? pushActionHistory : null);
-  if (pushHistFn) pushHistFn(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
 
   if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
     window.updateEntryViaApi(cattleId, entry).then(function () {
@@ -627,6 +739,14 @@ if (typeof window !== 'undefined') {
   window.saveCalvingEntry = saveCalvingEntry;
   window.saveDryRunEntry = saveDryRunEntry;
   window.saveProtocolAssignEntry = saveProtocolAssignEntry;
+  window.applyUziToEntry = applyUziToEntry;
+  window.applyDryRunToEntry = applyDryRunToEntry;
+  window.applyCalvingToEntry = applyCalvingToEntry;
+  window.applyProtocolAssignToEntry = applyProtocolAssignToEntry;
+  window.getLastInseminationRecordBefore = getLastInseminationRecordBefore;
+  window.getLastInseminationDateBefore = getLastInseminationDateBefore;
+  window.setupCattleAutocompleteFor = setupCattleAutocompleteFor;
+  window.buildCalfEntryFromCalving = buildCalfEntryFromCalving;
   window.initUziScreen = initUziScreen;
   window.initDryScreen = initDryScreen;
   window.initCalvingScreen = initCalvingScreen;
