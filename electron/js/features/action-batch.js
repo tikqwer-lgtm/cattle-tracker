@@ -685,22 +685,41 @@
     insemDraft = [];
     var dateEl = document.getElementById('inseminationDateInsem');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
+    // Как на экране УЗИ: сначала автодополнение по номеру, затем протоколы для «Код осеменения»
+    if (typeof window.setupCattleAutocompleteFor === 'function') {
+      window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
+    }
+    if (window._prefillCattleId) {
+      var aPre = document.getElementById('inseminationBatchAddInput');
+      if (aPre) aPre.value = window._prefillCattleId;
+      delete window._prefillCattleId;
+    }
+    function focusInseminationNumberField() {
+      var focusAdd = document.getElementById('inseminationBatchAddInput');
+      var screen = document.getElementById('insemination-screen');
+      if (!focusAdd || !screen || !screen.classList.contains('active')) return;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          try {
+            focusAdd.focus({ preventScroll: false });
+            focusAdd.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+          } catch (e) {
+            try {
+              focusAdd.focus();
+            } catch (e2) {}
+          }
+        });
+      });
+    }
     function afterProtocols() {
       if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
       if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
+      focusInseminationNumberField();
     }
     if (typeof window.ensureProtocolsLoaded === 'function') {
       window.ensureProtocolsLoaded(afterProtocols);
     } else {
       afterProtocols();
-    }
-    if (typeof window.setupCattleAutocompleteFor === 'function') {
-      window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
-    }
-    if (window._prefillCattleId) {
-      var a = document.getElementById('inseminationBatchAddInput');
-      if (a) a.value = window._prefillCattleId;
-      delete window._prefillCattleId;
     }
     bindOnce(document.getElementById('inseminationBatchSaveBtn'), 'click', saveInsemBatch);
     renderInsemDraft();

@@ -75,6 +75,14 @@ if (useApi) {
         }
         if (typeof window.updateList === 'function') window.updateList();
         return window.entries;
+      }).then(function () {
+        // Протоколы для «Код осеменения» без предварительного захода в «Протоколы синхронизации»
+        if (typeof window.ensureProtocolsLoaded === 'function') {
+          try {
+            window.ensureProtocolsLoaded(function () {});
+          } catch (e) {}
+        }
+        return window.entries;
       }).catch(function (err) {
         console.error('Ошибка загрузки записей с API:', err);
         if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }

@@ -340,6 +340,8 @@
   padding: 10px 15px;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(61, 110, 181, 0.15);
 }
 
 .autocomplete-list li:hover {

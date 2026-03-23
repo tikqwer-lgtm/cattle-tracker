@@ -145,6 +145,21 @@ function addEntry() {
 }
 
 /**
+ * Глубокая копия записи при редактировании из карточки (сохраняет actionHistory, inseminationHistory и т.д.).
+ */
+function cloneEntryForEdit(prev) {
+  if (!prev || typeof prev !== 'object') return null;
+  try {
+    if (typeof structuredClone === 'function') return structuredClone(prev);
+  } catch (e) {}
+  try {
+    return JSON.parse(JSON.stringify(prev));
+  } catch (e2) {
+    return null;
+  }
+}
+
+/**
  * Сохранение текущей записи (редактирование или новая)
  */
 function saveCurrentEntry() {
@@ -167,11 +182,47 @@ function saveCurrentEntry() {
       return;
     }
   }
-  var entry = getDefaultCowEntry();
+  var prev = window.currentEditingId
+    ? entries.find(function (e) { return e.cattleId === window.currentEditingId; })
+    : null;
+  var entry;
+  if (prev) {
+    entry = cloneEntryForEdit(prev);
+    if (!entry) entry = getDefaultCowEntry();
+  } else {
+    entry = getDefaultCowEntry();
+  }
   fillCowEntryFromForm(entry);
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
+  }
+  // Первый ввод отёла / запуска / протокола из формы карточки — записать в «История» и в общий список событий
+  if (prev) {
+    if (!prev.calvingDate && entry.calvingDate && typeof window.applyCalvingToEntry === 'function') {
+      try {
+        window.applyCalvingToEntry(entry, entry.calvingDate);
+      } catch (err) {
+        var msg = err && err.message ? err.message : String(err);
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+        return;
+      }
+    } else if (!prev.dryStartDate && entry.dryStartDate && typeof window.applyDryRunToEntry === 'function') {
+      window.applyDryRunToEntry(entry, entry.dryStartDate);
+    }
+    var prevPn = ((prev.protocol && prev.protocol.name) || '').trim();
+    var entryPn = ((entry.protocol && entry.protocol.name) || '').trim();
+    var prevSd = ((prev.protocol && prev.protocol.startDate) || '').trim();
+    var entrySd = ((entry.protocol && entry.protocol.startDate) || '').trim();
+    if (entryPn && (prevPn !== entryPn || prevSd !== entrySd) && typeof window.applyProtocolAssignToEntry === 'function') {
+      try {
+        window.applyProtocolAssignToEntry(entry, entryPn, entrySd);
+      } catch (errP) {
+        var msgP = errP && errP.message ? errP.message : String(errP);
+        if (typeof showToast === 'function') showToast(msgP, 'error'); else alert(msgP);
+        return;
+      }
+    }
   }
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
   var wasEditingFromCard = !!window.currentEditingId;

@@ -193,7 +193,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      backgroundThrottling: false
     },
     title: 'Учёт коров',
     icon: path.join(isDev ? rootDir : __dirname, 'favicon.ico')

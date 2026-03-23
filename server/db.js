@@ -129,6 +129,7 @@ function initSchema() {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");
   }
   migrateEntriesMetaColumns();
+  migrateEntriesHistoryJsonColumns();
   migrateObjectsCreatedBy();
   saveDb();
 }
@@ -166,15 +167,47 @@ function migrateEntriesMetaColumns() {
   }
 }
 
+/** История действий, УЗИ и архив лактаций (клиент pushActionHistory / API). */
+function migrateEntriesHistoryJsonColumns() {
+  const info = allSql('PRAGMA table_info(entries)');
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  const add = [
+    ['action_history_json', 'ALTER TABLE entries ADD COLUMN action_history_json TEXT'],
+    ['uzi_history_json', 'ALTER TABLE entries ADD COLUMN uzi_history_json TEXT'],
+    ['lactation_history_json', 'ALTER TABLE entries ADD COLUMN lactation_history_json TEXT']
+  ];
+  for (let i = 0; i < add.length; i++) {
+    if (names.indexOf(add[i][0]) === -1) {
+      try {
+        runSql(add[i][1]);
+      } catch (e) {
+        if (!/duplicate column/i.test(e.message)) console.error('migrate ' + add[i][0] + ':', e.message);
+      }
+    }
+  }
+}
+
 function rowToEntry(row) {
   if (!row) return null;
   let protocol = { name: '', startDate: '' };
   let inseminationHistory = [];
+  let actionHistory = [];
+  let uziHistory = [];
+  let lactationHistory = [];
   try {
     if (row.protocol_json) protocol = JSON.parse(row.protocol_json);
   } catch (_) {}
   try {
     if (row.insemination_history_json) inseminationHistory = JSON.parse(row.insemination_history_json);
+  } catch (_) {}
+  try {
+    if (row.action_history_json) actionHistory = JSON.parse(row.action_history_json);
+  } catch (_) {}
+  try {
+    if (row.uzi_history_json) uziHistory = JSON.parse(row.uzi_history_json);
+  } catch (_) {}
+  try {
+    if (row.lactation_history_json) lactationHistory = JSON.parse(row.lactation_history_json);
   } catch (_) {}
   return {
     cattleId: row.cattle_id,
@@ -199,7 +232,10 @@ function rowToEntry(row) {
     userId: row.user_id || '',
     lastModifiedBy: row.last_modified_by || '',
     updatedAt: row.updated_at || '',
-    inseminationHistory: Array.isArray(inseminationHistory) ? inseminationHistory : []
+    inseminationHistory: Array.isArray(inseminationHistory) ? inseminationHistory : [],
+    actionHistory: Array.isArray(actionHistory) ? actionHistory : [],
+    uziHistory: Array.isArray(uziHistory) ? uziHistory : [],
+    lactationHistory: Array.isArray(lactationHistory) ? lactationHistory : []
   };
 }
 
@@ -227,7 +263,10 @@ function entryToRow(entry, objectId) {
     synced: entry.synced ? 1 : 0,
     user_id: entry.userId || '',
     last_modified_by: entry.lastModifiedBy || '',
-    insemination_history_json: JSON.stringify(entry.inseminationHistory || [])
+    insemination_history_json: JSON.stringify(entry.inseminationHistory || []),
+    action_history_json: JSON.stringify(entry.actionHistory || []),
+    uzi_history_json: JSON.stringify(entry.uziHistory || []),
+    lactation_history_json: JSON.stringify(entry.lactationHistory || [])
   };
 }
 
@@ -410,13 +449,13 @@ function createEntry(entry, objectId) {
       object_id, cattle_id, nickname, "group", birth_date, lactation, calving_date,
       insemination_date, attempt_number, bull, inseminator, code, status, exit_date,
       dry_start_date, vwp, note, protocol_json, date_added, synced, user_id, last_modified_by,
-      insemination_history_json, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      insemination_history_json, action_history_json, uzi_history_json, lactation_history_json, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     [
       r.object_id, r.cattle_id, r.nickname, r.group, r.birth_date, r.lactation, r.calving_date,
       r.insemination_date, r.attempt_number, r.bull, r.inseminator, r.code, r.status, r.exit_date,
       r.dry_start_date, r.vwp, r.note, r.protocol_json, r.date_added, r.synced, r.user_id, r.last_modified_by,
-      r.insemination_history_json
+      r.insemination_history_json, r.action_history_json, r.uzi_history_json, r.lactation_history_json
     ]
   );
   saveDb();
@@ -430,6 +469,7 @@ function updateEntry(objectId, cattleId, entry) {
       insemination_date = ?, attempt_number = ?, bull = ?, inseminator = ?, code = ?, status = ?,
       exit_date = ?, dry_start_date = ?, vwp = ?, note = ?, protocol_json = ?, date_added = ?,
       synced = ?, user_id = ?, last_modified_by = ?, insemination_history_json = ?,
+      action_history_json = ?, uzi_history_json = ?, lactation_history_json = ?,
       updated_at = datetime('now')
     WHERE object_id = ? AND cattle_id = ?`,
     [
@@ -437,6 +477,7 @@ function updateEntry(objectId, cattleId, entry) {
       r.insemination_date, r.attempt_number, r.bull, r.inseminator, r.code, r.status,
       r.exit_date, r.dry_start_date, r.vwp, r.note, r.protocol_json, r.date_added,
       r.synced, r.user_id, r.last_modified_by, r.insemination_history_json,
+      r.action_history_json, r.uzi_history_json, r.lactation_history_json,
       objectId, cattleId
     ]
   );

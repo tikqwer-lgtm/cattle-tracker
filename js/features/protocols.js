@@ -37,18 +37,37 @@ function getProtocols() {
  * В локальном режиме сразу вызывает callback. Используется при открытии экрана «Поставить на протокол».
  * @param {function()} callback
  */
+/**
+ * Дублирует кэш протоколов в localStorage (режим API), чтобы «Код осеменения»
+ * и офлайн-запас имели данные без ручного «Сохранить» в списке протоколов.
+ */
+function persistProtocolsCacheToLocalStorage() {
+  if (!useApi()) return;
+  try {
+    localStorage.setItem(PROTOCOLS_STORAGE_KEY, JSON.stringify(Array.isArray(_protocolsCache) ? _protocolsCache : []));
+  } catch (e) {}
+}
+
 function ensureProtocolsLoaded(callback) {
   if (!callback || typeof callback !== 'function') return;
   if (!useApi()) {
+    notifyInseminationCodeSelects();
     callback();
     return;
   }
+  // Пока ждём ответ сервера — показать последние сохранённые локально протоколы
+  var local = getProtocolsFromLocalStorage();
+  if (local.length && (!_protocolsCache || !_protocolsCache.length)) {
+    _protocolsCache = local.slice();
+    notifyInseminationCodeSelects();
+  }
   window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
     _protocolsCache = (list || []).slice();
+    persistProtocolsCacheToLocalStorage();
     notifyInseminationCodeSelects();
     callback();
   }).catch(function () {
-    _protocolsCache = [];
+    _protocolsCache = getProtocolsFromLocalStorage().slice();
     notifyInseminationCodeSelects();
     callback();
   });
@@ -63,11 +82,17 @@ function saveProtocols(arr) {
   notifyInseminationCodeSelects();
 }
 
+var _notifyInsemCodeTimer = null;
 /** Обновить списки «Код осеменения» после изменения протоколов (локально и через API). */
 function notifyInseminationCodeSelects() {
-  if (typeof window !== 'undefined' && typeof window.fillAllInseminationCodeSelects === 'function') {
-    try { window.fillAllInseminationCodeSelects(); } catch (e) {}
-  }
+  if (typeof window === 'undefined' || typeof window.fillAllInseminationCodeSelects !== 'function') return;
+  if (_notifyInsemCodeTimer) clearTimeout(_notifyInsemCodeTimer);
+  _notifyInsemCodeTimer = setTimeout(function () {
+    _notifyInsemCodeTimer = null;
+    try {
+      window.fillAllInseminationCodeSelects();
+    } catch (e) {}
+  }, 200);
 }
 
 /**
@@ -111,6 +136,7 @@ function addProtocol(protocol) {
     var item = { id: nextProtocolId(), name: name, steps: steps };
     return window.CattleTrackerApi.createProtocol(objectId, item).then(function (created) {
       _protocolsCache.push(created);
+      persistProtocolsCacheToLocalStorage();
       notifyInseminationCodeSelects();
       return created;
     });
@@ -146,6 +172,7 @@ function updateProtocol(id, protocol) {
           break;
         }
       }
+      persistProtocolsCacheToLocalStorage();
       notifyInseminationCodeSelects();
       return updated;
     });
@@ -171,6 +198,7 @@ function deleteProtocol(id) {
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteProtocol(objectId, id).then(function () {
       _protocolsCache = _protocolsCache.filter(function (p) { return p.id !== id; });
+      persistProtocolsCacheToLocalStorage();
       notifyInseminationCodeSelects();
     });
   }
@@ -189,10 +217,11 @@ function renderProtocolsScreen(containerId) {
   if (useApi()) {
     window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
       _protocolsCache = (list || []).slice();
+      persistProtocolsCacheToLocalStorage();
       notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     }).catch(function () {
-      _protocolsCache = [];
+      _protocolsCache = getProtocolsFromLocalStorage().slice();
       notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     });
@@ -382,11 +411,33 @@ function renderProtocolStepsList(steps) {
   });
 }
 /**
+ * Имена протоколов для «Код осеменения»: кэш/API + localStorage без дубликатов.
+ */
+function collectProtocolNamesForInseminationCode() {
+  var seen = Object.create(null);
+  var out = [];
+  function addList(arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(function (p) {
+      var name = (p && (p.name || p.id)) ? String(p.name || p.id).trim() : '';
+      if (!name || name === 'Охота' || name === 'Датчик' || seen[name]) return;
+      seen[name] = true;
+      out.push(name);
+    });
+  }
+  addList(getProtocols());
+  addList(getProtocolsFromLocalStorage());
+  out.sort(function (a, b) { return a.localeCompare(b, 'ru'); });
+  return out;
+}
+
+/**
  * Заполнение списков «Код осеменения» (пакетный экран и карточка коровы).
  * Живёт здесь, чтобы всегда использовать актуальный getProtocols().
  */
 function fillOneInseminationCodeSelect(sel, preserveValue) {
   if (!sel || sel.tagName !== 'SELECT') return;
+  var ae = document.activeElement;
   var current = preserveValue !== undefined ? preserveValue : sel.value;
   sel.innerHTML = '';
   var optEmpty = document.createElement('option');
@@ -401,15 +452,26 @@ function fillOneInseminationCodeSelect(sel, preserveValue) {
   }
   addOpt('Охота', 'Охота');
   addOpt('Датчик', 'Датчик');
-  var list = getProtocols();
-  if (!Array.isArray(list)) list = [];
-  list.forEach(function (p) {
-    var name = (p && (p.name || p.id)) ? String(p.name || p.id).trim() : '';
-    if (!name || name === 'Охота' || name === 'Датчик') return;
+  collectProtocolNamesForInseminationCode().forEach(function (name) {
     addOpt(name, name);
   });
   if (current && Array.prototype.some.call(sel.options, function (o) { return o.value === current; })) {
     sel.value = current;
+  }
+  if (ae && ae !== sel && ae.isConnected && typeof ae.focus === 'function') {
+    var el = ae;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (!el || !el.isConnected) return;
+        try {
+          el.focus({ preventScroll: true });
+        } catch (e) {
+          try {
+            el.focus();
+          } catch (e2) {}
+        }
+      });
+    });
   }
 }
 

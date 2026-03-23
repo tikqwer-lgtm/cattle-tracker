@@ -212,6 +212,45 @@ function cancelEdit() {
 }
 
 /**
+ * Один общий capture-обработчик на document вместо множества (иначе в Electron со временем
+ * клики/фокус начинают вести себя нестабильно).
+ */
+var _cattleAutocompleteRegistry = [];
+var _cattleAutocompleteDocBound = false;
+
+function _cattleAutocompleteOnDocumentClick(e) {
+  for (var i = _cattleAutocompleteRegistry.length - 1; i >= 0; i--) {
+    var reg = _cattleAutocompleteRegistry[i];
+    if (!reg.input || !reg.input.isConnected) {
+      _cattleAutocompleteRegistry.splice(i, 1);
+      continue;
+    }
+    var outer = reg.outer || reg.wrap;
+    if (outer && outer.contains(e.target)) continue;
+    reg.closeList();
+  }
+}
+
+function unregisterCattleAutocompleteInput(input) {
+  if (!input) return;
+  for (var i = _cattleAutocompleteRegistry.length - 1; i >= 0; i--) {
+    if (_cattleAutocompleteRegistry[i].input === input) {
+      _cattleAutocompleteRegistry.splice(i, 1);
+    }
+  }
+}
+
+function registerCattleAutocomplete(reg) {
+  if (!_cattleAutocompleteDocBound) {
+    // Всплытие (false), не capture — в Electron capture на document иногда ломает фокус/клики по полю и списку
+    document.addEventListener('click', _cattleAutocompleteOnDocumentClick, false);
+    _cattleAutocompleteDocBound = true;
+  }
+  unregisterCattleAutocompleteInput(reg.input);
+  _cattleAutocompleteRegistry.push(reg);
+}
+
+/**
  * Универсальное автодополнение по номеру коровы для экранов Запуск/Отел/Протокол
  * @param {string} inputId - id поля ввода
  * @param {string} listId - id списка подсказок
@@ -221,9 +260,51 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   var input = document.getElementById(inputId);
   var list = document.getElementById(listId);
   if (!input || !list) return;
+  var wrap = input.closest('.autocomplete') || input.parentElement;
+  var outer = input.closest('.action-batch-add-block') || input.closest('.autocomplete') || wrap;
   function getEntries() {
     if (typeof window !== 'undefined' && window.entries && Array.isArray(window.entries)) return window.entries;
     return [];
+  }
+  function closeList() {
+    list.innerHTML = '';
+  }
+  function pickEntry(entry) {
+    input.value = entry.cattleId;
+    closeList();
+    if (typeof onPick === 'function') onPick(entry.cattleId);
+  }
+  function tryPickFromTypedValue(e) {
+    if (e.key !== 'Enter') return;
+    if (e.isComposing || e.keyCode === 229) return;
+    var v = (input.value || '').trim();
+    if (!v) return;
+    var source = getEntries();
+    var exact = null;
+    for (var i = 0; i < source.length; i++) {
+      if (String(source[i].cattleId || '').trim() === v) {
+        exact = source[i];
+        break;
+      }
+    }
+    if (exact) {
+      e.preventDefault();
+      pickEntry(exact);
+      return;
+    }
+    var lv = v.toLowerCase();
+    var matching = source
+      .filter(function (ent) {
+        return (
+          (ent.cattleId && ent.cattleId.toLowerCase().indexOf(lv) !== -1) ||
+          (ent.nickname && ent.nickname.toLowerCase().indexOf(lv) !== -1)
+        );
+      })
+      .slice(0, 10);
+    if (matching.length === 1) {
+      e.preventDefault();
+      pickEntry(matching[0]);
+    }
   }
   function populate() {
     list.innerHTML = '';
@@ -232,38 +313,64 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     var matching = filter
       ? source.filter(function (e) {
           return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
-            (e.nickname && e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
+            (e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
         }).slice(0, 10)
       : source.slice(0, 10);
     matching.forEach(function (entry) {
       var li = document.createElement('li');
       li.textContent = entry.cattleId + (entry.nickname ? ' (' + entry.nickname + ')' : '');
       li.dataset.value = entry.cattleId;
-      li.addEventListener('pointerdown', function (e) {
+      li.setAttribute('role', 'option');
+      li.tabIndex = 0;
+      // Как в типичном datalist: mousedown preventDefault — поле не теряет фокус до выбора; выбор по click.
+      li.addEventListener('mousedown', function (e) {
         e.preventDefault();
-        input.value = entry.cattleId;
-        list.innerHTML = '';
-        if (typeof onPick === 'function') onPick(entry.cattleId);
+      });
+      li.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        pickEntry(entry);
+      });
+      li.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          pickEntry(entry);
+        }
       });
       list.appendChild(li);
     });
   }
   input.removeEventListener('input', input._cattleAutocompleteInput);
+  input.removeEventListener('keydown', input._cattleAutocompleteKeydown);
   input.removeEventListener('focus', input._cattleAutocompleteFocus);
+  if (input._cattleAutocompleteComposition) {
+    input.removeEventListener('compositionend', input._cattleAutocompleteComposition);
+    input._cattleAutocompleteComposition = null;
+  }
+  if (input._cattleAutocompleteEntriesCb && typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.off === 'function') {
+    window.CattleTrackerEvents.off('entries:updated', input._cattleAutocompleteEntriesCb);
+    input._cattleAutocompleteEntriesCb = null;
+  }
+  unregisterCattleAutocompleteInput(input);
   input._cattleAutocompleteInput = populate;
   input.addEventListener('input', populate);
+  input._cattleAutocompleteKeydown = tryPickFromTypedValue;
+  input.addEventListener('keydown', input._cattleAutocompleteKeydown);
+  input._cattleAutocompleteComposition = function () {
+    populate();
+  };
+  input.addEventListener('compositionend', input._cattleAutocompleteComposition);
   input._cattleAutocompleteFocus = function () {
     populate();
   };
   input.addEventListener('focus', input._cattleAutocompleteFocus);
-  input.addEventListener('blur', function () {
-    setTimeout(function () {
-      list.innerHTML = '';
-    }, 280);
-  });
-  list.addEventListener('mousedown', function (e) {
-    e.preventDefault();
-  });
+  input._cattleAutocompleteEntriesCb = function () {
+    if (document.activeElement === input) populate();
+  };
+  if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {
+    window.CattleTrackerEvents.on('entries:updated', input._cattleAutocompleteEntriesCb);
+  }
+  registerCattleAutocomplete({ input: input, wrap: wrap, outer: outer, closeList: closeList });
 }
 
 /**
