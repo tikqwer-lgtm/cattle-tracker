@@ -63,6 +63,92 @@ function hasBinaryChars(str) {
   return hasControlChars || hasGarbage;
 }
 
+function hasActionEvent(entry, eventType, needle) {
+  var hist = entry && Array.isArray(entry.actionHistory) ? entry.actionHistory : [];
+  for (var i = 0; i < hist.length; i++) {
+    var item = hist[i] || {};
+    var itemType = (item.eventType || item.action || '').toString();
+    var details = (item.details || '').toString();
+    if (itemType !== eventType) continue;
+    if (!needle || details.indexOf(needle) !== -1) return true;
+  }
+  return false;
+}
+
+function pushRecoveredAction(entry, eventType, details) {
+  if (!entry.actionHistory) entry.actionHistory = [];
+  entry.actionHistory.push({
+    dateTime: typeof window.nowFormatted === 'function' ? window.nowFormatted() : new Date().toISOString(),
+    userName: 'Система',
+    action: eventType,
+    eventType: eventType,
+    details: details + ' (восстановлено)'
+  });
+}
+
+function backfillMissingActionHistory(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (!Array.isArray(entry.actionHistory)) entry.actionHistory = [];
+  var changed = false;
+
+  if (entry.dryStartDate) {
+    var dryNeedle = 'Дата запуска: ' + entry.dryStartDate;
+    if (!hasActionEvent(entry, 'Запуск в сухостой', dryNeedle)) {
+      pushRecoveredAction(entry, 'Запуск в сухостой', dryNeedle);
+      changed = true;
+    }
+  }
+
+  if (entry.calvingDate) {
+    var calvingNeedle = 'Дата отёла: ' + entry.calvingDate;
+    if (!hasActionEvent(entry, 'Отёл', calvingNeedle)) {
+      pushRecoveredAction(entry, 'Отёл', calvingNeedle);
+      changed = true;
+    }
+  }
+
+  var protocolName = entry.protocol && entry.protocol.name ? String(entry.protocol.name).trim() : '';
+  var protocolStartDate = entry.protocol && entry.protocol.startDate ? String(entry.protocol.startDate).trim() : '';
+  if (protocolName) {
+    var protocolNeedle = 'Протокол: ' + protocolName + (protocolStartDate ? ', начало: ' + protocolStartDate : '');
+    if (!hasActionEvent(entry, 'Постановка на протокол', protocolNeedle)) {
+      pushRecoveredAction(entry, 'Постановка на протокол', protocolNeedle);
+      changed = true;
+    }
+  }
+
+  var insems = Array.isArray(entry.inseminationHistory) ? entry.inseminationHistory : [];
+  insems.forEach(function (h) {
+    if (!h || !h.date) return;
+    var insemNeedle = 'Дата: ' + h.date;
+    if (hasActionEvent(entry, 'Осеменение', insemNeedle)) return;
+    var details = insemNeedle +
+      (h.attemptNumber ? ', попытка: ' + h.attemptNumber : '') +
+      (h.bull ? ', бык: ' + h.bull : '') +
+      (h.inseminator ? ', осеменатор: ' + h.inseminator : '') +
+      (h.code ? ', код: ' + h.code : '');
+    pushRecoveredAction(entry, 'Осеменение', details);
+    changed = true;
+  });
+
+  var uzis = Array.isArray(entry.uziHistory) ? entry.uziHistory : [];
+  uzis.forEach(function (u, idx) {
+    if (!u || !u.date) return;
+    var uziType = (idx === 0 && u.result === 'Стельная') ? 'УЗИ1' : (idx > 0 && u.result === 'Стельная' ? 'УЗИ2' : 'УЗИ');
+    var uziNeedle = 'Дата: ' + u.date;
+    if (hasActionEvent(entry, uziType, uziNeedle) || hasActionEvent(entry, 'УЗИ', uziNeedle)) return;
+    var uziDetails = uziNeedle + ', ' + (u.result || '—') + (u.specialist ? ', специалист: ' + u.specialist : '');
+    if (u.daysFromInsemination !== undefined && u.daysFromInsemination !== null && u.daysFromInsemination !== '') {
+      uziDetails += ', дней от осеменения: ' + u.daysFromInsemination;
+    }
+    pushRecoveredAction(entry, uziType, uziDetails);
+    changed = true;
+  });
+
+  if (changed) entry.synced = false;
+  return changed;
+}
+
 /**
  * Проверяет, содержит ли запись бинарные символы в любом поле
  */
@@ -139,6 +225,7 @@ function loadLocally() {
       if (!entry.uziHistory) entry.uziHistory = [];
       if (entry.lactationHistory === undefined) entry.lactationHistory = [];
       if (entry.group === undefined) entry.group = '';
+      if (backfillMissingActionHistory(entry)) migrated = true;
     }
 
     if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(cleanedEntries); else { window.entries.length = 0; cleanedEntries.forEach(function (e) { window.entries.push(e); }); }

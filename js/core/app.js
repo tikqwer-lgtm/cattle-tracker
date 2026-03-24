@@ -159,6 +159,14 @@ function cloneEntryForEdit(prev) {
   }
 }
 
+function entriesEqualForSync(a, b) {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Сохранение текущей записи (редактирование или новая)
  */
@@ -197,18 +205,23 @@ function saveCurrentEntry() {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
   }
-  // Первый ввод отёла / запуска / протокола из формы карточки — записать в «История» и в общий список событий
+  // Изменения отёла / запуска / протокола из формы карточки — записать в «История» и в общий список событий
   if (prev) {
-    if (!prev.calvingDate && entry.calvingDate && typeof window.applyCalvingToEntry === 'function') {
+    var prevCalvingDate = (prev.calvingDate || '').trim();
+    var nextCalvingDate = (entry.calvingDate || '').trim();
+    if (nextCalvingDate && prevCalvingDate !== nextCalvingDate && typeof window.applyCalvingToEntry === 'function') {
       try {
-        window.applyCalvingToEntry(entry, entry.calvingDate);
+        window.applyCalvingToEntry(entry, nextCalvingDate);
       } catch (err) {
         var msg = err && err.message ? err.message : String(err);
         if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
         return;
       }
-    } else if (!prev.dryStartDate && entry.dryStartDate && typeof window.applyDryRunToEntry === 'function') {
-      window.applyDryRunToEntry(entry, entry.dryStartDate);
+    }
+    var prevDryStartDate = (prev.dryStartDate || '').trim();
+    var nextDryStartDate = (entry.dryStartDate || '').trim();
+    if (nextDryStartDate && prevDryStartDate !== nextDryStartDate && typeof window.applyDryRunToEntry === 'function') {
+      window.applyDryRunToEntry(entry, nextDryStartDate);
     }
     var prevPn = ((prev.protocol && prev.protocol.name) || '').trim();
     var entryPn = ((entry.protocol && entry.protocol.name) || '').trim();
@@ -223,6 +236,7 @@ function saveCurrentEntry() {
         return;
       }
     }
+    if (!entriesEqualForSync(prev, entry)) entry.synced = false;
   }
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
   var wasEditingFromCard = !!window.currentEditingId;
@@ -230,7 +244,9 @@ function saveCurrentEntry() {
     var p;
     if (window.currentEditingId) {
       entry.dateAdded = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).dateAdded || entry.dateAdded;
-      entry.synced = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).synced || false;
+      var prevEntryApi = entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {};
+      var hasChangesApi = !entriesEqualForSync(prevEntryApi, entry);
+      entry.synced = hasChangesApi ? false : (prevEntryApi.synced === true);
       p = window.updateEntryViaApi(window.currentEditingId, entry);
       delete window.currentEditingId;
     } else {
@@ -256,7 +272,8 @@ function saveCurrentEntry() {
     var index = entries.findIndex(function (e) { return e.cattleId === window.currentEditingId; });
     if (index !== -1) {
       entry.dateAdded = entries[index].dateAdded;
-      entry.synced = entries[index].synced;
+      var hasChangesLocal = !entriesEqualForSync(entries[index], entry);
+      entry.synced = hasChangesLocal ? false : (entries[index].synced === true);
       entries[index] = entry;
     }
     delete window.currentEditingId;

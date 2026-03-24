@@ -711,11 +711,17 @@
         });
       });
     }
+    function scheduleInseminationFocus() {
+      focusInseminationNumberField();
+      setTimeout(focusInseminationNumberField, 80);
+      setTimeout(focusInseminationNumberField, 220);
+    }
     function afterProtocols() {
       if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
       if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
-      focusInseminationNumberField();
+      scheduleInseminationFocus();
     }
+    scheduleInseminationFocus();
     if (typeof window.ensureProtocolsLoaded === 'function') {
       window.ensureProtocolsLoaded(afterProtocols);
     } else {

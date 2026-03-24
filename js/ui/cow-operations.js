@@ -621,6 +621,7 @@ function applyUziToEntry(entry, payload) {
   });
   if (result === 'Стельная') entry.status = 'Стельная';
   if (result === 'Не стельная') entry.status = 'Холостая';
+  entry.synced = false;
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
@@ -634,6 +635,7 @@ function applyDryRunToEntry(entry, dryStartDate) {
   entry.dryStartDate = dryStartDate || '';
   entry.status = entry.status || '';
   if (dryStartDate && entry.status.indexOf('Сухостой') === -1) entry.status = 'Сухостой';
+  entry.synced = false;
   if (dryStartDate) {
     var detailsStr = 'Дата запуска: ' + dryStartDate;
     var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
@@ -666,6 +668,7 @@ function applyCalvingToEntry(entry, calvingDate) {
   }
   entry.calvingDate = calvingDate || '';
   if (calvingDate && entry.status !== 'Отёл') entry.status = 'Отёл';
+  entry.synced = false;
 }
 
 function applyProtocolAssignToEntry(entry, protocolName, startDate) {
@@ -678,6 +681,7 @@ function applyProtocolAssignToEntry(entry, protocolName, startDate) {
   if (!entry.protocol) entry.protocol = {};
   entry.protocol.name = protocolName;
   entry.protocol.startDate = startDate || '';
+  entry.synced = false;
   var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
   var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
   if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
