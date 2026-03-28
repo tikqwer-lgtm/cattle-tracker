@@ -681,14 +681,19 @@
       });
   }
 
+  function bindInseminationBatchAutocomplete() {
+    if (typeof window.setupCattleAutocompleteFor === 'function') {
+      window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
+    } else {
+      console.warn('[cattle-tracker] setupCattleAutocompleteFor не найден — поле номера на экране осеменения без подсказок');
+    }
+  }
+
   function initActionBatchInseminationScreen() {
     insemDraft = [];
     var dateEl = document.getElementById('inseminationDateInsem');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
-    // Как на экране УЗИ: сначала автодополнение по номеру, затем протоколы для «Код осеменения»
-    if (typeof window.setupCattleAutocompleteFor === 'function') {
-      window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
-    }
+    bindInseminationBatchAutocomplete();
     if (window._prefillCattleId) {
       var aPre = document.getElementById('inseminationBatchAddInput');
       if (aPre) aPre.value = window._prefillCattleId;
@@ -714,6 +719,7 @@
     function afterProtocols() {
       if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
       if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
+      bindInseminationBatchAutocomplete();
       focusInseminationNumberField();
     }
     if (typeof window.ensureProtocolsLoaded === 'function') {

@@ -22,6 +22,26 @@
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
+  /** YYYY-MM-DD → строка для UI: «2026-03-28 (Суббота)» */
+  function formatTaskDateWithWeekdayRu(dateKey) {
+    if (!dateKey) return '';
+    var esc = function (s) {
+      return String(s).replace(/</g, '&lt;');
+    };
+    var m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return esc(dateKey);
+    var d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    if (isNaN(d.getTime())) return esc(dateKey);
+    var wd = '';
+    try {
+      wd = d.toLocaleDateString('ru-RU', { weekday: 'long' });
+    } catch (e) {
+      wd = '';
+    }
+    if (wd && wd.length) wd = wd.charAt(0).toUpperCase() + wd.slice(1);
+    return esc(m[0]) + (wd ? ' (' + esc(wd) + ')' : '');
+  }
+
   function daysBetween(from, to) {
     if (!from || !to) return null;
     var a = dateOnly(from);
@@ -422,14 +442,14 @@
       dates.forEach(function (dateKey) {
         var dayTasks = byDate[dateKey];
         html += '<div class="tasks-date-group">';
-        html += '<div class="tasks-date-header">' + (dateKey || '').replace(/</g, '&lt;') + '</div>';
+        html += '<div class="tasks-date-header">' + formatTaskDateWithWeekdayRu(dateKey) + '</div>';
         html += '<ul class="tasks-date-list">';
         dayTasks.forEach(function (t) {
           html += '<li class="tasks-item">' +
             '<span class="tasks-cattle">' + (t.cattleId || '').replace(/</g, '&lt;') + '</span>' +
             ' | <span class="tasks-group">' + (t.group || '—').replace(/</g, '&lt;') + '</span>' +
             ' | <span class="tasks-drug">' + (t.drug || '—').replace(/</g, '&lt;') + '</span>' +
-            ' | <span class="tasks-date">' + (t.date || '').replace(/</g, '&lt;') + '</span>' +
+            ' | <span class="tasks-date">' + formatTaskDateWithWeekdayRu(t.date) + '</span>' +
             '</li>';
         });
         html += '</ul></div>';

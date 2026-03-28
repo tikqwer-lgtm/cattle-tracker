@@ -471,9 +471,24 @@ function renderAllInseminationsFilterUI() {
     allInseminationsFilter.lactation = filterLact && filterLact.value !== '' ? parseInt(filterLact.value, 10) : null;
     renderAllInseminationsScreen();
   }
+  var allInsemSearchDebounce = null;
   if (searchInput) {
-    searchInput.addEventListener('input', function () { applyFilterAndRender(); });
-    searchInput.addEventListener('keyup', function (e) { if (e.key === 'Enter') applyFilterAndRender(); });
+    searchInput.addEventListener('input', function () {
+      if (allInsemSearchDebounce) clearTimeout(allInsemSearchDebounce);
+      allInsemSearchDebounce = setTimeout(function () {
+        allInsemSearchDebounce = null;
+        applyFilterAndRender();
+      }, 200);
+    });
+    searchInput.addEventListener('keyup', function (e) {
+      if (e.key === 'Enter') {
+        if (allInsemSearchDebounce) {
+          clearTimeout(allInsemSearchDebounce);
+          allInsemSearchDebounce = null;
+        }
+        applyFilterAndRender();
+      }
+    });
   }
   if (clearBtn) {
     clearBtn.addEventListener('click', function () {

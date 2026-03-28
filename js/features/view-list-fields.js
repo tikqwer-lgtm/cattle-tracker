@@ -19,9 +19,12 @@ function viewListEscapeHtml(text) {
   }
   text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
   if (!text) return '—';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 var VIEW_LIST_FIELDS_DEFAULT = [

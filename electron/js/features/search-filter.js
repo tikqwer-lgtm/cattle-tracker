@@ -246,13 +246,24 @@
       if (typeof updateViewList === 'function') updateViewList();
     }
 
+    var searchDebounceTimer = null;
     if (searchInput) {
       searchInput.addEventListener('input', function () {
         setSearchQuery(searchInput.value);
-        if (typeof updateViewList === 'function') updateViewList();
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(function () {
+          searchDebounceTimer = null;
+          if (typeof updateViewList === 'function') updateViewList();
+        }, 200);
       });
       searchInput.addEventListener('keyup', function (e) {
-        if (e.key === 'Enter') applyAndUpdateView();
+        if (e.key === 'Enter') {
+          if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = null;
+          }
+          applyAndUpdateView();
+        }
       });
     }
     if (clearBtn) {

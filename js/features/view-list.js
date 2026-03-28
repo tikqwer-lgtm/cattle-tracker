@@ -2,8 +2,8 @@
 
 var viewListSortKey = '';
 var viewListSortDir = 'asc';
-/** Порог не используется: всегда таблица для единого стиля при любом фильтре */
-var VIRTUAL_LIST_THRESHOLD = Infinity;
+/** При большом числе строк — виртуальный список (меньше DOM и быстрее скролл) */
+var VIRTUAL_LIST_THRESHOLD = 200;
 var VIRTUAL_ROW_HEIGHT = 40;
 var viewListSelectedIds = new Set();
 var viewListEditorMode = false;

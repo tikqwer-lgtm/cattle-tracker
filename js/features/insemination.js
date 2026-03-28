@@ -54,10 +54,10 @@ function populateCattleAutocomplete(inputId, listId) {
 
   const filter = input.value.toLowerCase();
   const entriesList = (typeof window !== 'undefined' && window.entries) ? window.entries : entries;
-  const matchingEntries = (Array.isArray(entriesList) ? entriesList : []).filter(entry => 
-    entry.cattleId.toLowerCase().includes(filter) || 
-    (entry.nickname && entry.nickname.toLowerCase().includes(filter))
-  ).slice(0, 10); // Ограничиваем 10 результатами
+  const matchingEntries = (Array.isArray(entriesList) ? entriesList : []).filter(function (entry) {
+    var id = entry.cattleId != null ? String(entry.cattleId).toLowerCase() : '';
+    return id.indexOf(filter) !== -1 || (entry.nickname && String(entry.nickname).toLowerCase().indexOf(filter) !== -1);
+  }).slice(0, 10);
 
   matchingEntries.forEach(entry => {
     const li = document.createElement('li');
@@ -79,24 +79,17 @@ function populateCattleAutocomplete(inputId, listId) {
 }
 
 /**
- * Инициализирует автодополнение для ввода номера коровы
+ * Legacy: автодополнение для старых id cattleIdInsemInput (если разметка ещё есть).
+ * Не вешает глобальный document.click — иначе накапливаются слушатели и ломается фокус в Electron.
  */
 function initCattleAutocomplete() {
   const input = document.getElementById('cattleIdInsemInput');
   if (!input) return;
-
-  // Обновляем список при вводе
-  input.addEventListener('input', () => {
+  input.removeEventListener('input', input._legacyInsemPopulate);
+  input._legacyInsemPopulate = function () {
     populateCattleAutocomplete('cattleIdInsemInput', 'cattleIdInsemList');
-  });
-
-  // Скрываем список при клике вне поля
-  document.addEventListener('click', (e) => {
-    const list = document.getElementById('cattleIdInsemList');
-    if (list && input !== e.target && !list.contains(e.target)) {
-      list.innerHTML = '';
-    }
-  });
+  };
+  input.addEventListener('input', input._legacyInsemPopulate);
 }
 
 // Заменяем populateCattleSelect на использование автодополнения
@@ -156,7 +149,7 @@ function initInseminationAttemptListeners() {
   }
 }
 
-// Инициализация слушателей при загрузке (если элементы уже есть)
+// Инициализация слушателей при загрузке (если есть legacy-поля)
 if (document.getElementById('cattleIdInsemInput') || document.getElementById('cattleIdInsem')) {
   initInseminationAttemptListeners();
 }
@@ -305,46 +298,31 @@ function initInseminationScreen() {
 }
 
 function initInseminationModule() {
-  // Проверяем, находимся ли мы на экране добавления
   if (document.getElementById('add-screen')?.classList.contains('active')) {
     autoFillAttempt();
   }
-  
-  // Проверяем, находимся ли мы на экране ввода осеменения
-  const inseminationScreen = document.getElementById('insemination-screen');
-  if (inseminationScreen?.classList.contains('active')) {
-    initCattleAutocomplete();
-    initInseminationAttemptListeners(); // Инициализируем слушатели
-    autoFillInseminationAttempt(); // Пробуем заполнить сразу, если поля уже заполнены
+  var inseminationScreen = document.getElementById('insemination-screen');
+  if (!inseminationScreen?.classList.contains('active')) return;
+  // Пакетный экран: та же логика, что при navigate (action-batch + setupCattleAutocompleteFor)
+  if (document.getElementById('inseminationBatchAddInput')) {
+    if (typeof window.initActionBatchInseminationScreen === 'function') {
+      window.initActionBatchInseminationScreen();
+    }
+    return;
   }
+  initCattleAutocomplete();
+  initInseminationAttemptListeners();
+  autoFillInseminationAttempt();
 }
 
-// Инициализация при загрузке и при навигации
 document.addEventListener('DOMContentLoaded', initInseminationModule);
-document.addEventListener('click', (e) => {
-  // Если клик был по кнопке навигации, подождем и инициализируем
-  setTimeout(initInseminationModule, 100);
-});
-
-// Дополнительная инициализация при показе экрана осеменения
-document.addEventListener('click', (e) => {
-  const target = e.target;
-  if (
-    target.matches('[onclick*="navigate(\'insemination\'"]') ||
-    target.closest('[onclick*="navigate(\'insemination\'"]')
-  ) {
-    setTimeout(() => {
-      populateCattleSelect();
-      initInseminationAttemptListeners(); // Инициализируем слушатели при открытии экрана
-      autoFillInseminationAttempt();
-    }, 150);
-  }
-});
 
 // Экспортируем функции, если используется модульная система
 if (typeof window !== 'undefined') {
   window.applyInseminationToEntry = applyInseminationToEntry;
   window.getInseminationAttempt = getInseminationAttempt;
+  window.initInseminationScreen = initInseminationScreen;
+  window.initInseminationAttemptListeners = initInseminationAttemptListeners;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
