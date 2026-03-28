@@ -21,6 +21,7 @@ var MENU_GROUPS = {
       { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')" },
       { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')" },
       { icon: '🐄', text: 'Отел', onclick: "navigate('calving')" },
+      { icon: '⚠️', text: 'Аборт', onclick: "navigate('abort')" },
       { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')" },
       { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')" }
     ]
@@ -97,6 +98,23 @@ function navigate(screenId, options) {
     updateWindowModeForScreen(screenId);
   }
 
+  /* Экраны пакетных «Действий»: в Electron/WebView иногда ломается hit-test до перерисовки (помогает открытие DevTools). */
+  if (
+    screenId === 'insemination' ||
+    screenId === 'dry' ||
+    screenId === 'uzi' ||
+    screenId === 'calving' ||
+    screenId === 'abort' ||
+    screenId === 'protocol-assign'
+  ) {
+    setTimeout(function () {
+      if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+    }, 0);
+    setTimeout(function () {
+      if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+    }, 280);
+  }
+
   if (screenId === 'submenu') {
     renderSubmenu();
   }
@@ -108,6 +126,7 @@ function navigate(screenId, options) {
   }
   if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
   if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();
+  if (screenId === 'abort' && typeof initAbortScreen === 'function') initAbortScreen();
   if (screenId === 'protocol-assign' && typeof initProtocolAssignScreen === 'function') initProtocolAssignScreen();
   if (screenId === 'uzi' && typeof initUziScreen === 'function') initUziScreen();
   if (screenId === 'insemination' && typeof window.initInseminationScreen === 'function') {
@@ -178,6 +197,11 @@ function navigate(screenId, options) {
       var titleEl = document.getElementById('addScreenTitle');
       if (titleEl) titleEl.textContent = '➕ Добавить корову';
       if (typeof clearForm === 'function') clearForm();
+    }
+    if (typeof window.fillAllInseminationCodeSelects === 'function') {
+      try {
+        window.fillAllInseminationCodeSelects();
+      } catch (e) {}
     }
     setTimeout(function () {
       var firstField = document.getElementById('cattleId');

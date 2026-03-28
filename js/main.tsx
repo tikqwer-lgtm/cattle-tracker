@@ -23,6 +23,7 @@ import './storage/storage.js';
 import './core/core.js';
 import './core/users.js';
 import './ui/ui-helpers.js';
+import './features/action-input-guards.js';
 import './ui/cow-operations.js';
 import './utils/voice-handler.js';
 import './core/app.js';

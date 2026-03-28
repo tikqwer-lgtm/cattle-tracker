@@ -17,9 +17,52 @@
     return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   }
 
+  function clearAutocompleteDropdowns() {
+    try {
+      document.querySelectorAll('.autocomplete-list').forEach(function (ul) {
+        ul.innerHTML = '';
+      });
+    } catch (e) {}
+  }
+
+  var ACTION_BATCH_NUMBER_INPUTS = [
+    { screen: 'insemination-screen', input: 'inseminationBatchAddInput' },
+    { screen: 'dry-screen', input: 'dryBatchAddInput' },
+    { screen: 'uzi-screen', input: 'uziBatchAddInput' },
+    { screen: 'protocol-assign-screen', input: 'protocolBatchAddInput' },
+    { screen: 'calving-screen', input: 'calvingBatchAddInput' },
+    { screen: 'abort-screen', input: 'abortBatchAddInput' }
+  ];
+
+  function refocusActiveActionBatchNumberInput() {
+    for (var i = 0; i < ACTION_BATCH_NUMBER_INPUTS.length; i++) {
+      var p = ACTION_BATCH_NUMBER_INPUTS[i];
+      var sc = document.getElementById(p.screen);
+      if (!sc || !sc.classList.contains('active')) continue;
+      var el = document.getElementById(p.input);
+      if (!el || !el.isConnected) return;
+      (function (focusEl) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (!focusEl.isConnected) return;
+            try {
+              focusEl.focus({ preventScroll: true });
+            } catch (e1) {
+              try {
+                focusEl.focus();
+              } catch (e2) {}
+            }
+          });
+        });
+      })(el);
+      return;
+    }
+  }
+
   function closeTopModal() {
     var ex = document.querySelector('.action-batch-overlay');
     if (ex) ex.remove();
+    clearAutocompleteDropdowns();
   }
 
   function openOverlay(innerHtml) {
@@ -32,7 +75,10 @@
       innerHtml +
       '</div>';
     wrap.addEventListener('click', function (e) {
-      if (e.target === wrap) closeTopModal();
+      if (e.target === wrap) {
+        closeTopModal();
+        refocusActiveActionBatchNumberInput();
+      }
     });
     document.body.appendChild(wrap);
     return wrap;
@@ -179,8 +225,12 @@
       r.daysFromInsemination = dv != null && !isNaN(dv) ? dv : null;
       closeTopModal();
       renderUziDraft();
+      refocusActiveActionBatchNumberInput();
     });
-    document.getElementById('uziEditCancel').addEventListener('click', closeTopModal);
+    document.getElementById('uziEditCancel').addEventListener('click', function () {
+      closeTopModal();
+      refocusActiveActionBatchNumberInput();
+    });
   }
 
   function promptUziResultThenAdd(cattleId) {
@@ -204,13 +254,17 @@
     );
     function pick(result) {
       closeTopModal();
-      if (!result) return;
+      if (!result) {
+        refocusActiveActionBatchNumberInput();
+        return;
+      }
       var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
       var days = computeUziDays(entry, uziDate);
       uziDraft.push({ id: uid(), cattleId: cattleId, result: result, daysFromInsemination: days != null ? days : null });
       var addIn = document.getElementById('uziBatchAddInput');
       if (addIn) addIn.value = '';
       renderUziDraft();
+      refocusActiveActionBatchNumberInput();
     }
     document.getElementById('uziPickPregnant').addEventListener('click', function () { pick('Стельная'); });
     document.getElementById('uziPickOpen').addEventListener('click', function () { pick('Не стельная'); });
@@ -233,22 +287,38 @@
       toast('Ошибка: нет applyUziToEntry', 'error');
       return;
     }
-    var operations = [];
-    uziDraft.forEach(function (r) {
-      operations.push({
-        cattleId: r.cattleId,
-        apply: function (entry) {
-          applyUzi(entry, {
-            uziDate: uziDate,
-            result: r.result,
-            specialist: specialist,
-            daysFromInsemination: r.daysFromInsemination
-          });
-        }
+    var G = window.ActionInputGuards;
+    var draft = uziDraft.slice();
+    var p = Promise.resolve(true);
+    draft.forEach(function (r) {
+      p = p.then(function (prev) {
+        if (!prev) return false;
+        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        if (!ent) return false;
+        if (!G || typeof G.confirmUziFlow !== 'function') return true;
+        return G.confirmUziFlow(ent, uziDate);
       });
     });
-    runSequentialUpdates(operations)
-      .then(function () {
+    p.then(function (ok) {
+      if (!ok) return;
+      var operations = [];
+      draft.forEach(function (r) {
+        operations.push({
+          cattleId: r.cattleId,
+          apply: function (entry) {
+            applyUzi(entry, {
+              uziDate: uziDate,
+              result: r.result,
+              specialist: specialist,
+              daysFromInsemination: r.daysFromInsemination
+            });
+          }
+        });
+      });
+      return runSequentialUpdates(operations);
+    })
+      .then(function (ran) {
+        if (ran === undefined) return;
         uziDraft = [];
         renderUziDraft();
         toast('Сохранено', 'success');
@@ -373,14 +443,30 @@
     }
     var applyDry = typeof window.applyDryRunToEntry === 'function' ? window.applyDryRunToEntry : null;
     if (!applyDry) return;
-    var operations = dryDraft.map(function (r) {
-      return {
-        cattleId: r.cattleId,
-        apply: function (entry) { applyDry(entry, dryDate); }
-      };
+    var G = window.ActionInputGuards;
+    var draft = dryDraft.slice();
+    var p = Promise.resolve(true);
+    draft.forEach(function (r) {
+      p = p.then(function (prev) {
+        if (!prev) return false;
+        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        if (!ent) return false;
+        if (!G || typeof G.confirmDryFlow !== 'function') return true;
+        return G.confirmDryFlow(ent, dryDate);
+      });
     });
-    runSequentialUpdates(operations)
-      .then(function () {
+    p.then(function (ok) {
+      if (!ok) return;
+      var operations = draft.map(function (r) {
+        return {
+          cattleId: r.cattleId,
+          apply: function (entry) { applyDry(entry, dryDate); }
+        };
+      });
+      return runSequentialUpdates(operations);
+    })
+      .then(function (ran) {
+        if (ran === undefined) return;
         dryDraft = [];
         renderDryDraft();
         toast('Сохранено', 'success');
@@ -481,20 +567,39 @@
       return;
     }
     var applyP = typeof window.applyProtocolAssignToEntry === 'function' ? window.applyProtocolAssignToEntry : null;
+    var clearP = typeof window.applyProtocolClearToEntry === 'function' ? window.applyProtocolClearToEntry : null;
     if (!applyP) return;
-    var operations = [];
-    try {
-      protocolDraft.forEach(function (r) {
-        operations.push({
-          cattleId: r.cattleId,
-          apply: function (entry) { applyP(entry, protocolName, startDate || ''); }
+    var G = window.ActionInputGuards;
+    var draft = protocolDraft.slice();
+    var modes = {};
+    var chain = Promise.resolve();
+    draft.forEach(function (r) {
+      chain = chain.then(function () {
+        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        if (!ent) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
+        if (!G || typeof G.confirmProtocolAssignFlow !== 'function') {
+          modes[r.cattleId] = 'apply';
+          return;
+        }
+        return G.confirmProtocolAssignFlow(ent, protocolName, startDate || '').then(function (res) {
+          if (!res || res.mode === 'cancel') return Promise.reject({ code: 'USER_CANCEL' });
+          modes[r.cattleId] = res.mode;
         });
       });
-    } catch (e) {
-      toast(e && e.message ? e.message : 'Ошибка', 'error');
-      return;
-    }
-    runSequentialUpdates(operations)
+    });
+    chain
+      .then(function () {
+        var operations = draft.map(function (r) {
+          return {
+            cattleId: r.cattleId,
+            apply: function (entry) {
+              if (modes[r.cattleId] === 'replace_previous' && clearP) clearP(entry);
+              applyP(entry, protocolName, startDate || '');
+            }
+          };
+        });
+        return runSequentialUpdates(operations);
+      })
       .then(function () {
         protocolDraft = [];
         renderProtocolDraft();
@@ -504,6 +609,7 @@
         else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
+        if (err && err.code === 'USER_CANCEL') return;
         toast(err && err.message ? err.message : 'Ошибка', 'error');
       });
   }
@@ -604,8 +710,12 @@
       var addIn = document.getElementById('inseminationBatchAddInput');
       if (addIn) addIn.value = '';
       renderInsemDraft();
+      refocusActiveActionBatchNumberInput();
     });
-    document.getElementById('insemModalCancel').addEventListener('click', closeTopModal);
+    document.getElementById('insemModalCancel').addEventListener('click', function () {
+      closeTopModal();
+      refocusActiveActionBatchNumberInput();
+    });
   }
 
   function editInsemRow(rowId) {
@@ -625,15 +735,20 @@
       r.bull = document.getElementById('insemEdBull').value || '';
       closeTopModal();
       renderInsemDraft();
+      refocusActiveActionBatchNumberInput();
     });
-    document.getElementById('insemEdCancel').addEventListener('click', closeTopModal);
+    document.getElementById('insemEdCancel').addEventListener('click', function () {
+      closeTopModal();
+      refocusActiveActionBatchNumberInput();
+    });
   }
 
   function saveInsemBatch() {
     var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
     var bullGlobal = (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '';
     var inseminator = (document.getElementById('inseminatorInsem') && document.getElementById('inseminatorInsem').value) || '';
-    var code = (document.getElementById('codeInsem') && document.getElementById('codeInsem').value) || '';
+    var codeEl = document.getElementById('codeInsem');
+    var code = codeEl ? (codeEl.tagName === 'SELECT' ? codeEl.value : (codeEl.value || '')) : '';
     if (!insemDraft.length) {
       toast('Добавьте коров', 'error');
       return;
@@ -647,28 +762,44 @@
     }
     var applyI = typeof window.applyInseminationToEntry === 'function' ? window.applyInseminationToEntry : null;
     if (!applyI) return;
-    var operations = [];
-    try {
-      insemDraft.forEach(function (r) {
-        operations.push({
-          cattleId: r.cattleId,
-          apply: function (entry) {
-            applyI(entry, {
-              inseminationDate: insemDate,
-              attemptNumber: r.attemptNumber,
-              bull: (r.bull || bullGlobal || '').trim(),
-              inseminator: inseminator,
-              code: code
-            });
-          }
-        });
+    var G = window.ActionInputGuards;
+    var draft = insemDraft.slice();
+    var p = Promise.resolve(true);
+    draft.forEach(function (r) {
+      p = p.then(function (prev) {
+        if (!prev) return false;
+        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        if (!ent) return false;
+        if (!G || typeof G.confirmInseminationFlow !== 'function') return true;
+        return G.confirmInseminationFlow(ent, insemDate);
       });
-    } catch (e) {
-      toast(e && e.message ? e.message : 'Ошибка', 'error');
-      return;
-    }
-    runSequentialUpdates(operations)
-      .then(function () {
+    });
+    p.then(function (ok) {
+      if (!ok) return;
+      var operations = [];
+      try {
+        draft.forEach(function (r) {
+          operations.push({
+            cattleId: r.cattleId,
+            apply: function (entry) {
+              applyI(entry, {
+                inseminationDate: insemDate,
+                attemptNumber: r.attemptNumber,
+                bull: (r.bull || bullGlobal || '').trim(),
+                inseminator: inseminator,
+                code: code
+              });
+            }
+          });
+        });
+      } catch (e) {
+        toast(e && e.message ? e.message : 'Ошибка', 'error');
+        return;
+      }
+      return runSequentialUpdates(operations);
+    })
+      .then(function (ran) {
+        if (ran === undefined) return;
         insemDraft = [];
         renderInsemDraft();
         toast('Сохранено', 'success');
@@ -706,8 +837,8 @@
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           try {
-            focusAdd.focus({ preventScroll: false });
-            focusAdd.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+            /* preventScroll + без scrollIntoView: в Electron/WebView иначе бывают «мёртвые» клики по полю до перерисовки (помогает только открытие DevTools). */
+            focusAdd.focus({ preventScroll: true });
           } catch (e) {
             try {
               focusAdd.focus();
@@ -808,10 +939,12 @@
         calfWeight: (document.getElementById('calfWeightInp').value || '').trim()
       };
       closeTopModal();
+      refocusActiveActionBatchNumberInput();
       onDone(out);
     });
     document.getElementById('calfCancel').addEventListener('click', function () {
       closeTopModal();
+      refocusActiveActionBatchNumberInput();
       onDone(null);
     });
   }
@@ -884,35 +1017,58 @@
     }
 
     var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function';
-    var chain = Promise.resolve();
-    calvingDraft.forEach(function (r) {
-      chain = chain.then(function () {
+    var applyAbort = typeof window.applyAbortToEntry === 'function' ? window.applyAbortToEntry : null;
+    var G = window.ActionInputGuards;
+    var draft = calvingDraft.slice();
+    var confirmChain = Promise.resolve();
+    draft.forEach(function (r) {
+      confirmChain = confirmChain.then(function () {
         var mother = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
         if (!mother) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
-        var fatherBull = '';
-        if (getLastRec) {
-          var rec = getLastRec(mother, calvingDate);
-          if (rec && rec.bull) fatherBull = rec.bull;
+        if (!G || typeof G.confirmCalvingFlow !== 'function') {
+          r._calvingDecision = 'calve';
+          return;
         }
-        var calfEntry = null;
-        if (r.calfId && String(r.calfId).trim()) {
-          calfEntry = buildCalf(r.cattleId, calvingDate, String(r.calfId).trim(), r.calfSex, r.calfWeight, fatherBull);
-        }
-        try {
-          applyCalve(mother, calvingDate);
-        } catch (err) {
-          return Promise.reject(err);
-        }
-        if (!useApi) {
-          if (calfEntry) getEntries().push(calfEntry);
-          return Promise.resolve();
-        }
-        return window.updateEntryViaApi(r.cattleId, mother).then(function () {
-          if (calfEntry) return window.createEntryViaApi(calfEntry);
+        return G.confirmCalvingFlow(mother, calvingDate).then(function (dec) {
+          if (dec === 'cancel') return Promise.reject({ code: 'USER_CANCEL' });
+          r._calvingDecision = dec === 'abort' ? 'abort' : 'calve';
         });
       });
     });
-    chain
+    confirmChain
+      .then(function () {
+        var chain = Promise.resolve();
+        draft.forEach(function (r) {
+          chain = chain.then(function () {
+            var mother = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+            if (!mother) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
+            var dec = r._calvingDecision || 'calve';
+            var fatherBull = '';
+            if (getLastRec) {
+              var rec = getLastRec(mother, calvingDate);
+              if (rec && rec.bull) fatherBull = rec.bull;
+            }
+            var calfEntry = null;
+            if (dec !== 'abort' && r.calfId && String(r.calfId).trim()) {
+              calfEntry = buildCalf(r.cattleId, calvingDate, String(r.calfId).trim(), r.calfSex, r.calfWeight, fatherBull);
+            }
+            try {
+              if (dec === 'abort' && applyAbort) applyAbort(mother, calvingDate, '');
+              else applyCalve(mother, calvingDate);
+            } catch (err) {
+              return Promise.reject(err);
+            }
+            if (!useApi) {
+              if (calfEntry) getEntries().push(calfEntry);
+              return Promise.resolve();
+            }
+            return window.updateEntryViaApi(r.cattleId, mother).then(function () {
+              if (calfEntry) return window.createEntryViaApi(calfEntry);
+            });
+          });
+        });
+        return chain;
+      })
       .then(function () {
         if (!useApi && typeof saveLocally === 'function') saveLocally();
         calvingDraft = [];
@@ -923,6 +1079,7 @@
         else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
+        if (err && err.code === 'USER_CANCEL') return;
         toast(err && err.message ? err.message : 'Ошибка', 'error');
       });
   }
@@ -943,12 +1100,127 @@
     renderCalvingDraft();
   }
 
+  // ——— Аборт ———
+  var abortDraft = [];
+
+  function renderAbortDraft() {
+    var host = document.getElementById('abortBatchDraftTable');
+    if (!host) return;
+    if (!abortDraft.length) {
+      host.innerHTML = '<p class="action-batch-draft-empty">Добавьте коров по номеру.</p>';
+      return;
+    }
+    var rows = abortDraft.map(function (r) {
+      return (
+        '<tr data-row-id="' + r.id + '">' +
+        '<td>' + escapeHtml(r.cattleId) + '</td>' +
+        '<td><button type="button" class="action-batch-row-remove" data-abort-remove="' + r.id + '">×</button></td>' +
+        '</tr>'
+      );
+    }).join('');
+    host.innerHTML = '<table class="action-batch-table"><thead><tr><th>Номер</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+    host.querySelectorAll('[data-abort-remove]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = btn.getAttribute('data-abort-remove');
+        abortDraft = abortDraft.filter(function (x) { return x.id !== id; });
+        renderAbortDraft();
+      });
+    });
+  }
+
+  function addAbortRow(cattleId) {
+    if (abortDraft.some(function (x) { return x.cattleId === cattleId; })) {
+      toast('Уже в списке', 'error');
+      return;
+    }
+    if (!getEntries().find(function (e) { return e.cattleId === cattleId; })) {
+      toast('Корова не найдена', 'error');
+      return;
+    }
+    abortDraft.push({ id: uid(), cattleId: cattleId });
+    var addIn = document.getElementById('abortBatchAddInput');
+    if (addIn) addIn.value = '';
+    renderAbortDraft();
+  }
+
+  function saveAbortBatch() {
+    var abortDate = document.getElementById('abortDateInput') && document.getElementById('abortDateInput').value;
+    var noteEl = document.getElementById('abortNoteInput');
+    var note = (noteEl && noteEl.value && noteEl.value.trim()) || '';
+    if (!abortDate) {
+      toast('Укажите дату события', 'error');
+      return;
+    }
+    if (!abortDraft.length) {
+      toast('Добавьте коров', 'error');
+      return;
+    }
+    var applyAb = typeof window.applyAbortToEntry === 'function' ? window.applyAbortToEntry : null;
+    if (!applyAb) return;
+    var G = window.ActionInputGuards;
+    var draft = abortDraft.slice();
+    var p = Promise.resolve(true);
+    draft.forEach(function (r) {
+      p = p.then(function (prev) {
+        if (!prev) return false;
+        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        if (!ent) return false;
+        if (!G || typeof G.confirmAbortFlow !== 'function') return true;
+        return G.confirmAbortFlow(ent, abortDate);
+      });
+    });
+    p.then(function (ok) {
+      if (!ok) return;
+      var operations = draft.map(function (r) {
+        return {
+          cattleId: r.cattleId,
+          apply: function (entry) {
+            applyAb(entry, abortDate, note);
+          }
+        };
+      });
+      return runSequentialUpdates(operations);
+    })
+      .then(function (ran) {
+        if (ran === undefined) return;
+        abortDraft = [];
+        renderAbortDraft();
+        toast('Сохранено', 'success');
+        if (typeof updateViewList === 'function') updateViewList();
+        if (typeof window.navigateBackOrFallback === 'function') window.navigateBackOrFallback();
+        else if (typeof navigate === 'function') navigate('menu');
+      })
+      .catch(function (err) {
+        toast(err && err.message ? err.message : 'Ошибка', 'error');
+      });
+  }
+
+  function initActionBatchAbortScreen() {
+    abortDraft = [];
+    var dateEl = document.getElementById('abortDateInput');
+    if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
+    var noteIn = document.getElementById('abortNoteInput');
+    if (noteIn) noteIn.value = '';
+    if (typeof window.setupCattleAutocompleteFor === 'function') {
+      window.setupCattleAutocompleteFor('abortBatchAddInput', 'abortBatchAddList', addAbortRow);
+    }
+    if (window._prefillCattleId) {
+      var a = document.getElementById('abortBatchAddInput');
+      if (a) a.value = window._prefillCattleId;
+      delete window._prefillCattleId;
+    }
+    bindOnce(document.getElementById('abortBatchSaveBtn'), 'click', saveAbortBatch);
+    renderAbortDraft();
+  }
+
   if (typeof window !== 'undefined') {
     window.initActionBatchUziScreen = initActionBatchUziScreen;
     window.initActionBatchDryScreen = initActionBatchDryScreen;
     window.initActionBatchCalvingScreen = initActionBatchCalvingScreen;
     window.initActionBatchProtocolScreen = initActionBatchProtocolScreen;
     window.initActionBatchInseminationScreen = initActionBatchInseminationScreen;
+    window.initActionBatchAbortScreen = initActionBatchAbortScreen;
   }
 })();
 

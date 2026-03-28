@@ -222,57 +222,67 @@ function addInseminationEntry() {
   const codeEl = document.getElementById('codeInsem');
   const code = codeEl ? (codeEl.tagName === 'SELECT' ? codeEl.value : (codeEl.value || '')) : '';
 
-  try {
-    applyInseminationToEntry(entry, { inseminationDate: inseminationDate, attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
-  } catch (e) {
-    if (typeof showToast === 'function') showToast(e && e.message ? e.message : 'Ошибка', 'error'); else alert(e && e.message ? e.message : 'Ошибка');
+  var G = typeof window !== 'undefined' && window.ActionInputGuards;
+  var doSave = function () {
+    try {
+      applyInseminationToEntry(entry, { inseminationDate: inseminationDate, attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
+    } catch (e) {
+      if (typeof showToast === 'function') showToast(e && e.message ? e.message : 'Ошибка', 'error'); else alert(e && e.message ? e.message : 'Ошибка');
+      return;
+    }
+
+    try {
+      saveLocally();
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+    }
+
+    try {
+      updateList();
+    } catch (error) {
+      console.error('Ошибка обновления списка:', error);
+    }
+
+    if (typeof updateViewList === 'function') {
+      try {
+        updateViewList();
+      } catch (error) {
+        console.error('Ошибка обновления списка просмотра:', error);
+      }
+    }
+
+    if (cattleIdInput) cattleIdInput.value = '';
+    if (cattleIdSelect) cattleIdSelect.value = '';
+    document.getElementById('inseminationDateInsem').value = '';
+    const attInsem = document.getElementById('attemptNumberInsem');
+    if (attInsem) attInsem.value = '1';
+    const bullB = document.getElementById('bullInsemBatch');
+    if (bullB) bullB.value = '';
+    const bullO = document.getElementById('bullInsem');
+    if (bullO) bullO.value = '';
+    document.getElementById('inseminatorInsem').value = '';
+    const codeE = document.getElementById('codeInsem');
+    if (codeE) {
+      if (codeE.tagName === 'SELECT') codeE.selectedIndex = 0;
+      else codeE.value = '';
+    }
+
+    if (typeof showToast === 'function') showToast('Данные осеменения добавлены!', 'success'); else alert('Данные осеменения добавлены!');
+    if (typeof window !== 'undefined' && window._returnToViewCow) {
+      if (typeof navigate === 'function') navigate('view-cow');
+      if (typeof viewCow === 'function') viewCow(cattleId);
+      window._returnToViewCow = null;
+    } else if (typeof navigate === 'function') navigate('menu');
+  };
+
+  if (G && typeof G.confirmInseminationFlow === 'function') {
+    G.confirmInseminationFlow(entry, inseminationDate).then(function (ok) {
+      if (!ok) return;
+      doSave();
+    });
     return;
   }
-
-  // Сохраняем изменения
-  try {
-    saveLocally();
-  } catch (error) {
-    console.error('Ошибка сохранения:', error);
-  }
-  
-  try {
-    updateList(); // Обновляем список на экране добавления
-  } catch (error) {
-    console.error('Ошибка обновления списка:', error);
-  }
-  
-  if (typeof updateViewList === 'function') {
-    try {
-      updateViewList(); // Обновляем список на экране просмотра
-    } catch (error) {
-      console.error('Ошибка обновления списка просмотра:', error);
-    }
-  }
-
-  // Очищаем форму
-  if (cattleIdInput) cattleIdInput.value = '';
-  if (cattleIdSelect) cattleIdSelect.value = '';
-  document.getElementById('inseminationDateInsem').value = '';
-  const attInsem = document.getElementById('attemptNumberInsem');
-  if (attInsem) attInsem.value = '1';
-  const bullB = document.getElementById('bullInsemBatch');
-  if (bullB) bullB.value = '';
-  const bullO = document.getElementById('bullInsem');
-  if (bullO) bullO.value = '';
-  document.getElementById('inseminatorInsem').value = '';
-  const codeE = document.getElementById('codeInsem');
-  if (codeE) {
-    if (codeE.tagName === 'SELECT') codeE.selectedIndex = 0;
-    else codeE.value = '';
-  }
-
-  if (typeof showToast === 'function') showToast('Данные осеменения добавлены!', 'success'); else alert('Данные осеменения добавлены!');
-  if (typeof window !== 'undefined' && window._returnToViewCow) {
-    if (typeof navigate === 'function') navigate('view-cow');
-    if (typeof viewCow === 'function') viewCow(cattleId);
-    window._returnToViewCow = null;
-  } else if (typeof navigate === 'function') navigate('menu');
+  doSave();
 }
 
 /**

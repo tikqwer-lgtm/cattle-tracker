@@ -336,6 +336,12 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Пустой список не участвует в hit-test (WebView после модалок/скролла) */
+.autocomplete-list:empty {
+  display: none;
+  pointer-events: none;
+}
+
 .autocomplete-list li {
   padding: 10px 15px;
   cursor: pointer;

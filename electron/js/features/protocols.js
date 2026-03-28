@@ -82,17 +82,18 @@ function saveProtocols(arr) {
   notifyInseminationCodeSelects();
 }
 
-var _notifyInsemCodeTimer = null;
+var _notifyInsemCodeRaf = null;
 /** Обновить списки «Код осеменения» после изменения протоколов (локально и через API). */
 function notifyInseminationCodeSelects() {
   if (typeof window === 'undefined' || typeof window.fillAllInseminationCodeSelects !== 'function') return;
-  if (_notifyInsemCodeTimer) clearTimeout(_notifyInsemCodeTimer);
-  _notifyInsemCodeTimer = setTimeout(function () {
-    _notifyInsemCodeTimer = null;
+  /* Один проход на кадр вместо debounce 200ms — иначе при частых loadLocally/ensureProtocolsLoaded обновление «плывёт» и в WebView страдает фокус. */
+  if (_notifyInsemCodeRaf != null) return;
+  _notifyInsemCodeRaf = requestAnimationFrame(function () {
+    _notifyInsemCodeRaf = null;
     try {
       window.fillAllInseminationCodeSelects();
     } catch (e) {}
-  }, 200);
+  });
 }
 
 /**
@@ -437,6 +438,15 @@ function collectProtocolNamesForInseminationCode() {
  */
 function fillOneInseminationCodeSelect(sel, preserveValue) {
   if (!sel || sel.tagName !== 'SELECT') return;
+  /* Не пересобирать скрытые селекты при фоновой загрузке — меньше лишних мутаций DOM и срывов фокуса в Electron. */
+  if (sel.id === 'codeInsem') {
+    var insSc = document.getElementById('insemination-screen');
+    if (insSc && !insSc.classList.contains('active') && document.activeElement !== sel) return;
+  }
+  if (sel.id === 'code') {
+    var addSc = document.getElementById('add-screen');
+    if (addSc && !addSc.classList.contains('active') && document.activeElement !== sel) return;
+  }
   var ae = document.activeElement;
   var current = preserveValue !== undefined ? preserveValue : sel.value;
   sel.innerHTML = '';

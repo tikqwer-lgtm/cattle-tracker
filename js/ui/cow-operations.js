@@ -260,6 +260,7 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   var input = document.getElementById(inputId);
   var list = document.getElementById(listId);
   if (!input || !list) return;
+  list.innerHTML = '';
   var wrap = input.closest('.autocomplete') || input.parentElement;
   var outer = input.closest('.action-batch-add-block') || input.closest('.autocomplete') || wrap;
   function getEntries() {
@@ -351,6 +352,10 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     window.CattleTrackerEvents.off('entries:updated', input._cattleAutocompleteEntriesCb);
     input._cattleAutocompleteEntriesCb = null;
   }
+  if (input._cattleAutocompleteEntriesTimer) {
+    clearTimeout(input._cattleAutocompleteEntriesTimer);
+    input._cattleAutocompleteEntriesTimer = null;
+  }
   unregisterCattleAutocompleteInput(input);
   input._cattleAutocompleteInput = populate;
   input.addEventListener('input', populate);
@@ -365,7 +370,14 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   };
   input.addEventListener('focus', input._cattleAutocompleteFocus);
   input._cattleAutocompleteEntriesCb = function () {
-    if (document.activeElement === input) populate();
+    if (document.activeElement !== input) return;
+    if (input._cattleAutocompleteEntriesTimer) clearTimeout(input._cattleAutocompleteEntriesTimer);
+    input._cattleAutocompleteEntriesTimer = setTimeout(function () {
+      input._cattleAutocompleteEntriesTimer = null;
+      if (document.activeElement === input && typeof input._cattleAutocompleteInput === 'function') {
+        input._cattleAutocompleteInput();
+      }
+    }, 120);
   };
   if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {
     window.CattleTrackerEvents.on('entries:updated', input._cattleAutocompleteEntriesCb);
@@ -388,23 +400,35 @@ function saveDryRunEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
-  applyDryRunToEntry(entry, dryStartDate);
-  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
-    window.updateEntryViaApi(cattleId, entry).then(function () {
-      if (typeof loadLocally === 'function') return loadLocally();
-    }).then(function () {
-      if (typeof showToast === 'function') showToast('Сохранено', 'success');
-      if (typeof updateViewList === 'function') updateViewList();
-      if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
-    }).catch(function (err) {
-      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+  var G = typeof window !== 'undefined' && window.ActionInputGuards;
+  var afterSave = function () {
+    if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+      window.updateEntryViaApi(cattleId, entry).then(function () {
+        if (typeof loadLocally === 'function') return loadLocally();
+      }).then(function () {
+        if (typeof showToast === 'function') showToast('Сохранено', 'success');
+        if (typeof updateViewList === 'function') updateViewList();
+        if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+      });
+      return;
+    }
+    saveLocally();
+    if (typeof showToast === 'function') showToast('Сохранено', 'success');
+    if (typeof updateViewList === 'function') updateViewList();
+    if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  };
+  if (G && typeof G.confirmDryFlow === 'function') {
+    G.confirmDryFlow(entry, dryStartDate).then(function (ok) {
+      if (!ok) return;
+      applyDryRunToEntry(entry, dryStartDate);
+      afterSave();
     });
     return;
   }
-  saveLocally();
-  if (typeof showToast === 'function') showToast('Сохранено', 'success');
-  if (typeof updateViewList === 'function') updateViewList();
-  if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  applyDryRunToEntry(entry, dryStartDate);
+  afterSave();
 }
 
 /**
@@ -422,29 +446,44 @@ function saveCalvingEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
-  try {
-    applyCalvingToEntry(entry, calvingDate);
-  } catch (err) {
-    var msg = err && err.message ? err.message : String(err);
-    if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
-    return;
-  }
-  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
-    window.updateEntryViaApi(cattleId, entry).then(function () {
-      if (typeof loadLocally === 'function') return loadLocally();
-    }).then(function () {
-      if (typeof showToast === 'function') showToast('Сохранено', 'success');
-      if (typeof updateViewList === 'function') updateViewList();
-      if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
-    }).catch(function (err) {
-      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+  var G = typeof window !== 'undefined' && window.ActionInputGuards;
+  var doPersist = function () {
+    if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+      window.updateEntryViaApi(cattleId, entry).then(function () {
+        if (typeof loadLocally === 'function') return loadLocally();
+      }).then(function () {
+        if (typeof showToast === 'function') showToast('Сохранено', 'success');
+        if (typeof updateViewList === 'function') updateViewList();
+        if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+      });
+      return;
+    }
+    saveLocally();
+    if (typeof showToast === 'function') showToast('Сохранено', 'success');
+    if (typeof updateViewList === 'function') updateViewList();
+    if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  };
+  var applyOne = function (mode) {
+    try {
+      if (mode === 'abort') applyAbortToEntry(entry, calvingDate, '');
+      else applyCalvingToEntry(entry, calvingDate);
+    } catch (err) {
+      var msg = err && err.message ? err.message : String(err);
+      if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+      return;
+    }
+    doPersist();
+  };
+  if (G && typeof G.confirmCalvingFlow === 'function') {
+    G.confirmCalvingFlow(entry, calvingDate).then(function (decision) {
+      if (decision === 'cancel') return;
+      applyOne(decision === 'abort' ? 'abort' : 'calve');
     });
     return;
   }
-  saveLocally();
-  if (typeof showToast === 'function') showToast('Сохранено', 'success');
-  if (typeof updateViewList === 'function') updateViewList();
-  if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  applyOne('calve');
 }
 
 /**
@@ -467,6 +506,40 @@ function saveProtocolAssignEntry() {
     if (typeof showToast === 'function') showToast('Корова не найдена', 'error'); else alert('Корова не найдена');
     return;
   }
+  var G = typeof window !== 'undefined' && window.ActionInputGuards;
+  var afterSave = function () {
+    if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+      window.updateEntryViaApi(cattleId, entry).then(function () {
+        if (typeof loadLocally === 'function') return loadLocally();
+      }).then(function () {
+        if (typeof showToast === 'function') showToast('Сохранено', 'success');
+        if (typeof updateViewList === 'function') updateViewList();
+        if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+      });
+      return;
+    }
+    saveLocally();
+    if (typeof showToast === 'function') showToast('Сохранено', 'success');
+    if (typeof updateViewList === 'function') updateViewList();
+    if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  };
+  if (G && typeof G.confirmProtocolAssignFlow === 'function') {
+    G.confirmProtocolAssignFlow(entry, protocolName, startDate).then(function (res) {
+      if (!res || res.mode === 'cancel') return;
+      try {
+        if (res.mode === 'replace_previous') applyProtocolClearToEntry(entry);
+        applyProtocolAssignToEntry(entry, protocolName, startDate);
+      } catch (err2) {
+        var msg2 = err2 && err2.message ? err2.message : String(err2);
+        if (typeof showToast === 'function') showToast(msg2, 'error'); else alert(msg2);
+        return;
+      }
+      afterSave();
+    });
+    return;
+  }
   try {
     applyProtocolAssignToEntry(entry, protocolName, startDate);
   } catch (err) {
@@ -474,22 +547,7 @@ function saveProtocolAssignEntry() {
     if (typeof showToast === 'function') showToast(msgP, 'error'); else alert(msgP);
     return;
   }
-  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
-    window.updateEntryViaApi(cattleId, entry).then(function () {
-      if (typeof loadLocally === 'function') return loadLocally();
-    }).then(function () {
-      if (typeof showToast === 'function') showToast('Сохранено', 'success');
-      if (typeof updateViewList === 'function') updateViewList();
-      if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
-    }).catch(function (err) {
-      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
-    });
-    return;
-  }
-  saveLocally();
-  if (typeof showToast === 'function') showToast('Сохранено', 'success');
-  if (typeof updateViewList === 'function') updateViewList();
-  if (window._returnToViewCow) { if (typeof navigate === 'function') navigate('view-cow'); if (typeof viewCow === 'function') viewCow(cattleId); window._returnToViewCow = null; } else if (typeof navigate === 'function') navigate('menu');
+  afterSave();
 }
 
 function initDryScreen() {
@@ -549,6 +607,20 @@ function initProtocolAssignScreen() {
     var el = document.getElementById('cattleIdProtocolInput');
     if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
   }
+}
+
+function initAbortScreen() {
+  if (typeof window.initActionBatchAbortScreen === 'function') {
+    window.initActionBatchAbortScreen();
+    return;
+  }
+  setupCattleAutocompleteFor('abortBatchAddInput', 'abortBatchAddList');
+  if (window._prefillCattleId) {
+    var el = document.getElementById('abortBatchAddInput');
+    if (el) { el.value = window._prefillCattleId; delete window._prefillCattleId; }
+  }
+  var dateEl = document.getElementById('abortDateInput');
+  if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -687,6 +759,53 @@ function applyProtocolAssignToEntry(entry, protocolName, startDate) {
   if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
 }
 
+function applyProtocolClearToEntry(entry) {
+  if (!entry) throw new Error('Нет записи');
+  if (!entry.protocol) entry.protocol = {};
+  var oldName = String(entry.protocol.name || '').trim();
+  entry.protocol.name = '';
+  entry.protocol.startDate = '';
+  entry.synced = false;
+  var _pushClear = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+  if (oldName && typeof _pushClear === 'function') {
+    _pushClear(entry, 'Снятие с протокола', 'Был протокол: ' + oldName, { eventType: 'Снятие с протокола', protocolName: oldName });
+  }
+}
+
+function applyAbortToEntry(entry, abortDate, note) {
+  if (!entry) throw new Error('Нет записи');
+  if (abortDate && typeof validateDateNotFuture === 'function') {
+    var errAb = validateDateNotFuture(abortDate, 'Дата аборта');
+    if (errAb) throw new Error(errAb);
+  }
+  var st = (entry.status || '').toString();
+  var detailsStr = 'Дата: ' + (abortDate || '') + (note ? ' — ' + note : '');
+  var _pushA = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
+
+  if (st.indexOf('Сухостой') !== -1) {
+    applyCalvingToEntry(entry, abortDate || '');
+    if (typeof _pushA === 'function') {
+      _pushA(entry, 'Аборт', detailsStr + ' (после сухостоя, новая лактация)', { eventType: 'Аборт' });
+    }
+    return;
+  }
+
+  entry.status = 'Холостая';
+  entry.inseminationDate = '';
+  entry.attemptNumber = 1;
+  entry.bull = '';
+  entry.inseminator = '';
+  entry.code = '';
+  entry.inseminationHistory = [];
+  entry.uziHistory = [];
+  entry.dryStartDate = '';
+  entry.protocol = { name: '', startDate: '' };
+  entry.synced = false;
+  if (typeof _pushA === 'function') {
+    _pushA(entry, 'Аборт', detailsStr, { eventType: 'Аборт' });
+  }
+}
+
 /**
  * Создаёт объект записи телёнка (ещё не в массиве entries).
  */
@@ -802,47 +921,63 @@ function saveUziEntry() {
     return;
   }
 
-  var applied;
-  try {
-    applied = applyUziToEntry(entry, {
-      uziDate: uziDate,
-      result: result,
-      specialist: specialist,
-      daysFromInsemination: daysFromInsemination
-    });
-  } catch (errApply) {
-    if (typeof showToast === 'function') showToast(errApply && errApply.message ? errApply.message : 'Ошибка', 'error'); else alert(errApply && errApply.message ? errApply.message : 'Ошибка');
-    return;
-  }
-  var eventTypeUzi = applied.eventTypeUzi;
-  var detailsStr = applied.detailsStr;
+  var G = typeof window !== 'undefined' && window.ActionInputGuards;
   var pushHistFn = (typeof window !== 'undefined' && window.pushActionHistory) ? window.pushActionHistory : (typeof pushActionHistory === 'function' ? pushActionHistory : null);
 
-  if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
-    window.updateEntryViaApi(cattleId, entry).then(function () {
-      if (typeof loadLocally === 'function') return loadLocally();
-    }).then(function () {
-      var entryAfter = (typeof entries !== 'undefined' && entries && entries.find) ? entries.find(function (e) { return e.cattleId === cattleId; }) : null;
-      if (entryAfter && pushHistFn) {
-        var hasUzi = entryAfter.actionHistory && entryAfter.actionHistory.some(function (item) {
-          return item.action === 'УЗИ' && item.details && item.details.indexOf(uziDate) !== -1;
-        });
-        if (!hasUzi) pushHistFn(entryAfter, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
-      }
-      if (typeof showToast === 'function') showToast('Сохранено', 'success');
-      if (typeof updateViewList === 'function') updateViewList();
-      if (typeof navigate === 'function') navigate('view-cow');
-      viewCow(cattleId);
-    }).catch(function (err) {
-      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+  var persistAfterUzi = function (applied) {
+    var eventTypeUzi = applied.eventTypeUzi;
+    var detailsStr = applied.detailsStr;
+    if (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+      window.updateEntryViaApi(cattleId, entry).then(function () {
+        if (typeof loadLocally === 'function') return loadLocally();
+      }).then(function () {
+        var entryAfter = (typeof entries !== 'undefined' && entries && entries.find) ? entries.find(function (e) { return e.cattleId === cattleId; }) : null;
+        if (entryAfter && pushHistFn) {
+          var hasUzi = entryAfter.actionHistory && entryAfter.actionHistory.some(function (item) {
+            return item.action === 'УЗИ' && item.details && item.details.indexOf(uziDate) !== -1;
+          });
+          if (!hasUzi) pushHistFn(entryAfter, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+        }
+        if (typeof showToast === 'function') showToast('Сохранено', 'success');
+        if (typeof updateViewList === 'function') updateViewList();
+        if (typeof navigate === 'function') navigate('view-cow');
+        viewCow(cattleId);
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
+      });
+      return;
+    }
+    saveLocally();
+    if (typeof showToast === 'function') showToast('Сохранено', 'success');
+    if (typeof updateViewList === 'function') updateViewList();
+    if (typeof navigate === 'function') navigate('view-cow');
+    if (typeof viewCow === 'function') viewCow(cattleId);
+  };
+
+  var doApply = function () {
+    try {
+      return applyUziToEntry(entry, {
+        uziDate: uziDate,
+        result: result,
+        specialist: specialist,
+        daysFromInsemination: daysFromInsemination
+      });
+    } catch (errApply) {
+      if (typeof showToast === 'function') showToast(errApply && errApply.message ? errApply.message : 'Ошибка', 'error'); else alert(errApply && errApply.message ? errApply.message : 'Ошибка');
+      return null;
+    }
+  };
+
+  if (G && typeof G.confirmUziFlow === 'function') {
+    G.confirmUziFlow(entry, uziDate).then(function (ok) {
+      if (!ok) return;
+      var applied = doApply();
+      if (applied) persistAfterUzi(applied);
     });
     return;
   }
-  saveLocally();
-  if (typeof showToast === 'function') showToast('Сохранено', 'success');
-  if (typeof updateViewList === 'function') updateViewList();
-  if (typeof navigate === 'function') navigate('view-cow');
-  if (typeof viewCow === 'function') viewCow(cattleId);
+  var appliedLegacy = doApply();
+  if (appliedLegacy) persistAfterUzi(appliedLegacy);
 }
 
 // Делаем функции доступными глобально (для inline onsubmit/onclick в формах и карточке)
@@ -857,6 +992,8 @@ if (typeof window !== 'undefined') {
   window.applyDryRunToEntry = applyDryRunToEntry;
   window.applyCalvingToEntry = applyCalvingToEntry;
   window.applyProtocolAssignToEntry = applyProtocolAssignToEntry;
+  window.applyProtocolClearToEntry = applyProtocolClearToEntry;
+  window.applyAbortToEntry = applyAbortToEntry;
   window.getLastInseminationRecordBefore = getLastInseminationRecordBefore;
   window.getLastInseminationDateBefore = getLastInseminationDateBefore;
   window.setupCattleAutocompleteFor = setupCattleAutocompleteFor;
@@ -865,6 +1002,7 @@ if (typeof window !== 'undefined') {
   window.initDryScreen = initDryScreen;
   window.initCalvingScreen = initCalvingScreen;
   window.initProtocolAssignScreen = initProtocolAssignScreen;
+  window.initAbortScreen = initAbortScreen;
 }
 
 // Экспорт функций

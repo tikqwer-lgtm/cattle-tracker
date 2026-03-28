@@ -193,6 +193,9 @@ function saveCurrentEntry() {
   var prev = window.currentEditingId
     ? entries.find(function (e) { return e.cattleId === window.currentEditingId; })
     : null;
+  var wasEditingFromCard = !!window.currentEditingId;
+  var editingIdSnap = window.currentEditingId;
+
   var entry;
   if (prev) {
     entry = cloneEntryForEdit(prev);
@@ -205,92 +208,159 @@ function saveCurrentEntry() {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
   }
-  // Изменения отёла / запуска / протокола из формы карточки — записать в «История» и в общий список событий
-  if (prev) {
-    var prevCalvingDate = (prev.calvingDate || '').trim();
-    var nextCalvingDate = (entry.calvingDate || '').trim();
-    if (nextCalvingDate && prevCalvingDate !== nextCalvingDate && typeof window.applyCalvingToEntry === 'function') {
-      try {
-        window.applyCalvingToEntry(entry, nextCalvingDate);
-      } catch (err) {
-        var msg = err && err.message ? err.message : String(err);
-        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
-        return;
+
+  function finalizeSave() {
+    if (prev && !entriesEqualForSync(prev, entry)) entry.synced = false;
+    var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
+    if (useApi) {
+      var p;
+      if (editingIdSnap) {
+        entry.dateAdded = (entries.find(function (e) { return e.cattleId === editingIdSnap; }) || {}).dateAdded || entry.dateAdded;
+        var prevEntryApi = entries.find(function (e) { return e.cattleId === editingIdSnap; }) || {};
+        var hasChangesApi = !entriesEqualForSync(prevEntryApi, entry);
+        entry.synced = hasChangesApi ? false : (prevEntryApi.synced === true);
+        p = window.updateEntryViaApi(editingIdSnap, entry);
+        delete window.currentEditingId;
+      } else {
+        entry.dateAdded = nowFormatted();
+        entry.synced = false;
+        p = window.createEntryViaApi(entry);
       }
+      p.then(function () {
+        updateList();
+        if (typeof updateViewList === 'function') updateViewList();
+        clearForm();
+        if (wasEditingFromCard && cattleId) {
+          if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
+          if (typeof viewCow === 'function') viewCow(cattleId);
+        } else if (typeof navigate === 'function') navigate('view');
+        console.log("Запись сохранена:", entry);
+      }).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения на сервере', 'error'); else alert(err && err.message ? err.message : 'Ошибка сохранения на сервере');
+      });
+      return;
     }
-    var prevDryStartDate = (prev.dryStartDate || '').trim();
-    var nextDryStartDate = (entry.dryStartDate || '').trim();
-    if (nextDryStartDate && prevDryStartDate !== nextDryStartDate && typeof window.applyDryRunToEntry === 'function') {
-      window.applyDryRunToEntry(entry, nextDryStartDate);
-    }
-    var prevPn = ((prev.protocol && prev.protocol.name) || '').trim();
-    var entryPn = ((entry.protocol && entry.protocol.name) || '').trim();
-    var prevSd = ((prev.protocol && prev.protocol.startDate) || '').trim();
-    var entrySd = ((entry.protocol && entry.protocol.startDate) || '').trim();
-    if (entryPn && (prevPn !== entryPn || prevSd !== entrySd) && typeof window.applyProtocolAssignToEntry === 'function') {
-      try {
-        window.applyProtocolAssignToEntry(entry, entryPn, entrySd);
-      } catch (errP) {
-        var msgP = errP && errP.message ? errP.message : String(errP);
-        if (typeof showToast === 'function') showToast(msgP, 'error'); else alert(msgP);
-        return;
+    if (editingIdSnap) {
+      var index = entries.findIndex(function (e) { return e.cattleId === editingIdSnap; });
+      if (index !== -1) {
+        entry.dateAdded = entries[index].dateAdded;
+        var hasChangesLocal = !entriesEqualForSync(entries[index], entry);
+        entry.synced = hasChangesLocal ? false : (entries[index].synced === true);
+        entries[index] = entry;
       }
-    }
-    if (!entriesEqualForSync(prev, entry)) entry.synced = false;
-  }
-  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function' && typeof window.createEntryViaApi === 'function';
-  var wasEditingFromCard = !!window.currentEditingId;
-  if (useApi) {
-    var p;
-    if (window.currentEditingId) {
-      entry.dateAdded = (entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {}).dateAdded || entry.dateAdded;
-      var prevEntryApi = entries.find(function (e) { return e.cattleId === window.currentEditingId; }) || {};
-      var hasChangesApi = !entriesEqualForSync(prevEntryApi, entry);
-      entry.synced = hasChangesApi ? false : (prevEntryApi.synced === true);
-      p = window.updateEntryViaApi(window.currentEditingId, entry);
       delete window.currentEditingId;
     } else {
       entry.dateAdded = nowFormatted();
       entry.synced = false;
-      p = window.createEntryViaApi(entry);
+      entries.unshift(entry);
     }
-    p.then(function () {
-      updateList();
-      if (typeof updateViewList === 'function') updateViewList();
-      clearForm();
-      if (wasEditingFromCard && cattleId) {
-        if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
-        if (typeof viewCow === 'function') viewCow(cattleId);
-      } else if (typeof navigate === 'function') navigate('view');
-      console.log("Запись сохранена:", entry);
-    }).catch(function (err) {
-      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения на сервере', 'error'); else alert(err && err.message ? err.message : 'Ошибка сохранения на сервере');
-    });
+    saveLocally();
+    updateList();
+    if (typeof updateViewList === 'function') updateViewList();
+    clearForm();
+    if (wasEditingFromCard && cattleId) {
+      if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
+      if (typeof viewCow === 'function') viewCow(cattleId);
+    } else if (typeof navigate === 'function') navigate('view');
+    console.log("Запись сохранена:", entry);
+  }
+
+  if (!prev) {
+    finalizeSave();
     return;
   }
-  if (window.currentEditingId) {
-    var index = entries.findIndex(function (e) { return e.cattleId === window.currentEditingId; });
-    if (index !== -1) {
-      entry.dateAdded = entries[index].dateAdded;
-      var hasChangesLocal = !entriesEqualForSync(entries[index], entry);
-      entry.synced = hasChangesLocal ? false : (entries[index].synced === true);
-      entries[index] = entry;
-    }
-    delete window.currentEditingId;
-  } else {
-    entry.dateAdded = nowFormatted();
-    entry.synced = false;
-    entries.unshift(entry);
+
+  var G = window.ActionInputGuards;
+  var chain = Promise.resolve(true);
+
+  var prevCalvingDate = (prev.calvingDate || '').trim();
+  var nextCalvingDate = (entry.calvingDate || '').trim();
+  if (nextCalvingDate && prevCalvingDate !== nextCalvingDate && typeof window.applyCalvingToEntry === 'function') {
+    chain = chain.then(function (cont) {
+      if (cont === false) return false;
+      if (!G || typeof G.confirmCalvingFlow !== 'function') {
+        try {
+          window.applyCalvingToEntry(entry, nextCalvingDate);
+        } catch (err) {
+          var msg = err && err.message ? err.message : String(err);
+          if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+          return false;
+        }
+        return true;
+      }
+      return G.confirmCalvingFlow(prev, nextCalvingDate).then(function (dec) {
+        if (dec === 'cancel') return false;
+        try {
+          if (dec === 'abort' && typeof window.applyAbortToEntry === 'function') {
+            window.applyAbortToEntry(entry, nextCalvingDate, '');
+          } else {
+            window.applyCalvingToEntry(entry, nextCalvingDate);
+          }
+        } catch (err2) {
+          var msg2 = err2 && err2.message ? err2.message : String(err2);
+          if (typeof showToast === 'function') showToast(msg2, 'error'); else alert(msg2);
+          return false;
+        }
+        return true;
+      });
+    });
   }
-  saveLocally();
-  updateList();
-  if (typeof updateViewList === 'function') updateViewList();
-  clearForm();
-  if (wasEditingFromCard && cattleId) {
-    if (typeof navigate === 'function') navigate('view-cow', { cattleId: cattleId });
-    if (typeof viewCow === 'function') viewCow(cattleId);
-  } else if (typeof navigate === 'function') navigate('view');
-  console.log("Запись сохранена:", entry);
+
+  var prevDryStartDate = (prev.dryStartDate || '').trim();
+  var nextDryStartDate = (entry.dryStartDate || '').trim();
+  if (nextDryStartDate && prevDryStartDate !== nextDryStartDate && typeof window.applyDryRunToEntry === 'function') {
+    chain = chain.then(function (cont) {
+      if (cont === false) return false;
+      if (!G || typeof G.confirmDryFlow !== 'function') {
+        window.applyDryRunToEntry(entry, nextDryStartDate);
+        return true;
+      }
+      return G.confirmDryFlow(prev, nextDryStartDate).then(function (ok) {
+        if (!ok) return false;
+        window.applyDryRunToEntry(entry, nextDryStartDate);
+        return true;
+      });
+    });
+  }
+
+  var prevPn = ((prev.protocol && prev.protocol.name) || '').trim();
+  var entryPn = ((entry.protocol && entry.protocol.name) || '').trim();
+  var prevSd = ((prev.protocol && prev.protocol.startDate) || '').trim();
+  var entrySd = ((entry.protocol && entry.protocol.startDate) || '').trim();
+  if (entryPn && (prevPn !== entryPn || prevSd !== entrySd) && typeof window.applyProtocolAssignToEntry === 'function') {
+    chain = chain.then(function (cont) {
+      if (cont === false) return false;
+      if (!G || typeof G.confirmProtocolAssignFlow !== 'function') {
+        try {
+          window.applyProtocolAssignToEntry(entry, entryPn, entrySd);
+        } catch (errP) {
+          var msgP = errP && errP.message ? errP.message : String(errP);
+          if (typeof showToast === 'function') showToast(msgP, 'error'); else alert(msgP);
+          return false;
+        }
+        return true;
+      }
+      return G.confirmProtocolAssignFlow(prev, entryPn, entrySd).then(function (res) {
+        if (!res || res.mode === 'cancel') return false;
+        try {
+          if (res.mode === 'replace_previous' && typeof window.applyProtocolClearToEntry === 'function') {
+            window.applyProtocolClearToEntry(entry);
+          }
+          window.applyProtocolAssignToEntry(entry, entryPn, entrySd);
+        } catch (errPr) {
+          var msgPr = errPr && errPr.message ? errPr.message : String(errPr);
+          if (typeof showToast === 'function') showToast(msgPr, 'error'); else alert(msgPr);
+          return false;
+        }
+        return true;
+      });
+    });
+  }
+
+  chain.then(function (cont) {
+    if (cont === false) return;
+    finalizeSave();
+  });
 }
 
 function initOfflineIndicator() {

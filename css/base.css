@@ -90,6 +90,26 @@ body {
   margin: 0;
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.app-header-reload-btn {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.app-header-reload-btn:hover {
+  background: var(--color-bg-hover, rgba(0, 0, 0, 0.04));
+}
+
 .offline-indicator {
   position: fixed;
   top: 0;
@@ -175,7 +195,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 12000;
 }
 .confirm-modal {
   background: var(--color-bg, #fff);
@@ -190,6 +210,16 @@ h1 {
   font-size: 1em;
   line-height: 1.4;
   white-space: pre-wrap;
+}
+.confirm-modal-text {
+  white-space: pre-line;
+}
+.confirm-modal--wide {
+  max-width: 520px;
+}
+.confirm-modal-actions--triple {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .confirm-modal-actions {
   display: flex;

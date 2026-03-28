@@ -1,5 +1,17 @@
 // ui-helpers.js — Вспомогательные функции для UI
 
+/** Восстановление фокуса после модалки: без focus на отсоединённом узле (ломает клики в Electron/WebView). */
+function restoreModalFocus(el) {
+  if (!el || typeof el.focus !== 'function' || !el.isConnected) return;
+  try {
+    el.focus({ preventScroll: true });
+  } catch (e) {
+    try {
+      el.focus();
+    } catch (e2) {}
+  }
+}
+
 /**
  * Показывает индикатор загрузки поверх контейнера
  * @param {HTMLElement|string} container - Элемент или id
@@ -101,9 +113,10 @@ function showConfirmModal(message, options) {
   overlay.setAttribute('aria-labelledby', 'confirm-modal-title');
 
   var text = (message || 'Продолжить?').replace(/</g, '&lt;');
+  var modalClass = 'confirm-modal' + ((options && options.wide) ? ' confirm-modal--wide' : '');
   overlay.innerHTML =
-    '<div class="confirm-modal">' +
-    '<p id="confirm-modal-title">' + text + '</p>' +
+    '<div class="' + modalClass + '">' +
+    '<p id="confirm-modal-title" class="confirm-modal-text">' + text + '</p>' +
     '<div class="confirm-modal-actions">' +
     '<button type="button" class="small-btn confirm-cancel">' + cancelText.replace(/</g, '&lt;') + '</button>' +
     '<button type="button" class="btn primary confirm-ok">' + confirmText.replace(/</g, '&lt;') + '</button>' +
@@ -117,7 +130,7 @@ function showConfirmModal(message, options) {
     if (resolved) return;
     resolved = true;
     overlay.remove();
-    if (focusBefore && typeof focusBefore.focus === 'function') focusBefore.focus();
+    restoreModalFocus(focusBefore);
     resolvePromise(result);
   }
 
@@ -147,6 +160,133 @@ function showConfirmModal(message, options) {
 
   document.body.appendChild(overlay);
   btnOk.focus();
+  return promise;
+}
+
+/**
+ * Три варианта: 'cancel' | 'primary' | 'secondary'
+ * @param {{ cancelText?: string, primaryText?: string, secondaryText?: string, wide?: boolean }} [options]
+ */
+function showTripleModal(message, options) {
+  var cancelText = (options && options.cancelText) || 'Отмена';
+  var primaryText = (options && options.primaryText) || 'Продолжить';
+  var secondaryText = (options && options.secondaryText) || '';
+  var resolved = false;
+  var focusBefore = document.activeElement;
+  var modalClass = 'confirm-modal confirm-modal--triple' + ((options && options.wide) ? ' confirm-modal--wide' : '');
+
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'confirm-triple-title');
+
+  var text = (message || '').replace(/</g, '&lt;');
+  overlay.innerHTML =
+    '<div class="' + modalClass + '">' +
+    '<p id="confirm-triple-title" class="confirm-modal-text">' + text + '</p>' +
+    '<div class="confirm-modal-actions confirm-modal-actions--triple">' +
+    '<button type="button" class="small-btn triple-cancel">' + cancelText.replace(/</g, '&lt;') + '</button>' +
+    '<button type="button" class="btn primary triple-primary">' + primaryText.replace(/</g, '&lt;') + '</button>' +
+    '<button type="button" class="btn triple-secondary">' + secondaryText.replace(/</g, '&lt;') + '</button>' +
+    '</div></div>';
+
+  var btnCancel = overlay.querySelector('.triple-cancel');
+  var btnPrimary = overlay.querySelector('.triple-primary');
+  var btnSecondary = overlay.querySelector('.triple-secondary');
+
+  var resolvePromise;
+  var promise = new Promise(function (resolve) { resolvePromise = resolve; });
+
+  function finish(result) {
+    if (resolved) return;
+    resolved = true;
+    overlay.remove();
+    restoreModalFocus(focusBefore);
+    resolvePromise(result);
+  }
+
+  btnCancel.addEventListener('click', function () { finish('cancel'); });
+  btnPrimary.addEventListener('click', function () { finish('primary'); });
+  btnSecondary.addEventListener('click', function () { finish('secondary'); });
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) finish('cancel');
+  });
+  var focusable = [btnCancel, btnPrimary, btnSecondary];
+  overlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); finish('cancel'); }
+    if (e.key === 'Tab') {
+      var i = focusable.indexOf(document.activeElement);
+      if (i === -1) return;
+      e.preventDefault();
+      if (e.shiftKey) focusable[i === 0 ? focusable.length - 1 : i - 1].focus();
+      else focusable[i === focusable.length - 1 ? 0 : i + 1].focus();
+    }
+  });
+
+  document.body.appendChild(overlay);
+  btnPrimary.focus();
+  return promise;
+}
+
+/**
+ * @returns {Promise<'cancel'|'continue'|'replace_previous'>}
+ */
+function showProtocolAssignModal(message) {
+  var resolved = false;
+  var focusBefore = document.activeElement;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'confirm-proto-title');
+
+  var text = (message || '').replace(/</g, '&lt;');
+  overlay.innerHTML =
+    '<div class="confirm-modal confirm-modal--wide confirm-modal--triple">' +
+    '<p id="confirm-proto-title" class="confirm-modal-text">' + text + '</p>' +
+    '<div class="confirm-modal-actions confirm-modal-actions--triple">' +
+    '<button type="button" class="small-btn proto-cancel">Отмена</button>' +
+    '<button type="button" class="btn primary proto-continue">Продолжить</button>' +
+    '<button type="button" class="btn proto-replace">Отменить предыдущий протокол</button>' +
+    '</div></div>';
+
+  var btnCancel = overlay.querySelector('.proto-cancel');
+  var btnContinue = overlay.querySelector('.proto-continue');
+  var btnReplace = overlay.querySelector('.proto-replace');
+
+  var resolvePromise;
+  var promise = new Promise(function (resolve) { resolvePromise = resolve; });
+
+  function finish(result) {
+    if (resolved) return;
+    resolved = true;
+    overlay.remove();
+    restoreModalFocus(focusBefore);
+    resolvePromise(result);
+  }
+
+  btnCancel.addEventListener('click', function () { finish('cancel'); });
+  btnContinue.addEventListener('click', function () { finish('continue'); });
+  btnReplace.addEventListener('click', function () { finish('replace_previous'); });
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) finish('cancel');
+  });
+  var focusable = [btnCancel, btnContinue, btnReplace];
+  overlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); finish('cancel'); }
+    if (e.key === 'Tab') {
+      var i = focusable.indexOf(document.activeElement);
+      if (i === -1) return;
+      e.preventDefault();
+      if (e.shiftKey) focusable[i === 0 ? focusable.length - 1 : i - 1].focus();
+      else focusable[i === focusable.length - 1 ? 0 : i + 1].focus();
+    }
+  });
+
+  document.body.appendChild(overlay);
+  btnContinue.focus();
   return promise;
 }
 
@@ -258,6 +398,39 @@ function updateList() {
       list.appendChild(div);
     });
   }
+}
+
+/**
+ * Полная перезагрузка страницы — обход зависшего ввода в Electron/WebView (иногда помогает только открытие DevTools).
+ * Черновики на экранах «Действия» не сохранятся.
+ */
+function reloadCattleTrackerPage() {
+  if (typeof window === 'undefined' || typeof location === 'undefined') return;
+  try {
+    location.reload();
+  } catch (e) {
+    try {
+      window.location.href = String(window.location.href || '');
+    } catch (e2) {}
+  }
+}
+
+/**
+ * Мягкая перерисовка вьюпорта (без перезагрузки): иногда восстанавливает hit-test после навигации.
+ */
+function softRepaintCattleTrackerView() {
+  try {
+    window.dispatchEvent(new Event('resize'));
+    void document.body.offsetHeight;
+  } catch (e) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.showConfirmModal = showConfirmModal;
+  window.showTripleModal = showTripleModal;
+  window.showProtocolAssignModal = showProtocolAssignModal;
+  window.reloadCattleTrackerPage = reloadCattleTrackerPage;
+  window.softRepaintCattleTrackerView = softRepaintCattleTrackerView;
 }
 
 // Экспорт функций
