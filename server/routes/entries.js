@@ -65,7 +65,7 @@ router.put('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'op
   entry.userId = entry.userId || req.user.id;
   entry.lastModifiedBy = entry.lastModifiedBy || req.user.username;
   entry.dateAdded = existing.dateAdded;
-  entry.synced = existing.synced;
+  if (entry.synced === undefined) entry.synced = existing.synced;
   db.updateEntry(objectId, cattleId, entry);
   const updated = db.getEntry(objectId, cattleId, req.user.id, req.user.role);
   res.json(updated);
