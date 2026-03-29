@@ -2,10 +2,33 @@
  * Auth routes: register, login, logout, me, check-username.
  */
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 const { signToken, requireAuth } = require('../auth');
+
+/** Только попытки входа — не трогаем /me и check-username (иначе NAT и частые GET съедают лимит). */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: function (req, res) {
+    res.status(429).json({ error: 'Слишком много попыток входа. Попробуйте через 15 минут.' });
+  }
+});
+
+/** Регистрации с одного IP — отдельный лимит. */
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: function (req, res) {
+    res.status(429).json({ error: 'Слишком много регистраций с этого адреса. Попробуйте позже.' });
+  }
+});
 
 router.get('/check-username', (req, res) => {
   const username = (req.query.username || '').trim();
@@ -16,7 +39,7 @@ router.get('/check-username', (req, res) => {
   res.json({ available: !exists });
 });
 
-router.post('/register', (req, res) => {
+router.post('/register', registerLimiter, (req, res) => {
   const { username, password, role } = req.body || {};
   const u = (username || '').trim();
   const p = password || '';
@@ -34,7 +57,7 @@ router.post('/register', (req, res) => {
   res.status(201).json({ ok: true, user, token });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   const u = (username || '').trim();
   const p = password || '';

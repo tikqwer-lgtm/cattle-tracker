@@ -8,7 +8,6 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
@@ -35,17 +34,7 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
-// Ограничение запросов к авторизации (защита от перебора паролей)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: function (req, res) {
-    res.status(429).json({ error: 'Слишком много попыток входа. Попробуйте через 15 минут.' });
-  }
-});
-app.use('/api/auth', authLimiter);
+// Лимиты только на POST /login и /register — см. routes/auth.js (не на /me и check-username, иначе общий IP и опросы съедают квоту).
 
 app.use('/api/auth', authRoutes);
 app.use('/api/objects', objectsRoutes);
