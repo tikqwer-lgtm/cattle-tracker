@@ -119,6 +119,13 @@
 .action-batch-draft-row:hover {
   background: var(--color-bg-elevated, #f5f5f5);
 }
+.action-batch-draft-row--guard-warn,
+.action-batch-calf-subrow.action-batch-draft-row--guard-warn td {
+  background: #fff8dc;
+}
+.action-batch-draft-row--guard-warn:hover {
+  background: #fff3b0;
+}
 .action-batch-calf-subrow td {
   font-size: 0.85rem;
   color: var(--text-muted, #555);

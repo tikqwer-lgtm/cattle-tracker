@@ -1,14 +1,34 @@
 // ui-helpers.js — Вспомогательные функции для UI
 
-/** Восстановление фокуса после модалки: без focus на отсоединённом узле (ломает клики в Electron/WebView). */
+/**
+ * Восстановление фокуса после модалки.
+ * В Electron/WebView: focus на уже удалённом узле (например кнопка в закрытом оверлее) оставляет «мёртвые» клики по полям —
+ * снимаем фокус и мягко перерисовываем вьюпорт, если цель недоступна.
+ */
 function restoreModalFocus(el) {
-  if (!el || typeof el.focus !== 'function' || !el.isConnected) return;
-  try {
-    el.focus({ preventScroll: true });
-  } catch (e) {
+  if (el && typeof el.focus === 'function' && el.isConnected) {
     try {
-      el.focus();
-    } catch (e2) {}
+      el.focus({ preventScroll: true });
+    } catch (e) {
+      try {
+        el.focus();
+      } catch (e2) {}
+    }
+    return;
+  }
+  try {
+    var ae = document.activeElement;
+    if (ae && typeof ae.blur === 'function') ae.blur();
+  } catch (e3) {}
+  if (typeof window.softRepaintCattleTrackerView === 'function') {
+    window.softRepaintCattleTrackerView();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        try {
+          if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+        } catch (e4) {}
+      });
+    }
   }
 }
 

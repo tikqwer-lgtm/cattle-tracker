@@ -83,6 +83,17 @@
     return !!((entry.protocol && String(entry.protocol.name || '').trim()));
   }
 
+  /** Первая строка предупреждений: номер животного (для всех пакетных и одиночных действий). */
+  function guardCattlePrefix(cattleId) {
+    var s = cattleId != null && String(cattleId).trim() ? String(cattleId).trim() : '—';
+    return 'Корова № ' + s + '.\n\n';
+  }
+
+  function guardMsg(entry, text) {
+    var id = entry && entry.cattleId != null ? entry.cattleId : '';
+    return guardCattlePrefix(id) + (text || '');
+  }
+
   function checkInsemination(entry, insemDate, flags) {
     flags = flags || {};
     if (!flags.allowPregnantInsem && isSterlyana(entry)) {
@@ -144,14 +155,25 @@
     if (flags.allowUziEligible) return { ok: true };
     var eligible = (isOsemenen(entry) || isSterlyana(entry)) && hasInseminationOnOrBefore(entry, uziDate);
     if (!eligible) {
+      var st = statusStr(entry) || '—';
       var days = getPregnancyDaysOnDate(entry, uziDate);
-      var msg =
-        'Не является осемененной или стельной для подтверждения стельности.\n' +
-        '(Статус — ' +
-        (statusStr(entry) || '—') +
-        '; дни стельности — ' +
-        formatDaysLabel(days) +
-        ')\n\nПродолжить?';
+      var ctxLine;
+      if (isSterlyana(entry) || isOsemenen(entry)) {
+        ctxLine = '(Статус — ' + st + '; дни стельности — ' + formatDaysLabel(days) + ')';
+      } else if (days !== null && days !== undefined) {
+        ctxLine =
+          '(Статус — ' +
+          st +
+          '; это не «дни стельности» — при таком статусе считаем дней от последнего осеменения к дате УЗИ: ' +
+          days +
+          ')';
+      } else {
+        ctxLine =
+          '(Статус — ' +
+          st +
+          '; дней от последнего осеменения к дате УЗИ не определено)';
+      }
+      var msg = 'Не является осемененной или стельной для подтверждения стельности.\n' + ctxLine + '\n\nПродолжить?';
       return { ok: false, code: 'uzi_eligible', message: msg };
     }
     return { ok: true };
@@ -276,13 +298,13 @@
       var r = checkCalving(entry, calvingDate, flags);
       if (r.ok) return Promise.resolve('calve');
       if (r.calving === 'late') {
-        return showTriple(r.message).then(function (choice) {
+        return showTriple(guardMsg(entry, r.message)).then(function (choice) {
           if (choice === 'primary') return 'calve';
           if (choice === 'secondary') return 'abort';
           return 'cancel';
         });
       }
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return 'cancel';
         if (r.calving === 'duplicate') flags.allowDuplicateCalving = true;
         if (r.calving === 'not_pregnant') flags.allowNotPregnantCalving = true;
@@ -297,7 +319,7 @@
     function step() {
       var r = checkInsemination(entry, date, flags);
       if (r.ok) return Promise.resolve(true);
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return false;
         if (r.code === 'insemination_pregnant') flags.allowPregnantInsem = true;
         if (r.code === 'duplicate') flags.allowDuplicateInsem = true;
@@ -312,7 +334,7 @@
     function step() {
       var r = checkDry(entry, dryDate, flags);
       if (r.ok) return Promise.resolve(true);
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return false;
         if (r.code === 'duplicate') flags.allowDuplicateDry = true;
         if (r.code === 'dry_norm') flags.allowDryNorm = true;
@@ -327,7 +349,7 @@
     function step() {
       var r = checkUzi(entry, uziDate, flags);
       if (r.ok) return Promise.resolve(true);
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return false;
         if (r.code === 'duplicate') flags.allowDuplicateUzi = true;
         if (r.code === 'uzi_eligible') flags.allowUziEligible = true;
@@ -343,13 +365,13 @@
       var r = checkProtocolAssign(entry, protocolName, startDate, flags);
       if (r.ok) return Promise.resolve({ mode: 'apply' });
       if (r.code === 'protocol_replace') {
-        return showProtocolModal(r.message).then(function (choice) {
+        return showProtocolModal(guardMsg(entry, r.message)).then(function (choice) {
           if (choice === 'cancel') return { mode: 'cancel' };
           if (choice === 'replace_previous') return { mode: 'replace_previous' };
           return { mode: 'apply' };
         });
       }
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return { mode: 'cancel' };
         if (r.code === 'protocol_pregnant') flags.allowProtocolPregnant = true;
         if (r.code === 'duplicate') flags.allowDuplicateProtocol = true;
@@ -364,7 +386,7 @@
     function step() {
       var r = checkAbort(entry, abortDate, flags);
       if (r.ok) return Promise.resolve(true);
-      return showConfirm(r.message).then(function (ok) {
+      return showConfirm(guardMsg(entry, r.message)).then(function (ok) {
         if (!ok) return false;
         flags.allowDuplicateAbort = true;
         return step();
@@ -386,6 +408,8 @@
       checkCalving: checkCalving,
       checkProtocolAssign: checkProtocolAssign,
       checkAbort: checkAbort,
+      guardCattlePrefix: guardCattlePrefix,
+      guardMsg: guardMsg,
       confirmInseminationFlow: confirmInseminationFlow,
       confirmDryFlow: confirmDryFlow,
       confirmUziFlow: confirmUziFlow,

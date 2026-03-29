@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
  * Обработчики ПКМ должны выполняться в основном мире страницы (как обычный скрипт приложения).
  * Слушатели из изолированного контекста preload часто не дают стабильного фокуса ввода в Electron
  * (симптом «помогает только открытие DevTools»), хотя курсор в поле меняется.
+ * Левый и правый клик: принудительный focus + softRepaint (как обход «мёртвых» полей после модалок).
  */
 (function installRightClickEditableFocusInMainWorld() {
   function injectMainWorldListeners() {
@@ -72,6 +73,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
       document.addEventListener('mousedown', function (e) {
         if (e.button === 2) focusEditableFromEvent(e);
+        if (e.button === 0) focusEditableFromEvent(e);
       }, true);
       document.addEventListener('contextmenu', function (e) {
         focusEditableFromEvent(e);

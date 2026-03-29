@@ -61,7 +61,20 @@
 
   function closeTopModal() {
     var ex = document.querySelector('.action-batch-overlay');
-    if (ex) ex.remove();
+    if (ex) {
+      try {
+        var ae = document.activeElement;
+        if (ae && ex.contains(ae) && typeof ae.blur === 'function') ae.blur();
+      } catch (e) {}
+      ex.remove();
+      try {
+        ae = document.activeElement;
+        if (ae && ae !== document.body && ae !== document.documentElement && !ae.isConnected && typeof ae.blur === 'function') {
+          ae.blur();
+        }
+      } catch (e2) {}
+      if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+    }
     clearAutocompleteDropdowns();
   }
 
@@ -164,7 +177,7 @@
       var entry = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
       var days = r.daysFromInsemination != null ? r.daysFromInsemination : (entry && uziDate ? computeUziDays(entry, uziDate) : '—');
       return (
-        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td>' + escapeHtml(r.result || '—') + '</td>' +
         '<td>' + escapeHtml(String(days)) + '</td>' +
@@ -198,6 +211,23 @@
     return d.innerHTML;
   }
 
+  /** Ключ для пропуска повторных модалок при «Сохранить всё», если дата/параметры не менялись. */
+  function batchGuardKey(actionDate, extra) {
+    return String(actionDate || '') + '\x1e' + String(extra || '');
+  }
+
+  function draftRowWarnClass(r) {
+    return r && r._batchGuardWarned ? ' action-batch-draft-row--guard-warn' : '';
+  }
+
+  function clearRowBatchGuard(r) {
+    if (!r) return;
+    delete r._batchGuardKey;
+    delete r._batchGuardWarned;
+    delete r._calvingIntentAtAdd;
+    delete r._protocolModeAtAdd;
+  }
+
   function editUziRow(rowId) {
     var r = uziDraft.find(function (x) { return x.id === rowId; });
     if (!r) return;
@@ -223,6 +253,7 @@
       var dEl = document.getElementById('uziEditDays');
       var dv = dEl && dEl.value !== '' ? parseInt(dEl.value, 10) : null;
       r.daysFromInsemination = dv != null && !isNaN(dv) ? dv : null;
+      clearRowBatchGuard(r);
       closeTopModal();
       renderUziDraft();
       refocusActiveActionBatchNumberInput();
@@ -259,12 +290,33 @@
         return;
       }
       var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
-      var days = computeUziDays(entry, uziDate);
-      uziDraft.push({ id: uid(), cattleId: cattleId, result: result, daysFromInsemination: days != null ? days : null });
-      var addIn = document.getElementById('uziBatchAddInput');
-      if (addIn) addIn.value = '';
-      renderUziDraft();
-      refocusActiveActionBatchNumberInput();
+      if (!uziDate) {
+        toast('Укажите дату проверки', 'error');
+        refocusActiveActionBatchNumberInput();
+        return;
+      }
+      var G = window.ActionInputGuards;
+      var hadWarnings = !!(G && G.checkUzi && !G.checkUzi(entry, uziDate, {}).ok);
+      var p = !G || typeof G.confirmUziFlow !== 'function' ? Promise.resolve(true) : G.confirmUziFlow(entry, uziDate);
+      p.then(function (ok) {
+        if (!ok) {
+          refocusActiveActionBatchNumberInput();
+          return;
+        }
+        var days = computeUziDays(entry, uziDate);
+        uziDraft.push({
+          id: uid(),
+          cattleId: cattleId,
+          result: result,
+          daysFromInsemination: days != null ? days : null,
+          _batchGuardKey: batchGuardKey(uziDate, ''),
+          _batchGuardWarned: hadWarnings
+        });
+        var addIn = document.getElementById('uziBatchAddInput');
+        if (addIn) addIn.value = '';
+        renderUziDraft();
+        refocusActiveActionBatchNumberInput();
+      });
     }
     document.getElementById('uziPickPregnant').addEventListener('click', function () { pick('Стельная'); });
     document.getElementById('uziPickOpen').addEventListener('click', function () { pick('Не стельная'); });
@@ -296,6 +348,7 @@
         var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
         if (!ent) return false;
         if (!G || typeof G.confirmUziFlow !== 'function') return true;
+        if (r._batchGuardKey === batchGuardKey(uziDate, '')) return true;
         return G.confirmUziFlow(ent, uziDate);
       });
     });
@@ -393,7 +446,7 @@
         daysStr = dp != null && dp !== '' ? String(dp) : '—';
       }
       return (
-        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td>' + insemStr + '</td>' +
         '<td>' + statusStr + '</td>' +
@@ -421,14 +474,31 @@
       toast('Уже в списке', 'error');
       return;
     }
-    if (!getEntries().find(function (e) { return e.cattleId === cattleId; })) {
+    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
+    if (!ent) {
       toast('Корова не найдена', 'error');
       return;
     }
-    dryDraft.push({ id: uid(), cattleId: cattleId });
-    var addIn = document.getElementById('dryBatchAddInput');
-    if (addIn) addIn.value = '';
-    renderDryDraft();
+    var dryDate = document.getElementById('dryStartDateInput') && document.getElementById('dryStartDateInput').value;
+    if (!dryDate) {
+      toast('Укажите дату начала сухостоя', 'error');
+      return;
+    }
+    var G = window.ActionInputGuards;
+    var hadWarnings = !!(G && G.checkDry && !G.checkDry(ent, dryDate, {}).ok);
+    var p = !G || typeof G.confirmDryFlow !== 'function' ? Promise.resolve(true) : G.confirmDryFlow(ent, dryDate);
+    p.then(function (ok) {
+      if (!ok) return;
+      dryDraft.push({
+        id: uid(),
+        cattleId: cattleId,
+        _batchGuardKey: batchGuardKey(dryDate, ''),
+        _batchGuardWarned: hadWarnings
+      });
+      var addIn = document.getElementById('dryBatchAddInput');
+      if (addIn) addIn.value = '';
+      renderDryDraft();
+    });
   }
 
   function saveDryBatch() {
@@ -452,6 +522,7 @@
         var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
         if (!ent) return false;
         if (!G || typeof G.confirmDryFlow !== 'function') return true;
+        if (r._batchGuardKey === batchGuardKey(dryDate, '')) return true;
         return G.confirmDryFlow(ent, dryDate);
       });
     });
@@ -522,7 +593,7 @@
     }
     var rows = protocolDraft.map(function (r) {
       return (
-        '<tr data-row-id="' + r.id + '">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td><button type="button" class="action-batch-row-remove" data-proto-remove="' + r.id + '">×</button></td>' +
         '</tr>'
@@ -544,14 +615,42 @@
       toast('Уже в списке', 'error');
       return;
     }
-    if (!getEntries().find(function (e) { return e.cattleId === cattleId; })) {
+    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
+    if (!ent) {
       toast('Корова не найдена', 'error');
       return;
     }
-    protocolDraft.push({ id: uid(), cattleId: cattleId });
-    var addIn = document.getElementById('protocolBatchAddInput');
-    if (addIn) addIn.value = '';
-    renderProtocolDraft();
+    var sel = document.getElementById('protocolSelectAssign');
+    var protocolName = sel && sel.value ? sel.value.trim() : '';
+    var startDate =
+      (document.getElementById('protocolStartDateInput') && document.getElementById('protocolStartDateInput').value) || '';
+    if (!protocolName) {
+      toast('Выберите протокол', 'error');
+      return;
+    }
+    if (!startDate) {
+      toast('Укажите дату начала протокола', 'error');
+      return;
+    }
+    var G = window.ActionInputGuards;
+    var hadWarnings = !!(G && G.checkProtocolAssign && !G.checkProtocolAssign(ent, protocolName, startDate, {}).ok);
+    var p =
+      !G || typeof G.confirmProtocolAssignFlow !== 'function'
+        ? Promise.resolve({ mode: 'apply' })
+        : G.confirmProtocolAssignFlow(ent, protocolName, startDate);
+    p.then(function (res) {
+      if (!res || res.mode === 'cancel') return;
+      protocolDraft.push({
+        id: uid(),
+        cattleId: cattleId,
+        _batchGuardKey: batchGuardKey(startDate, protocolName),
+        _batchGuardWarned: hadWarnings,
+        _protocolModeAtAdd: res.mode
+      });
+      var addIn = document.getElementById('protocolBatchAddInput');
+      if (addIn) addIn.value = '';
+      renderProtocolDraft();
+    });
   }
 
   function saveProtocolBatch() {
@@ -579,6 +678,11 @@
         if (!ent) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
         if (!G || typeof G.confirmProtocolAssignFlow !== 'function') {
           modes[r.cattleId] = 'apply';
+          return;
+        }
+        var gk = batchGuardKey(startDate || '', protocolName);
+        if (r._batchGuardKey === gk && r._protocolModeAtAdd) {
+          modes[r.cattleId] = r._protocolModeAtAdd;
           return;
         }
         return G.confirmProtocolAssignFlow(ent, protocolName, startDate || '').then(function (res) {
@@ -646,7 +750,7 @@
     }
     var rows = insemDraft.map(function (r) {
       return (
-        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td>' + escapeHtml(String(r.attemptNumber != null ? r.attemptNumber : '—')) + '</td>' +
         '<td>' + escapeHtml(r.bull || '—') + '</td>' +
@@ -705,12 +809,39 @@
     document.getElementById('insemModalOk').addEventListener('click', function () {
       var att = parseInt(document.getElementById('insemModalAttempt').value, 10) || 1;
       var bull = document.getElementById('insemModalBull').value || '';
+      var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
+      if (insemDate && typeof validateDateNotFuture === 'function') {
+        var dErr = validateDateNotFuture(insemDate, 'Дата осеменения');
+        if (dErr) {
+          toast(dErr, 'error');
+          return;
+        }
+      }
       closeTopModal();
-      insemDraft.push({ id: uid(), cattleId: cattleId, attemptNumber: att, bull: bull });
-      var addIn = document.getElementById('inseminationBatchAddInput');
-      if (addIn) addIn.value = '';
-      renderInsemDraft();
-      refocusActiveActionBatchNumberInput();
+      var G = window.ActionInputGuards;
+      var hadWarnings = !!(G && G.checkInsemination && !G.checkInsemination(entry, insemDate, {}).ok);
+      var p =
+        !G || typeof G.confirmInseminationFlow !== 'function'
+          ? Promise.resolve(true)
+          : G.confirmInseminationFlow(entry, insemDate);
+      p.then(function (ok) {
+        if (!ok) {
+          refocusActiveActionBatchNumberInput();
+          return;
+        }
+        insemDraft.push({
+          id: uid(),
+          cattleId: cattleId,
+          attemptNumber: att,
+          bull: bull,
+          _batchGuardKey: batchGuardKey(insemDate || '', ''),
+          _batchGuardWarned: hadWarnings
+        });
+        var addIn = document.getElementById('inseminationBatchAddInput');
+        if (addIn) addIn.value = '';
+        renderInsemDraft();
+        refocusActiveActionBatchNumberInput();
+      });
     });
     document.getElementById('insemModalCancel').addEventListener('click', function () {
       closeTopModal();
@@ -733,6 +864,7 @@
     document.getElementById('insemEdOk').addEventListener('click', function () {
       r.attemptNumber = parseInt(document.getElementById('insemEdAtt').value, 10) || 1;
       r.bull = document.getElementById('insemEdBull').value || '';
+      clearRowBatchGuard(r);
       closeTopModal();
       renderInsemDraft();
       refocusActiveActionBatchNumberInput();
@@ -771,6 +903,7 @@
         var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
         if (!ent) return false;
         if (!G || typeof G.confirmInseminationFlow !== 'function') return true;
+        if (r._batchGuardKey === batchGuardKey(insemDate || '', '')) return true;
         return G.confirmInseminationFlow(ent, insemDate);
       });
     });
@@ -880,15 +1013,16 @@
     }
     var rows = calvingDraft.map(function (r) {
       var sub = '';
+      var subWarn = r._batchGuardWarned ? ' action-batch-draft-row--guard-warn' : '';
       if (r.calfId && String(r.calfId).trim()) {
         sub =
-          '<tr class="action-batch-calf-subrow"><td colspan="3">└ Телёнок: ' + escapeHtml(String(r.calfId)) +
+          '<tr class="action-batch-calf-subrow' + subWarn + '"><td colspan="3">└ Телёнок: ' + escapeHtml(String(r.calfId)) +
           ', пол: ' + escapeHtml(r.calfSex || '—') +
           (r.calfWeight ? ', вес: ' + escapeHtml(String(r.calfWeight)) : '') +
           '</td></tr>';
       }
       return (
-        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td>' + (r.calfId && String(r.calfId).trim() ? escapeHtml(String(r.calfId)) : '—') + '</td>' +
         '<td><button type="button" class="action-batch-row-remove" data-calve-remove="' + r.id + '">×</button></td>' +
@@ -960,16 +1094,39 @@
     }
     showCalfModal({ calfId: '', calfSex: 'Телка', calfWeight: '' }, function (data) {
       if (data === null) return;
-      calvingDraft.push({
-        id: uid(),
-        cattleId: cattleId,
-        calfId: data.calfId || '',
-        calfSex: data.calfSex || 'Телка',
-        calfWeight: data.calfWeight || ''
+      var calvingDate = document.getElementById('calvingDateInput') && document.getElementById('calvingDateInput').value;
+      if (!calvingDate) {
+        toast('Укажите дату отёла', 'error');
+        return;
+      }
+      var mother = getEntries().find(function (e) { return e.cattleId === cattleId; });
+      if (!mother) {
+        toast('Корова не найдена', 'error');
+        return;
+      }
+      var G = window.ActionInputGuards;
+      var hadWarnings = !!(G && G.checkCalving && !G.checkCalving(mother, calvingDate, {}).ok);
+      var p =
+        !G || typeof G.confirmCalvingFlow !== 'function'
+          ? Promise.resolve('calve')
+          : G.confirmCalvingFlow(mother, calvingDate);
+      p.then(function (dec) {
+        if (dec === 'cancel') return;
+        var intent = dec === 'abort' ? 'abort' : 'calve';
+        calvingDraft.push({
+          id: uid(),
+          cattleId: cattleId,
+          calfId: data.calfId || '',
+          calfSex: data.calfSex || 'Телка',
+          calfWeight: data.calfWeight || '',
+          _batchGuardKey: batchGuardKey(calvingDate, ''),
+          _batchGuardWarned: hadWarnings,
+          _calvingIntentAtAdd: intent
+        });
+        var addIn = document.getElementById('calvingBatchAddInput');
+        if (addIn) addIn.value = '';
+        renderCalvingDraft();
       });
-      var addIn = document.getElementById('calvingBatchAddInput');
-      if (addIn) addIn.value = '';
-      renderCalvingDraft();
     });
   }
 
@@ -983,6 +1140,7 @@
         r.calfId = data.calfId || '';
         r.calfSex = data.calfSex || 'Телка';
         r.calfWeight = data.calfWeight || '';
+        clearRowBatchGuard(r);
         renderCalvingDraft();
       }
     );
@@ -1027,6 +1185,10 @@
         if (!mother) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
         if (!G || typeof G.confirmCalvingFlow !== 'function') {
           r._calvingDecision = 'calve';
+          return;
+        }
+        if (r._batchGuardKey === batchGuardKey(calvingDate, '') && r._calvingIntentAtAdd) {
+          r._calvingDecision = r._calvingIntentAtAdd;
           return;
         }
         return G.confirmCalvingFlow(mother, calvingDate).then(function (dec) {
@@ -1112,7 +1274,7 @@
     }
     var rows = abortDraft.map(function (r) {
       return (
-        '<tr data-row-id="' + r.id + '">' +
+        '<tr data-row-id="' + r.id + '" class="action-batch-draft-row' + draftRowWarnClass(r) + '">' +
         '<td>' + escapeHtml(r.cattleId) + '</td>' +
         '<td><button type="button" class="action-batch-row-remove" data-abort-remove="' + r.id + '">×</button></td>' +
         '</tr>'
@@ -1134,14 +1296,31 @@
       toast('Уже в списке', 'error');
       return;
     }
-    if (!getEntries().find(function (e) { return e.cattleId === cattleId; })) {
+    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
+    if (!ent) {
       toast('Корова не найдена', 'error');
       return;
     }
-    abortDraft.push({ id: uid(), cattleId: cattleId });
-    var addIn = document.getElementById('abortBatchAddInput');
-    if (addIn) addIn.value = '';
-    renderAbortDraft();
+    var abortDate = document.getElementById('abortDateInput') && document.getElementById('abortDateInput').value;
+    if (!abortDate) {
+      toast('Укажите дату события', 'error');
+      return;
+    }
+    var G = window.ActionInputGuards;
+    var hadWarnings = !!(G && G.checkAbort && !G.checkAbort(ent, abortDate, {}).ok);
+    var p = !G || typeof G.confirmAbortFlow !== 'function' ? Promise.resolve(true) : G.confirmAbortFlow(ent, abortDate);
+    p.then(function (ok) {
+      if (!ok) return;
+      abortDraft.push({
+        id: uid(),
+        cattleId: cattleId,
+        _batchGuardKey: batchGuardKey(abortDate, ''),
+        _batchGuardWarned: hadWarnings
+      });
+      var addIn = document.getElementById('abortBatchAddInput');
+      if (addIn) addIn.value = '';
+      renderAbortDraft();
+    });
   }
 
   function saveAbortBatch() {
@@ -1167,6 +1346,7 @@
         var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
         if (!ent) return false;
         if (!G || typeof G.confirmAbortFlow !== 'function') return true;
+        if (r._batchGuardKey === batchGuardKey(abortDate, '')) return true;
         return G.confirmAbortFlow(ent, abortDate);
       });
     });
