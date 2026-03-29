@@ -308,3 +308,40 @@ h1 {
 .update-progress-path {
   display: none;
 }
+
+/* Экран «Справка» — журнал диагностики DevTools (Electron) */
+.help-diagnostics-intro {
+  max-width: 52rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+.help-diagnostics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.help-diagnostics-label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+.help-diagnostics-log {
+  width: 100%;
+  max-width: 52rem;
+  box-sizing: border-box;
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 220px;
+  margin-bottom: 16px;
+}

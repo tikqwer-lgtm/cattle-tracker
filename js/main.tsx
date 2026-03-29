@@ -48,6 +48,7 @@ import './features/farm-settings.js';
 import './features/admin.js';
 import './features/report-error.js';
 import './features/lists.js';
+import './features/electron-devtools-diagnostics.js';
 import './core/menu.js';
 
 // Capacitor backButton only in Capacitor runtime; dynamic import so Electron build doesn't require @capacitor/app

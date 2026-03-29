@@ -20,11 +20,11 @@
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <span id="app-version-header" class="app-version-header"></span>
     <div class="app-header-actions">
-      <button type="button" id="app-header-reload-btn" class="app-header-reload-btn" title="Обновить страницу, если поля не нажимаются (как после открытия консоли). Черновики на экранах «Действия» не сохранятся." aria-label="Обновить страницу" onclick="typeof window.reloadCattleTrackerPage === 'function' && window.reloadCattleTrackerPage()">Обновить</button>
       <button type="button" id="report-error-btn" class="app-header-report-error-btn" title="Сообщить об ошибке администратору" aria-label="Сообщить об ошибке" style="display: none;" onclick="typeof window.openReportErrorModal === 'function' && window.openReportErrorModal()">Сообщить об ошибке</button>
       <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
         <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
       </button>
+      <button type="button" id="app-header-reload-btn" class="app-header-reload-btn" tabindex="-1" title="Обновить страницу, если поля не нажимаются (как после открытия консоли). Черновики на экранах «Действия» не сохранятся. Не в цепочке Tab — чтобы после обхода DevTools фокус не залипал на этой кнопке." aria-label="Обновить страницу" onclick="typeof window.reloadCattleTrackerPage === 'function' && window.reloadCattleTrackerPage()">Обновить</button>
     </div>
   </header>
   <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
@@ -104,7 +104,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.23" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.32" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -765,6 +765,23 @@
     <h1>📋 Протоколы синхронизации</h1>
     <div id="protocols-container"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Справка: диагностика консоли (Electron) -->
+  <div id="help-screen" class="screen">
+    <h1>Справка</h1>
+    <p class="help-diagnostics-intro">
+      Журнал событий основного процесса и страницы при открытии и закрытии консоли разработчика (пункт меню «Справка → Восстановить ввод», автоматический обход после входа).
+      Нужен для поиска остаточных эффектов после закрытия DevTools.
+    </p>
+    <div class="help-diagnostics-toolbar">
+      <button type="button" class="action-btn" id="help-diagnostics-copy-btn">Копировать журнал</button>
+      <button type="button" class="small-btn" id="help-diagnostics-refresh-btn">Обновить из приложения</button>
+      <button type="button" class="small-btn" id="help-diagnostics-clear-btn">Очистить</button>
+    </div>
+    <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
+    <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран синхронизации -->

@@ -46,7 +46,8 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
-      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" }
+      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" },
+      { icon: '❓', text: 'Справка', onclick: "navigate('help')" }
     ]
   }
 };
@@ -180,6 +181,9 @@ function navigate(screenId, options) {
   }
   if (screenId === 'sync' && typeof renderBackupUI === 'function') {
     renderBackupUI('sync-backup-container');
+  }
+  if (screenId === 'help' && typeof window.refreshHelpDevtoolsDiagnostics === 'function') {
+    window.refreshHelpDevtoolsDiagnostics();
   }
   if (screenId === 'admin' && typeof window.renderAdminScreen === 'function') {
     window.renderAdminScreen();

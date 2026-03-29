@@ -223,6 +223,21 @@
     }
   }
 
+  var _postAuthFlashDebounce = null;
+
+  /** Упакованный Electron: после входа — один IPC на серию вызовов (initUsers + login + skipAuth давали 2–3 flash подряд). */
+  function notifyElectronPostAuthDevtoolsFlash() {
+    var api = typeof window !== 'undefined' && window.electronAPI;
+    if (!api || typeof api.runPostAuthDevtoolsFlash !== 'function') return;
+    if (_postAuthFlashDebounce) clearTimeout(_postAuthFlashDebounce);
+    _postAuthFlashDebounce = setTimeout(function () {
+      _postAuthFlashDebounce = null;
+      try {
+        api.runPostAuthDevtoolsFlash();
+      } catch (e) {}
+    }, 450);
+  }
+
   function getDefaultLocalUsername() {
     var g = typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : null);
     var api = g && (g.electronAPI || g.electronapi);
@@ -264,6 +279,8 @@
           } else {
             navigate('menu');
           }
+        } else if (currentUser && isElectron) {
+          notifyElectronPostAuthDevtoolsFlash();
         }
       }).catch(function () {
         currentUser = null;
@@ -299,6 +316,12 @@
     if (reportErrorBtn) {
       var showReport = user && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
       reportErrorBtn.style.display = showReport ? '' : 'none';
+    }
+    var elApi = typeof window !== 'undefined' && window.electronAPI;
+    if (elApi && typeof elApi.setAuthenticatedForMenu === 'function') {
+      try {
+        elApi.setAuthenticatedForMenu(!!user);
+      } catch (e) {}
     }
   }
 
@@ -398,9 +421,12 @@
               if (typeof navigate === 'function') navigate('menu');
             }).catch(function () {
               if (typeof navigate === 'function') navigate('menu');
+            }).then(function () {
+              notifyElectronPostAuthDevtoolsFlash();
             });
           }
           if (typeof navigate === 'function') navigate('menu');
+          notifyElectronPostAuthDevtoolsFlash();
         };
         loadAndShow();
       }).catch(function (err) {
@@ -427,6 +453,7 @@
       if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
       updateAuthBar();
       if (typeof navigate === 'function') navigate('menu');
+      notifyElectronPostAuthDevtoolsFlash();
     } else {
       if (typeof showToast === 'function') showToast(result.error || result.message || 'Ошибка входа', 'error'); else alert(result.error || result.message || 'Ошибка входа');
       setTimeout(function () {
@@ -470,13 +497,19 @@
       saveCurrentUser({ id: 'local_operator', username: username, role: 'operator' });
       updateAuthBar();
       if (typeof nav === 'function') nav('menu');
+      notifyElectronPostAuthDevtoolsFlash();
     }).catch(function () {
       saveCurrentUser({ id: 'local_operator', username: 'operator(local)', role: 'operator' });
       updateAuthBar();
       if (typeof nav === 'function') nav('menu');
+      notifyElectronPostAuthDevtoolsFlash();
     });
   }
   function handleLogout() {
+    if (_postAuthFlashDebounce) {
+      clearTimeout(_postAuthFlashDebounce);
+      _postAuthFlashDebounce = null;
+    }
     if (useApi) global.CattleTrackerApi.logout();
     saveCurrentUser(null);
     updateAuthBar();

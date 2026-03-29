@@ -71,6 +71,152 @@ const indexPath = isDev
 app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
 
 let mainWindow;
+/** Показывать пункт «Консоль разработчика» в меню только после входа (см. IPC cattle-tracker-auth-menu). */
+let authenticatedForDevtoolsMenu = false;
+
+const MAX_DEVTOOLS_DIAGNOSTICS = 1200;
+const devtoolsDiagnosticsLog = [];
+/** Логировать focus/blur окна только вскоре после событий DevTools (меньше шума). */
+let lastDevtoolsRelatedActivityMs = 0;
+function markDevtoolsRelatedActivity() {
+  lastDevtoolsRelatedActivityMs = Date.now();
+}
+
+function recordDevtoolsDiagnostic(source, message, extra) {
+  const entry = {
+    ts: new Date().toISOString(),
+    source: String(source || 'main'),
+    message: String(message || ''),
+    extra: extra !== undefined && extra !== null ? extra : null
+  };
+  devtoolsDiagnosticsLog.push(entry);
+  if (devtoolsDiagnosticsLog.length > MAX_DEVTOOLS_DIAGNOSTICS) {
+    devtoolsDiagnosticsLog.splice(0, devtoolsDiagnosticsLog.length - MAX_DEVTOOLS_DIAGNOSTICS);
+  }
+  if (source === 'webContents' && (message === 'devtools-opened' || message === 'devtools-closed')) {
+    markDevtoolsRelatedActivity();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      if (!mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send('devtools-diagnostics-entry', entry);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+ipcMain.handle('devtools-diagnostics-get-history', () => devtoolsDiagnosticsLog.slice());
+
+ipcMain.on('devtools-diagnostics-clear', () => {
+  devtoolsDiagnosticsLog.length = 0;
+});
+
+ipcMain.on('devtools-diagnostics-renderer-snapshot', (_event, data) => {
+  if (!data || typeof data !== 'object') return;
+  recordDevtoolsDiagnostic(
+    'renderer→main',
+    String(data.label || 'snapshot'),
+    data.payload != null ? data.payload : null
+  );
+});
+
+/** Не запускать второй flash, пока первый не завершился (иначе несколько closeDevTools подряд и лишние blur/focus). */
+let devtoolsFlashWorkaroundInProgress = false;
+
+/**
+ * Кратко открыть и закрыть DevTools — тот же обход, что и через меню (≈1 с), восстанавливает ввод в упакованной сборке.
+ * @param {import('electron').BrowserWindow} win
+ * @param {number} delayBeforeOpenMs задержка перед открытием (мс), чтобы страница успела отрисоваться
+ * @param {string} [reason] метка для диагностики
+ */
+function flashDevToolsHitTestWorkaround(win, delayBeforeOpenMs, reason) {
+  if (!win || win.isDestroyed()) return;
+  const why = reason || 'unspecified';
+  if (devtoolsFlashWorkaroundInProgress) {
+    recordDevtoolsDiagnostic('workaround', 'flashDevToolsHitTestWorkaround: пропуск (уже выполняется)', {
+      reason: why,
+      delayBeforeOpenMs
+    });
+    return;
+  }
+  devtoolsFlashWorkaroundInProgress = true;
+  markDevtoolsRelatedActivity();
+  recordDevtoolsDiagnostic('workaround', 'flashDevToolsHitTestWorkaround: scheduled', {
+    reason: why,
+    delayBeforeOpenMs,
+    isPackaged: app.isPackaged,
+    isDev
+  });
+  const releaseFlashLock = () => {
+    setTimeout(() => {
+      devtoolsFlashWorkaroundInProgress = false;
+    }, 400);
+  };
+  const openAndClose = () => {
+    if (win.isDestroyed()) {
+      devtoolsFlashWorkaroundInProgress = false;
+      return;
+    }
+    recordDevtoolsDiagnostic('workaround', 'flash: перед win.focus', snapshotWindowState(win));
+    win.focus();
+    recordDevtoolsDiagnostic('workaround', 'flash: после win.focus', snapshotWindowState(win));
+    win.webContents.focus();
+    recordDevtoolsDiagnostic('workaround', 'flash: после webContents.focus', snapshotWindowState(win));
+    win.webContents.openDevTools({ mode: 'detach' });
+    /* isDevToolsOpened() часто ещё false в тот же тик — это нормально, окно открывается асинхронно */
+    setTimeout(() => {
+      if (!win.isDestroyed()) {
+        recordDevtoolsDiagnostic('workaround', 'flash: после openDevTools (тик 0)', snapshotWindowState(win));
+      }
+    }, 0);
+    setTimeout(() => {
+      if (win.isDestroyed()) {
+        devtoolsFlashWorkaroundInProgress = false;
+        return;
+      }
+      recordDevtoolsDiagnostic('workaround', 'flash: перед closeDevTools (через 1000 мс)', snapshotWindowState(win));
+      win.webContents.closeDevTools();
+      releaseFlashLock();
+      setTimeout(() => {
+        if (!win.isDestroyed()) {
+          recordDevtoolsDiagnostic('workaround', 'flash: через 50 мс после closeDevTools', snapshotWindowState(win));
+        }
+      }, 50);
+      setTimeout(() => {
+        if (!win.isDestroyed()) {
+          recordDevtoolsDiagnostic('workaround', 'flash: через 300 мс после closeDevTools', snapshotWindowState(win));
+        }
+      }, 300);
+    }, 1000);
+  };
+  if (delayBeforeOpenMs > 0) {
+    setTimeout(() => {
+      if (win.isDestroyed()) {
+        devtoolsFlashWorkaroundInProgress = false;
+        return;
+      }
+      openAndClose();
+    }, delayBeforeOpenMs);
+  } else {
+    openAndClose();
+  }
+}
+
+function snapshotWindowState(win) {
+  if (!win || win.isDestroyed()) return { destroyed: true };
+  try {
+    return {
+      isFocused: win.isFocused(),
+      bounds: win.getBounds(),
+      devToolsOpened: win.webContents.isDevToolsOpened(),
+      url: win.webContents.getURL()
+    };
+  } catch (e) {
+    return { error: String(e && e.message) };
+  }
+}
 
 function setupAutoUpdater() {
   if (!autoUpdater || !app.isPackaged) return;
@@ -122,51 +268,66 @@ function setupAutoUpdater() {
 }
 
 function createAppMenu() {
+  const devtoolsAccelerator = process.platform === 'darwin' ? 'Alt+Command+I' : 'Control+Shift+I';
+  const helpSubmenu = [];
+  if (authenticatedForDevtoolsMenu) {
+    helpSubmenu.push({
+      label: 'Восстановить ввод: консоль 1 с',
+      accelerator: devtoolsAccelerator,
+      click: () => {
+        const win = BrowserWindow.getFocusedWindow() || mainWindow;
+        markDevtoolsRelatedActivity();
+        recordDevtoolsDiagnostic('nativeMenu', 'клик: «Восстановить ввод: консоль 1 с»', snapshotWindowState(win));
+        flashDevToolsHitTestWorkaround(win, 0, 'native-menu-vosstanovit-vvod');
+      }
+    });
+    helpSubmenu.push({ type: 'separator' });
+  }
+  helpSubmenu.push({
+    label: 'Проверить обновления',
+    click: () => {
+      if (autoUpdater && app.isPackaged) {
+        const currentVer = app.getVersion();
+        autoUpdater.checkForUpdates().then((r) => {
+          const newVer = r && r.updateInfo && r.updateInfo.version ? String(r.updateInfo.version).trim() : '';
+          const hasNewer = newVer && isVersionNewer(newVer, currentVer);
+          if (hasNewer) {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'Обновление',
+              message: 'Доступна новая версия ' + newVer + '. Разрешите скачивание в следующем окне.'
+            }).catch(() => {});
+          } else {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'Обновления',
+              message: 'Установлена последняя версия.'
+            }).catch(() => {});
+          }
+        }).catch(() => {
+          dialog.showMessageBox(mainWindow, {
+            type: 'info',
+            title: 'Обновления',
+            message: 'Не удалось проверить обновления.'
+          }).catch(() => {});
+        });
+      } else {
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'Обновления',
+          message: 'В режиме разработки проверка обновлений недоступна.'
+        }).catch(() => {});
+      }
+    }
+  });
+
   const template = [
     { role: 'fileMenu' },
     { role: 'editMenu' },
     { role: 'viewMenu' },
     {
       label: 'Справка',
-      submenu: [
-        {
-          label: 'Проверить обновления',
-          click: () => {
-            if (autoUpdater && app.isPackaged) {
-              const currentVer = app.getVersion();
-              autoUpdater.checkForUpdates().then((r) => {
-                const newVer = r && r.updateInfo && r.updateInfo.version ? String(r.updateInfo.version).trim() : '';
-                const hasNewer = newVer && isVersionNewer(newVer, currentVer);
-                if (hasNewer) {
-                  dialog.showMessageBox(mainWindow, {
-                    type: 'info',
-                    title: 'Обновление',
-                    message: 'Доступна новая версия ' + newVer + '. Разрешите скачивание в следующем окне.'
-                  }).catch(() => {});
-                } else {
-                  dialog.showMessageBox(mainWindow, {
-                    type: 'info',
-                    title: 'Обновления',
-                    message: 'Установлена последняя версия.'
-                  }).catch(() => {});
-                }
-              }).catch(() => {
-                dialog.showMessageBox(mainWindow, {
-                  type: 'info',
-                  title: 'Обновления',
-                  message: 'Не удалось проверить обновления.'
-                }).catch(() => {});
-              });
-            } else {
-              dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                title: 'Обновления',
-                message: 'В режиме разработки проверка обновлений недоступна.'
-              }).catch(() => {});
-            }
-          }
-        }
-      ]
+      submenu: helpSubmenu
     }
   ];
   const menu = Menu.buildFromTemplate(template);
@@ -198,6 +359,47 @@ function createWindow() {
     },
     title: 'Учёт коров',
     icon: path.join(isDev ? rootDir : __dirname, 'favicon.ico')
+  });
+
+  mainWindow.webContents.on('devtools-opened', () => {
+    recordDevtoolsDiagnostic('webContents', 'devtools-opened', snapshotWindowState(mainWindow));
+  });
+  mainWindow.webContents.on('devtools-closed', () => {
+    recordDevtoolsDiagnostic('webContents', 'devtools-closed', snapshotWindowState(mainWindow));
+  });
+  mainWindow.on('focus', () => {
+    if (Date.now() - lastDevtoolsRelatedActivityMs < 45000) {
+      recordDevtoolsDiagnostic('BrowserWindow', 'focus', { isFocused: true });
+    }
+  });
+  mainWindow.on('blur', () => {
+    if (Date.now() - lastDevtoolsRelatedActivityMs < 45000) {
+      recordDevtoolsDiagnostic('BrowserWindow', 'blur', { isFocused: false });
+    }
+  });
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    mainWindow.focus();
+    mainWindow.webContents.focus();
+    var x = params.x;
+    var y = params.y;
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    var script =
+      '(function(){' +
+      'var x=' + x + ',y=' + y + ';' +
+      'function rep(){try{if(typeof window.softRepaintCattleTrackerView==="function")window.softRepaintCattleTrackerView();}catch(e){}}' +
+      'function tryFocus(){' +
+      'var el=document.elementFromPoint(x,y);' +
+      'if(!el)return;' +
+      'var t=el.closest&&el.closest("input:not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]),textarea,select");' +
+      'if(t){t.focus({preventScroll:true});rep();return;}' +
+      'if(el.isContentEditable){el.focus({preventScroll:true});rep();}' +
+      '}' +
+      'tryFocus();' +
+      'setTimeout(tryFocus,0);' +
+      'if(typeof requestAnimationFrame==="function")requestAnimationFrame(tryFocus);' +
+      '})();';
+    mainWindow.webContents.executeJavaScript(script).catch(function () {});
   });
 
   mainWindow.on('maximize', () => {
@@ -233,6 +435,22 @@ function createWindow() {
   createAppMenu();
   setupAutoUpdater();
 }
+
+ipcMain.on('cattle-tracker-auth-menu', (_event, authenticated) => {
+  authenticatedForDevtoolsMenu = !!authenticated;
+  createAppMenu();
+});
+
+/** После входа в приложение: кратко открыть/закрыть DevTools (упакованная сборка). */
+ipcMain.on('cattle-tracker-post-auth-flash', () => {
+  markDevtoolsRelatedActivity();
+  recordDevtoolsDiagnostic('ipc', 'cattle-tracker-post-auth-flash получен', {
+    isDev,
+    hasWindow: !!(mainWindow && !mainWindow.isDestroyed())
+  });
+  if (isDev || !mainWindow || mainWindow.isDestroyed()) return;
+  flashDevToolsHitTestWorkaround(mainWindow, 150, 'ipc-post-auth');
+});
 
 ipcMain.handle('get-app-version', () => Promise.resolve(app.getVersion()));
 
