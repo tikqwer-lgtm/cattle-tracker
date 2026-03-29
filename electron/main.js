@@ -71,9 +71,6 @@ const indexPath = isDev
 app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
 
 let mainWindow;
-/** Показывать пункт «Консоль разработчика» в меню только после входа (см. IPC cattle-tracker-auth-menu). */
-let authenticatedForDevtoolsMenu = false;
-
 const MAX_DEVTOOLS_DIAGNOSTICS = 1200;
 const devtoolsDiagnosticsLog = [];
 /** Логировать focus/blur окна только вскоре после событий DevTools (меньше шума). */
@@ -268,21 +265,7 @@ function setupAutoUpdater() {
 }
 
 function createAppMenu() {
-  const devtoolsAccelerator = process.platform === 'darwin' ? 'Alt+Command+I' : 'Control+Shift+I';
   const helpSubmenu = [];
-  if (authenticatedForDevtoolsMenu) {
-    helpSubmenu.push({
-      label: 'Восстановить ввод: консоль 1 с',
-      accelerator: devtoolsAccelerator,
-      click: () => {
-        const win = BrowserWindow.getFocusedWindow() || mainWindow;
-        markDevtoolsRelatedActivity();
-        recordDevtoolsDiagnostic('nativeMenu', 'клик: «Восстановить ввод: консоль 1 с»', snapshotWindowState(win));
-        flashDevToolsHitTestWorkaround(win, 0, 'native-menu-vosstanovit-vvod');
-      }
-    });
-    helpSubmenu.push({ type: 'separator' });
-  }
   helpSubmenu.push({
     label: 'Проверить обновления',
     click: () => {
@@ -436,8 +419,7 @@ function createWindow() {
   setupAutoUpdater();
 }
 
-ipcMain.on('cattle-tracker-auth-menu', (_event, authenticated) => {
-  authenticatedForDevtoolsMenu = !!authenticated;
+ipcMain.on('cattle-tracker-auth-menu', () => {
   createAppMenu();
 });
 
@@ -450,6 +432,35 @@ ipcMain.on('cattle-tracker-post-auth-flash', () => {
   });
   if (isDev || !mainWindow || mainWindow.isDestroyed()) return;
   flashDevToolsHitTestWorkaround(mainWindow, 150, 'ipc-post-auth');
+});
+
+/** Синхронный фокус окна и webContents (легкий шаг перед полным обходом). */
+ipcMain.on('cattle-tracker-webcontents-focus', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    mainWindow.focus();
+    mainWindow.webContents.focus();
+  } catch (e) {
+    // ignore
+  }
+});
+
+/**
+ * Кнопка «Восстановить ввод» в шапке: тот же обход, что раньше в меню Справка.
+ * В dev без упаковки только focus (без вспышки DevTools).
+ */
+ipcMain.on('cattle-tracker-hit-test-workaround', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!app.isPackaged) {
+    try {
+      mainWindow.focus();
+      mainWindow.webContents.focus();
+    } catch (e) {
+      // ignore
+    }
+    return;
+  }
+  flashDevToolsHitTestWorkaround(mainWindow, 0, 'renderer-after-modal');
 });
 
 ipcMain.handle('get-app-version', () => Promise.resolve(app.getVersion()));

@@ -317,6 +317,15 @@
       var showReport = user && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
       reportErrorBtn.style.display = showReport ? '' : 'none';
     }
+    var restoreInputBtn = document.getElementById('restore-input-btn');
+    if (restoreInputBtn) {
+      var showRestore =
+        user &&
+        typeof window !== 'undefined' &&
+        window.electronAPI &&
+        typeof window.electronAPI.requestHitTestWorkaround === 'function';
+      restoreInputBtn.style.display = showRestore ? '' : 'none';
+    }
     var elApi = typeof window !== 'undefined' && window.electronAPI;
     if (elApi && typeof elApi.setAuthenticatedForMenu === 'function') {
       try {

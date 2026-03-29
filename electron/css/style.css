@@ -26,8 +26,9 @@
 .admin-report-message { white-space: pre-wrap; word-break: break-word; margin-bottom: 0.5rem; }
 .admin-report-payload { font-size: 0.75rem; max-height: 8rem; overflow: auto; background: #eee; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
 
-/* Кнопка «Сообщить об ошибке» в шапке */
-.app-header-report-error-btn { margin-right: 0.5rem; font-size: 0.85rem; padding: 0.25rem 0.5rem; }
+/* Кнопки «Сообщить об ошибке» и «Восстановить ввод» в шапке */
+.app-header-report-error-btn,
+.app-header-restore-input-btn { margin-right: 0.5rem; font-size: 0.85rem; padding: 0.25rem 0.5rem; }
 .report-error-checkbox-label { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.75rem; font-weight: normal; cursor: pointer; }
 .report-error-checkbox-label input { margin-top: 0.2rem; }
 #report-error-message {

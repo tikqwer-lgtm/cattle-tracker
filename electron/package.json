@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker-desktop",
-  "version": "0.5.34",
+  "version": "0.5.36",
   "description": "Desktop wrapper for Cattle Tracker",
   "main": "main.js",
   "scripts": {

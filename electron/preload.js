@@ -22,7 +22,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   sendDevtoolsDiagnosticsSnapshot: (label, payload) => {
     ipcRenderer.send('devtools-diagnostics-renderer-snapshot', { label: String(label || ''), payload: payload || null });
-  }
+  },
+  /** Лёгкий фокус окна (main process), без DevTools. */
+  requestWebContentsFocus: () => ipcRenderer.send('cattle-tracker-webcontents-focus'),
+  /** Кнопка «Восстановить ввод» в шапке: обход «мёртвого ввода» (кратко открыть/закрыть DevTools в упакованной сборке). */
+  requestHitTestWorkaround: () => ipcRenderer.send('cattle-tracker-hit-test-workaround')
 });
 
 /**
