@@ -8,23 +8,27 @@ const router = express.Router();
 const db = require('../db');
 const { signToken, requireAuth } = require('../auth');
 
-/** Только попытки входа — не трогаем /me и check-username (иначе NAT и частые GET съедают лимит). */
+/**
+ * Только POST /login — успешные ответы (200) в квоту не входят (защита от перебора паролей без блокировки после удачного входа).
+ */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 40,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true,
   handler: function (req, res) {
     res.status(429).json({ error: 'Слишком много попыток входа. Попробуйте через 15 минут.' });
   }
 });
 
-/** Регистрации с одного IP — отдельный лимит. */
+/** Регистрации: успешные 201 не считаются в лимит неудачных попыток. */
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 30,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true,
   handler: function (req, res) {
     res.status(429).json({ error: 'Слишком много регистраций с этого адреса. Попробуйте позже.' });
   }

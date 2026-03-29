@@ -279,8 +279,6 @@
           } else {
             navigate('menu');
           }
-        } else if (currentUser && isElectron) {
-          notifyElectronPostAuthDevtoolsFlash();
         }
       }).catch(function () {
         currentUser = null;
