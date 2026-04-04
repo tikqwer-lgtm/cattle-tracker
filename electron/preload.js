@@ -1,5 +1,16 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+let apkUploadProgressCallback = null;
+ipcRenderer.on('apk-upload-progress', (_e, data) => {
+  if (typeof apkUploadProgressCallback === 'function') {
+    try {
+      apkUploadProgressCallback(data);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+});
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getOsUsername: () => ipcRenderer.invoke('get-os-username'),
@@ -30,7 +41,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   requestNativeWindowRefresh: (reason) =>
     ipcRenderer.send('cattle-tracker-native-window-refresh', typeof reason === 'string' ? reason : ''),
   /** Кнопка «Восстановить ввод» в шапке: обход «мёртвого ввода» (кратко открыть/закрыть DevTools в упакованной сборке). */
-  requestHitTestWorkaround: () => ipcRenderer.send('cattle-tracker-hit-test-workaround')
+  requestHitTestWorkaround: () => ipcRenderer.send('cattle-tracker-hit-test-workaround'),
+  /** Диалог выбора APK (возвращает только путь — загрузка в main-процессе). */
+  selectApkFile: () => ipcRenderer.invoke('select-apk-file'),
+  uploadApkToServer: (opts) => ipcRenderer.invoke('upload-apk-to-server', opts),
+  onApkUploadProgress: (cb) => {
+    apkUploadProgressCallback = typeof cb === 'function' ? cb : null;
+  }
 });
 
 /**

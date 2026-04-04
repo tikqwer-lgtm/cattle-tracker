@@ -206,6 +206,49 @@
     return request('DELETE', '/api/reports/' + encodeURIComponent(id));
   }
 
+  function listMobileApkFiles() {
+    return request('GET', '/api/admin/mobile-apk/list');
+  }
+
+  function deleteMobileApkFile(filename) {
+    return request('DELETE', '/api/admin/mobile-apk/' + encodeURIComponent(filename));
+  }
+
+  /**
+   * Загрузка APK на сервер (multipart, поле apk).
+   * @param {File|Blob} file
+   * @param {string} [version]
+   * @param {string} [nameOverride] имя файла, если передан Blob без .name
+   */
+  function uploadMobileApk(file, version, nameOverride) {
+    var base = getBaseUrl();
+    if (!base) return Promise.reject(new Error('CATTLE_TRACKER_API_BASE не задан'));
+    var token = getToken();
+    var fd = new FormData();
+    var name = (nameOverride != null && String(nameOverride).trim())
+      ? String(nameOverride).trim()
+      : ((file && file.name) ? file.name : 'app.apk');
+    fd.append('apk', file, name);
+    if (version) fd.append('version', String(version).trim());
+    var headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    return fetch(base + '/api/admin/mobile-apk', { method: 'POST', headers: headers, body: fd }).then(function (res) {
+      var contentType = res.headers.get('Content-Type') || '';
+      var isJson = contentType.indexOf('application/json') !== -1;
+      if (res.ok) return isJson ? res.json() : Promise.resolve({ ok: true });
+      return isJson ? res.json().then(function (data) {
+        var e = new Error(data.message || data.error || 'Ошибка ' + res.status);
+        e.status = res.status;
+        throw e;
+      }) : Promise.reject(new Error('Ошибка ' + res.status));
+    }).catch(function (err) {
+      if (err && err.message === 'Failed to fetch') {
+        return Promise.reject(new Error('Сервер недоступен. Проверьте адрес API и что сервер запущен.'));
+      }
+      return Promise.reject(err);
+    });
+  }
+
   var api = {
     getBaseUrl: getBaseUrl,
     getToken: getToken,
@@ -235,7 +278,10 @@
     deleteUser: deleteUser,
     submitReport: submitReport,
     getReports: getReports,
-    deleteReport: deleteReport
+    deleteReport: deleteReport,
+    listMobileApkFiles: listMobileApkFiles,
+    deleteMobileApkFile: deleteMobileApkFile,
+    uploadMobileApk: uploadMobileApk
   };
 
   if (typeof global !== 'undefined') {

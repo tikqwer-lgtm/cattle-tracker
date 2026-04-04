@@ -427,3 +427,84 @@
   margin: 0 0 12px 0;
   line-height: 1.35;
 }
+
+/* Статус загрузки APK (ПК) */
+.sync-apk-upload-status {
+  min-height: 1.35em;
+  margin: 8px 0 0 0;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+.sync-apk-upload-status--error {
+  color: var(--color-danger, #c62828);
+}
+
+/* Список APK на сервере (ПК, админ) */
+.sync-apk-server-list {
+  margin-top: 12px;
+}
+.sync-apk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.sync-apk-row:last-child {
+  border-bottom: none;
+}
+.sync-apk-row-name {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  font-size: 0.95em;
+}
+.sync-apk-row-meta {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  flex: 1 1 100%;
+}
+@media (min-width: 520px) {
+  .sync-apk-row-meta {
+    flex: 0 1 auto;
+  }
+}
+.sync-apk-delete-btn {
+  flex-shrink: 0;
+}
+
+/* Секция APK на телефоне: свёрнута по умолчанию (<details>) */
+.sync-mobile-apk-details {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.sync-mobile-apk-details > summary.sync-mobile-apk-summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 8px 4px;
+  margin: 0 0 0 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.sync-mobile-apk-details > summary.sync-mobile-apk-summary::-webkit-details-marker {
+  display: none;
+}
+.sync-mobile-apk-details > summary.sync-mobile-apk-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  width: 1.1em;
+  transition: transform 0.15s ease;
+}
+.sync-mobile-apk-details[open] > summary.sync-mobile-apk-summary::before {
+  transform: rotate(90deg);
+}
+.sync-mobile-apk-details-body {
+  padding: 4px 4px 8px 1.35em;
+}
+.sync-mobile-apk-details-body .sync-section-hint {
+  margin-top: 0;
+}

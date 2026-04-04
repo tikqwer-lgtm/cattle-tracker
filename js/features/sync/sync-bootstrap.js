@@ -24,6 +24,8 @@ function initSyncServerBlock() {
   } else {
     if (typeof window.updateConnectionIndicator === 'function') window.updateConnectionIndicator(false);
   }
+  if (typeof window.initSyncMobileApkSection === 'function') window.initSyncMobileApkSection();
+  if (typeof window.initSyncDesktopApkAdmin === 'function') window.initSyncDesktopApkAdmin();
 }
 
 window.initSyncServerBlock = initSyncServerBlock;

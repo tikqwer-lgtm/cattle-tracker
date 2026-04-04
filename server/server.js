@@ -3,6 +3,7 @@
  * Auth: POST /api/auth/register, /api/auth/login, /api/auth/logout, GET /api/auth/me
  * Objects: GET /api/objects, POST /api/objects
  * Entries: GET/POST /api/objects/:id/entries, GET/PUT/DELETE /api/objects/:id/entries/:cattleId
+ * Mobile: GET /api/mobile/info, GET /api/mobile/app.apk; POST /api/admin/mobile-apk (admin, multipart)
  */
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
@@ -19,6 +20,7 @@ const entriesRoutes = require('./routes/entries');
 const protocolsRoutes = require('./routes/protocols');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
+const mobileRoutes = require('./routes/mobile');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +28,28 @@ const PORT = process.env.PORT || 3000;
 // Ensure data dir exists for SQLite
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+// APK: server/apk (короче путь, чем data/mobile). Однократный перенос со старого места.
+const apkDir = path.join(__dirname, 'apk');
+if (!fs.existsSync(apkDir)) fs.mkdirSync(apkDir, { recursive: true });
+const legacyMobileDir = path.join(dataDir, 'mobile');
+function apkDirHasRealFiles(dir) {
+  if (!fs.existsSync(dir)) return false;
+  return fs.readdirSync(dir).some((name) => name !== '.gitkeep');
+}
+try {
+  if (fs.existsSync(legacyMobileDir)) {
+    const legacyFiles = fs.readdirSync(legacyMobileDir);
+    if (legacyFiles.length > 0 && !apkDirHasRealFiles(apkDir)) {
+      for (const name of legacyFiles) {
+        fs.renameSync(path.join(legacyMobileDir, name), path.join(apkDir, name));
+      }
+      fs.rmSync(legacyMobileDir, { recursive: true, force: true });
+      console.log('APK: перенесено из data/mobile в папку apk/');
+    }
+  }
+} catch (e) {
+  console.warn('APK: миграция из data/mobile пропущена:', e.message);
+}
 
 app.use(cors({
   origin: true,
@@ -42,6 +66,7 @@ app.use('/api/objects', entriesRoutes);
 app.use('/api/objects', protocolsRoutes);
 app.use('/api', chatRoutes);
 app.use('/api', adminRoutes);
+app.use('/api', mobileRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

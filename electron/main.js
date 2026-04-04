@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
+const MultipartForm = require('form-data');
 
 const WINDOW_STATE_FILE = 'window-state.json';
 
@@ -558,6 +559,130 @@ ipcMain.handle('get-os-username', () => {
     return Promise.resolve((os.userInfo && os.userInfo().username) || process.env.USERNAME || process.env.USER || 'local');
   } catch (e) {
     return Promise.resolve('local');
+  }
+});
+
+function sendApkUploadProgress(payload) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    mainWindow.webContents.send('apk-upload-progress', payload);
+  } catch (_) {
+    // ignore
+  }
+}
+
+/** Только путь: большие APK не передаём через IPC в renderer (лимит/тихий сбой). */
+ipcMain.handle('select-apk-file', async () => {
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow();
+  if (!win) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: 'Выберите APK',
+    properties: ['openFile'],
+    filters: [{ name: 'Android Package', extensions: ['apk'] }]
+  });
+  if (canceled || !filePaths || !filePaths[0]) return null;
+  const p = filePaths[0];
+  return { path: p, name: path.basename(p) };
+});
+
+/**
+ * Загрузка APK на API из main-процесса (multipart + токен).
+ * payload: { filePath, baseUrl, token, version? }
+ */
+ipcMain.handle('upload-apk-to-server', async (_evt, payload) => {
+  try {
+    if (!payload || typeof payload !== 'object') {
+      return { ok: false, error: 'Некорректный запрос' };
+    }
+    let filePath = String(payload.filePath || '').trim();
+    const baseUrl = String(payload.baseUrl || '').trim().replace(/\/$/, '');
+    const token = String(payload.token || '').trim();
+    const version = payload.version != null ? String(payload.version).trim() : '';
+    if (!filePath || !baseUrl || !token) {
+      return {
+        ok: false,
+        error: 'Не задан файл, адрес сервера или сессия (войдите в аккаунт администратора заново).'
+      };
+    }
+    try {
+      filePath = fs.realpathSync.native ? fs.realpathSync.native(filePath) : fs.realpathSync(filePath);
+    } catch (_) {
+      filePath = path.resolve(filePath);
+    }
+    if (!filePath.toLowerCase().endsWith('.apk')) {
+      return { ok: false, error: 'Нужен файл с расширением .apk' };
+    }
+    if (!fs.existsSync(filePath)) {
+      return { ok: false, error: 'Файл не найден' };
+    }
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) {
+      return { ok: false, error: 'Указанный путь не является файлом' };
+    }
+    const maxBytes = 105 * 1024 * 1024;
+    if (stat.size > maxBytes) {
+      return { ok: false, error: 'Файл больше 100 МБ (лимит сервера)' };
+    }
+    const fileName = path.basename(filePath);
+    sendApkUploadProgress({ phase: 'reading', message: 'Чтение файла с диска…' });
+    const buf = await fs.promises.readFile(filePath);
+    const mb = Math.round((stat.size / (1024 * 1024)) * 10) / 10;
+    sendApkUploadProgress({
+      phase: 'uploading',
+      message: 'Отправка на сервер… (~' + mb + ' МБ)'
+    });
+    const form = new MultipartForm();
+    form.append('apk', buf, {
+      filename: fileName,
+      contentType: 'application/vnd.android.package-archive',
+      knownLength: buf.length
+    });
+    if (version) form.append('version', version);
+    const url = baseUrl + '/api/admin/mobile-apk';
+    const fetchOpts = {
+      method: 'POST',
+      headers: Object.assign({ Authorization: 'Bearer ' + token }, form.getHeaders()),
+      body: form,
+      duplex: 'half'
+    };
+    let response;
+    try {
+      try {
+        response = await fetch(url, fetchOpts);
+      } catch (e1) {
+        const opts2 = Object.assign({}, fetchOpts);
+        delete opts2.duplex;
+        response = await fetch(url, opts2);
+      }
+    } catch (netErr) {
+      let msg = netErr && netErr.message ? String(netErr.message) : 'Ошибка сети';
+      if (msg.indexOf('fetch') !== -1 || msg.indexOf('network') !== -1) {
+        msg = 'Не удалось связаться с сервером. Проверьте адрес (https://…), сеть и что API запущен.';
+      }
+      sendApkUploadProgress({ phase: 'error', message: msg });
+      return { ok: false, error: msg };
+    }
+    const text = await response.text();
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch (_) {
+      /* not JSON */
+    }
+    if (!response.ok) {
+      const msg =
+        (json && (json.error || json.message)) ||
+        (text && String(text).trim().slice(0, 280)) ||
+        'Ошибка сервера (код ' + response.status + ')';
+      sendApkUploadProgress({ phase: 'error', message: msg });
+      return { ok: false, error: msg };
+    }
+    sendApkUploadProgress({ phase: 'done', message: 'Файл загружен на сервер' });
+    return { ok: true, data: json };
+  } catch (e) {
+    const msg = e && e.message ? String(e.message) : 'Неизвестная ошибка';
+    sendApkUploadProgress({ phase: 'error', message: msg });
+    return { ok: false, error: msg };
   }
 });
 

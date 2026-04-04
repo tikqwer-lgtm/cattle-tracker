@@ -105,7 +105,7 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.51" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.58" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -817,6 +817,20 @@
         <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
       </div>
     </div>
+    <div id="sync-desktop-apk-admin-section" class="sync-section" style="display: none;">
+      <h3>APK на сервере</h3>
+      <p class="sync-section-hint">Загрузите сборку для мобильных устройств (только администратор). Список — файлы, сохранённые на сервере.</p>
+      <button type="button" class="action-btn" id="syncUploadApkBtn">Загрузить APK</button>
+      <p id="syncApkUploadStatus" class="sync-apk-upload-status" aria-live="polite"></p>
+      <div id="syncApkServerList" class="sync-apk-server-list" aria-live="polite"></div>
+    </div>
+    <details id="sync-mobile-apk-section" class="sync-section sync-mobile-apk-details" style="display: none;">
+      <summary class="sync-mobile-apk-summary">Установщик на телефон (APK)</summary>
+      <div class="sync-mobile-apk-details-body">
+        <p class="sync-section-hint">Скачайте последнюю версию APK с вашего сервера (откроется загрузка во внешнем браузере).</p>
+        <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать APK с сервера</button>
+      </div>
+    </details>
     <div id="sync-backup-section" class="sync-section">
       <h3>Резервное копирование (локальная утилита)</h3>
       <div id="sync-backup-container"></div>

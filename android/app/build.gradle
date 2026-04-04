@@ -8,7 +8,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 11
-        versionName "0.5.51"
+        versionName "0.5.58"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -45,4 +45,43 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// Копия готового APK у корня репозитория: apk/cattle-tracker-<version>-debug.apk (удобнее, чем deep build/outputs/...)
+def cattleTrackerRepoApkDir = file("${rootProject.projectDir.parent}/apk")
+
+afterEvaluate {
+    tasks.named("assembleDebug").configure {
+        doLast {
+            def src = file("${buildDir}/outputs/apk/debug/app-debug.apk")
+            if (src.exists()) {
+                cattleTrackerRepoApkDir.mkdirs()
+                def ver = android.defaultConfig.versionName
+                copy {
+                    from src
+                    into cattleTrackerRepoApkDir
+                    rename { "cattle-tracker-${ver}-debug.apk" }
+                }
+                println "APK (debug) также: ${cattleTrackerRepoApkDir}/cattle-tracker-${ver}-debug.apk"
+            }
+        }
+    }
+    tasks.named("assembleRelease").configure {
+        doLast {
+            def relDir = file("${buildDir}/outputs/apk/release")
+            if (!relDir.exists()) return
+            relDir.eachFile { f ->
+                if (f.file && f.name.endsWith('.apk')) {
+                    cattleTrackerRepoApkDir.mkdirs()
+                    def ver = android.defaultConfig.versionName
+                    copy {
+                        from f
+                        into cattleTrackerRepoApkDir
+                        rename { "cattle-tracker-${ver}-release.apk" }
+                    }
+                    println "APK (release) также: ${cattleTrackerRepoApkDir}/cattle-tracker-${ver}-release.apk"
+                }
+            }
+        }
+    }
 }
