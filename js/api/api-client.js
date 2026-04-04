@@ -9,7 +9,34 @@
   var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
 
   function getBaseUrl() {
-    return (global.CATTLE_TRACKER_API_BASE || '').replace(/\/$/, '');
+    var b = (global.CATTLE_TRACKER_API_BASE || '').trim().replace(/\/$/, '');
+    // Если в настройках указали .../api, убираем хвост — пути в запросах уже с /api/...
+    if (b.length >= 4 && b.slice(-4).toLowerCase() === '/api') {
+      b = b.slice(0, -4).replace(/\/$/, '');
+    }
+    return b;
+  }
+
+  /** Нормализация ввода адреса API (без хвоста /api). */
+  function normalizeApiBaseInput(s) {
+    var u = String(s || '').trim().replace(/\/$/, '');
+    if (u.length >= 4 && u.slice(-4).toLowerCase() === '/api') {
+      u = u.slice(0, -4).replace(/\/$/, '');
+    }
+    return u;
+  }
+
+  /** Сохранить базовый URL в localStorage и в global (только http/https). */
+  function setPersistedApiBase(url) {
+    var u = normalizeApiBaseInput(url);
+    if (!u || !/^https?:\/\//i.test(u)) return false;
+    try {
+      localStorage.setItem('cattleTracker_apiBase', u);
+    } catch (e) {
+      return false;
+    }
+    global.CATTLE_TRACKER_API_BASE = u;
+    return true;
   }
 
   function getToken() {
@@ -251,6 +278,8 @@
 
   var api = {
     getBaseUrl: getBaseUrl,
+    normalizeApiBaseInput: normalizeApiBaseInput,
+    setPersistedApiBase: setPersistedApiBase,
     getToken: getToken,
     setToken: setToken,
     loadEntries: loadEntries,

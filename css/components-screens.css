@@ -686,6 +686,16 @@
   padding: 8px 0;
   line-height: 1.4;
 }
+.auth-api-switch-server-wrap {
+  margin: 0 0 12px 0;
+}
+.auth-local-server-hint {
+  margin-bottom: 8px;
+  text-align: left;
+}
+.auth-local-server-url-row {
+  margin-bottom: 12px;
+}
 .auth-form-container {
   max-width: 400px;
   margin: 0 auto 20px;

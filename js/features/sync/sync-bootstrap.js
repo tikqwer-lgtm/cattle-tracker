@@ -23,9 +23,38 @@ function initSyncServerBlock() {
     } catch (e) {}
   } else {
     if (typeof window.updateConnectionIndicator === 'function') window.updateConnectionIndicator(false);
+    var defUrl =
+      typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null
+        ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '')
+        : '';
+    var pre = '';
+    try {
+      pre = (localStorage.getItem('cattleTracker_lastConnectUrl') || '').trim();
+    } catch (e) {}
+    var val = pre || defUrl || '';
+    function prefillConnectUrlInput(el) {
+      if (!el || el.dataset.prefilled === '1') return;
+      el.dataset.prefilled = '1';
+      if (defUrl) el.placeholder = defUrl;
+      if (val) el.value = val;
+    }
+    prefillConnectUrlInput(document.getElementById('syncConnectServerUrlInput'));
+    prefillConnectUrlInput(document.getElementById('authLocalConnectServerUrlInput'));
   }
   if (typeof window.initSyncMobileApkSection === 'function') window.initSyncMobileApkSection();
   if (typeof window.initSyncDesktopApkAdmin === 'function') window.initSyncDesktopApkAdmin();
+  if (useApi) {
+    var inp = document.getElementById('syncAdminServerUrlInput');
+    if (inp && window.CattleTrackerApi && typeof window.CattleTrackerApi.getBaseUrl === 'function') {
+      if (typeof window.getCurrentUser === 'function') {
+        var u = window.getCurrentUser();
+        if (u && u.role === 'admin') {
+          inp.value = window.CattleTrackerApi.getBaseUrl() || '';
+        }
+      }
+    }
+  }
+  if (typeof window.bindAdminSyncServerUrlControls === 'function') window.bindAdminSyncServerUrlControls();
 }
 
 window.initSyncServerBlock = initSyncServerBlock;

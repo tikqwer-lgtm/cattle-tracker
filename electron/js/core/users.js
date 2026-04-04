@@ -295,6 +295,12 @@
       var showAdmin = user && user.role === 'admin' && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
       adminSection.style.display = showAdmin ? '' : 'none';
     }
+    var adminServerUrlSection = document.getElementById('sync-admin-server-url-section');
+    if (adminServerUrlSection) {
+      var showAdminUrl =
+        user && user.role === 'admin' && typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API;
+      adminServerUrlSection.style.display = showAdminUrl ? '' : 'none';
+    }
     var reportErrorBtn = document.getElementById('report-error-btn');
     if (reportErrorBtn) {
       var showReport = user && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);

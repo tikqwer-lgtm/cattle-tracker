@@ -8,7 +8,13 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
-const MultipartForm = require('form-data');
+function normalizeApiBaseUrl(u) {
+  let s = String(u || '').trim().replace(/\/$/, '');
+  if (s.length >= 4 && s.slice(-4).toLowerCase() === '/api') {
+    s = s.slice(0, -4).replace(/\/$/, '');
+  }
+  return s;
+}
 
 const WINDOW_STATE_FILE = 'window-state.json';
 
@@ -595,7 +601,7 @@ ipcMain.handle('upload-apk-to-server', async (_evt, payload) => {
       return { ok: false, error: 'Некорректный запрос' };
     }
     let filePath = String(payload.filePath || '').trim();
-    const baseUrl = String(payload.baseUrl || '').trim().replace(/\/$/, '');
+    const baseUrl = normalizeApiBaseUrl(payload.baseUrl);
     const token = String(payload.token || '').trim();
     const version = payload.version != null ? String(payload.version).trim() : '';
     if (!filePath || !baseUrl || !token) {
@@ -631,29 +637,20 @@ ipcMain.handle('upload-apk-to-server', async (_evt, payload) => {
       phase: 'uploading',
       message: 'Отправка на сервер… (~' + mb + ' МБ)'
     });
-    const form = new MultipartForm();
-    form.append('apk', buf, {
-      filename: fileName,
-      contentType: 'application/vnd.android.package-archive',
-      knownLength: buf.length
-    });
+    // Встроенный FormData + Blob (Node/Electron): пакет form-data + fetch давал обрыв тела и «Unexpected end of form» на multer.
+    const form = new FormData();
+    const blob = new Blob([buf], { type: 'application/vnd.android.package-archive' });
+    form.append('apk', blob, fileName);
     if (version) form.append('version', version);
     const url = baseUrl + '/api/admin/mobile-apk';
     const fetchOpts = {
       method: 'POST',
-      headers: Object.assign({ Authorization: 'Bearer ' + token }, form.getHeaders()),
-      body: form,
-      duplex: 'half'
+      headers: { Authorization: 'Bearer ' + token },
+      body: form
     };
     let response;
     try {
-      try {
-        response = await fetch(url, fetchOpts);
-      } catch (e1) {
-        const opts2 = Object.assign({}, fetchOpts);
-        delete opts2.duplex;
-        response = await fetch(url, opts2);
-      }
+      response = await fetch(url, fetchOpts);
     } catch (netErr) {
       let msg = netErr && netErr.message ? String(netErr.message) : 'Ошибка сети';
       if (msg.indexOf('fetch') !== -1 || msg.indexOf('network') !== -1) {

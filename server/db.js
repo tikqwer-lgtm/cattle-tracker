@@ -303,6 +303,15 @@ function deleteUser(id) {
   return true;
 }
 
+/** Смена пароля по логину (без проверки старого). Для восстановления доступа на своём сервере. */
+function setPasswordHashForUsername(username, passwordHash) {
+  const row = findUserByUsername(username);
+  if (!row || !row.id) return false;
+  runSql('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, row.id]);
+  saveDb();
+  return true;
+}
+
 function createReport(userId, username, message, payloadJson) {
   const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   runSql(
@@ -563,6 +572,7 @@ module.exports = {
   findUserByIdWithPassword,
   getAllUsers,
   deleteUser,
+  setPasswordHashForUsername,
   createReport,
   getReportById,
   getReports,

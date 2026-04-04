@@ -1,5 +1,6 @@
 /**
  * Admin routes: list/delete users (admin only), reports (submit + list/delete for admin).
+ * APK на сервер — см. routes/admin-mobile-apk.js (монтирование /api/admin).
  */
 const express = require('express');
 const router = express.Router();

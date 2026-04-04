@@ -76,21 +76,64 @@ function sendToServer() {
   connectToServer();
 }
 
+function normalizeConnectServerUrl(u) {
+  var s = String(u || '').trim().replace(/\/$/, '');
+  if (s.length >= 4 && s.slice(-4).toLowerCase() === '/api') {
+    s = s.slice(0, -4).replace(/\/$/, '');
+  }
+  return s;
+}
+
 /**
- * Подключиться к серверу: взять адрес из конфига (CATTLE_TRACKER_DEFAULT_SERVER_URL),
- * проверить доступность, при наличии несинхронизированных данных — предложить действие,
- * сохранить в localStorage и перезагрузить.
+ * Адрес для первого подключения: поле на экране «Синхронизация» или на экране входа (локальный блок), иначе последний успешный URL, иначе из сборки.
+ */
+function resolveConnectServerUrlForFirstConnect() {
+  var input = document.getElementById('syncConnectServerUrlInput');
+  var authInput = document.getElementById('authLocalConnectServerUrlInput');
+  var fromField = input && String(input.value || '').trim();
+  var fromAuth = authInput && String(authInput.value || '').trim();
+  var def =
+    typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null
+      ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim()
+      : '';
+  var tryLast = '';
+  try {
+    tryLast = (localStorage.getItem('cattleTracker_lastConnectUrl') || '').trim();
+  } catch (e) {}
+  var raw = fromField || fromAuth || tryLast || def;
+  return normalizeConnectServerUrl(raw);
+}
+
+/** Выйти из режима «ожидается вход на API» и выбрать другой узел (логин хранится на сервере). */
+function switchToPickAnotherApiServer() {
+  try {
+    localStorage.removeItem('cattleTracker_useApiMode');
+    localStorage.removeItem('cattleTracker_apiBase');
+    localStorage.removeItem('cattleTracker_apiToken');
+  } catch (e) {}
+  location.reload();
+}
+
+/**
+ * Подключиться к серверу: адрес из поля на экране «Синхронизация», иначе последний успешный URL, иначе CATTLE_TRACKER_DEFAULT_SERVER_URL.
+ * Проверить доступность, при несинхронизированных данных — диалог, сохранить в localStorage и перезагрузить.
  * @param {{ uploadAfterConnect?: boolean }} [opts] — если uploadAfterConnect: true, после перезагрузки будет вызван uploadCurrentBaseToServer
  */
 function connectToServer(opts) {
   if (opts && opts.uploadAfterConnect) {
     try { localStorage.setItem('cattleTracker_uploadAfterConnect', '1'); } catch (e) {}
   }
-  var url = (typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null)
-    ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim().replace(/\/$/, '')
-    : '';
+  var url = resolveConnectServerUrlForFirstConnect();
   if (!url) {
-    if (typeof showToast === 'function') showToast('Адрес сервера не задан в конфигурации.', 'error', 6000);
+    if (typeof showToast === 'function') {
+      showToast('Укажите адрес API в поле ниже (http:// или https://) или задайте адрес по умолчанию в сборке.', 'error', 7000);
+    }
+    return;
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    if (typeof showToast === 'function') {
+      showToast('Адрес должен начинаться с http:// или https:// — логин и пароль проверяются на выбранном сервере.', 'error', 7000);
+    }
     return;
   }
   if (typeof showToast === 'function') showToast('Проверка подключения…', 'info');
@@ -102,6 +145,9 @@ function connectToServer(opts) {
     function doConnect(syncAfter) {
       try {
         localStorage.setItem('cattleTracker_apiBase', url);
+        try {
+          localStorage.setItem('cattleTracker_lastConnectUrl', url);
+        } catch (e2) {}
         localStorage.setItem('cattleTracker_useApiMode', '1');
         if (syncAfter) localStorage.setItem('cattleTracker_syncAfterConnect', '1');
         if (typeof showToast === 'function') showToast('Подключено. Перезагрузка…', 'success');
@@ -156,10 +202,74 @@ function disconnectFromServer() {
   doDisconnect();
 }
 
+function bindAdminSyncServerUrlControls() {
+  var btn = document.getElementById('syncAdminServerUrlApplyBtn');
+  if (!btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', function () {
+    applyAdminSyncServerUrl();
+  });
+}
+
+/**
+ * Смена URL API (только администратор, режим подключения к серверу): проверка /api/health, сохранение, сброс токена, перезагрузка.
+ */
+function applyAdminSyncServerUrl() {
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
+  if (!useApi) return;
+  var user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
+  if (!user || user.role !== 'admin') return;
+
+  var input = document.getElementById('syncAdminServerUrlInput');
+  if (!input) return;
+  var api = window.CattleTrackerApi;
+  var url = typeof api.normalizeApiBaseInput === 'function' ? api.normalizeApiBaseInput(input.value) : '';
+  if (!url) {
+    if (typeof showToast === 'function') showToast('Введите адрес (например https://сервер:3000)', 'error', 5000);
+    return;
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    if (typeof showToast === 'function') showToast('Адрес должен начинаться с http:// или https://', 'error', 5000);
+    return;
+  }
+  if (typeof showToast === 'function') showToast('Проверка подключения…', 'info');
+  fetch(url + '/api/health')
+    .then(function (res) {
+      if (!res.ok) {
+        if (typeof showToast === 'function') showToast('Сервер ответил с кодом ' + res.status, 'error', 6000);
+        return;
+      }
+      if (typeof api.setToken === 'function') api.setToken(null);
+      if (typeof api.setPersistedApiBase !== 'function' || !api.setPersistedApiBase(url)) {
+        if (typeof showToast === 'function') showToast('Не удалось сохранить адрес', 'error');
+        return;
+      }
+      try {
+        localStorage.setItem('cattleTracker_useApiMode', '1');
+      } catch (e) {}
+      if (typeof showToast === 'function') showToast('Адрес сохранён. Перезагрузка…', 'success');
+      setTimeout(function () {
+        location.reload();
+      }, 400);
+    })
+    .catch(function (err) {
+      var reason =
+        err && err.message && err.message.indexOf('Failed to fetch') !== -1
+          ? 'Не удалось связаться с сервером'
+          : err && err.message
+            ? err.message
+            : 'нет связи';
+      if (typeof showToast === 'function') showToast('Ошибка: ' + reason, 'error', 6000);
+    });
+}
+
 window.hasUnsyncedEntries = hasUnsyncedEntries;
 window.showUnsyncedDataPrompt = showUnsyncedDataPrompt;
 window.sendToServer = sendToServer;
 window.connectToServer = connectToServer;
 window.disconnectFromServer = disconnectFromServer;
+window.bindAdminSyncServerUrlControls = bindAdminSyncServerUrlControls;
+window.applyAdminSyncServerUrl = applyAdminSyncServerUrl;
+window.switchToPickAnotherApiServer = switchToPickAnotherApiServer;
 
 export {};

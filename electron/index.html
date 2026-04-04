@@ -55,6 +55,10 @@
     <div id="auth-form-container" class="auth-form-container">
       <!-- Локальный режим (без сервера) -->
       <div id="auth-local-block" class="auth-local-block">
+        <p class="sync-section-hint auth-local-server-hint">Адрес API, на котором у вас есть логин (http:// или https://). Используется при «Подключиться к серверу».</p>
+        <div class="sync-admin-server-url-row auth-local-server-url-row">
+          <input type="url" id="authLocalConnectServerUrlInput" class="sync-admin-server-url-input" placeholder="" autocomplete="off" inputmode="url" aria-label="Адрес API" />
+        </div>
         <div class="form-actions auth-local-actions">
           <button type="button" id="auth-skip-btn" class="action-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Войти без пароля</button>
           <button type="button" id="auth-connect-server-btn" class="action-btn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
@@ -62,7 +66,10 @@
       </div>
       <!-- Серверный режим (API подключён) -->
       <div id="auth-server-block" style="display: none;">
-        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация).</p>
+        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация). Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
+        <p class="auth-api-switch-server-wrap">
+          <button type="button" class="small-btn" onclick="typeof window.switchToPickAnotherApiServer === 'function' && window.switchToPickAnotherApiServer()">Указать другой адрес сервера</button>
+        </p>
         <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
           <label for="authUsernameSelect">Выбрать пользователя</label>
           <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
@@ -105,7 +112,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.58" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.68" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -790,6 +797,12 @@
     <h1>🔄 Синхронизация</h1>
     <!-- Блок когда сервер ещё не подключён -->
     <div id="sync-connect-block" class="sync-server-section">
+      <div class="sync-section sync-connect-url-section">
+        <p class="sync-section-hint">Логин и пароль хранятся на <strong>выбранном</strong> сервере. Укажите URL API (с http:// или https://), где у вас есть аккаунт. Пустое поле — берётся последний успешный адрес или адрес по умолчанию из сборки.</p>
+        <div class="sync-admin-server-url-row">
+          <input type="url" id="syncConnectServerUrlInput" class="sync-admin-server-url-input" placeholder="" autocomplete="off" inputmode="url" aria-label="Адрес API для входа" />
+        </div>
+      </div>
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
         <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
@@ -806,6 +819,14 @@
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div id="sync-admin-server-url-section" class="sync-section" style="display: none;">
+        <h3>Адрес сервера API</h3>
+        <p class="sync-section-hint">Доступно администратору. Укажите новый URL, если сервер переехал (с протоколом http или https). После применения сессия сбросится — войдите снова.</p>
+        <div class="sync-admin-server-url-row">
+          <input type="url" id="syncAdminServerUrlInput" class="sync-admin-server-url-input" placeholder="https://пример.ru:3000" autocomplete="off" inputmode="url" aria-label="Адрес API" />
+          <button type="button" class="action-btn" id="syncAdminServerUrlApplyBtn">Проверить и применить</button>
+        </div>
+      </div>
       <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
         <div class="sync-progress-label" id="syncProgressLabel">Синхронизация…</div>
         <div class="sync-progress-bar-wrap"><div class="sync-progress-bar" id="syncProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div>
