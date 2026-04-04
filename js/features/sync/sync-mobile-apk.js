@@ -1,4 +1,4 @@
-/** Секция «Скачать APK» на экране синхронизации (только Android + режим API). */
+/** Секция «Установка обновления (APK)» на синхронизации (Android + режим API). */
 (function (global) {
   'use strict';
 
@@ -19,6 +19,170 @@
     }
   }
 
+  function compareAppVersions(serverV, localV) {
+    if (serverV == null || localV == null) return null;
+    var s = String(serverV).trim();
+    var l = String(localV).trim();
+    if (!s || !l) return null;
+    var sa = s.split('.').map(function (x) {
+      return parseInt(x, 10) || 0;
+    });
+    var la = l.split('.').map(function (x) {
+      return parseInt(x, 10) || 0;
+    });
+    var n = Math.max(sa.length, la.length);
+    for (var i = 0; i < n; i++) {
+      var a = sa[i] || 0;
+      var b = la[i] || 0;
+      if (a > b) return 1;
+      if (a < b) return -1;
+    }
+    return 0;
+  }
+
+  function formatUploadedAt(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleString('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return '—';
+    }
+  }
+
+  function getLocalAppVersion() {
+    return import('@capacitor/app')
+      .then(function (mod) {
+        return mod.App.getInfo();
+      })
+      .then(function (info) {
+        return info && info.version ? String(info.version).trim() : '';
+      })
+      .catch(function () {
+        return '';
+      })
+      .then(function (v) {
+        if (v) return v;
+        var el = document.documentElement;
+        var d = el && el.getAttribute && el.getAttribute('data-default-version');
+        return (d || '').trim();
+      });
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function setVisible(id, on) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = on ? '' : 'none';
+  }
+
+  function setUpdateLine(className, text) {
+    var el = document.getElementById('syncMobileApkUpdateLine');
+    if (!el) return;
+    el.className = 'sync-mobile-apk-update-line ' + (className || '');
+    el.textContent = text || '';
+    el.style.display = text ? '' : 'none';
+  }
+
+  function refreshMobileApkServerUi() {
+    var base = getApiBase();
+    var metaBlock = document.getElementById('syncMobileApkMetaBlock');
+    var noFile = document.getElementById('syncMobileApkNoFileHint');
+    if (!base) return;
+    setText('syncMobileApkMetaVersion', '…');
+    setText('syncMobileApkMetaName', '…');
+    setText('syncMobileApkMetaDate', '…');
+    setUpdateLine('sync-mobile-apk-update-line--loading', 'Проверка сервера…');
+    if (metaBlock) metaBlock.style.display = '';
+    if (noFile) noFile.style.display = 'none';
+
+    var infoUrl = base + '/api/mobile/info';
+    fetch(infoUrl, { cache: 'no-cache' })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            var err = (data && (data.error || data.message)) || 'Ошибка ' + res.status;
+            throw new Error(err);
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        return getLocalAppVersion().then(function (localVer) {
+          return { data: data, localVer: localVer };
+        });
+      })
+      .then(function (_ref) {
+        var data = _ref.data;
+        var localVer = _ref.localVer;
+        if (!data || !data.available) {
+          setVisible('syncMobileApkMetaBlock', false);
+          if (noFile) {
+            noFile.style.display = '';
+            noFile.textContent =
+              'На сервере пока нет файла обновления. Администратор может загрузить APK в разделе синхронизации на ПК.';
+          }
+          setUpdateLine('', '');
+          return;
+        }
+        setVisible('syncMobileApkMetaBlock', true);
+        if (noFile) noFile.style.display = 'none';
+        setText('syncMobileApkMetaVersion', data.version || 'не указана');
+        setText('syncMobileApkMetaName', data.originalName || '—');
+        setText('syncMobileApkMetaDate', formatUploadedAt(data.uploadedAt));
+
+        var cmp = compareAppVersions(data.version, localVer);
+        if (cmp === null) {
+          setUpdateLine(
+            'sync-mobile-apk-update-line--neutral',
+            localVer
+              ? 'Версию на сервере нельзя сравнить с установленной (на сервере не указана версия). Установлено: ' +
+                  localVer +
+                  '.'
+              : 'Укажите версию при загрузке APK на сервер, чтобы сравнивать с установленной.'
+          );
+        } else if (cmp > 0) {
+          setUpdateLine(
+            'sync-mobile-apk-update-line--new',
+            'Доступна новая версия на сервере (у вас ' + localVer + ', на сервере ' + data.version + ').'
+          );
+        } else if (cmp < 0) {
+          setUpdateLine(
+            'sync-mobile-apk-update-line--ahead',
+            'Установленная версия новее, чем файл на сервере (' + localVer + ').'
+          );
+        } else {
+          setUpdateLine(
+            'sync-mobile-apk-update-line--ok',
+            'У вас установлена актуальная версия (' + localVer + ').'
+          );
+        }
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : 'Не удалось получить данные';
+        if (msg.indexOf('Failed to fetch') !== -1) {
+          msg = 'Сервер недоступен';
+        }
+        setVisible('syncMobileApkMetaBlock', false);
+        if (noFile) {
+          noFile.style.display = '';
+          noFile.textContent = msg;
+        }
+        setUpdateLine('sync-mobile-apk-update-line--error', msg);
+      });
+  }
+
   function bindDownloadButton() {
     var btn = document.getElementById('syncDownloadApkBtn');
     if (!btn || btn.dataset.apkBound === '1') return;
@@ -28,12 +192,66 @@
     });
   }
 
+  function bindDetailsToggle(section) {
+    if (!section || section.dataset.apkToggleBound === '1') return;
+    section.dataset.apkToggleBound = '1';
+    section.addEventListener('toggle', function () {
+      if (section.open) refreshMobileApkServerUi();
+    });
+  }
+
   function initSyncMobileApkSection() {
     var section = document.getElementById('sync-mobile-apk-section');
     if (!section) return;
     bindDownloadButton();
+    bindDetailsToggle(section);
     var show = isAndroidCapacitor() && !!getApiBase();
     section.style.display = show ? '' : 'none';
+    if (show) {
+      refreshMobileApkServerUi();
+    }
+  }
+
+  /**
+   * Custom Tabs (@capacitor/browser) часто не запускают загрузку APK (пустой экран).
+   * На Android открываем через нативный OpenExternalUrlPlugin (Intent → системный браузер).
+   */
+  function openApkDownloadUrl(apkUrl) {
+    var C = global.Capacitor;
+    var isAndroidNative =
+      C &&
+      typeof C.isNativePlatform === 'function' &&
+      C.isNativePlatform() &&
+      typeof C.getPlatform === 'function' &&
+      C.getPlatform() === 'android';
+    if (isAndroidNative) {
+      return import('@capacitor/core')
+        .then(function (core) {
+          var OpenExternalUrl = core.registerPlugin('OpenExternalUrl', {
+            web: {
+              openUrl: function () {
+                return Promise.resolve();
+              }
+            }
+          });
+          return OpenExternalUrl.openUrl({ url: apkUrl });
+        })
+        .catch(function () {
+          return import('@capacitor/browser').then(function (mod) {
+            return mod.Browser.open({ url: apkUrl });
+          });
+        })
+        .catch(function () {
+          global.open(apkUrl, '_blank', 'noopener,noreferrer');
+        });
+    }
+    return import('@capacitor/browser')
+      .then(function (mod) {
+        return mod.Browser.open({ url: apkUrl });
+      })
+      .catch(function () {
+        global.open(apkUrl, '_blank', 'noopener,noreferrer');
+      });
   }
 
   function downloadApkFromServer() {
@@ -61,13 +279,7 @@
           return;
         }
         var apkUrl = base + (data.downloadPath || '/api/mobile/app.apk');
-        return import('@capacitor/browser')
-          .then(function (mod) {
-            return mod.Browser.open({ url: apkUrl });
-          })
-          .catch(function () {
-            global.open(apkUrl, '_blank', 'noopener,noreferrer');
-          });
+        return openApkDownloadUrl(apkUrl);
       })
       .catch(function (err) {
         var msg = err && err.message ? err.message : 'Не удалось проверить обновление';
@@ -80,6 +292,7 @@
 
   global.initSyncMobileApkSection = initSyncMobileApkSection;
   global.downloadApkFromServer = downloadApkFromServer;
+  global.refreshMobileApkServerUi = refreshMobileApkServerUi;
 })(typeof window !== 'undefined' ? window : this);
 
 export {};

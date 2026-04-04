@@ -525,3 +525,55 @@
 .sync-mobile-apk-details-body .sync-section-hint {
   margin-top: 0;
 }
+
+.sync-mobile-apk-update-line {
+  font-size: 0.95rem;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+}
+.sync-mobile-apk-update-line--loading {
+  color: var(--muted-text, #666);
+}
+.sync-mobile-apk-update-line--new {
+  color: #0d7a3e;
+  font-weight: 600;
+}
+.sync-mobile-apk-update-line--ok {
+  color: var(--muted-text, #555);
+}
+.sync-mobile-apk-update-line--neutral,
+.sync-mobile-apk-update-line--ahead {
+  color: var(--muted-text, #666);
+}
+.sync-mobile-apk-update-line--error {
+  color: #b00020;
+}
+
+.sync-mobile-apk-meta-block {
+  display: table;
+  width: 100%;
+  max-width: 100%;
+  font-size: 0.95rem;
+  margin: 0 0 12px 0;
+  border-collapse: collapse;
+}
+.sync-mobile-apk-meta-row {
+  display: table-row;
+}
+.sync-mobile-apk-meta-label {
+  display: table-cell;
+  padding: 4px 12px 4px 0;
+  color: var(--muted-text, #666);
+  white-space: nowrap;
+  vertical-align: top;
+}
+.sync-mobile-apk-meta-value {
+  display: table-cell;
+  padding: 4px 0;
+  word-break: break-word;
+  vertical-align: top;
+}
+.sync-mobile-apk-no-file-hint {
+  margin-top: 0;
+  margin-bottom: 10px;
+}

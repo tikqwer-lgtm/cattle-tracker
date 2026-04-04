@@ -10,6 +10,10 @@ const VERSION_NAME = 'version.json';
 const MANIFEST_NAME = 'manifest.json';
 
 function getMobileDir() {
+  const raw = process.env.APK_STORAGE_DIR;
+  if (raw != null && String(raw).trim() !== '') {
+    return path.resolve(String(raw).trim());
+  }
   return path.join(__dirname, '..', 'apk');
 }
 

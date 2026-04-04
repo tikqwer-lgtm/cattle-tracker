@@ -12,20 +12,33 @@ const router = express.Router();
 router.get('/mobile/info', (req, res) => {
   apk.migrateLegacyLatestIfNeeded();
   const apkPath = apk.getApkPath();
+  const m = apk.readManifest();
+  const first = m.items && m.items[0];
   try {
     if (!fs.existsSync(apkPath)) {
       return res.json({
         available: false,
         size: null,
         version: null,
+        originalName: null,
+        uploadedAt: null,
+        filename: null,
         downloadPath: '/api/mobile/app.apk'
       });
     }
     const st = fs.statSync(apkPath);
+    const versionMeta = apk.readVersionMeta();
+    const version =
+      (first && first.version != null && String(first.version).trim()) ||
+      versionMeta ||
+      null;
     res.json({
       available: true,
       size: st.size,
-      version: apk.readVersionMeta(),
+      version,
+      originalName: first && first.originalName ? String(first.originalName) : null,
+      uploadedAt: first && first.uploadedAt ? String(first.uploadedAt) : null,
+      filename: first && first.filename ? String(first.filename) : null,
       downloadPath: '/api/mobile/app.apk'
     });
   } catch (err) {

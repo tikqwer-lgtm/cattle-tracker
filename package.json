@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker",
-  "version": "0.5.68",
+  "version": "0.5.72",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
     "build": "vite build",

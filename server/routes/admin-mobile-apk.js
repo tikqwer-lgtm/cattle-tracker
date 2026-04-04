@@ -80,13 +80,26 @@ router.post(
       const ver = (req.body && req.body.version != null) ? String(req.body.version).trim() : '';
       if (ver) apk.writeVersionMeta(ver);
       const m = apk.readManifest();
-      m.items.unshift({
+      const previousItems = m.items.slice();
+      const newEntry = {
         filename: storedName,
         originalName: orig,
         size: st.size,
         uploadedAt: new Date().toISOString(),
         version: ver || null
-      });
+      };
+      for (const it of previousItems) {
+        if (!it || !it.filename) continue;
+        const name = path.basename(String(it.filename).trim());
+        if (!name || name === storedName) continue;
+        const oldPath = path.join(dir, name);
+        try {
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch (e) {
+          console.warn('APK: не удалось удалить предыдущий файл', name, e.message);
+        }
+      }
+      m.items = [newEntry];
       apk.writeManifest(m);
       apk.syncLatestFromManifest(m.items);
       res.status(201).json({

@@ -12,6 +12,15 @@
     return u && u.role === 'admin';
   }
 
+  /** Версия десктопной сборки (как в корневом package.json → data-default-version в index.html). */
+  function getBundledAppVersion() {
+    try {
+      return (document.documentElement.getAttribute('data-default-version') || '').trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
   function refreshSyncDesktopApkList() {
     var container = document.getElementById('syncApkServerList');
     if (!container || !global.CattleTrackerApi || typeof global.CattleTrackerApi.listMobileApkFiles !== 'function') {
@@ -167,7 +176,7 @@
             filePath: r.path,
             baseUrl: base,
             token: token,
-            version: ''
+            version: getBundledAppVersion()
           });
         })
         .then(function (res) {

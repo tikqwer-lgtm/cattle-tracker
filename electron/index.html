@@ -112,7 +112,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.68" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.72" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -846,9 +846,16 @@
       <div id="syncApkServerList" class="sync-apk-server-list" aria-live="polite"></div>
     </div>
     <details id="sync-mobile-apk-section" class="sync-section sync-mobile-apk-details" style="display: none;">
-      <summary class="sync-mobile-apk-summary">Установщик на телефон (APK)</summary>
+      <summary class="sync-mobile-apk-summary">Установка обновления (APK)</summary>
       <div class="sync-mobile-apk-details-body">
-        <p class="sync-section-hint">Скачайте последнюю версию APK с вашего сервера (откроется загрузка во внешнем браузере).</p>
+        <p id="syncMobileApkUpdateLine" class="sync-mobile-apk-update-line" style="display: none;" aria-live="polite"></p>
+        <div id="syncMobileApkMetaBlock" class="sync-mobile-apk-meta-block">
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Версия на сервере</span><span id="syncMobileApkMetaVersion" class="sync-mobile-apk-meta-value">—</span></div>
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Имя файла</span><span id="syncMobileApkMetaName" class="sync-mobile-apk-meta-value">—</span></div>
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Добавлено</span><span id="syncMobileApkMetaDate" class="sync-mobile-apk-meta-value">—</span></div>
+        </div>
+        <p id="syncMobileApkNoFileHint" class="sync-section-hint sync-mobile-apk-no-file-hint" style="display: none;" aria-live="polite"></p>
+        <p class="sync-section-hint">Скачайте APK с сервера — откроется загрузка во внешнем браузере.</p>
         <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать APK с сервера</button>
       </div>
     </details>

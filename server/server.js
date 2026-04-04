@@ -6,6 +6,7 @@
  * Mobile: GET /api/mobile/info, GET /api/mobile/app.apk; admin APK: app.use('/api/admin', admin-mobile-apk)
  */
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const mobileApkStorage = require('./lib/mobile-apk-storage');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -29,9 +30,12 @@ const PORT = process.env.PORT || 3000;
 // Ensure data dir exists for SQLite
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-// APK: server/apk (короче путь, чем data/mobile). Однократный перенос со старого места.
-const apkDir = path.join(__dirname, 'apk');
+// APK: по умолчанию server/apk; иначе APK_STORAGE_DIR в .env (см. README).
+const apkDir = mobileApkStorage.getMobileDir();
 if (!fs.existsSync(apkDir)) fs.mkdirSync(apkDir, { recursive: true });
+if (process.env.APK_STORAGE_DIR && String(process.env.APK_STORAGE_DIR).trim()) {
+  console.log('APK: APK_STORAGE_DIR →', apkDir);
+}
 const legacyMobileDir = path.join(dataDir, 'mobile');
 function apkDirHasRealFiles(dir) {
   if (!fs.existsSync(dir)) return false;
