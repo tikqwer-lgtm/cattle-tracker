@@ -52,7 +52,7 @@ router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
   res.status(201).json({ id, name });
 });
 
-router.post('/', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.post('/', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
   const id = 'obj_' + Date.now();
   db.createObject(id, name, req.user.id);

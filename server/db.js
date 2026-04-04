@@ -460,10 +460,8 @@ function deleteObject(id) {
 function getEntries(objectId, userId, role) {
   let sql = `SELECT * FROM entries WHERE object_id = ?`;
   const params = [objectId];
-  if (role !== 'admin' && userId) {
-    sql += ` AND (user_id = ? OR user_id = '' OR user_id IS NULL)`;
-    params.push(userId);
-  }
+  // База (object) общая для всех авторизованных пользователей: оператор и просмотр
+  // должны видеть все записи, иначе «Загрузить с сервера» даёт пустую копию и плодятся пустые объекты.
   sql += ` ORDER BY created_at DESC`;
   const rows = allSql(sql, params);
   return rows.map(rowToEntry);
@@ -472,9 +470,7 @@ function getEntries(objectId, userId, role) {
 function getEntry(objectId, cattleId, userId, role) {
   const row = getSql('SELECT * FROM entries WHERE object_id = ? AND cattle_id = ?', [objectId, cattleId]);
   if (!row) return null;
-  const entry = rowToEntry(row);
-  if (role !== 'admin' && userId && entry.userId && entry.userId !== userId) return null;
-  return entry;
+  return rowToEntry(row);
 }
 
 function createEntry(entry, objectId) {

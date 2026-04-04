@@ -58,6 +58,12 @@ function showUnsyncedDataPrompt(onDone) {
  * Если не подключён — подключиться и после перезагрузки выгрузить базу.
  */
 function sendToServer() {
+  if (window.CATTLE_TRACKER_USE_API && typeof window.isMobile === 'function' && window.isMobile()) {
+    if (typeof showToast === 'function') {
+      showToast('На телефоне доступна только загрузка баз с сервера (кнопка «Загрузить» в списке).', 'info', 5000);
+    }
+    return;
+  }
   var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
   if (useApi) {
     var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';

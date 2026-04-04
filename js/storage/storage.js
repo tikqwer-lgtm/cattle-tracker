@@ -11,7 +11,35 @@ if (useApi) {
   }
   window.getCurrentObjectId = function () { return window.CattleTrackerApi.getCurrentObjectId(); };
   window.setCurrentObjectId = function (id) { window.CattleTrackerApi.setCurrentObjectId(id); };
-  window.getObjectsList = function () { return _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }]; };
+  window.getObjectsList = function () {
+    var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
+    if (window.CattleTrackerApi && typeof window.CattleTrackerApi.filterObjectsListVisible === 'function') {
+      return window.CattleTrackerApi.filterObjectsListVisible(list);
+    }
+    return list;
+  };
+
+  /** После скрытия базы локально — переключить текущую, если она скрыта. */
+  window.afterLocalHideObject = function (hiddenId) {
+    return loadObjectsFromApi().then(function () {
+      var list = window.getObjectsList();
+      var cur = window.getCurrentObjectId();
+      var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+      var lost = cur === hiddenId || !list.some(function (o) { return o.id === cur; });
+      if (lost) {
+        if (list.length) {
+          window.switchToObject(list[0].id);
+          return;
+        }
+        window.setCurrentObjectId(pendingId || 'default');
+        return window.loadLocally();
+      }
+      return window.loadLocally();
+    }).then(function () {
+      if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+      if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+    });
+  };
   window.ensureObjectsAndMigration = function () { return loadObjectsFromApi(); };
 
   window.addObject = function (name) {
@@ -69,6 +97,15 @@ if (useApi) {
     return loadObjectsFromApi().then(function () {
       var objectId = window.getCurrentObjectId();
       var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+      var visibleList = window.getObjectsList();
+      var inVisible = visibleList.some(function (o) { return o.id === objectId; });
+      if (objectId && objectId !== pendingId && !inVisible) {
+        if (visibleList.length) {
+          return window.switchToObject(visibleList[0].id);
+        }
+        window.setCurrentObjectId(pendingId);
+        objectId = pendingId;
+      }
       if (pendingId && objectId === pendingId) {
         if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]);
         else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }

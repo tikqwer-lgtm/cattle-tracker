@@ -1,4 +1,18 @@
 /** Фрагмент модуля синхронизации; фасад: ../sync.js */
+function applyMobileSyncUploadRestrictions() {
+  var lim = window.CATTLE_TRACKER_USE_API && typeof window.isMobile === 'function' && window.isMobile();
+  var sendBtn = document.getElementById('syncSendToServerBtn');
+  if (sendBtn) sendBtn.style.display = lim ? 'none' : '';
+  var serverBlock = document.getElementById('sync-server-block');
+  if (serverBlock) {
+    var btns = serverBlock.querySelectorAll('button.sync-control-btn');
+    for (var i = 0; i < btns.length; i++) {
+      var oc = btns[i].getAttribute('onclick') || '';
+      if (oc.indexOf('sendToServer') !== -1) btns[i].style.display = lim ? 'none' : '';
+    }
+  }
+}
+
 function initSyncServerBlock() {
   var connectBlock = document.getElementById('sync-connect-block');
   var serverBlock = document.getElementById('sync-server-block');
@@ -9,16 +23,21 @@ function initSyncServerBlock() {
     if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
     if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
     try {
+      var skipUpload = typeof window.isMobile === 'function' && window.isMobile();
       if (localStorage.getItem('cattleTracker_uploadAfterConnect') === '1') {
         localStorage.removeItem('cattleTracker_uploadAfterConnect');
-        setTimeout(function () {
-          if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
-        }, 1500);
+        if (!skipUpload) {
+          setTimeout(function () {
+            if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
+          }, 1500);
+        }
       } else if (localStorage.getItem('cattleTracker_syncAfterConnect') === '1') {
         localStorage.removeItem('cattleTracker_syncAfterConnect');
-        setTimeout(function () {
-          if (typeof window.syncCurrentBaseToServer === 'function') window.syncCurrentBaseToServer();
-        }, 1500);
+        if (!skipUpload) {
+          setTimeout(function () {
+            if (typeof window.syncCurrentBaseToServer === 'function') window.syncCurrentBaseToServer();
+          }, 1500);
+        }
       }
     } catch (e) {}
   } else {
@@ -55,6 +74,7 @@ function initSyncServerBlock() {
     }
   }
   if (typeof window.bindAdminSyncServerUrlControls === 'function') window.bindAdminSyncServerUrlControls();
+  applyMobileSyncUploadRestrictions();
 }
 
 window.initSyncServerBlock = initSyncServerBlock;

@@ -34,7 +34,7 @@ router.get('/:objectId/entries/:cattleId', requireAuth, (req, res) => {
   res.json(entry);
 });
 
-router.post('/:objectId/entries', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.post('/:objectId/entries', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, res) => {
   const objectId = getObjectId(req);
   if (!objectId) return res.status(400).json({ error: 'objectId обязателен' });
   const obj = db.getObjectById(objectId);

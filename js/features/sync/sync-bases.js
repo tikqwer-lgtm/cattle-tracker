@@ -12,6 +12,20 @@ var _syncBasesSort = { key: 'name', dir: 'asc' };
 var _syncBasesFilterName = '';
 var _syncBasesFilterUser = '';
 
+/** На телефоне: только скачать с сервера под новым именем, без выгрузки/удаления/замены в другую базу. */
+function isSyncMobileLimited() {
+  return typeof window.isMobile === 'function' && window.isMobile();
+}
+
+function afterServerImportRefresh() {
+  var p = typeof window.loadLocally === 'function' ? window.loadLocally() : Promise.resolve();
+  return Promise.resolve(p).then(function () {
+    if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+    if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+    if (typeof window.updateViewList === 'function') window.updateViewList();
+  });
+}
+
 function getCurrentUsername() {
   if (typeof window.getCurrentUser === 'function') {
     var u = window.getCurrentUser();
@@ -82,16 +96,17 @@ function renderSyncBasesTable() {
       '<td data-label="Пользователь">' + (obj._user || '—').replace(/</g, '&lt;') + '</td>' +
       '<td data-label="Записей">' + obj._count + '</td>' +
       '<td class="sync-bases-actions" data-label="Действия">' +
-      '<button type="button" class="small-btn" onclick="showLoadBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Загрузить</button>' +
-      (isOwner ? ' <button type="button" class="small-btn sync-current-base-btn" onclick="syncCurrentBaseToServer()">Синхронизировать</button>' : '') +
-      (isCreator ? ' <button type="button" class="small-btn sync-delete-base-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
+      '<button type="button" class="small-btn sync-base-import-btn" onclick="showLoadBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Загрузить</button>' +
+      ' <button type="button" class="small-btn sync-hide-local-base-btn sync-base-import-btn" onclick="hideServerBaseLocalOnly(\'' + safeId + '\', \'' + safeSrcName + '\')">Скрыть у себя</button>' +
+      (isOwner && !isSyncMobileLimited() ? ' <button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="syncCurrentBaseToServer()">Синхронизировать</button>' : '') +
+      (isCreator && !isSyncMobileLimited() ? ' <button type="button" class="small-btn sync-delete-base-btn sync-base-import-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
       '</td></tr>';
   });
 
   var currentOnServer = _syncBasesData.some(function (o) { return o.id === currentId; });
-  if (!currentOnServer && currentId) {
+  if (!isSyncMobileLimited() && !currentOnServer && currentId) {
     html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">' +
-      '<button type="button" class="small-btn sync-current-base-btn" onclick="uploadCurrentBaseToServer()">Синхронизировать</button>' +
+      '<button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="uploadCurrentBaseToServer()">Синхронизировать</button>' +
       '</td></tr>';
   }
 
@@ -157,13 +172,16 @@ function showLoadBaseModal(sourceId, sourceName) {
     return '<option value="' + String(o.id).replace(/"/g, '&quot;') + '">' + (o.name || o.id).replace(/</g, '&lt;') + '</option>';
   }).join('');
 
+  var mobileOnly = isSyncMobileLimited();
   overlay.innerHTML = '<div class="sync-replace-modal">' +
     '<h4>Загрузить базу «' + String(sourceName || '').replace(/</g, '&lt;') + '»</h4>' +
-    '<p>Выберите локальную базу для загрузки данных или создайте новую:</p>' +
-    '<select id="syncLoadTargetSelect" class="sync-replace-select">' +
-    '<option value="__new__">+ Создать новую базу</option>' +
-    optionsHtml +
-    '</select>' +
+    (mobileOnly
+      ? '<p>Укажите имя новой базы на этом устройстве (копия данных с сервера):</p>'
+      : '<p>Выберите локальную базу для загрузки данных или создайте новую:</p>' +
+        '<select id="syncLoadTargetSelect" class="sync-replace-select">' +
+        '<option value="__new__">+ Создать новую базу</option>' +
+        optionsHtml +
+        '</select>') +
     '<div id="syncLoadNewNameWrap" style="margin-bottom:12px;">' +
     '<input type="text" id="syncLoadNewName" class="sync-replace-select" placeholder="Название новой базы" value="' + String(sourceName || '').replace(/"/g, '&quot;') + '" />' +
     '</div>' +
@@ -175,14 +193,28 @@ function showLoadBaseModal(sourceId, sourceName) {
   var select = overlay.querySelector('#syncLoadTargetSelect');
   var newNameWrap = overlay.querySelector('#syncLoadNewNameWrap');
   function toggleNewName() {
-    if (newNameWrap) newNameWrap.style.display = select.value === '__new__' ? '' : 'none';
+    if (newNameWrap) newNameWrap.style.display = !select || select.value === '__new__' ? '' : 'none';
   }
-  select.addEventListener('change', toggleNewName);
-  toggleNewName();
+  if (select) {
+    select.addEventListener('change', toggleNewName);
+    toggleNewName();
+  } else if (newNameWrap) {
+    newNameWrap.style.display = '';
+  }
 
   function close() { overlay.remove(); document.body.style.overflow = ''; }
   overlay.querySelector('[data-action="cancel"]').onclick = close;
   overlay.querySelector('[data-action="load"]').onclick = function () {
+    if (mobileOnly) {
+      var newNameM = (document.getElementById('syncLoadNewName') || {}).value;
+      if (!newNameM || !String(newNameM).trim()) {
+        if (typeof showToast === 'function') showToast('Введите название базы', 'error');
+        return;
+      }
+      close();
+      loadServerBaseIntoNewObject(sourceId, String(newNameM).trim());
+      return;
+    }
     var targetVal = select.value;
     if (targetVal === '__new__') {
       var newName = (document.getElementById('syncLoadNewName') || {}).value;
@@ -314,37 +346,81 @@ function showImportNewObjectModal(sourceId, sourceName) {
   setTimeout(function () { if (input) input.focus(); }, 0);
 }
 
+var _loadServerBaseImportBusy = false;
+
+function normalizeEntriesList(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.entries)) return raw.entries;
+  return [];
+}
+
 /**
  * Импорт базы с сервера в новый объект. name — если передан, не показывать prompt (уже введено в модалке).
+ * Сначала читаем записи источника, затем создаём объект — чтобы не плодить пустые базы при сбое чтения.
  */
 function loadServerBaseIntoNewObject(sourceId, name) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  if (_loadServerBaseImportBusy) {
+    if (typeof showToast === 'function') showToast('Дождитесь завершения загрузки базы', 'info', 3000);
+    return;
+  }
   if (name === undefined || name === null) {
     name = prompt('Название нового объекта:', 'Копия базы');
     if (name === null || !String(name).trim()) return;
   }
   name = String(name).trim();
   var statusEl = document.getElementById('syncServerStatus');
-  if (statusEl) statusEl.textContent = 'Создание объекта и копирование записей…';
-  window.CattleTrackerApi.createObject(name).then(function (newObj) {
-    return window.CattleTrackerApi.loadEntries(sourceId).then(function (entries) {
-      if (!entries || !entries.length) {
+  if (statusEl) { statusEl.textContent = 'Чтение записей с сервера…'; statusEl.className = 'sync-server-status'; }
+  _loadServerBaseImportBusy = true;
+  if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(true);
+  if (typeof window.setServerBaseImportProgressVisible === 'function') window.setServerBaseImportProgressVisible(true);
+  if (typeof window.setServerBaseImportProgress === 'function') {
+    window.setServerBaseImportProgress(0, 0, 'Чтение записей с сервера…');
+  }
+  window.CattleTrackerApi.loadEntries(sourceId).then(function (rawEntries) {
+    var entries = normalizeEntriesList(rawEntries);
+    if (statusEl) statusEl.textContent = 'Создание копии базы на сервере…';
+    if (typeof window.setServerBaseImportProgress === 'function') {
+      if (entries.length) {
+        window.setServerBaseImportProgress(0, entries.length, 'Создание объекта…');
+      } else {
+        window.setServerBaseImportProgress(0, 0, 'Создание объекта…');
+      }
+    }
+    return window.CattleTrackerApi.createObject(name).then(function (newObj) {
+      if (!newObj || !newObj.id) {
+        throw new Error('Сервер не вернул id новой базы');
+      }
+      window.CattleTrackerApi.setCurrentObjectId(newObj.id);
+      if (!entries.length) {
         if (statusEl) statusEl.textContent = 'Объект «' + name + '» создан (записей 0).';
+        if (typeof window.setServerBaseImportProgress === 'function') {
+          window.setServerBaseImportProgress(0, 0, 'Готово');
+        }
         renderSyncServerBasesList();
-        if (typeof window.loadLocally === 'function') window.loadLocally();
-        return;
+        return afterServerImportRefresh();
+      }
+      if (typeof window.setServerBaseImportProgress === 'function') {
+        window.setServerBaseImportProgress(0, entries.length, 'Добавление записей на сервер…');
       }
       var i = 0;
       function next() {
         if (i >= entries.length) {
           if (statusEl) statusEl.textContent = 'Готово: объект «' + name + '», записей ' + entries.length + '.';
+          if (typeof window.setServerBaseImportProgress === 'function') {
+            window.setServerBaseImportProgress(entries.length, entries.length, 'Готово');
+          }
           renderSyncServerBasesList();
-          if (typeof window.loadLocally === 'function') window.loadLocally();
-          if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
-          return;
+          return afterServerImportRefresh();
         }
         var entry = entries[i];
-        window.CattleTrackerApi.createEntry(newObj.id, entry).then(function () { i++; next(); }).catch(function (err) {
+        window.CattleTrackerApi.createEntry(newObj.id, entry).then(function () {
+          i++;
+          if (typeof window.setServerBaseImportProgress === 'function') {
+            window.setServerBaseImportProgress(i, entries.length, 'Добавление записей на сервер…');
+          }
+          next();
+        }).catch(function (err) {
           if (statusEl) statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error';
         });
       }
@@ -352,7 +428,38 @@ function loadServerBaseIntoNewObject(sourceId, name) {
     });
   }).catch(function (err) {
     if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+  }).then(function () {
+    _loadServerBaseImportBusy = false;
+    if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(false);
+    if (typeof window.setServerBaseImportProgressVisible === 'function') window.setServerBaseImportProgressVisible(false);
   });
+}
+
+/**
+ * Скрыть базу только в списке на этом устройстве (сервер не меняется). Из экрана «Базы на сервере».
+ */
+function hideServerBaseLocalOnly(baseId, baseName) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi || typeof window.CattleTrackerApi.hideObjectLocal !== 'function') return;
+  var safe = String(baseName || baseId || '').replace(/</g, '&lt;');
+  var msg = 'Скрыть базу «' + safe + '» на этом устройстве? На сервере она останется, снова появится после очистки данных приложения или на другом устройстве.';
+  function run() {
+    window.CattleTrackerApi.hideObjectLocal(baseId).then(function () {
+      if (typeof window.afterLocalHideObject === 'function') {
+        return window.afterLocalHideObject(baseId);
+      }
+    }).then(function () {
+      if (typeof showToast === 'function') showToast('База скрыта на этом устройстве', 'info', 4000);
+      if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
+    }).catch(function (err) {
+      var m = err && err.message ? err.message : 'Ошибка';
+      if (typeof showToast === 'function') showToast(m, 'error', 5000);
+    });
+  }
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal(msg).then(function (ok) { if (ok) run(); });
+    return;
+  }
+  if (confirm(msg)) run();
 }
 
 function showReplaceBaseModal(sourceId) {
@@ -404,16 +511,18 @@ function replaceServerBaseInObject(sourceId, targetId) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
   var statusEl = document.getElementById('syncServerStatus');
   if (statusEl) statusEl.textContent = 'Загрузка и замена…';
-  window.CattleTrackerApi.loadEntries(sourceId).then(function (sourceEntries) {
-    return window.CattleTrackerApi.loadEntries(targetId).then(function (targetEntries) {
+  window.CattleTrackerApi.loadEntries(sourceId).then(function (rawSource) {
+    var sourceEntries = normalizeEntriesList(rawSource);
+    return window.CattleTrackerApi.loadEntries(targetId).then(function (rawTarget) {
+      var targetEntries = normalizeEntriesList(rawTarget);
       var deleteNext = function (idx) {
         if (idx >= targetEntries.length) {
           var addNext = function (i) {
             if (i >= sourceEntries.length) {
               if (statusEl) statusEl.textContent = 'Готово: заменено записей ' + sourceEntries.length + '.';
               renderSyncServerBasesList();
-              if (typeof window.loadLocally === 'function') window.loadLocally();
-              return;
+              window.CattleTrackerApi.setCurrentObjectId(targetId);
+              return afterServerImportRefresh();
             }
             window.CattleTrackerApi.createEntry(targetId, sourceEntries[i]).then(function () { addNext(i + 1); }).catch(function (err) {
               if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
@@ -441,5 +550,6 @@ window.showReplaceBaseModal = showReplaceBaseModal;
 window.replaceServerBaseInObject = replaceServerBaseInObject;
 window.uploadCurrentBaseToServer = uploadCurrentBaseToServer;
 window.showImportNewObjectModal = showImportNewObjectModal;
+window.hideServerBaseLocalOnly = hideServerBaseLocalOnly;
 
 export {};

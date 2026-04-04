@@ -461,8 +461,25 @@ function handleDeleteObjectClick() {
   }
   var obj = list.filter(function (o) { return o.id === id; })[0];
   var name = (obj && obj.name) ? obj.name : id;
-  var msg = 'Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.';
+  var apiLocalHide = window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.hideObjectLocal === 'function';
+  var msg = apiLocalHide
+    ? ('Скрыть базу «' + String(name).replace(/</g, '&lt;') + '» на этом устройстве? На сервере данные не удаляются.')
+    : ('Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.');
   var doDelete = function () {
+    if (apiLocalHide) {
+      window.CattleTrackerApi.hideObjectLocal(id).then(function () {
+        if (typeof window.afterLocalHideObject === 'function') {
+          return window.afterLocalHideObject(id);
+        }
+      }).then(function () {
+        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+        if (typeof showToast === 'function') showToast('База скрыта на этом устройстве', 'info', 4000);
+      }).catch(function (err) {
+        var m = err && err.message ? err.message : 'Ошибка';
+        if (typeof showToast === 'function') showToast(m, 'error', 5000);
+      });
+      return;
+    }
     if (typeof deleteObject !== 'function') return;
     var p = deleteObject(id);
     if (p && typeof p.then === 'function') {
@@ -576,6 +593,10 @@ function updateObjectSwitcher() {
   }
   var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
   var pendingId = typeof window !== 'undefined' && window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+  if ((!list || list.length === 0) && pendingId && typeof setCurrentObjectId === 'function' && currentId !== pendingId) {
+    setCurrentObjectId(pendingId);
+    currentId = pendingId;
+  }
   var htmlOpts = '';
   if (pendingId && currentId === pendingId) {
     htmlOpts += '<option value="' + String(pendingId).replace(/"/g, '&quot;') + '" selected>— Выберите базу (Синхронизация) —</option>';
@@ -589,10 +610,15 @@ function updateObjectSwitcher() {
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   var viewer = user && user.role === 'viewer';
   var showObjCrud = !viewer && (!window.CATTLE_TRACKER_USE_API || (typeof canAdd === 'function' && canAdd()));
-  if (addBtn) addBtn.style.display = showObjCrud ? '' : 'none';
+  var mobileApi = window.CATTLE_TRACKER_USE_API && typeof window.isMobile === 'function' && window.isMobile();
+  var showDeleteForApi = window.CATTLE_TRACKER_USE_API && !viewer;
+  if (addBtn) addBtn.style.display = showObjCrud && !mobileApi ? '' : 'none';
   if (editBtn) editBtn.style.display = showObjCrud ? '' : 'none';
   if (deleteBtn) {
-    deleteBtn.style.display = showObjCrud ? '' : 'none';
+    var showDeleteBtn = window.CATTLE_TRACKER_USE_API
+      ? (showDeleteForApi && (mobileApi || showObjCrud))
+      : showObjCrud;
+    deleteBtn.style.display = showDeleteBtn ? '' : 'none';
     deleteBtn.disabled = (select.value === 'default' || (pendingId && select.value === pendingId));
   }
   select.onchange = function () {

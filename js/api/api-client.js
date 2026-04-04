@@ -7,8 +7,44 @@
 
   var TOKEN_KEY = 'cattleTracker_apiToken';
   var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
+  /** Id баз, скрытых только на этом устройстве (не удаление на сервере). */
+  var HIDDEN_OBJECTS_KEY = 'cattleTracker_hiddenObjectIds';
   /** Текущая база не выбрана — данные не грузим, выбор в «Синхронизация». */
   var PENDING_OBJECT_ID = '__pending_select__';
+
+  function getHiddenObjectIds() {
+    try {
+      var raw = localStorage.getItem(HIDDEN_OBJECTS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map(String).filter(Boolean);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function filterObjectsListVisible(list) {
+    var hidden = {};
+    getHiddenObjectIds().forEach(function (id) { hidden[id] = true; });
+    return (list || []).filter(function (o) { return o && o.id && !hidden[o.id]; });
+  }
+
+  /** Скрыть базу в списке на этом устройстве; на сервере объект не трогается. */
+  function hideObjectLocal(id) {
+    var sid = String(id || '').trim();
+    if (!sid || sid === 'default') {
+      return Promise.reject(new Error('Эту базу нельзя скрыть'));
+    }
+    var map = {};
+    getHiddenObjectIds().forEach(function (x) { map[x] = true; });
+    map[sid] = true;
+    try {
+      localStorage.setItem(HIDDEN_OBJECTS_KEY, JSON.stringify(Object.keys(map)));
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.reject(new Error('Не удалось сохранить настройки'));
+    }
+  }
 
   function getBaseUrl() {
     var b = (global.CATTLE_TRACKER_API_BASE || '').trim().replace(/\/$/, '');
@@ -100,7 +136,11 @@
   }
 
   function loadEntries(objectId) {
-    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/entries');
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/entries').then(function (data) {
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.entries)) return data.entries;
+      return [];
+    });
   }
 
   function createEntry(objectId, entry) {
@@ -285,6 +325,9 @@
 
   var api = {
     PENDING_OBJECT_ID: PENDING_OBJECT_ID,
+    getHiddenObjectIds: getHiddenObjectIds,
+    filterObjectsListVisible: filterObjectsListVisible,
+    hideObjectLocal: hideObjectLocal,
     getBaseUrl: getBaseUrl,
     normalizeApiBaseInput: normalizeApiBaseInput,
     setPersistedApiBase: setPersistedApiBase,
