@@ -340,6 +340,24 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
       });
       list.appendChild(li);
     });
+    /* Electron: после пересборки списка подсказок иногда «плывёт» ввод; один softRepaint на кадр. */
+    if (typeof window !== 'undefined' && window.electronAPI && typeof window.softRepaintCattleTrackerView === 'function') {
+      if (!input._cattleAutocompleteRepaintScheduled) {
+        input._cattleAutocompleteRepaintScheduled = true;
+        var doRepaint = function () {
+          input._cattleAutocompleteRepaintScheduled = false;
+          if (document.activeElement !== input) return;
+          try {
+            window.softRepaintCattleTrackerView();
+          } catch (e) {}
+        };
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(doRepaint);
+        } else {
+          setTimeout(doRepaint, 0);
+        }
+      }
+    }
   }
   input.removeEventListener('input', input._cattleAutocompleteInput);
   input.removeEventListener('keydown', input._cattleAutocompleteKeydown);

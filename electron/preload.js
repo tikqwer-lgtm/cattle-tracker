@@ -13,8 +13,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setWindowMode: (mode) => ipcRenderer.send('set-window-mode', mode),
   /** Синхронизация с главным меню: показывать «Консоль разработчика» только после входа. */
   setAuthenticatedForMenu: (authenticated) => ipcRenderer.send('cattle-tracker-auth-menu', !!authenticated),
-  /** После авторизации: автоматически открыть и закрыть консоль (обход ввода в Electron). */
-  runPostAuthDevtoolsFlash: () => ipcRenderer.send('cattle-tracker-post-auth-flash'),
   getDevtoolsDiagnosticsHistory: () => ipcRenderer.invoke('devtools-diagnostics-get-history'),
   clearDevtoolsDiagnosticsLog: () => ipcRenderer.send('devtools-diagnostics-clear'),
   onDevtoolsDiagnosticsEntry: (cb) => {
@@ -25,6 +23,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   /** Лёгкий фокус окна (main process), без DevTools. */
   requestWebContentsFocus: () => ipcRenderer.send('cattle-tracker-webcontents-focus'),
+  /**
+   * Обход зависшего ввода. На Windows при reason 'action-screen-open' — hide/show окна.
+   * @param {string} [reason] пустая строка — лёгкий refresh; 'action-screen-open' — полный kick (экран «Действия»)
+   */
+  requestNativeWindowRefresh: (reason) =>
+    ipcRenderer.send('cattle-tracker-native-window-refresh', typeof reason === 'string' ? reason : ''),
   /** Кнопка «Восстановить ввод» в шапке: обход «мёртвого ввода» (кратко открыть/закрыть DevTools в упакованной сборке). */
   requestHitTestWorkaround: () => ipcRenderer.send('cattle-tracker-hit-test-workaround')
 });
@@ -33,7 +37,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
  * Обработчики ПКМ должны выполняться в основном мире страницы (как обычный скрипт приложения).
  * Слушатели из изолированного контекста preload часто не дают стабильного фокуса ввода в Electron
  * (симптом «помогает только открытие DevTools»), хотя курсор в поле меняется.
- * Левый и правый клик: принудительный focus + softRepaint (как обход «мёртвых» полей после модалок).
+ * Только ПКМ / contextmenu: принудительный focus + softRepaint (изолированный preload ломает фокус по ПКМ).
+ * ЛКМ не трогаем — иначе конфликт с нативным фокусом и вводом на экранах «Действия» (hit-test по логам был в порядке).
  */
 (function installRightClickEditableFocusInMainWorld() {
   function injectMainWorldListeners() {
@@ -58,26 +63,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
       function focusEditableFromEvent(e) {
         var el = editableFromEvent(e);
         if (!el) return;
-        function apply() {
-          try {
-            el.focus({ preventScroll: true });
-          } catch (err) {}
+        try {
+          el.focus({ preventScroll: true });
+        } catch (err) {}
+        function repaintOnce() {
           try {
             if (typeof window.softRepaintCattleTrackerView === 'function') {
               window.softRepaintCattleTrackerView();
             }
           } catch (err2) {}
         }
-        apply();
-        if (typeof requestAnimationFrame === 'function') {
-          requestAnimationFrame(apply);
+        function afterFrame() {
+          try {
+            if (document.activeElement !== el) {
+              el.focus({ preventScroll: true });
+            }
+          } catch (err3) {}
+          repaintOnce();
         }
-        setTimeout(apply, 0);
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(afterFrame);
+        } else {
+          setTimeout(afterFrame, 0);
+        }
       }
 
       document.addEventListener('mousedown', function (e) {
         if (e.button === 2) focusEditableFromEvent(e);
-        if (e.button === 0) focusEditableFromEvent(e);
       }, true);
       document.addEventListener('contextmenu', function (e) {
         focusEditableFromEvent(e);

@@ -40,9 +40,9 @@ module.exports = defineConfig({
         timeout: 60000,
       }
     : {
-        command: 'npx serve -p 9323 .',
+        command: 'npm run build && npx serve -p 9323 .',
         url: 'http://localhost:9323',
         reuseExistingServer: !process.env.CI,
-        timeout: 120000,
+        timeout: 180000,
       },
 });

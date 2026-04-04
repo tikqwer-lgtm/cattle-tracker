@@ -99,7 +99,7 @@ function navigate(screenId, options) {
     updateWindowModeForScreen(screenId);
   }
 
-  /* Экраны пакетных «Действий»: в Electron/WebView иногда ломается hit-test до перерисовки (помогает открытие DevTools). */
+  /* Экраны пакетных «Действий»: renderer repaint + нативное окно (иначе ввод оживает только после minimize/restore). */
   if (
     screenId === 'insemination' ||
     screenId === 'dry' ||
@@ -111,9 +111,16 @@ function navigate(screenId, options) {
     setTimeout(function () {
       if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
     }, 0);
+    /* Один hide/show за вход на экран — два таймера давали двойное мигание. */
     setTimeout(function () {
       if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
-    }, 280);
+      var api = typeof window !== 'undefined' && window.electronAPI;
+      if (api && typeof api.requestNativeWindowRefresh === 'function') {
+        try {
+          api.requestNativeWindowRefresh('action-screen-open');
+        } catch (e) {}
+      }
+    }, 220);
   }
 
   if (screenId === 'submenu') {

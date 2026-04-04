@@ -69,6 +69,14 @@ const indexPath = isDev
 
 // Отключаем Service Worker — с file:// и в сборке он ломает загрузку (пустое окно, "Not allowed to load local resource")
 app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
+// Windows: не уводить окно в «фоновую окклюзию» — иначе ввод в полях иногда залипает до minimize/restore.
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+}
+// Опционально при зависании ввода: CATTLE_TRACKER_NO_GPU=1 перед запуском exe
+if (process.env.CATTLE_TRACKER_NO_GPU === '1') {
+  app.disableHardwareAcceleration();
+}
 
 let mainWindow;
 const MAX_DEVTOOLS_DIAGNOSTICS = 1200;
@@ -212,6 +220,83 @@ function snapshotWindowState(win) {
     };
   } catch (e) {
     return { error: String(e && e.message) };
+  }
+}
+
+/** Защита от повторного hide/show до завершения предыдущего цикла. */
+let cattleTrackerVisibilityKickInProgress = false;
+
+/**
+ * Windows: полное скрытие и показ окна — ближе всего к «свернуть и развернуть» по эффекту на HWND.
+ * Отключить мигание: CATTLE_TRACKER_NO_VISIBILITY_KICK=1
+ */
+function cattleTrackerWindowsVisibilityKick(win) {
+  if (!win || win.isDestroyed() || process.platform !== 'win32') return;
+  if (process.env.CATTLE_TRACKER_NO_VISIBILITY_KICK === '1') {
+    cattleTrackerNativeWindowRefresh(win);
+    return;
+  }
+  if (cattleTrackerVisibilityKickInProgress) return;
+  if (win.isMinimized() || win.isFullScreen()) return;
+  cattleTrackerVisibilityKickInProgress = true;
+  try {
+    win.hide();
+    setTimeout(() => {
+      try {
+        if (!win.isDestroyed()) {
+          win.show();
+          win.focus();
+          win.webContents.focus();
+          if (typeof win.moveTop === 'function') win.moveTop();
+        }
+      } catch (e2) {
+        // ignore
+      } finally {
+        cattleTrackerVisibilityKickInProgress = false;
+      }
+    }, 80);
+  } catch (e) {
+    cattleTrackerVisibilityKickInProgress = false;
+    cattleTrackerNativeWindowRefresh(win);
+  }
+}
+
+/**
+ * Лёгкая перерисовка: moveTop, дрожание bounds / opacity (без hide/show).
+ */
+function cattleTrackerNativeWindowRefresh(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    win.focus();
+    win.webContents.focus();
+  } catch (e) {
+    // ignore
+  }
+  try {
+    if (typeof win.moveTop === 'function') {
+      win.moveTop();
+    }
+  } catch (eMove) {
+    // ignore
+  }
+  try {
+    if (win.isMinimized() || win.isFullScreen()) return;
+    if (win.isMaximized()) {
+      if (typeof win.getOpacity === 'function' && typeof win.setOpacity === 'function') {
+        win.setOpacity(0.996);
+        setTimeout(() => {
+          if (!win.isDestroyed()) win.setOpacity(1);
+        }, 50);
+      }
+      return;
+    }
+    const b = win.getBounds();
+    win.setBounds({ x: b.x, y: b.y, width: b.width + 1, height: b.height + 1 });
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.setBounds(b);
+    }, 0);
+  } catch (e2) {
+    // ignore
   }
 }
 
@@ -411,7 +496,8 @@ function createWindow() {
     });
   });
 
-  if (isDev) {
+  /* DevTools не открываем автоматически (экран входа / главное меню). Включить: CATTLE_TRACKER_OPEN_DEVTOOLS=1 */
+  if (process.env.CATTLE_TRACKER_OPEN_DEVTOOLS === '1') {
     mainWindow.webContents.openDevTools();
   }
 
@@ -423,17 +509,6 @@ ipcMain.on('cattle-tracker-auth-menu', () => {
   createAppMenu();
 });
 
-/** После входа в приложение: кратко открыть/закрыть DevTools (упакованная сборка). */
-ipcMain.on('cattle-tracker-post-auth-flash', () => {
-  markDevtoolsRelatedActivity();
-  recordDevtoolsDiagnostic('ipc', 'cattle-tracker-post-auth-flash получен', {
-    isDev,
-    hasWindow: !!(mainWindow && !mainWindow.isDestroyed())
-  });
-  if (isDev || !mainWindow || mainWindow.isDestroyed()) return;
-  flashDevToolsHitTestWorkaround(mainWindow, 150, 'ipc-post-auth');
-});
-
 /** Синхронный фокус окна и webContents (легкий шаг перед полным обходом). */
 ipcMain.on('cattle-tracker-webcontents-focus', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -443,6 +518,19 @@ ipcMain.on('cattle-tracker-webcontents-focus', () => {
   } catch (e) {
     // ignore
   }
+});
+
+/**
+ * Обход «мёртвого» ввода. reason === 'action-screen-open' на Windows → hide/show (как ручной minimize/restore).
+ */
+ipcMain.on('cattle-tracker-native-window-refresh', (_event, reason) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  var r = typeof reason === 'string' ? reason : '';
+  if (r === 'action-screen-open') {
+    cattleTrackerWindowsVisibilityKick(mainWindow);
+    return;
+  }
+  cattleTrackerNativeWindowRefresh(mainWindow);
 });
 
 /**
