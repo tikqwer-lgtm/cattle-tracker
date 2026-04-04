@@ -5,10 +5,7 @@ var MENU_GROUPS = {
   data: {
     title: 'Работа с данными',
     buttons: [
-      { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')" },
-      { icon: '📤', text: 'Экспорт в Excel', onclick: 'exportToExcel()' },
-      { icon: '📋', text: 'Шаблон импорта', onclick: 'downloadTemplate()' },
-      { icon: '📥', text: 'Импорт из Excel', onclick: "document.getElementById('importFile').click()" },
+      { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')", viewerHide: true },
       { icon: '📋', text: 'Список всех животных', onclick: "navigate('view')" },
       { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" },
       { icon: '📋', text: 'Списки', onclick: "navigate('lists')" },
@@ -46,11 +43,23 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
-      { icon: '📋', text: 'Протоколы синхронизации', onclick: "navigate('protocols')" },
       { icon: '❓', text: 'Справка', onclick: "navigate('help')" }
     ]
   }
 };
+
+function viewerForbiddenScreen(screenId) {
+  return (
+    screenId === 'add' ||
+    screenId === 'insemination' ||
+    screenId === 'dry' ||
+    screenId === 'calving' ||
+    screenId === 'abort' ||
+    screenId === 'uzi' ||
+    screenId === 'protocol-assign' ||
+    screenId === 'admin'
+  );
+}
 
 /**
  * Переход на экран подменю с заданной группой
@@ -77,6 +86,11 @@ function navigate(screenId, options) {
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   if (screenId !== 'auth' && screenId !== 'sync' && !currentUser) {
     screenId = 'auth';
+  }
+
+  if (currentUser && currentUser.role === 'viewer' && viewerForbiddenScreen(screenId)) {
+    if (typeof showToast === 'function') showToast('Недостаточно прав (только просмотр)', 'error');
+    screenId = 'menu';
   }
 
   if (!_isNavigatingBack && _currentScreenId && _currentScreenId !== screenId) {
@@ -269,6 +283,10 @@ function syncRouteToScreen() {
     screenId = 'auth';
     if (typeof location !== 'undefined') location.hash = 'auth';
   }
+  if (currentUser && currentUser.role === 'viewer' && viewerForbiddenScreen(screenId)) {
+    screenId = 'menu';
+    if (typeof location !== 'undefined') location.hash = 'menu';
+  }
   if (screenId === 'view-cow' && parts[1]) {
     if (typeof viewCow === 'function') viewCow(parts[1]);
   } else {
@@ -359,9 +377,16 @@ function renderSubmenu() {
   var containerEl = document.getElementById('submenu-buttons');
   if (!titleEl || !containerEl || !group) return;
   titleEl.textContent = group.title;
+  var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  var isViewer = user && user.role === 'viewer';
+  if (isViewer && groupId === 'actions') {
+    containerEl.innerHTML = '<p class="farm-settings-hint">Действия недоступны в режиме только просмотра.</p>';
+    return;
+  }
   var html = '';
   for (var i = 0; i < group.buttons.length; i++) {
     var btn = group.buttons[i];
+    if (isViewer && btn.viewerHide) continue;
     var styleAttr = btn.style ? ' style="' + String(btn.style).replace(/"/g, '&quot;') + '"' : '';
     html += '<button class="action-btn"' + styleAttr + ' onclick="' + String(btn.onclick).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">';
     html += '<span>' + (btn.icon || '') + '</span><span>' + (btn.text || '').replace(/</g, '&lt;') + '</span></button>';
@@ -541,6 +566,8 @@ function confirmAddObject() {
 function updateObjectSwitcher() {
   var select = document.getElementById('currentObjectSelect');
   var addBtn = document.getElementById('addObjectBtn');
+  var editBtn = document.getElementById('editObjectBtn');
+  var deleteBtn = document.getElementById('deleteObjectBtn');
   if (!select) return;
   var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
   if (!list || list.length === 0) {
@@ -548,14 +575,29 @@ function updateObjectSwitcher() {
     list = typeof getObjectsList === 'function' ? getObjectsList() : [{ id: 'default', name: 'Основная база' }];
   }
   var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
-  select.innerHTML = list.map(function (obj) {
+  var pendingId = typeof window !== 'undefined' && window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+  var htmlOpts = '';
+  if (pendingId && currentId === pendingId) {
+    htmlOpts += '<option value="' + String(pendingId).replace(/"/g, '&quot;') + '" selected>— Выберите базу (Синхронизация) —</option>';
+  }
+  htmlOpts += list.map(function (obj) {
     var name = (obj.name || obj.id || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + (obj.id === currentId ? ' selected' : '') + '>' + name + '</option>';
+    var sel = obj.id === currentId && currentId !== pendingId ? ' selected' : '';
+    return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + sel + '>' + name + '</option>';
   }).join('');
-  var deleteBtn = document.getElementById('deleteObjectBtn');
-  if (deleteBtn) deleteBtn.disabled = (select.value === 'default');
+  select.innerHTML = htmlOpts;
+  var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  var viewer = user && user.role === 'viewer';
+  var showObjCrud = !viewer && (!window.CATTLE_TRACKER_USE_API || (typeof canAdd === 'function' && canAdd()));
+  if (addBtn) addBtn.style.display = showObjCrud ? '' : 'none';
+  if (editBtn) editBtn.style.display = showObjCrud ? '' : 'none';
+  if (deleteBtn) {
+    deleteBtn.style.display = showObjCrud ? '' : 'none';
+    deleteBtn.disabled = (select.value === 'default' || (pendingId && select.value === pendingId));
+  }
   select.onchange = function () {
     var id = select.value;
+    if (pendingId && id === pendingId) return;
     if (deleteBtn) deleteBtn.disabled = (id === 'default');
     if (id && typeof switchToObject === 'function') switchToObject(id);
   };

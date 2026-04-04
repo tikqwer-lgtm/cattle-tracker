@@ -24,6 +24,16 @@ router.delete('/admin/users/:id', requireAuth, requireRole('admin'), (req, res) 
   res.json({ ok: true });
 });
 
+router.patch('/admin/users/:id', requireAuth, requireRole('admin'), (req, res) => {
+  const targetId = req.params.id;
+  const newRole = req.body && req.body.role != null ? String(req.body.role).trim() : '';
+  const result = db.updateUserRole(targetId, newRole);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error || 'Не удалось обновить роль' });
+  }
+  res.json({ ok: true });
+});
+
 // --- Reports: any authenticated user can submit ---
 router.post('/reports', requireAuth, (req, res) => {
   const { message, payload } = req.body || {};

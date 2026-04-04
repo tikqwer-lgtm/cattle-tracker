@@ -7,6 +7,8 @@
 
   var TOKEN_KEY = 'cattleTracker_apiToken';
   var CURRENT_OBJECT_KEY = 'cattleTracker_currentObject';
+  /** Текущая база не выбрана — данные не грузим, выбор в «Синхронизация». */
+  var PENDING_OBJECT_ID = '__pending_select__';
 
   function getBaseUrl() {
     var b = (global.CATTLE_TRACKER_API_BASE || '').trim().replace(/\/$/, '');
@@ -133,7 +135,8 @@
   }
 
   function setCurrentObjectId(id) {
-    var val = (id || 'default').trim();
+    var val = id === undefined || id === null || id === '' ? 'default' : String(id).trim();
+    if (!val) val = 'default';
     try {
       sessionStorage.setItem(CURRENT_OBJECT_KEY, val);
       localStorage.setItem(CURRENT_OBJECT_KEY, val);
@@ -193,7 +196,11 @@
   }
 
   function register(username, password, role) {
-    return request('POST', '/api/auth/register', { username: username, password: password, role: role || 'admin' });
+    return request('POST', '/api/auth/register', { username: username, password: password, role: role || 'operator' });
+  }
+
+  function updateUserRole(userId, role) {
+    return request('PATCH', '/api/admin/users/' + encodeURIComponent(userId), { role: role });
   }
 
   function getCurrentUser() {
@@ -277,6 +284,7 @@
   }
 
   var api = {
+    PENDING_OBJECT_ID: PENDING_OBJECT_ID,
     getBaseUrl: getBaseUrl,
     normalizeApiBaseInput: normalizeApiBaseInput,
     setPersistedApiBase: setPersistedApiBase,
@@ -305,6 +313,7 @@
     checkUsername: checkUsername,
     getUsers: getUsers,
     deleteUser: deleteUser,
+    updateUserRole: updateUserRole,
     submitReport: submitReport,
     getReports: getReports,
     deleteReport: deleteReport,

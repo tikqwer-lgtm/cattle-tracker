@@ -45,10 +45,43 @@
           var deleteBtn = canDelete
             ? '<button type="button" class="small-btn admin-delete-btn" data-user-id="' + escapeHtml(u.id) + '">Удалить</button>'
             : '<span class="admin-self-hint">(вы)</span>';
-          html += '<tr><td>' + escapeHtml(u.username) + '</td><td>' + escapeHtml(u.role) + '</td><td>' + escapeHtml(u.created_at || '') + '</td><td>' + deleteBtn + '</td></tr>';
+          var roleSelect =
+            '<select class="admin-role-select" data-user-id="' + escapeHtml(u.id) + '" aria-label="Роль пользователя">' +
+            '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>admin</option>' +
+            '<option value="operator"' + (u.role === 'operator' ? ' selected' : '') + '>operator</option>' +
+            '<option value="viewer"' + (u.role === 'viewer' ? ' selected' : '') + '>viewer</option>' +
+            '</select>';
+          html += '<tr><td>' + escapeHtml(u.username) + '</td><td>' + roleSelect + '</td><td>' + escapeHtml(u.created_at || '') + '</td><td>' + deleteBtn + '</td></tr>';
         }
         html += '</tbody></table>';
         usersEl.innerHTML = html;
+        usersEl.querySelectorAll('.admin-role-select').forEach(function (sel) {
+          sel.addEventListener('focus', function () {
+            sel.setAttribute('data-prev-role', sel.value);
+          });
+          sel.addEventListener('change', function () {
+            var id = sel.getAttribute('data-user-id');
+            var newRole = sel.value;
+            var prevRole = sel.getAttribute('data-prev-role') || sel.value;
+            if (!id || !newRole) return;
+            api.updateUserRole(id, newRole).then(function () {
+              sel.setAttribute('data-prev-role', newRole);
+              if (typeof showToast === 'function') showToast('Роль обновлена', 'success');
+              if (id === currentUserId && typeof global.getCurrentUser === 'function') {
+                var cur = global.getCurrentUser();
+                if (cur) {
+                  cur.role = newRole;
+                  if (typeof global.saveCurrentUser === 'function') global.saveCurrentUser(cur);
+                  if (typeof global.updateAuthBar === 'function') global.updateAuthBar();
+                }
+              }
+            }).catch(function (err) {
+              if (typeof showToast === 'function') showToast(err.message || 'Не удалось сменить роль', 'error', 5000);
+              sel.value = prevRole;
+            });
+          });
+          sel.setAttribute('data-prev-role', sel.value);
+        });
         usersEl.querySelectorAll('.admin-delete-btn').forEach(function (btn) {
           btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-user-id');

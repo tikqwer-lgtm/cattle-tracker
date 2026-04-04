@@ -65,7 +65,7 @@
       return { ok: false, message: 'Пользователь с таким логином уже есть' };
     }
     var id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'admin' };
+    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'operator' };
     users.push(newUser);
     saveUsers(users);
     return { ok: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
@@ -255,15 +255,36 @@
         updateAuthBar();
         var isElectron = typeof window !== 'undefined' && window.electronAPI;
         if (currentUser && typeof navigate === 'function' && !isElectron) {
-          if (typeof window.loadLocally === 'function') {
-            window.loadLocally().then(function () {
-              if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-              if (typeof window.updateViewList === 'function') window.updateViewList();
+          function afterAuthLoad() {
+            if (typeof window.loadObjectsFromApi !== 'function' || typeof window.getCurrentObjectId !== 'function' || typeof window.setCurrentObjectId !== 'function') {
+              if (typeof window.loadLocally === 'function') {
+                return window.loadLocally().then(function () {
+                  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+                  if (typeof window.updateViewList === 'function') window.updateViewList();
+                  navigate('menu');
+                }).catch(function () { navigate('menu'); });
+              }
+              navigate('menu');
+              return Promise.resolve();
+            }
+            return window.loadObjectsFromApi().then(function (list) {
+              list = list || [];
+              var cid = window.getCurrentObjectId();
+              var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
+              if (list.length > 0 && pend && cid !== pend && !list.some(function (o) { return o.id === cid; })) {
+                window.setCurrentObjectId(pend);
+              }
+              if (typeof window.loadLocally === 'function') {
+                return window.loadLocally().then(function () {
+                  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+                  if (typeof window.updateViewList === 'function') window.updateViewList();
+                  navigate('menu');
+                });
+              }
               navigate('menu');
             }).catch(function () { navigate('menu'); });
-          } else {
-            navigate('menu');
           }
+          afterAuthLoad();
         }
       }).catch(function () {
         currentUser = null;
@@ -320,6 +341,10 @@
       try {
         elApi.setAuthenticatedForMenu(!!user);
       } catch (e) {}
+    }
+    var actionsSection = document.getElementById('menu-section-actions');
+    if (actionsSection) {
+      actionsSection.style.display = user && user.role === 'viewer' ? 'none' : '';
     }
   }
 
@@ -412,16 +437,37 @@
         if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
         updateAuthBar();
         var loadAndShow = function () {
-          if (typeof window.loadLocally === 'function') {
-            return window.loadLocally().then(function () {
-              if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-              if (typeof window.updateViewList === 'function') window.updateViewList();
-              if (typeof navigate === 'function') navigate('menu');
-            }).catch(function () {
-              if (typeof navigate === 'function') navigate('menu');
-            });
+          if (typeof window.loadObjectsFromApi !== 'function' || typeof window.getCurrentObjectId !== 'function' || typeof window.setCurrentObjectId !== 'function') {
+            if (typeof window.loadLocally === 'function') {
+              return window.loadLocally().then(function () {
+                if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+                if (typeof window.updateViewList === 'function') window.updateViewList();
+                if (typeof navigate === 'function') navigate('menu');
+              }).catch(function () {
+                if (typeof navigate === 'function') navigate('menu');
+              });
+            }
+            if (typeof navigate === 'function') navigate('menu');
+            return Promise.resolve();
           }
-          if (typeof navigate === 'function') navigate('menu');
+          return window.loadObjectsFromApi().then(function (list) {
+            list = list || [];
+            var cid = window.getCurrentObjectId();
+            var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
+            if (list.length > 0 && pend && cid !== pend && !list.some(function (o) { return o.id === cid; })) {
+              window.setCurrentObjectId(pend);
+            }
+            if (typeof window.loadLocally === 'function') {
+              return window.loadLocally().then(function () {
+                if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+                if (typeof window.updateViewList === 'function') window.updateViewList();
+                if (typeof navigate === 'function') navigate('menu');
+              });
+            }
+            if (typeof navigate === 'function') navigate('menu');
+          }).catch(function () {
+            if (typeof navigate === 'function') navigate('menu');
+          });
         };
         loadAndShow();
       }).catch(function (err) {

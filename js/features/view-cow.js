@@ -204,6 +204,18 @@ function viewCow(cattleId) {
 
   var rawId = (entry.cattleId || '');
   var safeCattleId = rawId.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  var canMutate = typeof canEdit !== 'function' || canEdit();
+  var actionRow = canMutate
+    ? '<button type="button" onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn" aria-label="Редактировать">✏️ Редактировать</button> ' +
+      '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
+      '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn" aria-label="Отел">🐄 Отел</button> ' +
+      '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="На протокол">📋 На протокол</button> ' +
+      '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'insemination\');" class="small-btn" aria-label="Осеменение">💉 Осеменение</button> ' +
+      '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> '
+    : '';
+  actionRow +=
+    '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
+    '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">← Назад</button>';
 
   card.innerHTML =
     '<div class="cow-card">' +
@@ -233,16 +245,7 @@ function viewCow(cattleId) {
     '<div><strong>Изменено пользователем:</strong> ' + escapeHtmlCard(entry.lastModifiedBy) + '</div>' +
     '</div>' +
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
-    '<div class="cow-card-actions">' +
-    '<button type="button" onclick="editEntry(\'' + safeCattleId + '\');" class="small-btn" aria-label="Редактировать">✏️ Редактировать</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'dry\');" class="small-btn" aria-label="Запуск в сухостой">🐄 Запуск</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'calving\');" class="small-btn" aria-label="Отел">🐄 Отел</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'protocol-assign\');" class="small-btn" aria-label="На протокол">📋 На протокол</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'insemination\');" class="small-btn" aria-label="Осеменение">💉 Осеменение</button> ' +
-    '<button type="button" onclick="window._prefillCattleId=\'' + safeCattleId + '\'; window._returnToViewCow=\'' + safeCattleId + '\'; navigate(\'uzi\');" class="small-btn" aria-label="УЗИ">🩺 УЗИ</button> ' +
-    '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
-    '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">← Назад</button>' +
-    '</div>' +
+    '<div class="cow-card-actions">' + actionRow + '</div>' +
     '</div>';
 }
 

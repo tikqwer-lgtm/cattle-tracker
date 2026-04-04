@@ -61,6 +61,7 @@ function updateViewList() {
     listToShow.sort(function (a, b) { return _compareViewList(a, b, viewListSortKey, viewListSortDir); });
   }
 
+  var canBulkDelete = typeof canDelete !== 'function' || canDelete();
   var bulkBarHtml = '<div class="bulk-actions-bar">' +
     '<div class="bulk-actions-left">' +
     '<button type="button" data-bulk-action="select-all" class="bulk-action-btn">✓ Выделить все</button>' +
@@ -68,7 +69,9 @@ function updateViewList() {
     '<span id="selectedCount" class="selected-count">Выделено: 0</span>' +
     '</div>' +
     '<div class="bulk-actions-right">' +
-    '<button type="button" data-bulk-action="delete-selected" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>' +
+    (canBulkDelete
+      ? '<button type="button" data-bulk-action="delete-selected" class="bulk-action-btn delete-bulk" id="deleteSelectedBtn" disabled>🗑️ Удалить выделенные</button>'
+      : '') +
     '</div></div>';
 
   if (!listToShow || listToShow.length === 0) {

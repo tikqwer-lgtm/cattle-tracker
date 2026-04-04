@@ -28,7 +28,7 @@ router.get('/:id/export', requireAuth, (req, res) => {
 });
 
 // Import object from export package (creates new object with entries and protocols)
-router.post('/import', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
   const body = req.body || {};
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];

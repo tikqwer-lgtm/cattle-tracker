@@ -68,6 +68,16 @@ if (useApi) {
   window.loadLocally = function () {
     return loadObjectsFromApi().then(function () {
       var objectId = window.getCurrentObjectId();
+      var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+      if (pendingId && objectId === pendingId) {
+        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]);
+        else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }
+        if (typeof window.CattleTrackerEvents !== 'undefined') {
+          window.CattleTrackerEvents.emit('entries:updated', window.entries);
+        }
+        if (typeof window.updateList === 'function') window.updateList();
+        return window.entries;
+      }
       return window.CattleTrackerApi.loadEntries(objectId).then(function (list) {
         if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list || []); else { window.entries.length = 0; (list || []).forEach(function (e) { window.entries.push(e); }); if (typeof window !== 'undefined') window.entries = window.entries; }
         if (typeof window.CattleTrackerEvents !== 'undefined') {

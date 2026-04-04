@@ -147,19 +147,108 @@
     fillDatalistById('datalist-farm-drugs', getFarmDrugs());
   }
 
+  function farmSettingsIsAdmin() {
+    var u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    return !!(u && u.role === 'admin');
+  }
+
+  function renderFarmChipList(ulId, items, editable, onRemoveAt) {
+    var ul = document.getElementById(ulId);
+    if (!ul) return;
+    ul.innerHTML = '';
+    (items || []).forEach(function (text, idx) {
+      var li = document.createElement('li');
+      li.className = 'farm-settings-chip';
+      var span = document.createElement('span');
+      span.className = 'farm-settings-chip-text';
+      span.textContent = text;
+      li.appendChild(span);
+      if (editable) {
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'small-btn farm-settings-chip-remove';
+        rm.setAttribute('aria-label', 'Удалить из списка');
+        rm.textContent = '×';
+        rm.onclick = function () {
+          onRemoveAt(idx);
+        };
+        li.appendChild(rm);
+      }
+      ul.appendChild(li);
+    });
+  }
+
   function initFarmSettingsScreen() {
-    var taTech = document.getElementById('farmSettingsTechnicians');
-    var taBulls = document.getElementById('farmSettingsBulls');
-    var taDrugs = document.getElementById('farmSettingsDrugs');
+    var admin = farmSettingsIsAdmin();
+    var tech = getFarmTechnicians().slice();
+    var bulls = getFarmBullsManual().slice();
+    var drugs = getFarmDrugs().slice();
+
+    var techUl = 'farmSettingsTechniciansList';
+    var bullsUl = 'farmSettingsBullsList';
+    var drugsUl = 'farmSettingsDrugsList';
+
+    function drawTech() {
+      renderFarmChipList(techUl, tech, admin, function (i) {
+        tech.splice(i, 1);
+        drawTech();
+      });
+    }
+    function drawBulls() {
+      renderFarmChipList(bullsUl, bulls, admin, function (i) {
+        bulls.splice(i, 1);
+        drawBulls();
+      });
+    }
+    function drawDrugs() {
+      renderFarmChipList(drugsUl, drugs, admin, function (i) {
+        drugs.splice(i, 1);
+        drawDrugs();
+      });
+    }
+    drawTech();
+    drawBulls();
+    drawDrugs();
+
+    var techEd = document.getElementById('farmSettingsTechniciansEditor');
+    var bullsEd = document.getElementById('farmSettingsBullsEditor');
+    var drugsEd = document.getElementById('farmSettingsDrugsEditor');
+    if (techEd) techEd.style.display = admin ? '' : 'none';
+    if (bullsEd) bullsEd.style.display = admin ? '' : 'none';
+    if (drugsEd) drugsEd.style.display = admin ? '' : 'none';
+
+    function wireAdd(inputId, btnId, arr, redraw) {
+      var inp = document.getElementById(inputId);
+      var addBtn = document.getElementById(btnId);
+      if (!inp || !addBtn) return;
+      addBtn.onclick = function () {
+        if (!admin) return;
+        var v = (inp.value || '').trim();
+        if (!v) return;
+        if (arr.indexOf(v) === -1) arr.push(v);
+        inp.value = '';
+        redraw();
+      };
+      inp.onkeydown = function (e) {
+        if (!admin) return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addBtn.click();
+        }
+      };
+    }
+    wireAdd('farmSettingsTechniciansInput', 'farmSettingsTechniciansAddBtn', tech, drawTech);
+    wireAdd('farmSettingsBullsInput', 'farmSettingsBullsAddBtn', bulls, drawBulls);
+    wireAdd('farmSettingsDrugsInput', 'farmSettingsDrugsAddBtn', drugs, drawDrugs);
+
     var btn = document.getElementById('farmSettingsSaveBtn');
-    if (taTech) taTech.value = linesToText(getFarmTechnicians());
-    if (taBulls) taBulls.value = linesToText(getFarmBullsManual());
-    if (taDrugs) taDrugs.value = linesToText(getFarmDrugs());
     if (btn) {
+      btn.style.display = admin ? '' : 'none';
       btn.onclick = function () {
-        setFarmTechnicians(parseLines(taTech ? taTech.value : ''));
-        setFarmBullsManual(parseLines(taBulls ? taBulls.value : ''));
-        setFarmDrugs(parseLines(taDrugs ? taDrugs.value : ''));
+        if (!admin) return;
+        setFarmTechnicians(tech);
+        setFarmBullsManual(bulls);
+        setFarmDrugs(drugs);
         refreshFarmDatalists();
         if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
         if (typeof showToast === 'function') showToast('Сохранено', 'success');

@@ -55,8 +55,17 @@ router.post('/register', registerLimiter, (req, res) => {
   }
   const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const passwordHash = bcrypt.hashSync(p, 10);
-  db.createUser(id, u, passwordHash, role || 'admin');
-  const user = { id, username: u, role: role || 'admin' };
+  const existingCount = db.countUsers();
+  const allowedRoles = ['admin', 'operator', 'viewer'];
+  let assignRole = String(role || 'operator').trim();
+  if (!allowedRoles.includes(assignRole)) assignRole = 'operator';
+  if (existingCount === 0) {
+    assignRole = 'admin';
+  } else if (assignRole === 'admin') {
+    assignRole = 'operator';
+  }
+  db.createUser(id, u, passwordHash, assignRole);
+  const user = { id, username: u, role: assignRole };
   const token = signToken(user);
   res.status(201).json({ ok: true, user, token });
 });

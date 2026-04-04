@@ -234,9 +234,16 @@ function renderProtocolsScreen(containerId) {
 function renderProtocolsScreenInner(containerId) {
   var container = document.getElementById(containerId);
   if (!container) return;
+  var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+  if (window.CATTLE_TRACKER_USE_API && pend && typeof getCurrentObjectId === 'function' && getCurrentObjectId() === pend) {
+    container.innerHTML = '<p class="admin-message">Сначала выберите базу на экране «Синхронизация» (список баз → «Загрузить»).</p>';
+    return;
+  }
   if (typeof window !== 'undefined' && typeof window.refreshFarmDatalists === 'function') {
     try { window.refreshFarmDatalists(); } catch (e) {}
   }
+
+  var userViewer = typeof getCurrentUser === 'function' && getCurrentUser() && getCurrentUser().role === 'viewer';
 
   var list = getProtocols();
   var editingId = window._protocolsEditingId || null;
@@ -276,6 +283,17 @@ function renderProtocolsScreenInner(containerId) {
   html += '</div>';
 
   container.innerHTML = html;
+
+  if (userViewer) {
+    container.querySelectorAll('.edit-protocol-btn, .delete-protocol-btn').forEach(function (el) {
+      el.style.display = 'none';
+    });
+    var pb = document.getElementById('protocols-add-btn');
+    if (pb) pb.style.display = 'none';
+    var fs = container.querySelector('.protocols-form-section');
+    if (fs) fs.style.display = 'none';
+    return;
+  }
 
   renderProtocolStepsList(editing ? editing.steps : []);
 
