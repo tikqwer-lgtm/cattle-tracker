@@ -33,6 +33,10 @@ router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];
   const protocols = Array.isArray(body.protocols) ? body.protocols : [];
+  const dupImport = db.findObjectIdWithDuplicateNameForCreator(name, req.user.id, null);
+  if (dupImport) {
+    return res.status(409).json({ error: 'У вас уже есть база с таким названием' });
+  }
   const id = 'obj_' + Date.now();
   db.createObject(id, name, req.user.id);
   for (const entry of entries) {
@@ -57,6 +61,10 @@ router.post('/', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, 
   const copyFromId = (req.body && req.body.copyFromObjectId != null)
     ? String(req.body.copyFromObjectId).trim()
     : '';
+  const dup = db.findObjectIdWithDuplicateNameForCreator(name, req.user.id, null);
+  if (dup) {
+    return res.status(409).json({ error: 'У вас уже есть база с таким названием' });
+  }
   const id = 'obj_' + Date.now();
   db.createObject(id, name, req.user.id);
   if (!copyFromId) {
@@ -76,6 +84,15 @@ router.put('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => 
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   const name = (req.body && req.body.name != null) ? String(req.body.name).trim() : '';
   if (!name) return res.status(400).json({ error: 'name обязателен' });
+  const existingRow = db.getObjectWithCreatedBy(id);
+  if (!existingRow) return res.status(404).json({ error: 'Объект не найден' });
+  const creatorId = existingRow.created_by != null && existingRow.created_by !== ''
+    ? String(existingRow.created_by)
+    : null;
+  const dupRename = db.findObjectIdWithDuplicateNameForCreator(name, creatorId, id);
+  if (dupRename) {
+    return res.status(409).json({ error: 'У вас уже есть база с таким названием' });
+  }
   const ok = db.updateObject(id, name);
   if (!ok) return res.status(404).json({ error: 'Объект не найден' });
   const obj = db.getObjectById(id);

@@ -17,8 +17,14 @@ function isSyncMobileLimited() {
   return typeof window.isMobile === 'function' && window.isMobile();
 }
 
-function afterServerImportRefresh() {
-  var p = typeof window.loadLocally === 'function' ? window.loadLocally() : Promise.resolve();
+/**
+ * @param {{ forceFromServer?: boolean }} [opt] — после замены данных на сервере передать { forceFromServer: true }
+ */
+function afterServerImportRefresh(opt) {
+  var force = opt && opt.forceFromServer === true;
+  var p = typeof window.loadLocally === 'function'
+    ? window.loadLocally(force ? { forceFromServer: true } : undefined)
+    : Promise.resolve();
   return Promise.resolve(p).then(function () {
     if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
     if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
@@ -32,6 +38,84 @@ function getCurrentUsername() {
     return u && u.username ? String(u.username) : '';
   }
   return '';
+}
+
+var _loadServerBaseImportBusy = false;
+
+/**
+ * Мобильный сценарий: открыть существующую базу на сервере без создания клона; скачивание с прогрессом.
+ */
+function openServerBaseOnMobile(sourceId, sourceName) {
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  if (typeof window.CattleTrackerApi.loadEntriesWithProgress !== 'function') {
+    if (typeof showToast === 'function') showToast('Обновите приложение для загрузки с прогрессом', 'error');
+    return;
+  }
+  if (_loadServerBaseImportBusy) {
+    if (typeof showToast === 'function') showToast('Дождитесь завершения загрузки базы', 'info', 3000);
+    return;
+  }
+  var statusEl = document.getElementById('syncServerStatus');
+  _loadServerBaseImportBusy = true;
+  if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(true);
+  if (typeof window.setServerBaseImportProgressVisible === 'function') window.setServerBaseImportProgressVisible(true);
+  if (typeof window.setServerBaseImportProgress === 'function') {
+    window.setServerBaseImportProgress(0, 0, 'Скачивание записей…');
+  }
+  if (statusEl) {
+    statusEl.textContent = 'Загрузка базы «' + String(sourceName || '').replace(/</g, '&lt;') + '»…';
+    statusEl.className = 'sync-server-status';
+  }
+
+  window.CattleTrackerApi.setCurrentObjectId(sourceId);
+  window.CattleTrackerApi.loadEntriesWithProgress(sourceId, function (ev) {
+    var t = ev.total || 0;
+    var l = ev.loaded || 0;
+    if (typeof window.setServerBaseImportProgress === 'function') {
+      if (t > 0) window.setServerBaseImportProgress(l, t, 'Скачивание записей…');
+      else window.setServerBaseImportProgress(l, 0, 'Скачивание записей…');
+    }
+  }).then(function (list) {
+    list = list || [];
+    if (typeof window.writeApiEntriesCache === 'function') window.writeApiEntriesCache(sourceId, list);
+    if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list);
+    else {
+      window.entries.length = 0;
+      list.forEach(function (e) { window.entries.push(e); });
+      if (typeof window !== 'undefined') window.entries = window.entries;
+    }
+    if (typeof window.CattleTrackerEvents !== 'undefined') {
+      window.CattleTrackerEvents.emit('entries:updated', window.entries);
+    }
+    if (typeof window.updateList === 'function') window.updateList();
+    if (typeof window.setServerBaseImportProgress === 'function') {
+      var n = list.length;
+      window.setServerBaseImportProgress(n > 0 ? n : 1, n > 0 ? n : 1, 'Готово');
+    }
+    if (statusEl) {
+      statusEl.textContent = 'База «' + String(sourceName || '').replace(/</g, '&lt;') + '» загружена (' + list.length + ' записей).';
+    }
+    if (typeof window.ensureProtocolsLoaded === 'function') {
+      try { window.ensureProtocolsLoaded(function () {}); } catch (e) {}
+    }
+    if (typeof window.loadObjectsFromApi === 'function') return window.loadObjectsFromApi();
+  }).then(function () {
+    if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+    if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+    if (typeof window.updateViewList === 'function') window.updateViewList();
+    if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
+  }).catch(function (err) {
+    var msg = err && err.message ? err.message : 'Ошибка загрузки';
+    if (statusEl) {
+      statusEl.textContent = 'Ошибка: ' + msg;
+      statusEl.className = 'sync-server-status sync-server-status-error';
+    }
+    if (typeof showToast === 'function') showToast(msg, 'error', 6000);
+  }).then(function () {
+    _loadServerBaseImportBusy = false;
+    if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(false);
+    if (typeof window.setServerBaseImportProgressVisible === 'function') window.setServerBaseImportProgressVisible(false);
+  });
 }
 
 function renderSyncBasesFilters() {
@@ -176,15 +260,15 @@ function showLoadBaseModal(sourceId, sourceName) {
   overlay.innerHTML = '<div class="sync-replace-modal">' +
     '<h4>Загрузить базу «' + String(sourceName || '').replace(/</g, '&lt;') + '»</h4>' +
     (mobileOnly
-      ? '<p>Укажите имя новой базы на этом устройстве (копия данных с сервера):</p>'
+      ? '<p>Открыть эту базу на устройстве? Записи загрузятся с сервера. Другие базы на устройстве останутся в памяти до синхронизации.</p>'
       : '<p>Выберите локальную базу для загрузки данных или создайте новую:</p>' +
         '<select id="syncLoadTargetSelect" class="sync-replace-select">' +
         '<option value="__new__">+ Создать новую базу</option>' +
         optionsHtml +
         '</select>') +
-    '<div id="syncLoadNewNameWrap" style="margin-bottom:12px;">' +
+    (mobileOnly ? '' : '<div id="syncLoadNewNameWrap" style="margin-bottom:12px;">' +
     '<input type="text" id="syncLoadNewName" class="sync-replace-select" placeholder="Название новой базы" value="' + String(sourceName || '').replace(/"/g, '&quot;') + '" />' +
-    '</div>' +
+    '</div>') +
     '<div class="sync-replace-actions">' +
     '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
     '<button type="button" class="action-btn" data-action="load">Загрузить</button>' +
@@ -206,13 +290,8 @@ function showLoadBaseModal(sourceId, sourceName) {
   overlay.querySelector('[data-action="cancel"]').onclick = close;
   overlay.querySelector('[data-action="load"]').onclick = function () {
     if (mobileOnly) {
-      var newNameM = (document.getElementById('syncLoadNewName') || {}).value;
-      if (!newNameM || !String(newNameM).trim()) {
-        if (typeof showToast === 'function') showToast('Введите название базы', 'error');
-        return;
-      }
       close();
-      loadServerBaseIntoNewObject(sourceId, String(newNameM).trim());
+      openServerBaseOnMobile(sourceId, sourceName);
       return;
     }
     var targetVal = select.value;
@@ -299,10 +378,10 @@ function uploadCurrentBaseToServer() {
       if (statusEl) statusEl.textContent = 'Объект «' + name + '» создан на сервере (записей 0).';
       renderSyncServerBasesList();
       if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
-      if (typeof window.loadLocally === 'function') window.loadLocally();
+      if (typeof window.loadLocally === 'function') window.loadLocally({ forceFromServer: true });
       if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
       window.CattleTrackerApi.setCurrentObjectId(newObj.id);
-      if (typeof window.loadLocally === 'function') window.loadLocally();
+      if (typeof window.loadLocally === 'function') window.loadLocally({ forceFromServer: true });
       return;
     }
     var i = 0;
@@ -312,7 +391,7 @@ function uploadCurrentBaseToServer() {
         renderSyncServerBasesList();
         if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
         window.CattleTrackerApi.setCurrentObjectId(newObj.id);
-        if (typeof window.loadLocally === 'function') window.loadLocally();
+        if (typeof window.loadLocally === 'function') window.loadLocally({ forceFromServer: true });
         if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
         return;
       }
@@ -322,7 +401,9 @@ function uploadCurrentBaseToServer() {
     }
     next();
   }).catch(function (err) {
-    if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+    var em = err && err.message ? err.message : '';
+    if (statusEl) { statusEl.textContent = 'Ошибка: ' + em; statusEl.className = 'sync-server-status sync-server-status-error'; }
+    if (typeof showToast === 'function') showToast(em || 'Ошибка', 'error', 5000);
   });
 }
 
@@ -345,8 +426,6 @@ function showImportNewObjectModal(sourceId, sourceName) {
   modal.removeAttribute('hidden');
   setTimeout(function () { if (input) input.focus(); }, 0);
 }
-
-var _loadServerBaseImportBusy = false;
 
 function normalizeEntriesList(raw) {
   if (Array.isArray(raw)) return raw;
@@ -441,7 +520,9 @@ function loadServerBaseIntoNewObject(sourceId, name) {
     }
     return fallbackClientCopyEntriesFromServer(sourceId, newObj.id, name, statusEl);
   }).catch(function (err) {
-    if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
+    var em = err && err.message ? err.message : '';
+    if (statusEl) { statusEl.textContent = 'Ошибка: ' + em; statusEl.className = 'sync-server-status sync-server-status-error'; }
+    if (typeof showToast === 'function') showToast(em || 'Ошибка', 'error', 5000);
   }).then(function () {
     _loadServerBaseImportBusy = false;
     if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(false);
@@ -536,7 +617,7 @@ function replaceServerBaseInObject(sourceId, targetId) {
               if (statusEl) statusEl.textContent = 'Готово: заменено записей ' + sourceEntries.length + '.';
               renderSyncServerBasesList();
               window.CattleTrackerApi.setCurrentObjectId(targetId);
-              return afterServerImportRefresh();
+              return afterServerImportRefresh({ forceFromServer: true });
             }
             window.CattleTrackerApi.createEntry(targetId, sourceEntries[i]).then(function () { addNext(i + 1); }).catch(function (err) {
               if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }

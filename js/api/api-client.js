@@ -86,10 +86,19 @@
   }
 
   function setToken(token) {
+    var prev = null;
+    try {
+      prev = localStorage.getItem(TOKEN_KEY);
+    } catch (e) {}
     try {
       if (token) localStorage.setItem(TOKEN_KEY, token);
       else localStorage.removeItem(TOKEN_KEY);
     } catch (e) {}
+    var next = token || '';
+    var prevS = prev || '';
+    if (next !== prevS && typeof global.clearAllApiEntriesCaches === 'function') {
+      global.clearAllApiEntriesCaches();
+    }
   }
 
   function request(method, path, body) {
@@ -140,6 +149,57 @@
       if (Array.isArray(data)) return data;
       if (data && Array.isArray(data.entries)) return data.entries;
       return [];
+    });
+  }
+
+  /**
+   * GET записей с прогрессом скачивания тела ответа (для мобильных WebView).
+   * @param {string} objectId
+   * @param {function({loaded:number,total:number})} [onProgress] total может быть 0, если Length неизвестен
+   */
+  function loadEntriesWithProgress(objectId, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var base = getBaseUrl();
+      if (!base) return reject(new Error('CATTLE_TRACKER_API_BASE не задан'));
+      var oid = String(objectId || '').trim();
+      if (!oid) return reject(new Error('objectId обязателен'));
+      var url = base + '/api/objects/' + encodeURIComponent(oid) + '/entries';
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      var token = getToken();
+      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.setRequestHeader('Cache-Control', 'no-cache');
+      xhr.onprogress = function (ev) {
+        if (typeof onProgress === 'function') {
+          onProgress({
+            loaded: ev.loaded || 0,
+            total: ev.lengthComputable ? ev.total : 0
+          });
+        }
+      };
+      xhr.onload = function () {
+        if (xhr.status < 200 || xhr.status >= 300) {
+          try {
+            var j = JSON.parse(xhr.responseText || '{}');
+            var e = new Error(j.message || j.error || 'Ошибка ' + xhr.status);
+            e.status = xhr.status;
+            return reject(e);
+          } catch (x) {
+            return reject(new Error('Ошибка ' + xhr.status));
+          }
+        }
+        try {
+          var data = JSON.parse(xhr.responseText || '[]');
+          var list = Array.isArray(data) ? data : (data && Array.isArray(data.entries) ? data.entries : []);
+          resolve(list);
+        } catch (err) {
+          reject(new Error('Некорректный ответ сервера'));
+        }
+      };
+      xhr.onerror = function () {
+        reject(new Error('Сервер недоступен. Проверьте адрес API (Настройки → Войти) и что сервер запущен.'));
+      };
+      xhr.send();
     });
   }
 
@@ -342,6 +402,7 @@
     getToken: getToken,
     setToken: setToken,
     loadEntries: loadEntries,
+    loadEntriesWithProgress: loadEntriesWithProgress,
     createEntry: createEntry,
     updateEntry: updateEntry,
     deleteEntry: deleteEntry,

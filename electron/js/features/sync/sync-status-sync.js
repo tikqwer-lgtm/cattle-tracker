@@ -27,7 +27,7 @@ function refreshFromServer() {
     return Promise.resolve();
   }
   updateSyncServerStatus('Обновление…');
-  return window.loadLocally().then(function () {
+  return window.loadLocally({ forceFromServer: true }).then(function () {
     updateSyncServerStatus('Подключено к серверу: ' + (window.CattleTrackerApi.getBaseUrl ? window.CattleTrackerApi.getBaseUrl() : ''));
     updateConnectionIndicator(true);
     if (typeof updateList === 'function') updateList();
@@ -94,7 +94,7 @@ function syncCurrentBaseToServer() {
       if (index >= localEntries.length) {
         if (typeof saveLocally === 'function') saveLocally();
         finish();
-        return window.loadLocally().then(function () {
+        return window.loadLocally({ forceFromServer: true }).then(function () {
           updateSyncServerStatus('Подключено к серверу. Данные синхронизированы.');
           updateConnectionIndicator(true);
           if (typeof updateList === 'function') updateList();
@@ -183,6 +183,8 @@ function setServerBaseImportProgress(current, total, label) {
     pct = Math.min(100, Math.round((current / total) * 100));
   } else if (label && String(label).indexOf('Чтение') !== -1) {
     pct = 8;
+  } else if (label && String(label).indexOf('Скачивание') !== -1) {
+    pct = current > 0 ? Math.min(88, 15 + Math.min(70, Math.floor(Math.log((current || 0) + 1) * 22))) : 12;
   }
   if (bar) {
     bar.style.width = pct + '%';

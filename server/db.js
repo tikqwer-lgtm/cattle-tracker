@@ -434,6 +434,38 @@ function getObjectById(id) {
   return getSql('SELECT id, name FROM objects WHERE id = ?', [id]);
 }
 
+/** id, name, created_by — для проверки уникальности имени у создателя. */
+function getObjectWithCreatedBy(id) {
+  return getSql('SELECT id, name, created_by FROM objects WHERE id = ?', [id]);
+}
+
+/**
+ * Другое id с тем же нормализованным именем у того же создателя (created_by).
+ * Если createdByUserId null — проверка только среди объектов с created_by IS NULL (наследие).
+ * excludeObjectId — не считать конфликтом сам объект (переименование).
+ */
+function findObjectIdWithDuplicateNameForCreator(name, createdByUserId, excludeObjectId) {
+  const t = String(name || '').trim();
+  if (!t) return null;
+  const ex = excludeObjectId ? String(excludeObjectId) : '';
+  const creatorStr = createdByUserId != null && createdByUserId !== '' ? String(createdByUserId) : null;
+  let sql;
+  let params;
+  if (creatorStr) {
+    sql = 'SELECT id FROM objects WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND created_by = ?';
+    params = [t, creatorStr];
+  } else {
+    sql = 'SELECT id FROM objects WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND created_by IS NULL';
+    params = [t];
+  }
+  if (ex) {
+    sql += ' AND id != ?';
+    params.push(ex);
+  }
+  const row = getSql(sql, params);
+  return row && row.id != null ? String(row.id) : null;
+}
+
 function createObject(id, name, createdByUserId) {
   runSql('INSERT INTO objects (id, name, created_by) VALUES (?, ?, ?)', [id, name, createdByUserId || null]);
   saveDb();
@@ -638,6 +670,8 @@ module.exports = {
   getObjects,
   getObjectsWithMeta,
   getObjectById,
+  getObjectWithCreatedBy,
+  findObjectIdWithDuplicateNameForCreator,
   createObject,
   updateObject,
   deleteObject,
