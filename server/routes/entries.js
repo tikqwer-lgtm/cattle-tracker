@@ -40,7 +40,7 @@ router.post('/:objectId/entries', requireAuth, requireRole('admin', 'operator', 
   const obj = db.getObjectById(objectId);
   if (!obj) return res.status(404).json({ error: 'Объект не найден' });
   const entry = req.body || {};
-  const cattleId = (entry.cattleId || '').trim();
+  const cattleId = String(entry.cattleId != null ? entry.cattleId : '').trim();
   if (!cattleId) return res.status(400).json({ error: 'cattleId обязателен' });
   if (db.entryExists(objectId, cattleId)) {
     return res.status(409).json({ error: 'Корова с таким номером уже существует' });

@@ -355,8 +355,51 @@ function normalizeEntriesList(raw) {
 }
 
 /**
- * Импорт базы с сервера в новый объект. name — если передан, не показывать prompt (уже введено в модалке).
- * Сначала читаем записи источника, затем создаём объект — чтобы не плодить пустые базы при сбое чтения.
+ * Старый сервер без copyFromObjectId: копирование записей с клиента (медленно, на мобильных часто обрывается).
+ */
+function fallbackClientCopyEntriesFromServer(sourceId, targetId, baseName, statusEl) {
+  if (statusEl) statusEl.textContent = 'Копирование записей (старый сервер)…';
+  return window.CattleTrackerApi.loadEntries(sourceId).then(function (rawEntries) {
+    var entries = normalizeEntriesList(rawEntries);
+    if (!entries.length) {
+      if (statusEl) statusEl.textContent = 'Объект «' + baseName + '» создан (записей 0).';
+      if (typeof window.setServerBaseImportProgress === 'function') {
+        window.setServerBaseImportProgress(0, 0, 'Готово');
+      }
+      renderSyncServerBasesList();
+      return afterServerImportRefresh();
+    }
+    if (typeof window.setServerBaseImportProgress === 'function') {
+      window.setServerBaseImportProgress(0, entries.length, 'Добавление записей на сервер…');
+    }
+    var i = 0;
+    function next() {
+      if (i >= entries.length) {
+        if (statusEl) statusEl.textContent = 'Готово: объект «' + baseName + '», записей ' + entries.length + '.';
+        if (typeof window.setServerBaseImportProgress === 'function') {
+          window.setServerBaseImportProgress(entries.length, entries.length, 'Готово');
+        }
+        renderSyncServerBasesList();
+        return afterServerImportRefresh();
+      }
+      var entry = entries[i];
+      window.CattleTrackerApi.createEntry(targetId, entry).then(function () {
+        i++;
+        if (typeof window.setServerBaseImportProgress === 'function') {
+          window.setServerBaseImportProgress(i, entries.length, 'Добавление записей на сервер…');
+        }
+        next();
+      }).catch(function (err) {
+        if (statusEl) statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error';
+        return Promise.reject(err);
+      });
+    }
+    next();
+  });
+}
+
+/**
+ * Импорт базы с сервера в новый объект. Сервер с поддержкой copyFromObjectId копирует записи внутри БД (один HTTP-запрос).
  */
 function loadServerBaseIntoNewObject(sourceId, name) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
@@ -370,62 +413,33 @@ function loadServerBaseIntoNewObject(sourceId, name) {
   }
   name = String(name).trim();
   var statusEl = document.getElementById('syncServerStatus');
-  if (statusEl) { statusEl.textContent = 'Чтение записей с сервера…'; statusEl.className = 'sync-server-status'; }
+  if (statusEl) { statusEl.textContent = 'Копирование базы на сервере…'; statusEl.className = 'sync-server-status'; }
   _loadServerBaseImportBusy = true;
   if (typeof window.setSyncBasesImportButtonsDisabled === 'function') window.setSyncBasesImportButtonsDisabled(true);
   if (typeof window.setServerBaseImportProgressVisible === 'function') window.setServerBaseImportProgressVisible(true);
   if (typeof window.setServerBaseImportProgress === 'function') {
-    window.setServerBaseImportProgress(0, 0, 'Чтение записей с сервера…');
+    window.setServerBaseImportProgress(0, 0, 'Копирование на сервере (один запрос)…');
   }
-  window.CattleTrackerApi.loadEntries(sourceId).then(function (rawEntries) {
-    var entries = normalizeEntriesList(rawEntries);
-    if (statusEl) statusEl.textContent = 'Создание копии базы на сервере…';
-    if (typeof window.setServerBaseImportProgress === 'function') {
-      if (entries.length) {
-        window.setServerBaseImportProgress(0, entries.length, 'Создание объекта…');
-      } else {
-        window.setServerBaseImportProgress(0, 0, 'Создание объекта…');
-      }
+  window.CattleTrackerApi.createObject(name, sourceId).then(function (newObj) {
+    if (!newObj || !newObj.id) {
+      throw new Error('Сервер не вернул id новой базы');
     }
-    return window.CattleTrackerApi.createObject(name).then(function (newObj) {
-      if (!newObj || !newObj.id) {
-        throw new Error('Сервер не вернул id новой базы');
-      }
-      window.CattleTrackerApi.setCurrentObjectId(newObj.id);
-      if (!entries.length) {
-        if (statusEl) statusEl.textContent = 'Объект «' + name + '» создан (записей 0).';
-        if (typeof window.setServerBaseImportProgress === 'function') {
-          window.setServerBaseImportProgress(0, 0, 'Готово');
-        }
-        renderSyncServerBasesList();
-        return afterServerImportRefresh();
+    window.CattleTrackerApi.setCurrentObjectId(newObj.id);
+    if (newObj.entriesCopied !== undefined && newObj.entriesCopied !== null) {
+      var c = Number(newObj.entriesCopied);
+      if (statusEl) {
+        statusEl.textContent = c
+          ? ('Готово: объект «' + name + '», записей ' + c + '.')
+          : ('Объект «' + name + '» создан (записей 0).');
       }
       if (typeof window.setServerBaseImportProgress === 'function') {
-        window.setServerBaseImportProgress(0, entries.length, 'Добавление записей на сервер…');
+        if (c > 0) window.setServerBaseImportProgress(c, c, 'Готово');
+        else window.setServerBaseImportProgress(0, 0, 'Готово');
       }
-      var i = 0;
-      function next() {
-        if (i >= entries.length) {
-          if (statusEl) statusEl.textContent = 'Готово: объект «' + name + '», записей ' + entries.length + '.';
-          if (typeof window.setServerBaseImportProgress === 'function') {
-            window.setServerBaseImportProgress(entries.length, entries.length, 'Готово');
-          }
-          renderSyncServerBasesList();
-          return afterServerImportRefresh();
-        }
-        var entry = entries[i];
-        window.CattleTrackerApi.createEntry(newObj.id, entry).then(function () {
-          i++;
-          if (typeof window.setServerBaseImportProgress === 'function') {
-            window.setServerBaseImportProgress(i, entries.length, 'Добавление записей на сервер…');
-          }
-          next();
-        }).catch(function (err) {
-          if (statusEl) statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error';
-        });
-      }
-      next();
-    });
+      renderSyncServerBasesList();
+      return afterServerImportRefresh();
+    }
+    return fallbackClientCopyEntriesFromServer(sourceId, newObj.id, name, statusEl);
   }).catch(function (err) {
     if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
   }).then(function () {

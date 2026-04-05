@@ -54,9 +54,21 @@ router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
 
 router.post('/', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
+  const copyFromId = (req.body && req.body.copyFromObjectId != null)
+    ? String(req.body.copyFromObjectId).trim()
+    : '';
   const id = 'obj_' + Date.now();
   db.createObject(id, name, req.user.id);
-  res.status(201).json({ id, name });
+  if (!copyFromId) {
+    return res.status(201).json({ id, name, entriesCopied: 0 });
+  }
+  const src = db.getObjectById(copyFromId);
+  if (!src) {
+    db.deleteObject(id);
+    return res.status(404).json({ error: 'Исходная база не найдена' });
+  }
+  const entriesCopied = db.cloneEntriesToObject(copyFromId, id, req.user.id, req.user.username);
+  res.status(201).json({ id, name, entriesCopied });
 });
 
 router.put('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => {

@@ -219,8 +219,16 @@
     });
   }
 
-  function createObject(name) {
-    return request('POST', '/api/objects', { name: (name || 'Новая база').trim() });
+  /**
+   * @param {string} name
+   * @param {string} [copyFromObjectId] — если задан, сервер копирует записи в новый объект одним действием (надёжно для мобильных).
+   */
+  function createObject(name, copyFromObjectId) {
+    var body = { name: (name || 'Новая база').trim() };
+    if (copyFromObjectId != null && String(copyFromObjectId).trim()) {
+      body.copyFromObjectId = String(copyFromObjectId).trim();
+    }
+    return request('POST', '/api/objects', body);
   }
 
   function login(username, password) {

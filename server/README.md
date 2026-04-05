@@ -53,7 +53,7 @@ npm install --omit=dev
 - `GET /api/reports` — список отчётов (только admin), requires auth
 - `DELETE /api/reports/:id` — удалить отчёт (только admin)
 - `GET /api/objects` — list objects
-- `POST /api/objects` — body: `{ name }`
+- `POST /api/objects` — body: `{ name, copyFromObjectId? }`; при `copyFromObjectId` сервер создаёт новую базу и копирует в неё все записи источника (ответ `{ id, name, entriesCopied }`) — один запрос, удобно для мобильных
 - `GET /api/objects/:id/entries` — list entries
 - `POST /api/objects/:id/entries` — create entry (body = entry object)
 - `GET /api/objects/:id/entries/:cattleId` — get one entry

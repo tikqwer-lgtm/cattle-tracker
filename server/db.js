@@ -210,7 +210,7 @@ function rowToEntry(row) {
     if (row.lactation_history_json) lactationHistory = JSON.parse(row.lactation_history_json);
   } catch (_) {}
   return {
-    cattleId: row.cattle_id,
+    cattleId: String(row.cattle_id != null ? row.cattle_id : '').trim(),
     nickname: row.nickname || '',
     group: row.group || '',
     birthDate: row.birth_date || '',
@@ -242,7 +242,7 @@ function rowToEntry(row) {
 function entryToRow(entry, objectId) {
   return {
     object_id: objectId,
-    cattle_id: (entry.cattleId || '').trim(),
+    cattle_id: String(entry.cattleId != null ? entry.cattleId : '').trim(),
     nickname: entry.nickname || '',
     group: entry.group || '',
     birth_date: entry.birthDate || '',
@@ -473,8 +473,7 @@ function getEntry(objectId, cattleId, userId, role) {
   return rowToEntry(row);
 }
 
-function createEntry(entry, objectId) {
-  const r = entryToRow(entry, objectId);
+function insertEntryRow(r) {
   runSql(
     `INSERT INTO entries (
       object_id, cattle_id, nickname, "group", birth_date, lactation, calving_date,
@@ -489,7 +488,41 @@ function createEntry(entry, objectId) {
       r.insemination_history_json, r.action_history_json, r.uzi_history_json, r.lactation_history_json
     ]
   );
+}
+
+function createEntry(entry, objectId) {
+  const r = entryToRow(entry, objectId);
+  insertEntryRow(r);
   saveDb();
+}
+
+/**
+ * Копирует записи между объектами одной БД одним saveDb — для мобильных и нестабильной сети
+ * (сотни отдельных POST часто обрываются; пустая база с именем остаётся на сервере).
+ */
+function cloneEntriesToObject(sourceObjectId, targetObjectId, userId, username) {
+  const rows = allSql('SELECT * FROM entries WHERE object_id = ? ORDER BY rowid', [sourceObjectId]);
+  if (!rows || !rows.length) return 0;
+  const uid = userId != null ? String(userId) : '';
+  const uname = username != null ? String(username) : '';
+  let n = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const entry = rowToEntry(rows[i]);
+    const cid = String(entry.cattleId != null ? entry.cattleId : '').trim();
+    if (!cid) continue;
+    if (entryExists(targetObjectId, cid)) continue;
+    entry.userId = uid;
+    entry.lastModifiedBy = uname;
+    try {
+      const r = entryToRow(entry, targetObjectId);
+      insertEntryRow(r);
+      n++;
+    } catch (e) {
+      console.warn('cloneEntriesToObject skip', cid, e.message);
+    }
+  }
+  saveDb();
+  return n;
 }
 
 function updateEntry(objectId, cattleId, entry) {
@@ -611,6 +644,7 @@ module.exports = {
   getEntries,
   getEntry,
   createEntry,
+  cloneEntriesToObject,
   updateEntry,
   deleteEntry,
   entryExists,
