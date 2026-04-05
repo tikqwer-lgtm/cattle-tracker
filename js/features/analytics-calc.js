@@ -4,6 +4,23 @@
  */
 function parseDate(str) {
   if (!str) return null;
+  if (typeof str === 'string') {
+    var m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      var year = Number(m[1]);
+      var month = Number(m[2]);
+      var day = Number(m[3]);
+      var localDate = new Date(year, month - 1, day);
+      if (
+        localDate.getFullYear() === year &&
+        localDate.getMonth() === month - 1 &&
+        localDate.getDate() === day
+      ) {
+        return localDate;
+      }
+      return null;
+    }
+  }
   var d = new Date(str);
   return isNaN(d.getTime()) ? null : d;
 }

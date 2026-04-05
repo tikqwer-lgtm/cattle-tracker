@@ -24,6 +24,7 @@ describe('parseDate', () => {
 
   it('возвращает null для невалидной даты', () => {
     expect(calc.parseDate('не дата')).toBeNull();
+    expect(calc.parseDate('2024-02-31')).toBeNull();
   });
 });
 
