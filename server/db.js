@@ -130,7 +130,9 @@ function initSchema() {
   }
   migrateEntriesMetaColumns();
   migrateEntriesHistoryJsonColumns();
+  migrateEntriesStallColumns();
   migrateObjectsCreatedBy();
+  migrateObjectsStallLayout();
   saveDb();
 }
 
@@ -163,6 +165,39 @@ function migrateEntriesMetaColumns() {
       runSql('ALTER TABLE entries ADD COLUMN last_modified_by TEXT');
     } catch (e) {
       if (!/duplicate column/i.test(e.message)) console.error('migrate last_modified_by:', e.message);
+    }
+  }
+}
+
+/** Стойломесто: двор, ряд, место (координаты на карточке животного). */
+function migrateEntriesStallColumns() {
+  const info = allSql('PRAGMA table_info(entries)');
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  const add = [
+    ['stall_yard', 'ALTER TABLE entries ADD COLUMN stall_yard TEXT'],
+    ['stall_row', 'ALTER TABLE entries ADD COLUMN stall_row INTEGER'],
+    ['stall_place', 'ALTER TABLE entries ADD COLUMN stall_place INTEGER']
+  ];
+  for (let i = 0; i < add.length; i++) {
+    if (names.indexOf(add[i][0]) === -1) {
+      try {
+        runSql(add[i][1]);
+      } catch (e) {
+        if (!/duplicate column/i.test(e.message)) console.error('migrate ' + add[i][0] + ':', e.message);
+      }
+    }
+  }
+}
+
+/** Сетка стойломест по дворам (JSON) на объекте (базе). */
+function migrateObjectsStallLayout() {
+  const info = allSql('PRAGMA table_info(objects)');
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  if (names.indexOf('stall_layout_json') === -1) {
+    try {
+      runSql('ALTER TABLE objects ADD COLUMN stall_layout_json TEXT');
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate objects stall_layout_json:', e.message);
     }
   }
 }
@@ -235,7 +270,20 @@ function rowToEntry(row) {
     inseminationHistory: Array.isArray(inseminationHistory) ? inseminationHistory : [],
     actionHistory: Array.isArray(actionHistory) ? actionHistory : [],
     uziHistory: Array.isArray(uziHistory) ? uziHistory : [],
-    lactationHistory: Array.isArray(lactationHistory) ? lactationHistory : []
+    lactationHistory: Array.isArray(lactationHistory) ? lactationHistory : [],
+    stallYard: row.stall_yard != null && String(row.stall_yard) !== '' ? String(row.stall_yard) : '',
+    stallRow: (function () {
+      const v = row.stall_row;
+      if (v === null || v === undefined || v === '') return '';
+      const n = Number(v);
+      return Number.isFinite(n) ? n : '';
+    })(),
+    stallPlace: (function () {
+      const v = row.stall_place;
+      if (v === null || v === undefined || v === '') return '';
+      const n = Number(v);
+      return Number.isFinite(n) ? n : '';
+    })()
   };
 }
 
@@ -266,7 +314,21 @@ function entryToRow(entry, objectId) {
     insemination_history_json: JSON.stringify(entry.inseminationHistory || []),
     action_history_json: JSON.stringify(entry.actionHistory || []),
     uzi_history_json: JSON.stringify(entry.uziHistory || []),
-    lactation_history_json: JSON.stringify(entry.lactationHistory || [])
+    lactation_history_json: JSON.stringify(entry.lactationHistory || []),
+    stall_yard:
+      entry.stallYard != null && String(entry.stallYard).trim() !== '' ? String(entry.stallYard).trim() : null,
+    stall_row: (function () {
+      const v = entry.stallRow;
+      if (v === '' || v === undefined || v === null) return null;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    })(),
+    stall_place: (function () {
+      const v = entry.stallPlace;
+      if (v === '' || v === undefined || v === null) return null;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    })()
   };
 }
 
@@ -511,13 +573,15 @@ function insertEntryRow(r) {
       object_id, cattle_id, nickname, "group", birth_date, lactation, calving_date,
       insemination_date, attempt_number, bull, inseminator, code, status, exit_date,
       dry_start_date, vwp, note, protocol_json, date_added, synced, user_id, last_modified_by,
-      insemination_history_json, action_history_json, uzi_history_json, lactation_history_json, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      insemination_history_json, action_history_json, uzi_history_json, lactation_history_json,
+      stall_yard, stall_row, stall_place, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     [
       r.object_id, r.cattle_id, r.nickname, r.group, r.birth_date, r.lactation, r.calving_date,
       r.insemination_date, r.attempt_number, r.bull, r.inseminator, r.code, r.status, r.exit_date,
       r.dry_start_date, r.vwp, r.note, r.protocol_json, r.date_added, r.synced, r.user_id, r.last_modified_by,
-      r.insemination_history_json, r.action_history_json, r.uzi_history_json, r.lactation_history_json
+      r.insemination_history_json, r.action_history_json, r.uzi_history_json, r.lactation_history_json,
+      r.stall_yard, r.stall_row, r.stall_place
     ]
   );
 }
@@ -566,6 +630,7 @@ function updateEntry(objectId, cattleId, entry) {
       exit_date = ?, dry_start_date = ?, vwp = ?, note = ?, protocol_json = ?, date_added = ?,
       synced = ?, user_id = ?, last_modified_by = ?, insemination_history_json = ?,
       action_history_json = ?, uzi_history_json = ?, lactation_history_json = ?,
+      stall_yard = ?, stall_row = ?, stall_place = ?,
       updated_at = datetime('now')
     WHERE object_id = ? AND cattle_id = ?`,
     [
@@ -574,6 +639,7 @@ function updateEntry(objectId, cattleId, entry) {
       r.exit_date, r.dry_start_date, r.vwp, r.note, r.protocol_json, r.date_added,
       r.synced, r.user_id, r.last_modified_by, r.insemination_history_json,
       r.action_history_json, r.uzi_history_json, r.lactation_history_json,
+      r.stall_yard, r.stall_row, r.stall_place,
       objectId, cattleId
     ]
   );
@@ -650,6 +716,47 @@ function deleteProtocol(objectId, protocolId) {
   return true;
 }
 
+const DEFAULT_STALL_LAYOUT = { yards: {} };
+
+function getStallLayout(objectId) {
+  const row = getSql('SELECT stall_layout_json FROM objects WHERE id = ?', [objectId]);
+  if (!row || row.stall_layout_json == null || String(row.stall_layout_json).trim() === '') {
+    return { ...DEFAULT_STALL_LAYOUT, yards: {} };
+  }
+  try {
+    const parsed = JSON.parse(row.stall_layout_json);
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_STALL_LAYOUT, yards: {} };
+    if (!parsed.yards || typeof parsed.yards !== 'object') parsed.yards = {};
+    return parsed;
+  } catch (_) {
+    return { ...DEFAULT_STALL_LAYOUT, yards: {} };
+  }
+}
+
+function putStallLayout(objectId, layout) {
+  const obj = getObjectById(objectId);
+  if (!obj) return null;
+  const yards = layout && layout.yards && typeof layout.yards === 'object' ? layout.yards : {};
+  const normalized = { yards: {} };
+  for (const k of Object.keys(yards)) {
+    const key = String(k).trim();
+    if (!key) continue;
+    const y = yards[k];
+    if (!y || typeof y !== 'object') continue;
+    let rows = parseInt(y.rows, 10);
+    let cols = parseInt(y.cols, 10);
+    if (!Number.isFinite(rows) || rows < 1) rows = 1;
+    if (rows > 200) rows = 200;
+    if (!Number.isFinite(cols) || cols < 1) cols = 1;
+    if (cols > 200) cols = 200;
+    normalized.yards[key] = { rows, cols };
+  }
+  const json = JSON.stringify(normalized);
+  runSql('UPDATE objects SET stall_layout_json = ? WHERE id = ?', [json, objectId]);
+  saveDb();
+  return normalized;
+}
+
 module.exports = {
   initDb,
   initSchema,
@@ -686,5 +793,7 @@ module.exports = {
   getProtocolById,
   createProtocol,
   updateProtocol,
-  deleteProtocol
+  deleteProtocol,
+  getStallLayout,
+  putStallLayout
 };

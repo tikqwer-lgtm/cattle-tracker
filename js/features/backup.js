@@ -42,6 +42,13 @@
         createdAt: new Date().toISOString(),
         count: entries.length
       };
+      try {
+        var oid = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
+        if (oid) {
+          var lay = localStorage.getItem('cattleTracker_stallLayout_' + oid);
+          if (lay) payload.stall_layout = JSON.parse(lay);
+        }
+      } catch (e2) {}
       localStorage.setItem(key, JSON.stringify(payload));
       trimBackups();
       return { ok: true, key: key, count: entries.length };
@@ -76,6 +83,12 @@
         data.entries.forEach(function (e) { window.entries.push(e); });
       }
       if (typeof saveLocally === 'function') saveLocally();
+      try {
+        var oidR = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
+        if (oidR && data.stall_layout && typeof data.stall_layout === 'object') {
+          localStorage.setItem('cattleTracker_stallLayout_' + oidR, JSON.stringify(data.stall_layout));
+        }
+      } catch (e3) {}
       if (typeof updateViewList === 'function') updateViewList();
       if (typeof updateList === 'function') updateList();
       if (typeof updateHerdStats === 'function') updateHerdStats();
@@ -92,6 +105,13 @@
       exportedAt: new Date().toISOString(),
       count: entries.length
     };
+    try {
+      var oidE = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
+      if (oidE) {
+        var layE = localStorage.getItem('cattleTracker_stallLayout_' + oidE);
+        if (layE) payload.stall_layout = JSON.parse(layE);
+      }
+    } catch (e4) {}
     var jsonStr = JSON.stringify(payload, null, 2);
     var blob = new Blob([jsonStr], { type: 'application/json' });
     var filename = 'cattle-tracker-backup-' + new Date().toISOString().slice(0, 10) + '.json';

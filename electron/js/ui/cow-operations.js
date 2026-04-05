@@ -153,6 +153,12 @@ function fillFormFromCowEntry(entry) {
   document.getElementById('protocolName').value = entry.protocol?.name || '';
   document.getElementById('protocolStartDate').value = entry.protocol?.startDate || '';
   document.getElementById('note').value = entry.note || '';
+  var stallY = document.getElementById('stallYard');
+  var stallR = document.getElementById('stallRow');
+  var stallP = document.getElementById('stallPlace');
+  if (stallY) stallY.value = entry.stallYard != null && entry.stallYard !== '' ? String(entry.stallYard) : '';
+  if (stallR) stallR.value = entry.stallRow !== '' && entry.stallRow != null ? String(entry.stallRow) : '';
+  if (stallP) stallP.value = entry.stallPlace !== '' && entry.stallPlace != null ? String(entry.stallPlace) : '';
 }
 
 /**
@@ -177,7 +183,15 @@ function fillCowEntryFromForm(entry) {
   entry.dryStartDate = document.getElementById('dryStartDate').value || '';
   // ПДО не сохраняем — рассчитывается автоматически; vwp оставляем для совместимости импорта
   entry.note = document.getElementById('note').value || '';
-  
+  var stallYEl = document.getElementById('stallYard');
+  var stallREl = document.getElementById('stallRow');
+  var stallPEl = document.getElementById('stallPlace');
+  entry.stallYard = stallYEl && stallYEl.value != null ? String(stallYEl.value).trim() : '';
+  var sr = stallREl && stallREl.value != null ? String(stallREl.value).trim() : '';
+  var sp = stallPEl && stallPEl.value != null ? String(stallPEl.value).trim() : '';
+  entry.stallRow = sr === '' ? '' : (parseInt(sr, 10) || '');
+  entry.stallPlace = sp === '' ? '' : (parseInt(sp, 10) || '');
+
   // Протокол синхронизации
   if (!entry.protocol) entry.protocol = {};
   entry.protocol.name = document.getElementById('protocolName').value || '';

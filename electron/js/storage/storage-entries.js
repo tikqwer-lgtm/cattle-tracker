@@ -225,6 +225,9 @@ function loadLocally() {
       if (!entry.uziHistory) entry.uziHistory = [];
       if (entry.lactationHistory === undefined) entry.lactationHistory = [];
       if (entry.group === undefined) entry.group = '';
+      if (entry.stallYard === undefined) entry.stallYard = '';
+      if (entry.stallRow === undefined) entry.stallRow = '';
+      if (entry.stallPlace === undefined) entry.stallPlace = '';
       if (backfillMissingActionHistory(entry)) migrated = true;
     }
 
@@ -288,7 +291,10 @@ function getDefaultCowEntry() {
     lactationHistory: [],
     parentMother: '',
     parentFather: '',
-    birthWeight: ''
+    birthWeight: '',
+    stallYard: '',
+    stallRow: '',
+    stallPlace: ''
   };
 }
 

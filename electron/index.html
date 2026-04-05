@@ -112,7 +112,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.89" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.93" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -512,6 +512,17 @@
         </div>
       </fieldset>
       <fieldset class="form-cow-section">
+        <legend>Стойломесто</legend>
+        <div class="form-cow-editor">
+          <label for="stallYard">Номер двора</label>
+          <input type="text" id="stallYard" inputmode="numeric" placeholder="например 1" autocomplete="off" />
+          <label for="stallRow">Ряд</label>
+          <input type="number" id="stallRow" min="1" max="200" placeholder="—" />
+          <label for="stallPlace">Место в ряду</label>
+          <input type="number" id="stallPlace" min="1" max="200" placeholder="—" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
         <legend>Выбытие и примечание</legend>
         <div class="form-cow-editor">
           <label for="exitDate">Дата выбытия</label>
@@ -528,6 +539,47 @@
     </form>
 
     <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
+  </div>
+
+  <!-- Экран: схема стойломест -->
+  <div id="stall-map-screen" class="screen stall-map-screen">
+    <h1>▦ Схема стойломест</h1>
+    <p class="stall-map-intro">Вид сверху: каждый <strong>ряд</strong> стойломест — вертикальный столбец (места в ряду сверху вниз). Между столбцами — зазор «кормостол». Координаты в карточке животного.</p>
+    <div id="stallMapToolbar" class="stall-map-toolbar">
+      <label class="stall-map-field"><span>Двор</span><input type="text" id="stallMapYardInput" list="stallMapYardDatalist" inputmode="numeric" placeholder="1" autocomplete="off" /></label>
+      <datalist id="stallMapYardDatalist"></datalist>
+      <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapRowsInput" min="1" max="200" value="4" /></label>
+      <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapColsInput" min="1" max="200" value="10" /></label>
+      <button type="button" id="stallMapSaveGridBtn" class="small-btn">Сохранить сетку</button>
+    </div>
+    <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+  </div>
+
+  <div id="stallMapCellModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Стойломесто занято</h2>
+      <p id="stallMapCellModalBody" class="stall-map-modal-body"></p>
+      <div class="stall-map-modal-actions">
+        <button type="button" id="stallMapCellModalUnassign" class="action-btn">Снять с места</button>
+        <button type="button" id="stallMapCellModalReplace" class="small-btn">Заменить</button>
+        <button type="button" id="stallMapCellModalCancel" class="small-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stallMapAssignModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Назначить на место</h2>
+      <p class="stall-map-assign-hint">Введите номер или кличку и нажмите «Сохранить», либо выберите из списка.</p>
+      <div class="stall-map-assign-input-row">
+        <input type="text" id="stallMapAssignInput" class="stall-map-assign-input" list="stallMapAssignDatalist" placeholder="Номер или кличка" autocomplete="off" />
+        <button type="button" id="stallMapAssignSaveBtn" class="action-btn stall-map-assign-save-btn">Сохранить</button>
+      </div>
+      <datalist id="stallMapAssignDatalist"></datalist>
+      <ul id="stallMapAssignList" class="stall-map-assign-list autocomplete-list"></ul>
+      <button type="button" id="stallMapAssignModalClose" class="small-btn">Отмена</button>
+    </div>
   </div>
 
   <!-- ========== Просмотр списка и карточка животного ========== -->

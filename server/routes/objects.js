@@ -23,7 +23,8 @@ router.get('/:id/export', requireAuth, (req, res) => {
   res.json({
     object: { id: obj.id, name: obj.name },
     entries,
-    protocols
+    protocols,
+    stall_layout: db.getStallLayout(objectId)
   });
 });
 
@@ -33,6 +34,7 @@ router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) 
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];
   const protocols = Array.isArray(body.protocols) ? body.protocols : [];
+  const stallLayout = body.stall_layout != null ? body.stall_layout : (body.object && body.object.stall_layout);
   const dupImport = db.findObjectIdWithDuplicateNameForCreator(name, req.user.id, null);
   if (dupImport) {
     return res.status(409).json({ error: 'У вас уже есть база с таким названием' });
@@ -51,6 +53,13 @@ router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) 
       db.createProtocol(id, protocol);
     } catch (e) {
       console.warn('Import protocol skip:', e.message);
+    }
+  }
+  if (stallLayout && typeof stallLayout === 'object') {
+    try {
+      db.putStallLayout(id, stallLayout);
+    } catch (e) {
+      console.warn('Import stall_layout skip:', e.message);
     }
   }
   res.status(201).json({ id, name });
@@ -76,6 +85,14 @@ router.post('/', requireAuth, requireRole('admin', 'manager', 'operator', 'viewe
     return res.status(404).json({ error: 'Исходная база не найдена' });
   }
   const entriesCopied = db.cloneEntriesToObject(copyFromId, id, req.user.id, req.user.username);
+  try {
+    const layout = db.getStallLayout(copyFromId);
+    if (layout && layout.yards && Object.keys(layout.yards).length > 0) {
+      db.putStallLayout(id, layout);
+    }
+  } catch (e) {
+    console.warn('copy stall_layout skip:', e.message);
+  }
   res.status(201).json({ id, name, entriesCopied });
 });
 

@@ -13,6 +13,21 @@ function escapeHtmlCard(text) {
     .replace(/"/g, '&quot;');
 }
 
+function formatStallLine(entry) {
+  if (!entry) return '—';
+  var y = entry.stallYard != null && String(entry.stallYard).trim() !== '' ? String(entry.stallYard).trim() : '';
+  var r = entry.stallRow;
+  var p = entry.stallPlace;
+  var rOk = r !== '' && r != null && !isNaN(parseInt(r, 10));
+  var pOk = p !== '' && p != null && !isNaN(parseInt(p, 10));
+  if (!y && !rOk && !pOk) return '—';
+  var parts = [];
+  if (y) parts.push('двор ' + escapeHtmlCard(y));
+  if (rOk) parts.push('ряд ' + escapeHtmlCard(r));
+  if (pOk) parts.push('место ' + escapeHtmlCard(p));
+  return parts.join(', ');
+}
+
 /**
  * ПДО — дней от отёла до первой даты осеменения
  * @param {Object} entry — запись животного
@@ -73,6 +88,29 @@ function getDaysPregnant(entry) {
 function getDaysInLactation(entry) {
   if (!entry || !entry.calvingDate) return null;
   var d = new Date(entry.calvingDate);
+  var today = new Date();
+  if (isNaN(d.getTime())) return null;
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  var diff = Math.round((today - d) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff : null;
+}
+
+/**
+ * Дней от последнего осеменения до сегодня (без фильтра по статусу).
+ */
+function getDaysSinceLastInsemination(entry) {
+  if (!entry) return null;
+  var lastInsemDate = null;
+  if (entry.inseminationHistory && entry.inseminationHistory.length > 0) {
+    var dates = entry.inseminationHistory.map(function (h) { return h.date; }).filter(Boolean);
+    if (dates.length > 0) {
+      lastInsemDate = dates.reduce(function (a, b) { return a > b ? a : b; });
+    }
+  }
+  if (!lastInsemDate && entry.inseminationDate) lastInsemDate = entry.inseminationDate;
+  if (!lastInsemDate) return null;
+  var d = new Date(lastInsemDate);
   var today = new Date();
   if (isNaN(d.getTime())) return null;
   today.setHours(0, 0, 0, 0);
@@ -240,6 +278,16 @@ function viewCow(cattleId) {
     '<div><strong>Протокол:</strong> ' + escapeHtmlCard((entry.protocol && entry.protocol.name) || entry.protocolName) + '</div>' +
     '<div><strong>Начало протокола:</strong> ' + (formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—') + '</div>' +
     '<div><strong>Примечание:</strong> ' + escapeHtmlCard(entry.note) + '</div>' +
+    '<div><strong>Стойломесто:</strong> ' + formatStallLine(entry) + '</div>' +
+    (canMutate
+      ? '<div class="cow-stall-edit"><strong>Изменить стойломесто</strong>' +
+        '<div class="cow-stall-edit-grid">' +
+        '<label>Двор<input type="text" id="viewCowStallYard" inputmode="numeric" autocomplete="off" /></label>' +
+        '<label>Ряд<input type="number" id="viewCowStallRow" min="1" max="200" /></label>' +
+        '<label>Место<input type="number" id="viewCowStallPlace" min="1" max="200" /></label>' +
+        '</div>' +
+        '<button type="button" class="small-btn" id="viewCowStallSaveBtn">Сохранить стойломесто</button></div>'
+      : '') +
     '<div><strong>Синхронизация:</strong> ' + (entry.synced ? '<span style="color:#16a34a">✅ Синхронизировано</span>' : '<span style="color:#ca8a04">🟡 Не синхронизировано</span>') + '</div>' +
     '<div><strong>Дата добавления:</strong> ' + escapeHtmlCard(entry.dateAdded) + '</div>' +
     '<div><strong>Изменено пользователем:</strong> ' + escapeHtmlCard(entry.lastModifiedBy) + '</div>' +
@@ -247,6 +295,90 @@ function viewCow(cattleId) {
     '<div id="viewCowInseminationHistory" class="cow-insemination-history" style="display:none;">' + historyTableHtml + '</div>' +
     '<div class="cow-card-actions">' + actionRow + '</div>' +
     '</div>';
+
+  if (canMutate) {
+    var yIn = document.getElementById('viewCowStallYard');
+    var rIn = document.getElementById('viewCowStallRow');
+    var pIn = document.getElementById('viewCowStallPlace');
+    var saveStall = document.getElementById('viewCowStallSaveBtn');
+    if (yIn) yIn.value = entry.stallYard != null && String(entry.stallYard).trim() !== '' ? String(entry.stallYard) : '';
+    if (rIn) rIn.value = entry.stallRow !== '' && entry.stallRow != null ? String(entry.stallRow) : '';
+    if (pIn) pIn.value = entry.stallPlace !== '' && entry.stallPlace != null ? String(entry.stallPlace) : '';
+    if (saveStall && !saveStall.dataset.bound) {
+      saveStall.dataset.bound = '1';
+      saveStall.addEventListener('click', function () {
+        viewCowSaveStallFromCard(entry.cattleId);
+      });
+    }
+  }
+}
+
+function viewCowSaveStallFromCard(cattleId) {
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) return;
+  var yIn = document.getElementById('viewCowStallYard');
+  var rIn = document.getElementById('viewCowStallRow');
+  var pIn = document.getElementById('viewCowStallPlace');
+  var yard = yIn && yIn.value != null ? String(yIn.value).trim() : '';
+  var rs = rIn && rIn.value != null ? String(rIn.value).trim() : '';
+  var ps = pIn && pIn.value != null ? String(pIn.value).trim() : '';
+  var row = rs === '' ? NaN : parseInt(rs, 10);
+  var place = ps === '' ? NaN : parseInt(ps, 10);
+  var prevOther = null;
+  if (yard === '' && rs === '' && ps === '') {
+    entry.stallYard = '';
+    entry.stallRow = '';
+    entry.stallPlace = '';
+  } else {
+    if (!yard || !Number.isFinite(row) || row < 1 || !Number.isFinite(place) || place < 1) {
+      if (typeof showToast === 'function') showToast('Укажите двор, ряд и место (числа ≥ 1) или очистите все поля', 'error');
+      return;
+    }
+    var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
+    prevOther = list.filter(function (e) {
+      if (!e || e.cattleId === cattleId) return false;
+      var ey = e.stallYard != null && String(e.stallYard).trim() !== '' ? String(e.stallYard).trim() : '';
+      var er = e.stallRow;
+      var ep = e.stallPlace;
+      if (ey !== yard) return false;
+      if (parseInt(er, 10) !== row) return false;
+      if (parseInt(ep, 10) !== place) return false;
+      return true;
+    })[0];
+    if (prevOther) {
+      prevOther.stallYard = '';
+      prevOther.stallRow = '';
+      prevOther.stallPlace = '';
+      prevOther.synced = false;
+    }
+    entry.stallYard = yard;
+    entry.stallRow = row;
+    entry.stallPlace = place;
+  }
+  entry.synced = false;
+  if (typeof saveLocally === 'function') saveLocally();
+  var useApi =
+    typeof window.CATTLE_TRACKER_USE_API !== 'undefined' &&
+    window.CATTLE_TRACKER_USE_API &&
+    typeof window.updateEntryViaApi === 'function';
+  function doneOk() {
+    if (typeof showToast === 'function') showToast('Стойломесто сохранено', 'success');
+    viewCow(cattleId);
+  }
+  if (!useApi) {
+    doneOk();
+    return;
+  }
+  var apiPromises = [];
+  if (prevOther) apiPromises.push(window.updateEntryViaApi(prevOther.cattleId, prevOther));
+  apiPromises.push(window.updateEntryViaApi(cattleId, entry));
+  Promise.all(apiPromises)
+    .then(function () {
+      doneOk();
+    })
+    .catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка сохранения', 'error');
+    });
 }
 
 /**
@@ -601,6 +733,8 @@ function viewCowBack() {
 // Открытие карточки животного — по кнопке «Карточка» в строке или по вызову viewCow(cattleId).
 if (typeof window !== 'undefined') {
   window.getDaysPregnant = getDaysPregnant;
+  window.getDaysInLactation = getDaysInLactation;
+  window.getDaysSinceLastInsemination = getDaysSinceLastInsemination;
   window.getInseminationListForEntry = getInseminationListForEntry;
   window.renderAllInseminationsScreen = renderAllInseminationsScreen;
   window.viewCow = viewCow;

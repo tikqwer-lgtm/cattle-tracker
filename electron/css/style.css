@@ -9,6 +9,7 @@
 @import 'responsive.css';
 @import 'view-cow.css';
 @import 'screens/action-batch.css';
+@import 'screens/stall-map.css';
 
 /* Экран администрирования */
 .admin-section { margin-bottom: 1.5rem; }

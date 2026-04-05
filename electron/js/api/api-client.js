@@ -276,6 +276,14 @@
     return request('DELETE', '/api/objects/' + encodeURIComponent(objectId) + '/protocols/' + encodeURIComponent(protocolId));
   }
 
+  function getStallLayout(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/stall-layout');
+  }
+
+  function putStallLayout(objectId, layout) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/stall-layout', layout || {});
+  }
+
   function addObject(name) {
     return request('POST', '/api/objects', { name: (name || 'Новая база').trim() }).then(function (obj) {
       setCurrentObjectId(obj.id);
@@ -414,6 +422,8 @@
     createProtocol: createProtocol,
     updateProtocol: updateProtocol,
     deleteProtocol: deleteProtocol,
+    getStallLayout: getStallLayout,
+    putStallLayout: putStallLayout,
     getObjectsList: getObjectsList,
     getCurrentObjectId: getCurrentObjectId,
     setCurrentObjectId: setCurrentObjectId,

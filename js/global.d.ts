@@ -18,6 +18,10 @@ declare interface Window {
   CattleTrackerApi?: unknown;
   CattleTrackerEvents?: { on: (a: string, b: () => void) => void; emit: (a: string, b: unknown) => void };
   initFarmSettingsScreen?: () => void;
+  initStallMapScreen?: () => void;
+  getDaysInLactation?: (entry: Record<string, unknown>) => number | null;
+  getDaysSinceLastInsemination?: (entry: Record<string, unknown>) => number | null;
+  getDaysPregnant?: (entry: Record<string, unknown>) => number | null;
   refreshFarmDatalists?: () => void;
   fillAllInseminationCodeSelects?: () => void;
 }
