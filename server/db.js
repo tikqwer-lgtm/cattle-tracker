@@ -289,14 +289,14 @@ function countAdmins() {
 }
 
 function updateUserRole(targetId, newRole) {
-  const allowed = ['admin', 'operator', 'viewer'];
+  const allowed = ['admin', 'manager', 'operator', 'viewer'];
   if (!allowed.includes(newRole)) {
     return { ok: false, error: 'Недопустимая роль' };
   }
   const target = findUserById(targetId);
   if (!target) return { ok: false, error: 'Пользователь не найден' };
   if (target.role === newRole) return { ok: true };
-  if (target.role === 'admin' && newRole !== 'admin' && countAdmins() <= 1) {
+  if (target.role === 'admin' && newRole !== 'admin' && newRole !== 'manager' && countAdmins() <= 1) {
     return { ok: false, error: 'Нельзя снять последнего администратора' };
   }
   runSql('UPDATE users SET role = ? WHERE id = ?', [newRole, targetId]);

@@ -237,10 +237,14 @@
   function setCurrentObjectId(id) {
     var val = id === undefined || id === null || id === '' ? 'default' : String(id).trim();
     if (!val) val = 'default';
+    var prev = getCurrentObjectId();
     try {
       sessionStorage.setItem(CURRENT_OBJECT_KEY, val);
       localStorage.setItem(CURRENT_OBJECT_KEY, val);
     } catch (e) {}
+    if (val !== prev && typeof global.invalidateProtocolsForObjectSwitch === 'function') {
+      global.invalidateProtocolsForObjectSwitch();
+    }
   }
 
   function updateObject(id, payload) {

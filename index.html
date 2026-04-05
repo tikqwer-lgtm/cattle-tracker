@@ -112,7 +112,7 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.5.87" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.5.89" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -830,7 +830,7 @@
       <div class="sync-server-controls sync-connect-row">
         <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
         <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
-        <button type="button" class="action-btn" id="syncSendToServerBtn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Отправить на сервер</button>
+        <button type="button" class="action-btn" id="syncSendToServerBtn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Выгрузить на сервер</button>
       </div>
       <div id="syncConnectStatus" class="sync-connect-status" aria-live="polite"></div>
     </div>
@@ -838,7 +838,7 @@
     <div id="sync-server-block" class="sync-server-section" style="display: none;">
       <div class="sync-server-controls sync-connected-controls">
         <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
-        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Отправить на сервер</button>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Выгрузить на сервер</button>
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.updateSyncServerStatusFromHealth === 'function' && window.updateSyncServerStatusFromHealth()">Проверить статус</button>
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
       </div>
@@ -852,7 +852,7 @@
         </div>
       </div>
       <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
-        <div class="sync-progress-label" id="syncProgressLabel">Синхронизация…</div>
+        <div class="sync-progress-label" id="syncProgressLabel">Загрузка…</div>
         <div class="sync-progress-bar-wrap"><div class="sync-progress-bar" id="syncProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div>
         <div class="sync-progress-text" id="syncProgressText">0 / 0</div>
       </div>

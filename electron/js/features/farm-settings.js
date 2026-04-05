@@ -149,7 +149,7 @@
 
   function farmSettingsIsAdmin() {
     var u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-    return !!(u && u.role === 'admin');
+    return !!(u && (u.role === 'admin' || u.role === 'manager'));
   }
 
   function renderFarmChipList(ulId, items, editable, onRemoveAt) {

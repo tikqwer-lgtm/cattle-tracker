@@ -3,6 +3,8 @@
 var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
 if (useApi) {
   var _objectsCache = [];
+  /** Счётчик переключений базы: отбрасывать устаревший ответ loadEntries после смены objectId. */
+  var _loadLocallyGeneration = 0;
   /** Локальный снимок записей по objectId (режим API); офлайн-приоритет до явного обновления с сервера. */
   var API_ENTRIES_CACHE_PREFIX = 'cattleTracker_apiEntries_';
 
@@ -50,18 +52,43 @@ if (useApi) {
   window.removeApiEntriesCache = removeApiEntriesCache;
   window.clearAllApiEntriesCaches = clearAllApiEntriesCaches;
 
+  function objectsListAfterHiddenFilter() {
+    var list = _objectsCache.length ? _objectsCache.slice() : [{ id: 'default', name: 'Основная база' }];
+    if (window.CattleTrackerApi && typeof window.CattleTrackerApi.filterObjectsListVisible === 'function') {
+      list = window.CattleTrackerApi.filterObjectsListVisible(list);
+    }
+    return list;
+  }
+
+  function normalizeApiObjectSelectionForRole() {
+    var list = objectsListAfterHiddenFilter();
+    if (typeof window.filterObjectsListForRole === 'function') {
+      list = window.filterObjectsListForRole(list);
+    }
+    if (!list || !list.length) return;
+    var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+    var cur = window.getCurrentObjectId();
+    if (pend && cur === pend) return;
+    var found = list.some(function (o) { return o && o.id === cur; });
+    if (!found) window.setCurrentObjectId(list[0].id);
+  }
+
   function loadObjectsFromApi() {
     return window.CattleTrackerApi.getObjectsList().then(function (list) {
       _objectsCache = list && list.length ? list : [{ id: 'default', name: 'Основная база' }];
+      normalizeApiObjectSelectionForRole();
       return _objectsCache;
     });
   }
   window.getCurrentObjectId = function () { return window.CattleTrackerApi.getCurrentObjectId(); };
   window.setCurrentObjectId = function (id) { window.CattleTrackerApi.setCurrentObjectId(id); };
   window.getObjectsList = function () {
-    var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
-    if (window.CattleTrackerApi && typeof window.CattleTrackerApi.filterObjectsListVisible === 'function') {
-      return window.CattleTrackerApi.filterObjectsListVisible(list);
+    var list = objectsListAfterHiddenFilter();
+    if (typeof window.filterObjectsListForRole === 'function') {
+      list = window.filterObjectsListForRole(list);
+    }
+    if (!list || !list.length) {
+      list = [{ id: 'default', name: 'Основная база' }];
     }
     return list;
   };
@@ -153,7 +180,11 @@ if (useApi) {
   window.loadLocally = function (opts) {
     opts = opts || {};
     var forceFromServer = opts.forceFromServer === true;
+    var myGen = ++_loadLocallyGeneration;
     return loadObjectsFromApi().then(function () {
+      if (myGen !== _loadLocallyGeneration) {
+        return typeof window.entries !== 'undefined' ? window.entries : [];
+      }
       var objectId = window.getCurrentObjectId();
       var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
       var visibleList = window.getObjectsList();
@@ -164,6 +195,9 @@ if (useApi) {
         }
         window.setCurrentObjectId(pendingId);
         objectId = pendingId;
+      }
+      if (myGen !== _loadLocallyGeneration || window.getCurrentObjectId() !== objectId) {
+        return typeof window.entries !== 'undefined' ? window.entries : [];
       }
       if (pendingId && objectId === pendingId) {
         if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]);
@@ -177,6 +211,9 @@ if (useApi) {
       if (!forceFromServer) {
         var cached = readApiEntriesCache(objectId);
         if (cached != null) {
+          if (myGen !== _loadLocallyGeneration || window.getCurrentObjectId() !== objectId) {
+            return Promise.resolve(typeof window.entries !== 'undefined' ? window.entries : []);
+          }
           if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(cached);
           else {
             window.entries.length = 0;
@@ -191,6 +228,9 @@ if (useApi) {
         }
       }
       return window.CattleTrackerApi.loadEntries(objectId).then(function (list) {
+        if (myGen !== _loadLocallyGeneration || window.getCurrentObjectId() !== objectId) {
+          return typeof window.entries !== 'undefined' ? window.entries : [];
+        }
         writeApiEntriesCache(objectId, list || []);
         if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list || []); else { window.entries.length = 0; (list || []).forEach(function (e) { window.entries.push(e); }); if (typeof window !== 'undefined') window.entries = window.entries; }
         if (typeof window.CattleTrackerEvents !== 'undefined') {
@@ -202,8 +242,10 @@ if (useApi) {
         return finishLoadEntriesUi();
       }).catch(function (err) {
         console.error('Ошибка загрузки записей с API:', err);
-        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }
-        if (typeof window.updateList === 'function') window.updateList();
+        if (myGen === _loadLocallyGeneration && window.getCurrentObjectId() === objectId) {
+          if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }
+          if (typeof window.updateList === 'function') window.updateList();
+        }
         throw err;
       });
     });

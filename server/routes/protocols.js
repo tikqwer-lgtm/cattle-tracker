@@ -23,7 +23,7 @@ router.get('/:objectId/protocols', requireAuth, (req, res) => {
   res.json(list);
 });
 
-router.post('/:objectId/protocols', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.post('/:objectId/protocols', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   if (!objectId) return res.status(400).json({ error: 'objectId обязателен' });
   const obj = db.getObjectById(objectId);
@@ -33,7 +33,7 @@ router.post('/:objectId/protocols', requireAuth, requireRole('admin', 'operator'
   res.status(201).json(created);
 });
 
-router.put('/:objectId/protocols/:protocolId', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.put('/:objectId/protocols/:protocolId', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   const protocolId = getProtocolId(req);
   if (!objectId || !protocolId) return res.status(400).json({ error: 'objectId и protocolId обязательны' });
@@ -45,7 +45,7 @@ router.put('/:objectId/protocols/:protocolId', requireAuth, requireRole('admin',
   res.json(updated);
 });
 
-router.delete('/:objectId/protocols/:protocolId', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.delete('/:objectId/protocols/:protocolId', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   const protocolId = getProtocolId(req);
   if (!objectId || !protocolId) return res.status(400).json({ error: 'objectId и protocolId обязательны' });

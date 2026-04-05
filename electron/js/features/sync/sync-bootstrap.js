@@ -24,18 +24,17 @@ function initSyncServerBlock() {
     if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
     try {
       var skipUpload = typeof window.isMobile === 'function' && window.isMobile();
-      if (localStorage.getItem('cattleTracker_uploadAfterConnect') === '1') {
+      var sendAfter =
+        localStorage.getItem('cattleTracker_sendToServerAfterConnect') === '1' ||
+        localStorage.getItem('cattleTracker_uploadAfterConnect') === '1' ||
+        localStorage.getItem('cattleTracker_syncAfterConnect') === '1';
+      if (sendAfter) {
+        localStorage.removeItem('cattleTracker_sendToServerAfterConnect');
         localStorage.removeItem('cattleTracker_uploadAfterConnect');
-        if (!skipUpload) {
-          setTimeout(function () {
-            if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
-          }, 1500);
-        }
-      } else if (localStorage.getItem('cattleTracker_syncAfterConnect') === '1') {
         localStorage.removeItem('cattleTracker_syncAfterConnect');
         if (!skipUpload) {
           setTimeout(function () {
-            if (typeof window.syncCurrentBaseToServer === 'function') window.syncCurrentBaseToServer();
+            if (typeof window.sendToServer === 'function') window.sendToServer();
           }, 1500);
         }
       }
@@ -67,7 +66,7 @@ function initSyncServerBlock() {
     if (inp && window.CattleTrackerApi && typeof window.CattleTrackerApi.getBaseUrl === 'function') {
       if (typeof window.getCurrentUser === 'function') {
         var u = window.getCurrentUser();
-        if (u && u.role === 'admin') {
+        if (u && (u.role === 'admin' || u.role === 'manager')) {
           inp.value = window.CattleTrackerApi.getBaseUrl() || '';
         }
       }

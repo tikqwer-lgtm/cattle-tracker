@@ -388,7 +388,7 @@ function initOfflineIndicator() {
     var online = typeof navigator !== 'undefined' && navigator.onLine;
     if (online) {
       if (window.CATTLE_TRACKER_USE_API && typeof window.refreshFromServer === 'function') {
-        el.textContent = 'Синхронизация…';
+        el.textContent = 'Обновление…';
         el.hidden = false;
         el.setAttribute('aria-hidden', 'false');
         window.refreshFromServer().then(function () {

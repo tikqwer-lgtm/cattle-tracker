@@ -28,7 +28,7 @@ router.get('/:id/export', requireAuth, (req, res) => {
 });
 
 // Import object from export package (creates new object with entries and protocols)
-router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
+router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) => {
   const body = req.body || {};
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];
@@ -56,7 +56,7 @@ router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
   res.status(201).json({ id, name });
 });
 
-router.post('/', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, res) => {
+router.post('/', requireAuth, requireRole('admin', 'manager', 'operator', 'viewer'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
   const copyFromId = (req.body && req.body.copyFromObjectId != null)
     ? String(req.body.copyFromObjectId).trim()
@@ -79,7 +79,7 @@ router.post('/', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, 
   res.status(201).json({ id, name, entriesCopied });
 });
 
-router.put('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.put('/:id', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   const name = (req.body && req.body.name != null) ? String(req.body.name).trim() : '';
@@ -99,7 +99,7 @@ router.put('/:id', requireAuth, requireRole('admin', 'operator'), (req, res) => 
   res.json({ id: obj.id, name: obj.name });
 });
 
-// Удаление базы только создателем, с проверкой пароля
+// Удаление базы: создатель или администратор/менеджер (с паролем своей учётной записи)
 router.delete('/:id', requireAuth, (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
@@ -109,7 +109,8 @@ router.delete('/:id', requireAuth, (req, res) => {
   const list = db.getObjectsWithMeta();
   const meta = list.find((o) => o.id === id);
   const createdById = (meta && meta.created_by) || null;
-  if (createdById && createdById !== req.user.id) {
+  const isElevated = req.user.role === 'admin' || req.user.role === 'manager';
+  if (createdById && createdById !== req.user.id && !isElevated) {
     return res.status(403).json({ error: 'Удалить базу может только пользователь, который её создал' });
   }
   const password = (req.body && req.body.password) != null ? String(req.body.password) : '';

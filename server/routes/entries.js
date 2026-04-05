@@ -34,7 +34,7 @@ router.get('/:objectId/entries/:cattleId', requireAuth, (req, res) => {
   res.json(entry);
 });
 
-router.post('/:objectId/entries', requireAuth, requireRole('admin', 'operator', 'viewer'), (req, res) => {
+router.post('/:objectId/entries', requireAuth, requireRole('admin', 'manager', 'operator', 'viewer'), (req, res) => {
   const objectId = getObjectId(req);
   if (!objectId) return res.status(400).json({ error: 'objectId обязателен' });
   const obj = db.getObjectById(objectId);
@@ -52,7 +52,7 @@ router.post('/:objectId/entries', requireAuth, requireRole('admin', 'operator', 
   res.status(201).json(created);
 });
 
-router.put('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.put('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   const cattleId = getCattleId(req);
   if (!objectId || !cattleId) return res.status(400).json({ error: 'objectId и cattleId обязательны' });
@@ -71,7 +71,7 @@ router.put('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'op
   res.json(updated);
 });
 
-router.delete('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'operator'), (req, res) => {
+router.delete('/:objectId/entries/:cattleId', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   const cattleId = getCattleId(req);
   if (!objectId || !cattleId) return res.status(400).json({ error: 'objectId и cattleId обязательны' });

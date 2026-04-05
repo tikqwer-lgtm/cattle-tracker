@@ -609,15 +609,15 @@ function updateObjectSwitcher() {
   select.innerHTML = htmlOpts;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   var viewer = user && user.role === 'viewer';
-  var showObjCrud = !viewer && (!window.CATTLE_TRACKER_USE_API || (typeof canAdd === 'function' && canAdd()));
-  var mobileApi = window.CATTLE_TRACKER_USE_API && typeof window.isMobile === 'function' && window.isMobile();
-  var showDeleteForApi = window.CATTLE_TRACKER_USE_API && !viewer;
-  if (addBtn) addBtn.style.display = showObjCrud && !mobileApi ? '' : 'none';
-  if (editBtn) editBtn.style.display = showObjCrud ? '' : 'none';
+  var useApi = window.CATTLE_TRACKER_USE_API;
+  var isApiAdmin = useApi && user && (user.role === 'admin' || user.role === 'manager');
+  var isApiOperator = useApi && user && user.role === 'operator';
+  var showObjCrud = !viewer && (!useApi || (typeof canAdd === 'function' && canAdd()));
+  var mobileApi = useApi && typeof window.isMobile === 'function' && window.isMobile();
+  if (addBtn) addBtn.style.display = !viewer && (!useApi || isApiAdmin) && !mobileApi ? '' : 'none';
+  if (editBtn) editBtn.style.display = !viewer && (!useApi || isApiAdmin || isApiOperator) ? '' : 'none';
   if (deleteBtn) {
-    var showDeleteBtn = window.CATTLE_TRACKER_USE_API
-      ? (showDeleteForApi && (mobileApi || showObjCrud))
-      : showObjCrud;
+    var showDeleteBtn = useApi ? (isApiAdmin && !viewer) : showObjCrud;
     deleteBtn.style.display = showDeleteBtn ? '' : 'none';
     deleteBtn.disabled = (select.value === 'default' || (pendingId && select.value === pendingId));
   }

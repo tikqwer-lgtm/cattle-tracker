@@ -23,11 +23,11 @@ function showUnsyncedDataPrompt(onDone) {
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', 'Несинхронизированные данные');
   overlay.innerHTML = '<div class="sync-replace-modal">' +
-    '<h4>Несинхронизированные данные</h4>' +
+    '<h4>Несохранённые на сервере данные</h4>' +
     '<p>У вас есть <strong>' + count + '</strong> записей, не отправленных на сервер. Что сделать перед подключением?</p>' +
     '<div style="display:flex;flex-direction:column;gap:8px;">' +
     '<button type="button" class="action-btn" data-action="backup">Сохранить резервную копию</button>' +
-    '<button type="button" class="action-btn" data-action="sync">Синхронизировать с сервером</button>' +
+    '<button type="button" class="action-btn" data-action="upload">Выгрузить на сервер после подключения</button>' +
     '<button type="button" class="small-btn" data-action="skip">Пропустить</button>' +
     '</div></div>';
 
@@ -37,10 +37,10 @@ function showUnsyncedDataPrompt(onDone) {
     document.body.style.overflow = '';
     onDone('backup');
   };
-  overlay.querySelector('[data-action="sync"]').onclick = function () {
+  overlay.querySelector('[data-action="upload"]').onclick = function () {
     overlay.remove();
     document.body.style.overflow = '';
-    onDone('sync');
+    onDone('upload');
   };
   overlay.querySelector('[data-action="skip"]').onclick = function () {
     overlay.remove();
@@ -53,9 +53,8 @@ function showUnsyncedDataPrompt(onDone) {
 }
 
 /**
- * Отправить текущую базу на сервер (с синхронизацией записей).
- * Если уже подключён: текущая база есть на сервере — синхронизация; иначе — создание объекта и выгрузка.
- * Если не подключён — подключиться и после перезагрузки выгрузить базу.
+ * Выгрузить текущую базу на сервер: новый объект с именем или полная замена записей существующего объекта на сервере.
+ * Если не подключён — подключиться и после перезагрузки повторить выгрузку.
  */
 function sendToServer() {
   if (window.CATTLE_TRACKER_USE_API && typeof window.isMobile === 'function' && window.isMobile()) {
@@ -70,14 +69,14 @@ function sendToServer() {
     var basesCache = typeof window.__getSyncBasesCache === 'function' ? window.__getSyncBasesCache() : null;
     var onServer = basesCache && basesCache.some(function (o) { return o.id === currentId; });
     if (onServer && currentId) {
-      if (typeof window.syncCurrentBaseToServer === 'function') window.syncCurrentBaseToServer();
+      if (typeof window.overwriteCurrentServerBaseWithLocal === 'function') window.overwriteCurrentServerBaseWithLocal();
     } else {
       if (typeof window.uploadCurrentBaseToServer === 'function') window.uploadCurrentBaseToServer();
     }
     return;
   }
   try {
-    localStorage.setItem('cattleTracker_uploadAfterConnect', '1');
+    localStorage.setItem('cattleTracker_sendToServerAfterConnect', '1');
   } catch (e) {}
   connectToServer();
 }
@@ -127,7 +126,7 @@ function switchToPickAnotherApiServer() {
  */
 function connectToServer(opts) {
   if (opts && opts.uploadAfterConnect) {
-    try { localStorage.setItem('cattleTracker_uploadAfterConnect', '1'); } catch (e) {}
+    try { localStorage.setItem('cattleTracker_sendToServerAfterConnect', '1'); } catch (e) {}
   }
   var url = resolveConnectServerUrlForFirstConnect();
   if (!url) {
@@ -148,14 +147,16 @@ function connectToServer(opts) {
       if (typeof showToast === 'function') showToast('Сервер недоступен (код ' + res.status + ')', 'error', 6000);
       return;
     }
-    function doConnect(syncAfter) {
+    function doConnect(sendAfter) {
       try {
         localStorage.setItem('cattleTracker_apiBase', url);
         try {
           localStorage.setItem('cattleTracker_lastConnectUrl', url);
         } catch (e2) {}
         localStorage.setItem('cattleTracker_useApiMode', '1');
-        if (syncAfter) localStorage.setItem('cattleTracker_syncAfterConnect', '1');
+        if (sendAfter) {
+          try { localStorage.setItem('cattleTracker_sendToServerAfterConnect', '1'); } catch (e3) {}
+        }
         if (typeof showToast === 'function') showToast('Подключено. Перезагрузка…', 'success');
         location.reload();
       } catch (e) {
@@ -164,7 +165,7 @@ function connectToServer(opts) {
     }
     if (hasUnsyncedEntries()) {
       showUnsyncedDataPrompt(function (choice) {
-        doConnect(choice === 'sync');
+        doConnect(choice === 'upload');
       });
     } else {
       doConnect(false);
@@ -188,6 +189,8 @@ function doDisconnect() {
     localStorage.removeItem('cattleTracker_apiBase');
     localStorage.removeItem('cattleTracker_useApiMode');
     localStorage.removeItem('cattleTracker_syncAfterConnect');
+    localStorage.removeItem('cattleTracker_sendToServerAfterConnect');
+    localStorage.removeItem('cattleTracker_uploadAfterConnect');
     if (typeof window.saveCurrentUser === 'function') window.saveCurrentUser(null);
     if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
     location.reload();

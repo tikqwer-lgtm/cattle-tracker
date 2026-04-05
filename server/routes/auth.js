@@ -56,12 +56,12 @@ router.post('/register', registerLimiter, (req, res) => {
   const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const passwordHash = bcrypt.hashSync(p, 10);
   const existingCount = db.countUsers();
-  const allowedRoles = ['admin', 'operator', 'viewer'];
+  const allowedRoles = ['admin', 'manager', 'operator', 'viewer'];
   let assignRole = String(role || 'operator').trim();
   if (!allowedRoles.includes(assignRole)) assignRole = 'operator';
   if (existingCount === 0) {
     assignRole = 'admin';
-  } else if (assignRole === 'admin') {
+  } else if (assignRole === 'admin' || assignRole === 'manager') {
     assignRole = 'operator';
   }
   db.createUser(id, u, passwordHash, assignRole);

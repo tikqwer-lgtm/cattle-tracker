@@ -2,6 +2,8 @@
 
 var PROTOCOLS_STORAGE_KEY = 'cattleTracker_protocols';
 var _protocolsCache = [];
+/** В режиме API: для какого object_id актуален _protocolsCache (иначе список протоколов «прилипал» к прошлой базе). */
+var _protocolsFetchedForObjectId = null;
 
 function useApi() {
   return typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.getCurrentObjectId === 'function';
@@ -24,12 +26,19 @@ function getProtocolsFromLocalStorage() {
 
 function getProtocols() {
   if (useApi()) {
+    var cur = window.getCurrentObjectId();
+    if (_protocolsFetchedForObjectId !== cur) {
+      return [];
+    }
     if (_protocolsCache && _protocolsCache.length) return _protocolsCache.slice();
-    var localFallback = getProtocolsFromLocalStorage();
-    if (localFallback.length) return localFallback;
     return [];
   }
   return getProtocolsFromLocalStorage();
+}
+
+function invalidateProtocolsForObjectSwitch() {
+  _protocolsFetchedForObjectId = null;
+  _protocolsCache = [];
 }
 
 /**
@@ -55,19 +64,27 @@ function ensureProtocolsLoaded(callback) {
     callback();
     return;
   }
-  // Пока ждём ответ сервера — показать последние сохранённые локально протоколы
-  var local = getProtocolsFromLocalStorage();
-  if (local.length && (!_protocolsCache || !_protocolsCache.length)) {
-    _protocolsCache = local.slice();
-    notifyInseminationCodeSelects();
+  var objectId = window.getCurrentObjectId();
+  if (_protocolsFetchedForObjectId !== objectId) {
+    _protocolsCache = [];
+    _protocolsFetchedForObjectId = null;
   }
-  window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
+  window.CattleTrackerApi.getProtocols(objectId).then(function (list) {
+    if (window.getCurrentObjectId() !== objectId) {
+      notifyInseminationCodeSelects();
+      callback();
+      return;
+    }
     _protocolsCache = (list || []).slice();
+    _protocolsFetchedForObjectId = objectId;
     persistProtocolsCacheToLocalStorage();
     notifyInseminationCodeSelects();
     callback();
   }).catch(function () {
-    _protocolsCache = getProtocolsFromLocalStorage().slice();
+    if (window.getCurrentObjectId() === objectId) {
+      _protocolsCache = [];
+      _protocolsFetchedForObjectId = objectId;
+    }
     notifyInseminationCodeSelects();
     callback();
   });
@@ -216,13 +233,19 @@ function renderProtocolsScreen(containerId) {
   if (!container) return;
 
   if (useApi()) {
-    window.CattleTrackerApi.getProtocols(window.getCurrentObjectId()).then(function (list) {
+    var oid = window.getCurrentObjectId();
+    window.CattleTrackerApi.getProtocols(oid).then(function (list) {
+      if (window.getCurrentObjectId() !== oid) return;
       _protocolsCache = (list || []).slice();
+      _protocolsFetchedForObjectId = oid;
       persistProtocolsCacheToLocalStorage();
       notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     }).catch(function () {
-      _protocolsCache = getProtocolsFromLocalStorage().slice();
+      if (window.getCurrentObjectId() === oid) {
+        _protocolsCache = [];
+        _protocolsFetchedForObjectId = oid;
+      }
       notifyInseminationCodeSelects();
       renderProtocolsScreenInner(containerId);
     });
@@ -511,6 +534,7 @@ function fillAllInseminationCodeSelects() {
 if (typeof window !== 'undefined') {
   window.renderProtocolsScreen = renderProtocolsScreen;
   window.ensureProtocolsLoaded = ensureProtocolsLoaded;
+  window.invalidateProtocolsForObjectSwitch = invalidateProtocolsForObjectSwitch;
   window.getProtocols = getProtocols;
   window.fillAllInseminationCodeSelects = fillAllInseminationCodeSelects;
 }

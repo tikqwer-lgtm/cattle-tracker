@@ -164,19 +164,60 @@
   function canAdd() {
     var user = getCurrentUser();
     if (!user) return true;
-    return user.role === 'admin' || user.role === 'operator';
+    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
   }
 
   function canEdit() {
     var user = getCurrentUser();
     if (!user) return true;
-    return user.role === 'admin' || user.role === 'operator';
+    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
   }
 
   function canDelete() {
     var user = getCurrentUser();
     if (!user) return true;
-    return user.role === 'admin' || user.role === 'operator';
+    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
+  }
+
+  /**
+   * Режим API: в главном меню админ видит все базы; оператор — одну «свою» (созданную им, иначе текущую/первую).
+   * Экран «Синхронизация» по-прежнему получает полный список через API отдельно.
+   */
+  function filterObjectsListForRole(list) {
+    if (!useApi || !list || !list.length) return list || [];
+    var user = getCurrentUser();
+    if (!user || user.role === 'admin' || user.role === 'manager' || user.role === 'viewer') return list;
+    if (user.role !== 'operator') return list;
+    var uid = String(user.id || '');
+    var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
+    var cur = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
+    if (pend && cur === pend) {
+      var mineP = list.filter(function (o) {
+        return o && String(o.created_by || '') === uid;
+      });
+      if (mineP.length >= 1) {
+        mineP.sort(function (a, b) {
+          return String(b.last_updated_at || b.lastUpdatedAt || '').localeCompare(String(a.last_updated_at || a.lastUpdatedAt || ''));
+        });
+        return [mineP[0]];
+      }
+      return list.length ? [list[0]] : list;
+    }
+    if (cur) {
+      var curObj = list.find(function (o) { return o && o.id === cur; });
+      if (curObj) return [curObj];
+    }
+    var mine = list.filter(function (o) {
+      return o && String(o.created_by || '') === uid;
+    });
+    if (mine.length >= 1) {
+      mine.sort(function (a, b) {
+        return String(b.last_updated_at || b.lastUpdatedAt || '').localeCompare(String(a.last_updated_at || a.lastUpdatedAt || ''));
+      });
+      return [mine[0]];
+    }
+    var pick = list.find(function (o) { return o && o.id === cur; }) || list[0];
+    return pick ? [pick] : list;
   }
 
   var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
@@ -313,13 +354,13 @@
     }
     var adminSection = document.getElementById('admin-menu-section');
     if (adminSection) {
-      var showAdmin = user && user.role === 'admin' && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
+      var showAdmin = user && (user.role === 'admin' || user.role === 'manager') && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
       adminSection.style.display = showAdmin ? '' : 'none';
     }
     var adminServerUrlSection = document.getElementById('sync-admin-server-url-section');
     if (adminServerUrlSection) {
       var showAdminUrl =
-        user && user.role === 'admin' && typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API;
+        user && (user.role === 'admin' || user.role === 'manager') && typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API;
       adminServerUrlSection.style.display = showAdminUrl ? '' : 'none';
     }
     var reportErrorBtn = document.getElementById('report-error-btn');
@@ -564,6 +605,7 @@
     window.canAdd = canAdd;
     window.canEdit = canEdit;
     window.canDelete = canDelete;
+    window.filterObjectsListForRole = filterObjectsListForRole;
     window.updateAuthBar = updateAuthBar;
     window.showAuthLogin = showAuthLogin;
     window.showAuthRegister = showAuthRegister;

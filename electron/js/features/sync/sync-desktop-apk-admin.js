@@ -9,7 +9,7 @@
   function isAdmin() {
     if (typeof global.getCurrentUser !== 'function') return false;
     var u = global.getCurrentUser();
-    return u && u.role === 'admin';
+    return u && (u.role === 'admin' || u.role === 'manager');
   }
 
   /** Версия десктопной сборки (как в корневом package.json → data-default-version в index.html). */
