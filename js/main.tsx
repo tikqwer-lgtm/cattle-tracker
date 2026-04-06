@@ -61,6 +61,12 @@ import('@capacitor/app')
         (window as any)._handleBackButton();
       }
     });
+    CapApp.addListener('appStateChange', (state: { isActive: boolean }) => {
+      if (!state.isActive) return;
+      const w = window as any;
+      if (typeof w.stallMapRedrawIfActive === 'function') w.stallMapRedrawIfActive();
+      if (typeof w.softRepaintCattleTrackerView === 'function') w.softRepaintCattleTrackerView();
+    });
   })
   .catch(() => {});
 

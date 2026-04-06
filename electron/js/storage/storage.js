@@ -259,9 +259,11 @@ if (useApi) {
       return window.loadLocally({ forceFromServer: true });
     });
   }
-  function updateEntryViaApi(cattleId, entry) {
+  function updateEntryViaApi(cattleId, entry, opts) {
+    var skipReload = opts && opts.skipReload === true;
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.updateEntry(objectId, cattleId, entry).then(function () {
+      if (skipReload) return Promise.resolve();
       return window.loadLocally({ forceFromServer: true });
     });
   }

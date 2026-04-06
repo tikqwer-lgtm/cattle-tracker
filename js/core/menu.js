@@ -137,6 +137,17 @@ function navigate(screenId, options) {
       }
     }, 220);
   }
+  /* Схема стойломест: WebView/Capacitor после сворачивания иногда «теряет» отрисовку ячеек — тот же мягкий repaint. */
+  if (screenId === 'stall-map') {
+    setTimeout(function () {
+      if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+      if (typeof window.stallMapRedrawIfActive === 'function') window.stallMapRedrawIfActive();
+    }, 0);
+    setTimeout(function () {
+      if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
+      if (typeof window.stallMapRedrawIfActive === 'function') window.stallMapRedrawIfActive();
+    }, 220);
+  }
 
   if (screenId === 'submenu') {
     renderSubmenu();

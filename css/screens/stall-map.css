@@ -4,6 +4,37 @@
   padding-bottom: 1.5rem;
 }
 
+.stall-map-yard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 0.75rem 0;
+}
+
+.stall-map-unassigned-count {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text, #111);
+}
+
+.stall-map-create-yard-btn {
+  flex-shrink: 0;
+}
+
+.stall-map-grid-placeholder {
+  color: var(--color-text-muted, #555);
+  font-size: 0.92rem;
+  margin: 0 0 1rem 0;
+  max-width: 40rem;
+  line-height: 1.45;
+}
+
+.stall-map-toolbar-wrap {
+  margin-bottom: 0.5rem;
+}
+
 .stall-map-intro {
   color: var(--color-text-muted, #666);
   font-size: 0.95rem;
@@ -27,7 +58,8 @@
   color: var(--color-text-muted, #666);
 }
 
-.stall-map-field input {
+.stall-map-field input,
+.stall-map-field select {
   min-width: 5rem;
   min-height: var(--field-min-height, 42px);
   padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
@@ -37,6 +69,24 @@
   background: var(--color-bg-elevated, #fff);
   color: var(--color-text, #111);
   box-sizing: border-box;
+}
+
+.stall-map-field select {
+  min-width: 7rem;
+}
+
+.stall-map-create-yard-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.stall-map-create-yard-hint {
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #555);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.45;
 }
 
 .stall-map-grid-wrap {
@@ -63,14 +113,14 @@
   align-items: stretch;
   justify-content: flex-start;
   text-align: center;
-  padding: 6px 4px;
+  padding: 8px 5px;
   border: 1px solid var(--color-primary-border, #b8c8dc);
   border-radius: var(--radius-sm, 4px);
   background: var(--color-bg-elevated, #fff);
   cursor: pointer;
   font-size: 0.72rem;
   line-height: 1.2;
-  min-height: 56px;
+  min-height: 72px;
   box-sizing: border-box;
 }
 
@@ -114,7 +164,7 @@
 }
 
 .stall-map-cell-status {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--color-text, #222);
   line-height: 1.15;
@@ -127,16 +177,17 @@
 }
 
 .stall-map-cell-meta {
-  font-size: 0.6rem;
-  color: var(--color-text-muted, #555);
+  font-size: 0.62rem;
+  color: var(--color-text-muted, #444);
   line-height: 1.2;
   margin-top: 3px;
   word-break: break-word;
 }
 
-@container stallcell (max-width: 74px) {
+/* На маленьких ячейках мета всё ещё видна (порог ниже min столбца) */
+@container stallcell (max-width: 56px) {
   .stall-map-cell-meta {
-    display: none;
+    font-size: 0.58rem;
   }
 }
 
@@ -145,8 +196,18 @@
   font-style: italic;
 }
 
+/* Оверлей модалок схемы: плотнее и размытие фона */
+.stall-map-modal.view-fields-modal {
+  background: rgba(15, 20, 30, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .stall-map-modal .stall-map-modal-inner {
   max-width: 22rem;
+  padding: 16px;
+  background: var(--color-bg-elevated, #fff);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
 
 .stall-map-modal-title {
@@ -167,8 +228,13 @@
 
 .stall-map-assign-hint {
   font-size: 0.9rem;
-  color: var(--color-text-muted, #666);
-  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+  color: var(--color-text, #1a1a1a);
+  margin: 0 0 0.65rem 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-primary-light, #eef4fc);
+  border: 1px solid var(--color-primary-border, #c5d4e8);
 }
 
 .stall-map-assign-input-row {
@@ -204,23 +270,55 @@
   font-family: inherit;
 }
 
-.stall-map-assign-list {
-  list-style: none;
-  margin: 0 0 1rem 0;
-  padding: 0;
+.stall-map-assign-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+}
+
+.stall-map-assign-modal-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: min(92dvh, 560px);
+  width: min(22rem, 100%);
+}
+
+.stall-map-assign-modal-inner .stall-map-assign-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 40vh;
+}
+
+/* Не добавлять класс autocomplete-list: глобально там position:absolute; top:100% — якорь = fixed-оверлей, список уезжает под экран */
+.stall-map-assign-list {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: auto;
+  max-height: none;
+  box-shadow: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--color-primary-border, #ddd);
   border-radius: var(--radius-sm, 4px);
   background: var(--color-bg-elevated, #fff);
 }
 
-.stall-map-assign-list li {
-  border-bottom: 1px solid #eee;
+.stall-map-assign-footer {
+  flex-shrink: 0;
+  padding-top: 4px;
 }
 
-.stall-map-assign-list li:last-child {
-  border-bottom: none;
+.stall-map-assign-cancel-btn {
+  width: 100%;
+  margin-top: 4px;
 }
 
 .stall-map-assign-item {
@@ -233,10 +331,72 @@
   cursor: pointer;
   font-size: 0.95rem;
   font-family: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(61, 110, 181, 0.15);
 }
 
 .stall-map-assign-item:hover {
   background: var(--color-primary-light, #eef4fc);
+}
+
+.stall-map-assign-modal-shell.view-fields-modal {
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 0;
+}
+
+.stall-map-assign-modal-shell .stall-map-assign-modal-inner {
+  width: 100%;
+  max-width: none;
+  max-height: 95dvh;
+  border-radius: 12px 12px 0 0;
+  margin: 0;
+  padding: 16px 16px 16px 16px;
+}
+
+@media (min-width: 769px) {
+  .stall-map-assign-modal-shell.view-fields-modal {
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .stall-map-assign-modal-shell .stall-map-assign-modal-inner {
+    width: min(22rem, 92vw);
+    max-height: 80vh;
+    border-radius: var(--radius-card, 8px);
+    margin: auto;
+  }
+
+  .stall-map-assign-modal-inner .stall-map-assign-scroll {
+    max-height: 40vh;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Список подсказок не схлопывается в 0 при flex + пустом ul; видна область прокрутки */
+  .stall-map-assign-modal-inner .stall-map-assign-scroll {
+    min-height: min(28vh, 200px);
+    max-height: min(48vh, 320px);
+  }
+
+  .stall-map-cell {
+    min-height: 76px;
+    font-size: 0.74rem;
+    padding: 8px 5px;
+  }
+
+  .stall-map-cell-id {
+    font-size: 0.85rem;
+  }
+
+  .stall-map-cell-status {
+    font-size: 0.7rem;
+  }
+
+  .stall-map-cell-meta {
+    font-size: 0.64rem;
+  }
 }
 
 .cow-stall-edit {
