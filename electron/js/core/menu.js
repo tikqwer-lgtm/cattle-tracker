@@ -652,19 +652,26 @@ function updateObjectSwitcher() {
  */
 function updateHerdStats() {
   var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
+  var pct = function (n, total) {
+    if (!total) return 0;
+    return Math.round((n / total) * 100);
+  };
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
   if (!list || list.length === 0) {
-    var totalEl = document.getElementById('totalCows');
-    if (totalEl) totalEl.textContent = '0';
-    var pEl = document.getElementById('pregnantCows');
-    if (pEl) pEl.textContent = '0';
-    var dEl = document.getElementById('dryCows');
-    if (dEl) dEl.textContent = '0';
-    var iEl = document.getElementById('inseminatedCows');
-    if (iEl) iEl.textContent = '0';
-    var cEl = document.getElementById('cullCows');
-    if (cEl) cEl.textContent = '0';
-    var percentsRow0 = document.getElementById('herdStatsPercentsRow');
-    if (percentsRow0) { percentsRow0.setAttribute('aria-hidden', 'true'); percentsRow0.style.display = 'none'; }
+    setText('totalCows', '0');
+    setText('pregnantCows', '0');
+    setText('dryCows', '0');
+    setText('inseminatedCows', '0');
+    setText('cullCows', '0');
+    setText('notInseminatedCows', '0');
+    setText('pregnantCowsPct', '0%');
+    setText('dryCowsPct', '0%');
+    setText('inseminatedCowsPct', '0%');
+    setText('cullCowsPct', '0%');
+    setText('notInseminatedCowsPct', '0%');
     return;
   }
 
@@ -675,33 +682,18 @@ function updateHerdStats() {
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
   const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
 
-  document.getElementById('totalCows').textContent = totalCows;
-  document.getElementById('pregnantCows').textContent = pregnantCows;
-  document.getElementById('dryCows').textContent = dryCows;
-  document.getElementById('inseminatedCows').textContent = inseminatedCows;
-  document.getElementById('cullCows').textContent = cullCows;
+  setText('totalCows', String(totalCows));
+  setText('pregnantCows', String(pregnantCows));
+  setText('dryCows', String(dryCows));
+  setText('inseminatedCows', String(inseminatedCows));
+  setText('cullCows', String(cullCows));
+  setText('notInseminatedCows', String(notInseminatedCows));
 
-  var percentsRow = document.getElementById('herdStatsPercentsRow');
-  if (percentsRow) {
-    if (totalCows === 0) {
-      percentsRow.setAttribute('aria-hidden', 'true');
-      percentsRow.style.display = 'none';
-    } else {
-      percentsRow.setAttribute('aria-hidden', 'false');
-      percentsRow.style.display = '';
-      var pct = function (n) { return Math.round((n / totalCows) * 100); };
-      var pElPct = document.getElementById('pregnantCowsPct');
-      var dElPct = document.getElementById('dryCowsPct');
-      var iElPct = document.getElementById('inseminatedCowsPct');
-      var cElPct = document.getElementById('cullCowsPct');
-      var notInsElPct = document.getElementById('notInseminatedCowsPct');
-      if (pElPct) pElPct.textContent = pct(pregnantCows) + '%';
-      if (dElPct) dElPct.textContent = pct(dryCows) + '%';
-      if (iElPct) iElPct.textContent = pct(inseminatedCows) + '%';
-      if (cElPct) cElPct.textContent = pct(cullCows) + '%';
-      if (notInsElPct) notInsElPct.textContent = pct(notInseminatedCows) + '%';
-    }
-  }
+  setText('pregnantCowsPct', pct(pregnantCows, totalCows) + '%');
+  setText('dryCowsPct', pct(dryCows, totalCows) + '%');
+  setText('inseminatedCowsPct', pct(inseminatedCows, totalCows) + '%');
+  setText('cullCowsPct', pct(cullCows, totalCows) + '%');
+  setText('notInseminatedCowsPct', pct(notInseminatedCows, totalCows) + '%');
 }
 
 function initAddObjectModal() {
@@ -739,6 +731,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 if (typeof window !== 'undefined') {
+  window.updateHerdStats = updateHerdStats;
   window.navigate = navigate;
   window.navigateBack = navigateBack;
   window.navigateBackOrFallback = navigateBackOrFallback;

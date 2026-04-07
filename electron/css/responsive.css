@@ -78,9 +78,13 @@
     grid-template-columns: 1fr;
   }
 
-  .herd-stats {
-    flex-direction: column;
-    align-items: center;
+  .herd-stats-table {
+    max-width: 100%;
+  }
+
+  .herd-stat-row {
+    grid-template-columns: 1fr minmax(2.25rem, auto) minmax(2.5rem, auto);
+    gap: 8px; 
   }
 
   .stat-item {

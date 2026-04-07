@@ -9,6 +9,10 @@
  *
  * Если CATTLE_TRACKER_API_BASE не задан, читается server/server-address.txt (SERVER_IP=…),
  * порт: CATTLE_TRACKER_API_PORT или 3000.
+ *
+ * Только загрузка уже собранного APK (без vite/cap/gradle):
+ *   node scripts/mobile-installer.js --upload-only
+ *   или CATTLE_TRACKER_MOBILE_UPLOAD_ONLY=1
  */
 'use strict';
 
@@ -279,13 +283,21 @@ async function uploadApk(apkPath, version, apiBase, token) {
 }
 
 async function main() {
+  if (process.argv.includes('--upload-only')) {
+    process.env.CATTLE_TRACKER_MOBILE_UPLOAD_ONLY = '1';
+  }
   loadLocalEnvFiles();
 
   const version = readPackageVersion();
   console.log('Версия приложения:', version);
 
-  runNpmApk();
-  runGradleAssembleDebug();
+  const uploadOnly = (process.env.CATTLE_TRACKER_MOBILE_UPLOAD_ONLY || '').trim() === '1';
+  if (!uploadOnly) {
+    runNpmApk();
+    runGradleAssembleDebug();
+  } else {
+    console.log('Режим только загрузки (--upload-only / CATTLE_TRACKER_MOBILE_UPLOAD_ONLY=1), сборка APK пропущена.');
+  }
 
   const apkPath = path.join(root, 'apk', `cattle-tracker-${version}-debug.apk`);
   if (!fs.existsSync(apkPath)) {

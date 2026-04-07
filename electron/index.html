@@ -112,7 +112,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.6.1" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.3" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -128,35 +128,39 @@
       <button type="button" class="small-btn add-object-btn" id="addObjectBtn" title="Добавить новую базу" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">+ Добавить объект</button>
     </div>
 
-    <!-- Статистика стада -->
+    <!-- Статистика стада: шапка + строки «подпись | кол-во | %» -->
     <div class="herd-stats">
-      <div class="stat-item">
+      <div class="herd-stats-header">
         <div class="stat-value" id="totalCows">0</div>
         <div class="stat-label">Всего коров</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-value" id="pregnantCows">0</div>
-        <div class="stat-label">Стельных</div>
+      <div class="herd-stats-table" role="group" aria-label="Статистика по статусам">
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Стельные</span>
+          <span class="herd-stat-num" id="pregnantCows">0</span>
+          <span class="herd-stat-pct" id="pregnantCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Осеменённые</span>
+          <span class="herd-stat-num" id="inseminatedCows">0</span>
+          <span class="herd-stat-pct" id="inseminatedCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">На брак</span>
+          <span class="herd-stat-num" id="cullCows">0</span>
+          <span class="herd-stat-pct" id="cullCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">В сухостое</span>
+          <span class="herd-stat-num" id="dryCows">0</span>
+          <span class="herd-stat-pct" id="dryCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Не осеменённые</span>
+          <span class="herd-stat-num" id="notInseminatedCows">0</span>
+          <span class="herd-stat-pct" id="notInseminatedCowsPct">0%</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <div class="stat-value" id="dryCows">0</div>
-        <div class="stat-label">В сухостое</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="inseminatedCows">0</div>
-        <div class="stat-label">Осеменённых</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="cullCows">0</div>
-        <div class="stat-label">На брак</div>
-      </div>
-    </div>
-    <div class="herd-stats herd-stats-percents" id="herdStatsPercentsRow" aria-hidden="true">
-      <div class="stat-item"><div class="stat-value" id="pregnantCowsPct">0%</div><div class="stat-label">Стельных</div></div>
-      <div class="stat-item"><div class="stat-value" id="dryCowsPct">0%</div><div class="stat-label">В сухостое</div></div>
-      <div class="stat-item"><div class="stat-value" id="inseminatedCowsPct">0%</div><div class="stat-label">Осеменённых</div></div>
-      <div class="stat-item"><div class="stat-value" id="cullCowsPct">0%</div><div class="stat-label">На брак</div></div>
-      <div class="stat-item"><div class="stat-value" id="notInseminatedCowsPct">0%</div><div class="stat-label">Не осемененные</div></div>
     </div>
 
     <!-- Краткие уведомления -->
