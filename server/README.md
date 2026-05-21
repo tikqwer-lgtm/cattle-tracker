@@ -53,7 +53,16 @@ npm install --omit=dev
 - `GET /api/reports` — список отчётов (только admin), requires auth
 - `DELETE /api/reports/:id` — удалить отчёт (только admin)
 - `GET /api/objects` — list objects
-- `POST /api/objects` — body: `{ name, copyFromObjectId? }`; при `copyFromObjectId` сервер создаёт новую базу и копирует в неё все записи источника (ответ `{ id, name, entriesCopied }`) — один запрос, удобно для мобильных
+- `POST /api/objects` — body: `{ name, copyFromObjectId? }`; при `copyFromObjectId` сервер копирует **все слои** (записи, протоколы, стойломеста, profile, farm_settings) в новую базу (ответ `{ id, name, entriesCopied }`)
+- `GET /api/objects/:id/profile` — карточка хозяйства (JSON в `objects.profile_json`)
+- `PUT /api/objects/:id/profile` — сохранить карточку (admin/manager/operator)
+- `GET /api/objects/:id/farm-settings` — справочники `{ technicians, bulls, drugs }`
+- `PUT /api/objects/:id/farm-settings` — сохранить справочники
+- `GET /api/objects/:id/farm-card` — расширенный bundle карточки (контакты, адреса, показатели)
+- `PUT /api/objects/:id/farm-card` — сохранить bundle карточки
+- `GET /api/objects/:id/export` — полный снимок базы: `entries`, `protocols`, `stall_layout`, `profile`, `farm_settings`, `farm_card`
+- `POST /api/objects/import` — импорт снимка в новую базу (те же поля)
+- `GET /api/geosuggest?text=...` — подсказки адреса (нужен `YANDEX_MAPS_API_KEY` в `.env`)
 - `GET /api/objects/:id/entries` — list entries
 - `POST /api/objects/:id/entries` — create entry (body = entry object)
 - `GET /api/objects/:id/entries/:cattleId` — get one entry

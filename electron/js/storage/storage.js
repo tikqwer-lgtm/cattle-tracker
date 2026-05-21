@@ -135,6 +135,9 @@ if (useApi) {
     var currentId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteObject(id).then(function () {
       removeApiEntriesCache(id);
+      if (window.CattleTrackerObjectData && window.CattleTrackerObjectData.removeKeysForObject) {
+        window.CattleTrackerObjectData.removeKeysForObject(id);
+      }
       return loadObjectsFromApi().then(function () {
         var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
         if (currentId === id && list.length) {
@@ -150,30 +153,38 @@ if (useApi) {
 
   window.switchToObject = function (objectId) {
     window.setCurrentObjectId(objectId);
-    var p = window.loadLocally();
-    if (p && typeof p.then === 'function') {
-      p.then(function () {
-        if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-        if (typeof window.updateViewList === 'function') window.updateViewList();
-        if (typeof window.CattleTrackerEvents !== 'undefined') {
-          window.CattleTrackerEvents.emit('entries:updated', window.entries);
-        }
-      });
-    } else {
+    function afterLayers() {
       if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
       if (typeof window.updateViewList === 'function') window.updateViewList();
       if (typeof window.CattleTrackerEvents !== 'undefined') {
         window.CattleTrackerEvents.emit('entries:updated', window.entries);
       }
     }
+    var p = window.loadLocally();
+    var layersP = function () {
+      if (window.CattleTrackerObjectData && window.CattleTrackerObjectData.loadAllObjectLayers) {
+        return window.CattleTrackerObjectData.loadAllObjectLayers(objectId);
+      }
+      return Promise.resolve();
+    };
+    if (p && typeof p.then === 'function') {
+      return p.then(layersP).then(afterLayers);
+    }
+    return layersP().then(afterLayers);
   };
 
   function finishLoadEntriesUi() {
-    if (typeof window.ensureProtocolsLoaded === 'function') {
-      try {
-        window.ensureProtocolsLoaded(function () {});
-      } catch (e) {}
-    }
+    var oid = window.getCurrentObjectId();
+    var layersDone = window.CattleTrackerObjectData && window.CattleTrackerObjectData.loadAllObjectLayers
+      ? window.CattleTrackerObjectData.loadAllObjectLayers(oid, { silent: true })
+      : Promise.resolve();
+    layersDone.then(function () {
+      if (typeof window.ensureProtocolsLoaded === 'function') {
+        try {
+          window.ensureProtocolsLoaded(function () {});
+        } catch (e) {}
+      }
+    });
     return window.entries;
   }
 

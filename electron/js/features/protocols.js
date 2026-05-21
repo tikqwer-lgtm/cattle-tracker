@@ -1,6 +1,5 @@
 // protocols.js — справочник протоколов синхронизации (схемы гормональной терапии)
 
-var PROTOCOLS_STORAGE_KEY = 'cattleTracker_protocols';
 var _protocolsCache = [];
 /** В режиме API: для какого object_id актуален _protocolsCache (иначе список протоколов «прилипал» к прошлой базе). */
 var _protocolsFetchedForObjectId = null;
@@ -9,13 +8,27 @@ function useApi() {
   return typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.getCurrentObjectId === 'function';
 }
 
+function getProtocolsStorageKey() {
+  var oid = typeof window.getCurrentObjectId === 'function' ? (window.getCurrentObjectId() || 'default') : 'default';
+  if (typeof window !== 'undefined' && window.CattleTrackerObjectData) {
+    return window.CattleTrackerObjectData.keyFor(window.CattleTrackerObjectData.PROTOCOLS_PREFIX, oid);
+  }
+  return 'cattleTracker_protocols_' + oid;
+}
+
 /**
  * Возвращает массив протоколов (из API-кэша или localStorage)
  * @returns {Array<{id: string, name: string, steps: Array<{day: number, drug: string}>}>}
  */
 function getProtocolsFromLocalStorage() {
+  if (typeof window !== 'undefined' && window.CattleTrackerObjectData) {
+    window.CattleTrackerObjectData.migrateGlobalToDefaultOnce();
+    return window.CattleTrackerObjectData.loadProtocolsLocal(
+      typeof window.getCurrentObjectId === 'function' ? window.getCurrentObjectId() : 'default'
+    );
+  }
   try {
-    var raw = localStorage.getItem(PROTOCOLS_STORAGE_KEY);
+    var raw = localStorage.getItem(getProtocolsStorageKey());
     if (!raw) return [];
     var arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [];
@@ -53,7 +66,12 @@ function invalidateProtocolsForObjectSwitch() {
 function persistProtocolsCacheToLocalStorage() {
   if (!useApi()) return;
   try {
-    localStorage.setItem(PROTOCOLS_STORAGE_KEY, JSON.stringify(Array.isArray(_protocolsCache) ? _protocolsCache : []));
+    var oid = window.getCurrentObjectId();
+    if (window.CattleTrackerObjectData) {
+      window.CattleTrackerObjectData.saveProtocolsLocal(oid, Array.isArray(_protocolsCache) ? _protocolsCache : []);
+    } else {
+      localStorage.setItem(getProtocolsStorageKey(), JSON.stringify(Array.isArray(_protocolsCache) ? _protocolsCache : []));
+    }
   } catch (e) {}
 }
 
@@ -95,7 +113,13 @@ function ensureProtocolsLoaded(callback) {
  * @param {Array} arr
  */
 function saveProtocols(arr) {
-  localStorage.setItem(PROTOCOLS_STORAGE_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+  var list = Array.isArray(arr) ? arr : [];
+  var oid = typeof window.getCurrentObjectId === 'function' ? window.getCurrentObjectId() : 'default';
+  if (window.CattleTrackerObjectData) {
+    window.CattleTrackerObjectData.saveProtocolsLocal(oid, list);
+  } else {
+    localStorage.setItem(getProtocolsStorageKey(), JSON.stringify(list));
+  }
   notifyInseminationCodeSelects();
 }
 

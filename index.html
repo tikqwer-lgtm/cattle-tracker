@@ -112,7 +112,7 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.6.4" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.6" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -301,6 +301,13 @@
       </section>
       <button type="button" id="farmSettingsSaveBtn" class="action-batch-save-all">Сохранить</button>
     </div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Карточка хозяйства -->
+  <div id="farm-card-screen" class="screen">
+    <h1>Карточка хозяйства</h1>
+    <div id="farmCardRoot" class="farm-card-root" aria-live="polite"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
   </div>
 

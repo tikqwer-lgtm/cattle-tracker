@@ -79,12 +79,24 @@ function ensureObjectsAndMigration() {
 
 function switchToObject(objectId) {
   setCurrentObjectId(objectId);
-  if (typeof window.loadLocally === 'function') window.loadLocally();
-  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-  if (typeof window.updateViewList === 'function') window.updateViewList();
-  if (typeof window.CattleTrackerEvents !== 'undefined') {
-    window.CattleTrackerEvents.emit('entries:updated', entries);
+  function afterLayers() {
+    if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+    if (typeof window.updateViewList === 'function') window.updateViewList();
+    if (typeof window.CattleTrackerEvents !== 'undefined') {
+      window.CattleTrackerEvents.emit('entries:updated', entries);
+    }
   }
+  var loadP = typeof window.loadLocally === 'function' ? window.loadLocally() : null;
+  var layersP = function () {
+    if (typeof window.CattleTrackerObjectData !== 'undefined' && window.CattleTrackerObjectData.loadAllObjectLayers) {
+      return window.CattleTrackerObjectData.loadAllObjectLayers(objectId);
+    }
+    return Promise.resolve();
+  };
+  if (loadP && typeof loadP.then === 'function') {
+    return loadP.then(layersP).then(afterLayers);
+  }
+  return layersP().then(afterLayers);
 }
 
 function addObject(name) {
@@ -120,6 +132,9 @@ function deleteObject(id) {
   saveObjectsList(list);
   try {
     localStorage.removeItem('cattleEntries_' + id);
+    if (typeof window.CattleTrackerObjectData !== 'undefined' && window.CattleTrackerObjectData.removeKeysForObject) {
+      window.CattleTrackerObjectData.removeKeysForObject(id);
+    }
   } catch (e) {}
   if (currentId === id) {
     var nextId = list[0] ? list[0].id : 'default';

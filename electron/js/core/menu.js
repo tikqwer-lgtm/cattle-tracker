@@ -42,6 +42,7 @@ var MENU_GROUPS = {
   settings: {
     title: 'Настройки',
     buttons: [
+      { icon: '📇', text: 'Карточка хозяйства', onclick: "navigate('farm-card')" },
       { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
       { icon: '❓', text: 'Справка', onclick: "navigate('help')" },
@@ -158,6 +159,9 @@ function navigate(screenId, options) {
   }
   if (screenId === 'farm-settings' && typeof window.initFarmSettingsScreen === 'function') {
     window.initFarmSettingsScreen();
+  }
+  if (screenId === 'farm-card' && typeof window.initFarmCardPanel === 'function') {
+    window.initFarmCardPanel();
   }
   if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
   if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();

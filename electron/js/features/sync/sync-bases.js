@@ -216,6 +216,12 @@ function afterServerImportRefresh(opt) {
     ? window.loadLocally(force ? { forceFromServer: true } : undefined)
     : Promise.resolve();
   return Promise.resolve(p).then(function () {
+    var oid = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
+    var layersP = window.CattleTrackerObjectData && window.CattleTrackerObjectData.loadAllObjectLayers
+      ? window.CattleTrackerObjectData.loadAllObjectLayers(oid, { silent: true })
+      : Promise.resolve();
+    return layersP;
+  }).then(function () {
     if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
     if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
     if (typeof window.updateViewList === 'function') window.updateViewList();
@@ -286,10 +292,16 @@ function openServerBaseOnMobile(sourceId, sourceName) {
     if (statusEl) {
       statusEl.textContent = 'База «' + String(sourceName || '').replace(/</g, '&lt;') + '» загружена (' + list.length + ' записей).';
     }
-    if (typeof window.ensureProtocolsLoaded === 'function') {
-      try { window.ensureProtocolsLoaded(function () {}); } catch (e) {}
-    }
-    if (typeof window.loadObjectsFromApi === 'function') return window.loadObjectsFromApi();
+    var oidMob = sourceId;
+    var layersMob = window.CattleTrackerObjectData && window.CattleTrackerObjectData.loadAllObjectLayers
+      ? window.CattleTrackerObjectData.loadAllObjectLayers(oidMob, { silent: true })
+      : Promise.resolve();
+    return layersMob.then(function () {
+      if (typeof window.ensureProtocolsLoaded === 'function') {
+        try { window.ensureProtocolsLoaded(function () {}); } catch (e) {}
+      }
+      if (typeof window.loadObjectsFromApi === 'function') return window.loadObjectsFromApi();
+    });
   }).then(function () {
     if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
     if (typeof window.updateHerdStats === 'function') window.updateHerdStats();

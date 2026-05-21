@@ -1,0 +1,114 @@
+/* Карточка хозяйства */
+.farm-card-root {
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+.farm-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.farm-card-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+  padding-bottom: 0.35rem;
+}
+.farm-card-tab {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.farm-card-tab--active {
+  border-color: var(--border-color, #ddd);
+  border-bottom-color: var(--bg, #fff);
+  background: var(--bg, #fff);
+  font-weight: 600;
+}
+.farm-card-table-scroll {
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.farm-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.farm-card-table th,
+.farm-card-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border-color, #eee);
+  text-align: left;
+  vertical-align: top;
+}
+.farm-card-table--wide {
+  min-width: 720px;
+}
+.farm-card-empty {
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
+.farm-card-h3,
+.farm-card-h4 {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 1rem;
+}
+.farm-card-form label {
+  display: block;
+  margin: 0.35rem 0;
+}
+.farm-card-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.farm-card-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.farm-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.farm-card-save-status {
+  font-size: 0.85rem;
+  color: var(--text-muted, #666);
+}
+.farm-card-addr-suggest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  max-height: 12rem;
+  overflow-y: auto;
+  background: var(--bg, #fff);
+}
+.farm-card-addr-suggest-list li {
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.farm-card-addr-suggest-list li:hover,
+.farm-card-addr-suggest-list li:focus {
+  background: #f0f4ff;
+}
+.farm-card-suggest-sub {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted, #666);
+}
+.backup-restore-check {
+  display: block;
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+}

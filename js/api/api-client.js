@@ -284,6 +284,38 @@
     return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/stall-layout', layout || {});
   }
 
+  function getObjectProfile(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/profile');
+  }
+
+  function putObjectProfile(objectId, profile) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/profile', profile || {});
+  }
+
+  function getFarmSettings(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/farm-settings');
+  }
+
+  function putFarmSettings(objectId, settings) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/farm-settings', settings || {});
+  }
+
+  function getFarmCard(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/farm-card');
+  }
+
+  function putFarmCard(objectId, bundle) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/farm-card', bundle || {});
+  }
+
+  function geosuggest(text) {
+    return request('GET', '/api/geosuggest?text=' + encodeURIComponent(String(text || '').trim()));
+  }
+
+  function exportObject(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/export');
+  }
+
   function addObject(name) {
     return request('POST', '/api/objects', { name: (name || 'Новая база').trim() }).then(function (obj) {
       setCurrentObjectId(obj.id);
@@ -424,6 +456,14 @@
     deleteProtocol: deleteProtocol,
     getStallLayout: getStallLayout,
     putStallLayout: putStallLayout,
+    getObjectProfile: getObjectProfile,
+    putObjectProfile: putObjectProfile,
+    getFarmSettings: getFarmSettings,
+    putFarmSettings: putFarmSettings,
+    getFarmCard: getFarmCard,
+    putFarmCard: putFarmCard,
+    geosuggest: geosuggest,
+    exportObject: exportObject,
     getObjectsList: getObjectsList,
     getCurrentObjectId: getCurrentObjectId,
     setCurrentObjectId: setCurrentObjectId,

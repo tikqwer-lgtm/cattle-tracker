@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker",
-  "version": "0.6.4",
+  "version": "0.6.6",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
     "build": "vite build",
@@ -53,6 +53,7 @@
   "dependencies": {
     "@capacitor/app": "^6.0.3",
     "@capacitor/browser": "^6.0.5",
+    "fflate": "^0.8.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "xlsx": "0.18.5"

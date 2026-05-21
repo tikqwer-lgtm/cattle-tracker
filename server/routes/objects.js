@@ -12,6 +12,37 @@ router.get('/', requireAuth, (req, res) => {
   res.json(list);
 });
 
+router.get('/:id/profile', requireAuth, (req, res) => {
+  const objectId = String(req.params.id || '').trim();
+  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
+  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
+  const profile = db.getObjectProfile(objectId);
+  res.json(profile != null ? profile : {});
+});
+
+router.put('/:id/profile', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+  const objectId = String(req.params.id || '').trim();
+  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
+  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
+  if (!db.putObjectProfile(objectId, req.body)) return res.status(500).json({ error: 'Ошибка сохранения' });
+  res.json(db.getObjectProfile(objectId) || {});
+});
+
+router.get('/:id/farm-settings', requireAuth, (req, res) => {
+  const objectId = String(req.params.id || '').trim();
+  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
+  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
+  res.json(db.getFarmSettings(objectId));
+});
+
+router.put('/:id/farm-settings', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+  const objectId = String(req.params.id || '').trim();
+  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
+  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
+  if (!db.putFarmSettings(objectId, req.body)) return res.status(500).json({ error: 'Ошибка сохранения' });
+  res.json(db.getFarmSettings(objectId));
+});
+
 // Export object with entries and protocols (for transfer to another PC / backup)
 router.get('/:id/export', requireAuth, (req, res) => {
   const objectId = req.params.id || '';
@@ -24,7 +55,10 @@ router.get('/:id/export', requireAuth, (req, res) => {
     object: { id: obj.id, name: obj.name },
     entries,
     protocols,
-    stall_layout: db.getStallLayout(objectId)
+    stall_layout: db.getStallLayout(objectId),
+    profile: db.getObjectProfile(objectId),
+    farm_settings: db.getFarmSettings(objectId),
+    farm_card: db.getFarmCardBundle(objectId)
   });
 });
 
@@ -35,6 +69,8 @@ router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) 
   const entries = Array.isArray(body.entries) ? body.entries : [];
   const protocols = Array.isArray(body.protocols) ? body.protocols : [];
   const stallLayout = body.stall_layout != null ? body.stall_layout : (body.object && body.object.stall_layout);
+  const profile = body.profile != null ? body.profile : body.farm_card;
+  const farmSettings = body.farm_settings;
   const dupImport = db.findObjectIdWithDuplicateNameForCreator(name, req.user.id, null);
   if (dupImport) {
     return res.status(409).json({ error: 'У вас уже есть база с таким названием' });
@@ -62,6 +98,20 @@ router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) 
       console.warn('Import stall_layout skip:', e.message);
     }
   }
+  if (profile && typeof profile === 'object') {
+    try {
+      db.putObjectProfile(id, profile);
+    } catch (e) {
+      console.warn('Import profile skip:', e.message);
+    }
+  }
+  if (farmSettings && typeof farmSettings === 'object') {
+    try {
+      db.putFarmSettings(id, farmSettings);
+    } catch (e) {
+      console.warn('Import farm_settings skip:', e.message);
+    }
+  }
   res.status(201).json({ id, name });
 });
 
@@ -86,12 +136,9 @@ router.post('/', requireAuth, requireRole('admin', 'manager', 'operator', 'viewe
   }
   const entriesCopied = db.cloneEntriesToObject(copyFromId, id, req.user.id, req.user.username);
   try {
-    const layout = db.getStallLayout(copyFromId);
-    if (layout && layout.yards && Object.keys(layout.yards).length > 0) {
-      db.putStallLayout(id, layout);
-    }
+    db.cloneObjectLayers(copyFromId, id);
   } catch (e) {
-    console.warn('copy stall_layout skip:', e.message);
+    console.warn('copy object layers skip:', e.message);
   }
   res.status(201).json({ id, name, entriesCopied });
 });

@@ -10,6 +10,7 @@
 @import 'view-cow.css';
 @import 'screens/action-batch.css';
 @import 'screens/stall-map.css';
+@import 'screens/farm-card.css';
 @import 'chat-consultant.css';
 
 /* Экран администрирования */

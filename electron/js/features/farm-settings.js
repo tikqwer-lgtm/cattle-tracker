@@ -4,9 +4,35 @@
 (function () {
   'use strict';
 
-  var TECH_KEY = 'cattleTracker_farmTechnicians';
-  var BULLS_KEY = 'cattleTracker_farmBulls';
-  var DRUGS_KEY = 'cattleTracker_farmDrugs';
+  function currentObjectId() {
+    return typeof window.getCurrentObjectId === 'function' ? (window.getCurrentObjectId() || 'default') : 'default';
+  }
+
+  function techKey() {
+    if (window.CattleTrackerObjectData) {
+      return window.CattleTrackerObjectData.keyFor(window.CattleTrackerObjectData.TECH_PREFIX, currentObjectId());
+    }
+    return 'cattleTracker_farmTechnicians_' + currentObjectId();
+  }
+
+  function bullsKey() {
+    if (window.CattleTrackerObjectData) {
+      return window.CattleTrackerObjectData.keyFor(window.CattleTrackerObjectData.BULLS_PREFIX, currentObjectId());
+    }
+    return 'cattleTracker_farmBulls_' + currentObjectId();
+  }
+
+  function drugsKey() {
+    if (window.CattleTrackerObjectData) {
+      return window.CattleTrackerObjectData.keyFor(window.CattleTrackerObjectData.DRUGS_PREFIX, currentObjectId());
+    }
+    return 'cattleTracker_farmDrugs_' + currentObjectId();
+  }
+
+  function useFarmSettingsApi() {
+    return typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi &&
+      typeof window.CattleTrackerApi.putFarmSettings === 'function';
+  }
 
   function parseLines(text) {
     if (!text || typeof text !== 'string') return [];
@@ -19,8 +45,13 @@
   }
 
   function getFarmTechnicians() {
+    if (window.CattleTrackerObjectData) {
+      window.CattleTrackerObjectData.migrateGlobalToDefaultOnce();
+      var s = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      return Array.isArray(s.technicians) ? s.technicians.map(function (x) { return String(x).trim(); }).filter(Boolean) : [];
+    }
     try {
-      var raw = localStorage.getItem(TECH_KEY);
+      var raw = localStorage.getItem(techKey());
       if (!raw) return [];
       var p = JSON.parse(raw);
       return Array.isArray(p) ? p.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
@@ -31,16 +62,26 @@
 
   function setFarmTechnicians(arr) {
     var list = Array.isArray(arr) ? arr.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
+    if (window.CattleTrackerObjectData) {
+      var s = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      s.technicians = list;
+      window.CattleTrackerObjectData.saveFarmSettingsLocal(currentObjectId(), s);
+      return;
+    }
     try {
-      localStorage.setItem(TECH_KEY, JSON.stringify(list));
+      localStorage.setItem(techKey(), JSON.stringify(list));
     } catch (err) {
       console.error(err);
     }
   }
 
   function getFarmBullsManual() {
+    if (window.CattleTrackerObjectData) {
+      var s2 = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      return Array.isArray(s2.bulls) ? s2.bulls.map(function (x) { return String(x).trim(); }).filter(Boolean) : [];
+    }
     try {
-      var raw = localStorage.getItem(BULLS_KEY);
+      var raw = localStorage.getItem(bullsKey());
       if (!raw) return [];
       var p = JSON.parse(raw);
       return Array.isArray(p) ? p.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
@@ -51,16 +92,26 @@
 
   function setFarmBullsManual(arr) {
     var list = Array.isArray(arr) ? arr.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
+    if (window.CattleTrackerObjectData) {
+      var s = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      s.bulls = list;
+      window.CattleTrackerObjectData.saveFarmSettingsLocal(currentObjectId(), s);
+      return;
+    }
     try {
-      localStorage.setItem(BULLS_KEY, JSON.stringify(list));
+      localStorage.setItem(bullsKey(), JSON.stringify(list));
     } catch (err) {
       console.error(err);
     }
   }
 
   function getFarmDrugs() {
+    if (window.CattleTrackerObjectData) {
+      var s3 = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      return Array.isArray(s3.drugs) ? s3.drugs.map(function (x) { return String(x).trim(); }).filter(Boolean) : [];
+    }
     try {
-      var raw = localStorage.getItem(DRUGS_KEY);
+      var raw = localStorage.getItem(drugsKey());
       if (!raw) return [];
       var p = JSON.parse(raw);
       return Array.isArray(p) ? p.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
@@ -71,11 +122,26 @@
 
   function setFarmDrugs(arr) {
     var list = Array.isArray(arr) ? arr.map(function (s) { return String(s).trim(); }).filter(Boolean) : [];
+    if (window.CattleTrackerObjectData) {
+      var s = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      s.drugs = list;
+      window.CattleTrackerObjectData.saveFarmSettingsLocal(currentObjectId(), s);
+      return;
+    }
     try {
-      localStorage.setItem(DRUGS_KEY, JSON.stringify(list));
+      localStorage.setItem(drugsKey(), JSON.stringify(list));
     } catch (err) {
       console.error(err);
     }
+  }
+
+  function persistFarmSettingsToServer() {
+    if (!useFarmSettingsApi()) return Promise.resolve();
+    return window.CattleTrackerApi.putFarmSettings(currentObjectId(), {
+      technicians: getFarmTechnicians(),
+      bulls: getFarmBullsManual(),
+      drugs: getFarmDrugs()
+    });
   }
 
   /**
@@ -249,10 +315,15 @@
         setFarmTechnicians(tech);
         setFarmBullsManual(bulls);
         setFarmDrugs(drugs);
-        refreshFarmDatalists();
-        if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
-        if (typeof showToast === 'function') showToast('Сохранено', 'success');
-        else alert('Сохранено');
+        persistFarmSettingsToServer().then(function () {
+          refreshFarmDatalists();
+          if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
+          if (typeof showToast === 'function') showToast('Сохранено', 'success');
+          else alert('Сохранено');
+        }).catch(function (err) {
+          refreshFarmDatalists();
+          if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка сохранения на сервере', 'error');
+        });
       };
     }
     refreshFarmDatalists();
