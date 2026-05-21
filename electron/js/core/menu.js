@@ -44,7 +44,8 @@ var MENU_GROUPS = {
     buttons: [
       { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
-      { icon: '❓', text: 'Справка', onclick: "navigate('help')" }
+      { icon: '❓', text: 'Справка', onclick: "navigate('help')" },
+      { icon: '💬', text: 'Чат-консультант', onclick: "typeof openChatConsultant === 'function' && openChatConsultant()" }
     ]
   }
 };

@@ -1,6 +1,12 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('cattleTracker_hasSeenHints', '1');
+  });
+});
+
 test.describe('Страница входа', () => {
   test('открывается в локальном режиме', async ({ page }) => {
     await page.goto('/');

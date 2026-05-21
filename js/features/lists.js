@@ -233,6 +233,13 @@
     });
   }
 
+  function listPrintButtonHtml(printBtnId) {
+    var isMobile = typeof window.isMobile === 'function' && window.isMobile();
+    return isMobile
+      ? ''
+      : '<button type="button" class="small-btn" id="' + printBtnId + '">Печать</button>';
+  }
+
   function renderUziListSubScreen(sub) {
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
@@ -243,7 +250,7 @@
       '<div id="uziListLactationFilter" class="list-filters list-filters-lactation"></div>' +
       '<div class="list-actions list-actions-inline">' +
       '<button type="button" class="small-btn" id="uziListRefresh">Обновить</button>' +
-      '<button type="button" class="small-btn" id="uziListPrint">Печать</button>' +
+      listPrintButtonHtml('uziListPrint') +
       '<button type="button" class="small-btn" id="uziListExcel">Экспорт в Excel</button>' +
       '</div></div>' +
       '<div id="uzi-list-table-wrap" class="list-table-wrap"></div>';
@@ -414,8 +421,7 @@
     var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
     var groups = getUniqueGroups();
     var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>'; }).join('');
-    var isMobile = typeof window.isMobile === 'function' && window.isMobile();
-    var printBtnHtml = isMobile ? '' : '<button type="button" class="small-btn" id="insemListPrint">Печать</button>';
+    var printBtnHtml = listPrintButtonHtml('insemListPrint');
     var html = '<div class="list-sub-header"><h3>Список на осеменение</h3>' +
       '<div class="list-filters">' +
       '<label>С <input type="date" id="insemListDateFrom" value="' + escapeHtml(todayStr) + '" /></label>' +
@@ -626,7 +632,9 @@
         '</div>';
     }
     if (actionsEl) {
-      actionsEl.innerHTML = '<button type="button" class="small-btn" id="eventsPrintBtn">Печать</button><button type="button" class="small-btn" id="eventsExcelBtn">Экспорт в Excel</button>';
+      actionsEl.innerHTML =
+        listPrintButtonHtml('eventsPrintBtn') +
+        '<button type="button" class="small-btn" id="eventsExcelBtn">Экспорт в Excel</button>';
     }
     function refresh() {
       var typeEl = document.getElementById('eventsFilterType');

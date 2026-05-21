@@ -13,7 +13,7 @@ declare global {
 window.initPinchZoom = initPinchZoom;
 import './utils/constants.js';
 import './utils/utils.js';
-// XLSX подключается в index.html скриптом (cdn), доступен как window.XLSX
+import './utils/xlsx-global.js';
 import './core/events.js';
 import './api/api-client.js';
 import './storage/storage-objects.js';
@@ -49,6 +49,7 @@ import './features/stall-map.js';
 import './features/admin.js';
 import './features/report-error.js';
 import './features/lists.js';
+import './features/chat-consultant.js';
 import './core/menu.js';
 
 void import('./features/electron-devtools-diagnostics.js').catch(() => {});

@@ -7,7 +7,16 @@
   var chatHistory = [];
 
   function getBaseUrl() {
-    return (global.CATTLE_TRACKER_API_BASE || '').replace(/\/$/, '');
+    if (global.CattleTrackerApi && typeof global.CattleTrackerApi.getBaseUrl === 'function') {
+      var fromApi = (global.CattleTrackerApi.getBaseUrl() || '').trim().replace(/\/$/, '');
+      if (fromApi) return fromApi;
+    }
+    var b = (global.CATTLE_TRACKER_API_BASE || '').trim().replace(/\/$/, '');
+    if (b) return b;
+    try {
+      b = (localStorage.getItem('cattleTracker_apiBase') || '').trim().replace(/\/$/, '');
+    } catch (e) {}
+    return b || '';
   }
 
   function getToken() {

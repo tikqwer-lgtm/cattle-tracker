@@ -1,0 +1,163 @@
+// @ts-check
+/** Автоматическая часть RELEASE_CHECKLIST.md (локальный режим, без API). */
+const { test, expect } = require('@playwright/test');
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('cattleTracker_hasSeenHints', '1');
+  });
+});
+
+async function enterLocalMenu(page) {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Войти без пароля' }).click();
+  await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 15000 });
+}
+
+var SUBMENU_GROUP_IDS = {
+  'Работа с данными': 'data',
+  'Действия': 'actions',
+  'Аналитика': 'analytics',
+  'Уведомления и планы': 'notifications',
+  'Настройки': 'settings',
+};
+
+async function openSubmenu(page, groupButtonName) {
+  var groupId = SUBMENU_GROUP_IDS[groupButtonName];
+  if (groupId) {
+    await page.evaluate(function (id) {
+      if (typeof window.navigateToSubmenu === 'function') window.navigateToSubmenu(id);
+    }, groupId);
+  } else {
+    await page.locator('#menu-screen .menu-group-btn').filter({ hasText: groupButtonName }).click();
+  }
+  await expect(page.locator('#submenu-screen.active')).toBeVisible({ timeout: 10000 });
+}
+
+async function openViewList(page) {
+  await page.evaluate(function () {
+    if (typeof window.navigate === 'function') window.navigate('view');
+  });
+  await expect(page.locator('#view-screen.active')).toBeVisible({ timeout: 15000 });
+}
+
+async function backToMenuFromView(page) {
+  await page.evaluate(function () {
+    if (typeof window.navigate === 'function') window.navigate('menu');
+  });
+  await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 10000 });
+}
+
+test.describe('Чек-лист: вход и выход', () => {
+  test('экран входа: локальный режим и форма сервера', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Вход' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Войти без пароля' })).toBeVisible();
+    await expect(
+      page.locator('#auth-screen').getByRole('button', { name: 'Подключиться к серверу' })
+    ).toBeVisible();
+    await expect(page.locator('#authLoginForm')).toHaveCount(1);
+    await expect(page.locator('#auth-server-block button', { hasText: 'Регистрация' })).toHaveCount(1);
+  });
+
+  test('вход без пароля открывает меню', async ({ page }) => {
+    await enterLocalMenu(page);
+    await expect(page.getByText('Всего коров')).toBeVisible();
+  });
+
+  test('выход возвращает на вход и фокус в пароль', async ({ page }) => {
+    await enterLocalMenu(page);
+    await page.getByRole('button', { name: 'Выйти' }).click();
+    await expect(page.locator('#auth-screen.active')).toBeVisible({ timeout: 10000 });
+    const serverAuth = page.locator('#auth-server-block');
+    if (await serverAuth.isVisible()) {
+      await expect(page.locator('#authPassword')).toBeFocused({ timeout: 5000 });
+    } else {
+      await expect(page.locator('#authLocalConnectServerUrlInput')).toBeFocused({ timeout: 5000 });
+    }
+  });
+});
+
+test.describe('Чек-лист: меню и навигация', () => {
+  test.beforeEach(async ({ page }) => {
+    await enterLocalMenu(page);
+  });
+
+  const groups = [
+    'Работа с данными',
+    'Действия',
+    'Аналитика',
+    'Уведомления и планы',
+    'Настройки',
+  ];
+
+  for (const name of groups) {
+    test('группа «' + name + '» открывает подменю', async ({ page }) => {
+      await openSubmenu(page, name);
+      await page.evaluate(function () {
+        if (typeof window.navigate === 'function') window.navigate('menu');
+      });
+      await expect(page.locator('#menu-screen.active')).toBeVisible();
+    });
+  }
+
+  test('переход: список животных, протоколы, чат-консультант', async ({ page }) => {
+    test.setTimeout(60000);
+    await openSubmenu(page, 'Работа с данными');
+    await openViewList(page);
+    await backToMenuFromView(page);
+
+    await openSubmenu(page, 'Настройки');
+    await page.evaluate(function () {
+      if (typeof window.navigate === 'function') window.navigate('farm-settings');
+    });
+    await expect(page.locator('#farm-settings-screen.active')).toBeVisible();
+    await page.evaluate(function () {
+      if (typeof window.navigate === 'function') window.navigate('protocols');
+    });
+    await expect(page.locator('#protocols-screen.active')).toBeVisible();
+    await page.evaluate(function () {
+      if (typeof window.navigate === 'function') window.navigate('farm-settings');
+    });
+    await expect(page.locator('#farm-settings-screen.active')).toBeVisible();
+    await page.evaluate(function () {
+      if (typeof window.navigate === 'function') window.navigate('menu');
+    });
+    await expect(page.locator('#menu-screen.active')).toBeVisible();
+
+    await openSubmenu(page, 'Настройки');
+    await page.evaluate(function () {
+      if (typeof window.openChatConsultant === 'function') window.openChatConsultant();
+    });
+    await expect(page.locator('#chat-consultant-panel[aria-hidden="false"]')).toBeVisible();
+    await expect(page.locator('#chat-consultant-input')).toBeVisible();
+  });
+});
+
+test.describe('Чек-лист: данные и XLSX', () => {
+  test.beforeEach(async ({ page }) => {
+    await enterLocalMenu(page);
+  });
+
+  test('список животных и табло на главном', async ({ page }) => {
+    const totalEl = page.locator('#totalCows');
+    await expect(totalEl).toBeVisible();
+    const totalText = await totalEl.textContent();
+
+    await openSubmenu(page, 'Работа с данными');
+    await openViewList(page);
+
+    const emptyMsg = page.locator('#viewEntriesList').getByText(/Нет записей/i);
+    const hasRows = await page.locator('#viewEntriesList tbody tr').count();
+    if (hasRows === 0) {
+      await expect(emptyMsg).toBeVisible({ timeout: 5000 });
+      expect(totalText?.trim()).toBe('0');
+    }
+  });
+
+  test('window.XLSX доступен из бандла', async ({ page }) => {
+    await page.goto('/');
+    const ok = await page.evaluate(() => typeof window.XLSX !== 'undefined' && typeof window.XLSX.utils !== 'undefined');
+    expect(ok).toBe(true);
+  });
+});

@@ -429,11 +429,20 @@
   /** Ставит фокус на первое поле видимой формы входа/регистрации (следующий тик, чтобы DOM был готов). */
   function focusAuthForm() {
     requestAnimationFrame(function () {
+      var serverBlock = document.getElementById('auth-server-block');
+      var serverVisible = serverBlock && serverBlock.style.display !== 'none';
+      if (!serverVisible) {
+        var localIn = document.getElementById('authLocalConnectServerUrlInput');
+        if (localIn) {
+          localIn.focus({ preventScroll: false });
+          return;
+        }
+      }
       var regForm = document.getElementById('authRegisterForm');
       var regVisible = regForm && regForm.style.display !== 'none';
       var el = regVisible
         ? document.getElementById('regUsername')
-        : document.getElementById('authUsername');
+        : (document.getElementById('authPassword') || document.getElementById('authUsername'));
       if (el) {
         el.focus({ preventScroll: false });
       }
@@ -589,10 +598,9 @@
     saveCurrentUser(null);
     updateAuthBar();
     if (typeof showToast === 'function') showToast('Выход выполнен', 'info'); else alert('Выход выполнен');
-    if (typeof navigate === 'function') navigate('menu');
+    if (typeof navigate === 'function') navigate('auth');
     setTimeout(function () {
-      var el = document.getElementById('authPassword');
-      if (el) el.focus();
+      if (typeof focusAuthForm === 'function') focusAuthForm();
     }, 200);
   }
 
