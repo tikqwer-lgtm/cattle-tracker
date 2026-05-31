@@ -1,0 +1,178 @@
+/* stall-inventory.css — опись и сверка стойломест */
+
+.stall-inventory-screen {
+  padding-bottom: 1.5rem;
+}
+
+.stall-map-extra-actions {
+  margin: 0.75rem 0 1rem;
+}
+
+.stall-inventory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 1rem 0;
+}
+
+.stall-inventory-tab {
+  min-height: var(--field-min-height, 42px);
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-primary-border, #ccc);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text, #111);
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.stall-inventory-tab.active {
+  background: var(--color-primary, #3d6eb5);
+  border-color: var(--color-primary-dark, #1e3a5f);
+  color: #fff;
+}
+
+.stall-inventory-content {
+  margin-bottom: 1rem;
+}
+
+.stall-inventory-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.stall-inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.stall-inventory-muted {
+  color: var(--color-text-muted, #666);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin: 0 0 0.75rem 0;
+}
+
+.stall-inventory-warn {
+  color: var(--color-warning-text, #8a6d00);
+  background: var(--color-warning-bg, #fff8e1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.stall-inventory-section-title {
+  margin: 1.25rem 0 0.5rem 0;
+  font-size: 1.05rem;
+}
+
+.stall-inventory-subtitle {
+  margin: 0.75rem 0 0.35rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #555);
+}
+
+.stall-inventory-progress {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.stall-inventory-cell-card {
+  border: 1px solid var(--color-primary-border, #ccc);
+  border-radius: var(--radius-md, 6px);
+  padding: 1rem;
+  background: var(--color-bg-elevated, #fff);
+  margin-bottom: 1rem;
+}
+
+.stall-inventory-cell-coords {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.stall-inventory-cell-expected {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+}
+
+.stall-inventory-cell-expected span {
+  color: var(--color-text-muted, #666);
+}
+
+.stall-inventory-cell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stall-inventory-other-input,
+.stall-inventory-found-fields {
+  margin-bottom: 0.75rem;
+}
+
+.stall-inventory-found-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stall-inventory-cancel {
+  margin-top: 0.5rem;
+}
+
+.stall-inventory-resume {
+  padding: 0.65rem 0.85rem;
+  background: var(--color-info-bg, #e8f4fd);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary, #3d6eb5);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-header,
+  #print-header *,
+  .inventory-print-root,
+  .inventory-print-root * {
+    visibility: visible;
+  }
+
+  .inventory-print-root {
+    position: absolute;
+    left: 0;
+    top: 120px;
+    width: 100%;
+  }
+
+  .stall-inventory-actions.no-print,
+  #stall-inventory-screen .stall-inventory-tabs,
+  #stall-inventory-screen .stall-inventory-toolbar,
+  #stall-inventory-screen .no-print,
+  #stall-inventory-screen .stall-inventory-actions,
+  #stall-inventory-screen .back-button,
+  #stall-inventory-screen h1 {
+    display: none !important;
+  }
+}

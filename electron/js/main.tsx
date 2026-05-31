@@ -49,6 +49,7 @@ import './features/protocols.js';
 import './features/farm-settings.js';
 import './features/farm-card.js';
 import './features/stall-map.js';
+import './features/stall-inventory.js';
 import './features/admin.js';
 import './features/report-error.js';
 import './features/lists.js';

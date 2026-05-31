@@ -112,7 +112,7 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.6.6" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.7" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -570,6 +570,21 @@
       </div>
     </div>
     <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест" style="display: none;"></div>
+    <div class="stall-map-extra-actions">
+      <button type="button" class="small-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">Инвентаризация</button>
+    </div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+  </div>
+
+  <!-- Экран: инвентаризация стойломест -->
+  <div id="stall-inventory-screen" class="screen stall-inventory-screen">
+    <h1>☑ Инвентаризация стойломест</h1>
+    <div class="stall-inventory-tabs" role="tablist">
+      <button type="button" class="stall-inventory-tab active" data-tab="print" role="tab">Опись</button>
+      <button type="button" class="stall-inventory-tab" data-tab="check" role="tab">Сверка</button>
+      <button type="button" class="stall-inventory-tab" data-tab="result" role="tab">Результат</button>
+    </div>
+    <div id="stallInventoryContent" class="stall-inventory-content"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
   </div>
 

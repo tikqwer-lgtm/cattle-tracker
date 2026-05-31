@@ -1140,6 +1140,12 @@ if (typeof window !== 'undefined') {
   window.stallMapSaveGridFromUI = stallMapSaveGridFromUI;
   window.stallMapCloseAssignModal = stallMapCloseAssignModal;
   window.stallMapRedrawIfActive = stallMapRedrawIfActive;
+  window.stallMapEntryHasStallCoords = stallMapEntryHasStallCoords;
+  window.stallMapFindAt = stallMapFindAt;
+  window.stallMapCattleIdEqual = stallMapCattleIdEqual;
+  window.stallMapReadLayoutLocal = stallMapReadLayoutLocal;
+  window.stallMapNormalizeLayout = stallMapNormalizeLayout;
+  window.stallMapPersistEntries = stallMapPersistEntries;
 }
 
 export {};

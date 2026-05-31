@@ -10,7 +10,8 @@ var MENU_GROUPS = {
       { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" },
       { icon: '📋', text: 'Списки', onclick: "navigate('lists')" },
       { icon: '📜', text: 'Список событий', onclick: "navigate('events')" },
-      { icon: '▦', text: 'Схема стойломест', onclick: "navigate('stall-map')" }
+      { icon: '▦', text: 'Схема стойломест', onclick: "navigate('stall-map')" },
+      { icon: '☑', text: 'Инвентаризация', onclick: "navigate('stall-inventory')" }
     ]
   },
   actions: {
@@ -234,6 +235,9 @@ function navigate(screenId, options) {
   }
   if (screenId === 'stall-map' && typeof window.initStallMapScreen === 'function') {
     window.initStallMapScreen();
+  }
+  if (screenId === 'stall-inventory' && typeof window.initStallInventoryScreen === 'function') {
+    window.initStallInventoryScreen();
   }
   if (screenId === 'add') {
     var clearBtn = document.getElementById('clearFormButton');
