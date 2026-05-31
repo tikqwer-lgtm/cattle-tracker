@@ -248,6 +248,86 @@ export function recordUnassignedCheck(session, cattleId, status, foundCoords) {
   return session;
 }
 
+/**
+ * @param {object} session
+ * @param {object[]|null} yardCells — результат buildYardCells; если null, считается только по cellChecks
+ */
+export function getInventoryProgress(session, yardCells) {
+  var cellsTotal = yardCells ? yardCells.length : 0;
+  var cellsChecked = 0;
+  if (session && session.cellChecks) {
+    cellsChecked = Object.keys(session.cellChecks).length;
+  }
+  if (cellsTotal === 0 && yardCells === null && session && session.cellChecks) {
+    cellsTotal = cellsChecked;
+  }
+
+  var unassignedTotal = 0;
+  var unassignedChecked = 0;
+  if (session && session.unassignedChecks) {
+    Object.keys(session.unassignedChecks).forEach(function (id) {
+      unassignedTotal++;
+      var st = session.unassignedChecks[id] && session.unassignedChecks[id].status;
+      if (st === 'found' || st === 'not_found') unassignedChecked++;
+    });
+  }
+
+  return {
+    cellsChecked: cellsChecked,
+    cellsTotal: cellsTotal,
+    unassignedChecked: unassignedChecked,
+    unassignedTotal: unassignedTotal
+  };
+}
+
+/**
+ * Досрочное или полное завершение сверки.
+ * @param {object} session
+ * @param {{ early?: boolean }} [options]
+ */
+export function finishInventorySession(session, options) {
+  if (!session) return session;
+  var early = options && options.early === true;
+  session.phase = 'done';
+  session.finishedEarly = early;
+  session.completedAt = new Date().toISOString();
+  return session;
+}
+
+function getUnassignedCheck(session, cattleId) {
+  if (!session || !session.unassignedChecks) return null;
+  if (session.unassignedChecks[cattleId]) return session.unassignedChecks[cattleId];
+  for (var uk in session.unassignedChecks) {
+    if (Object.prototype.hasOwnProperty.call(session.unassignedChecks, uk) && cattleIdEqual(uk, cattleId)) {
+      return session.unassignedChecks[uk];
+    }
+  }
+  return null;
+}
+
+function buildUncheckedCells(session, layout, yardCells) {
+  var uncheckedCells = [];
+  if (!session || !session.finishedEarly) return uncheckedCells;
+  var cells = yardCells;
+  if (!cells && layout && session.yardKey) {
+    cells = buildYardCells(layout, session.yardKey, session.expectedSnapshot);
+  }
+  if (!cells) return uncheckedCells;
+  cells.forEach(function (cell) {
+    if (!cell) return;
+    var key = cellKey(cell.yard, cell.row, cell.place);
+    if (session.cellChecks && session.cellChecks[key]) return;
+    uncheckedCells.push({
+      yard: cell.yard,
+      row: cell.row,
+      place: cell.place,
+      expected: cell.expected || null
+    });
+  });
+  uncheckedCells.sort(compareCells);
+  return uncheckedCells;
+}
+
 function findInSnapshot(snapshot, cattleId) {
   for (var i = 0; i < (snapshot || []).length; i++) {
     if (cattleIdEqual(snapshot[i].cattleId, cattleId)) return snapshot[i];
@@ -275,26 +355,24 @@ function pushMoved(moved, seen, item) {
 }
 
 /**
- * @returns {{ moved: object[], withoutPlace: { stillWithout: object[], foundDuringCheck: object[] } }}
+ * @param {object} session
+ * @param {object[]|undefined} expectedEntries
+ * @param {{ layout?: object, yardCells?: object[] }} [opts]
+ * @returns {{ moved: object[], withoutPlace: object, uncheckedCells: object[], progress: object }}
  */
-export function computeInventoryResult(session, expectedEntries) {
+export function computeInventoryResult(session, expectedEntries, opts) {
   var moved = [];
   var seenMoved = {};
   var snapshot = session && session.expectedSnapshot ? session.expectedSnapshot : expectedEntries;
-  var withoutPlace = { stillWithout: [], foundDuringCheck: [] };
+  var withoutPlace = { stillWithout: [], foundDuringCheck: [], notChecked: [] };
+  var layout = opts && opts.layout ? opts.layout : null;
+  var yardCells = opts && opts.yardCells ? opts.yardCells : null;
+  var finishedEarly = !!(session && session.finishedEarly);
 
   (snapshot || []).forEach(function (entry) {
     if (!entry || !entry.cattleId) return;
     if (!entryHasStallCoords(entry)) {
-      var uc = session && session.unassignedChecks ? session.unassignedChecks[entry.cattleId] : null;
-      if (!uc) {
-        for (var uk in (session && session.unassignedChecks || {})) {
-          if (Object.prototype.hasOwnProperty.call(session.unassignedChecks, uk) && cattleIdEqual(uk, entry.cattleId)) {
-            uc = session.unassignedChecks[uk];
-            break;
-          }
-        }
-      }
+      var uc = getUnassignedCheck(session, entry.cattleId);
       var base = entrySummary(entry);
       if (uc && uc.status === 'found' && uc.found && invEntryIntField(uc.found.row) != null) {
         withoutPlace.foundDuringCheck.push({
@@ -303,7 +381,11 @@ export function computeInventoryResult(session, expectedEntries) {
           group: base.group,
           found: uc.found
         });
-      } else {
+      } else if (uc && uc.status === 'not_found') {
+        withoutPlace.stillWithout.push(base);
+      } else if (uc && uc.status === 'pending' && finishedEarly) {
+        withoutPlace.notChecked.push(base);
+      } else if (!uc || uc.status === 'pending') {
         withoutPlace.stillWithout.push(base);
       }
       return;
@@ -363,7 +445,15 @@ export function computeInventoryResult(session, expectedEntries) {
     }
   });
 
-  return { moved: moved, withoutPlace: withoutPlace };
+  var uncheckedCells = buildUncheckedCells(session, layout, yardCells);
+  var progress = getInventoryProgress(session, yardCells);
+
+  return {
+    moved: moved,
+    withoutPlace: withoutPlace,
+    uncheckedCells: uncheckedCells,
+    progress: progress
+  };
 }
 
 /**

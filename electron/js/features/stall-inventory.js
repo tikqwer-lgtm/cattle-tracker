@@ -11,7 +11,9 @@ import {
   collectApplyUpdates,
   formatStallLabel,
   cattleIdEqual,
-  normalizeLayout
+  normalizeLayout,
+  finishInventorySession,
+  getInventoryProgress
 } from './stall-inventory-core.js';
 
 var INVENTORY_SESSION_PREFIX = 'cattleTracker_stallInventory_';
@@ -266,6 +268,49 @@ function invAdvanceAfterCellCheck() {
   invRenderActiveTab();
 }
 
+function invFinishCheckComplete() {
+  if (!_inventorySession) return;
+  finishInventorySession(_inventorySession, { early: false });
+  invSaveSession();
+  _inventoryTab = 'result';
+  invRenderActiveTab();
+}
+
+function invFinishCheckEarly() {
+  if (!_inventorySession) return;
+  var progress = getInventoryProgress(_inventorySession, _inventoryYardCells);
+  var msg = 'Завершить сверку досрочно?\n\n' +
+    'Проверено стойломест: ' + progress.cellsChecked + ' из ' + progress.cellsTotal + '.\n' +
+    'Без места: ' + progress.unassignedChecked + ' из ' + progress.unassignedTotal + '.\n\n' +
+    'Непроверенные позиции не войдут в несостыковки.';
+  if (!confirm(msg)) return;
+  finishInventorySession(_inventorySession, { early: true });
+  invSaveSession();
+  _inventoryTab = 'result';
+  invRenderActiveTab();
+}
+
+function invBindFinishEarlyButton(host) {
+  var btn = host.querySelector('#stallInvFinishEarly');
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', invFinishCheckEarly);
+  }
+}
+
+function invBindCancelCheckButton(host) {
+  var cancelBtn = host.querySelector('#stallInvCancelCheck');
+  if (cancelBtn && !cancelBtn.dataset.bound) {
+    cancelBtn.dataset.bound = '1';
+    cancelBtn.addEventListener('click', function () {
+      if (confirm('Отменить текущую сверку?')) {
+        invClearSession();
+        invRenderActiveTab();
+      }
+    });
+  }
+}
+
 function invRenderCellCheck(host) {
   var cell = invCurrentCell();
   if (!cell) {
@@ -294,7 +339,10 @@ function invRenderCellCheck(host) {
     '<button type="button" class="small-btn" id="stallInvCellOther">Другой номер</button>' +
     '<button type="button" class="small-btn" id="stallInvCellEmpty">Пусто</button>' +
     '</div></div>' +
-    '<button type="button" class="small-btn stall-inventory-cancel" id="stallInvCancelCheck">Отменить сверку</button>';
+    '<div class="stall-inventory-check-footer">' +
+    '<button type="button" class="small-btn stall-inventory-finish-early" id="stallInvFinishEarly">Завершить сверку</button>' +
+    '<button type="button" class="small-btn stall-inventory-cancel" id="stallInvCancelCheck">Отменить сверку</button>' +
+    '</div>';
 
   var okBtn = host.querySelector('#stallInvCellOk');
   var otherBtn = host.querySelector('#stallInvCellOther');
@@ -345,15 +393,8 @@ function invRenderCellCheck(host) {
     });
   }
 
-  var cancelBtn = host.querySelector('#stallInvCancelCheck');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function () {
-      if (confirm('Отменить текущую сверку?')) {
-        invClearSession();
-        invRenderActiveTab();
-      }
-    });
-  }
+  invBindFinishEarlyButton(host);
+  invBindCancelCheckButton(host);
 }
 
 function invUnassignedList() {
@@ -370,19 +411,13 @@ function invUnassignedList() {
 function invRenderUnassignedCheck(host) {
   var list = invUnassignedList();
   if (!list.length) {
-    _inventorySession.phase = 'done';
-    invSaveSession();
-    _inventoryTab = 'result';
-    invRenderActiveTab();
+    invFinishCheckComplete();
     return;
   }
 
   var idx = _inventorySession.currentCellIndex || 0;
   if (idx >= list.length) {
-    _inventorySession.phase = 'done';
-    invSaveSession();
-    _inventoryTab = 'result';
-    invRenderActiveTab();
+    invFinishCheckComplete();
     return;
   }
 
@@ -400,7 +435,10 @@ function invRenderUnassignedCheck(host) {
     '<button type="button" class="small-btn" id="stallInvUnassignedNotFound">Не найдено</button>' +
     '<button type="button" class="action-btn" id="stallInvUnassignedFound">Найдено</button>' +
     '</div></div>' +
-    '<button type="button" class="small-btn stall-inventory-cancel" id="stallInvCancelCheck">Отменить сверку</button>';
+    '<div class="stall-inventory-check-footer">' +
+    '<button type="button" class="small-btn stall-inventory-finish-early" id="stallInvFinishEarly">Завершить сверку</button>' +
+    '<button type="button" class="small-btn stall-inventory-cancel" id="stallInvCancelCheck">Отменить сверку</button>' +
+    '</div>';
 
   var foundWrap = host.querySelector('#stallInvFoundWrap');
   var foundBtn = host.querySelector('#stallInvUnassignedFound');
@@ -436,15 +474,8 @@ function invRenderUnassignedCheck(host) {
     });
   }
 
-  var cancelBtn = host.querySelector('#stallInvCancelCheck');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function () {
-      if (confirm('Отменить текущую сверку?')) {
-        invClearSession();
-        invRenderActiveTab();
-      }
-    });
-  }
+  invBindFinishEarlyButton(host);
+  invBindCancelCheckButton(host);
 }
 
 function invRenderCheckStart(host) {
@@ -543,16 +574,67 @@ function invRenderResultTab(host) {
     host.innerHTML = '<p class="stall-inventory-muted">Сначала завершите сверку на вкладке «Сверка».</p>';
     return;
   }
-  var result = computeInventoryResult(_inventorySession, _inventorySession.expectedSnapshot);
+  var result = computeInventoryResult(_inventorySession, _inventorySession.expectedSnapshot, {
+    layout: _inventoryLayout,
+    yardCells: _inventoryYardCells
+  });
+  var progress = result.progress || getInventoryProgress(_inventorySession, _inventoryYardCells);
   var applyBtn = invIsViewer()
     ? ''
     : '<button type="button" class="action-btn" id="stallInvApplyBtn">Применить места по результатам</button>';
+
+  var earlyBanner = '';
+  if (_inventorySession.finishedEarly) {
+    var completedStr = _inventorySession.completedAt
+      ? new Date(_inventorySession.completedAt).toLocaleString('ru-RU')
+      : '';
+    earlyBanner =
+      '<div class="stall-inventory-early-banner">' +
+      '<strong>Сверка завершена досрочно</strong>' +
+      (completedStr ? ' — ' + invEscapeHtml(completedStr) : '') +
+      '<p class="stall-inventory-early-banner-detail">Проверено стойломест: ' +
+      progress.cellsChecked + ' из ' + progress.cellsTotal +
+      '. Без места: ' + progress.unassignedChecked + ' из ' + progress.unassignedTotal + '.</p>' +
+      '</div>';
+  }
+
+  var uncheckedSection = '';
+  if (_inventorySession.finishedEarly) {
+    var hasUncheckedCells = result.uncheckedCells && result.uncheckedCells.length;
+    var hasNotCheckedUnassigned = result.withoutPlace.notChecked && result.withoutPlace.notChecked.length;
+    if (hasUncheckedCells || hasNotCheckedUnassigned) {
+      uncheckedSection =
+        '<h3 class="stall-inventory-section-title">3. Не проверено</h3>';
+      if (hasUncheckedCells) {
+        uncheckedSection +=
+          '<h4 class="stall-inventory-subtitle">Стойломеста</h4>' +
+          invResultTableRows(result.uncheckedCells, [
+            { label: 'Стойломесто', render: function (r) { return invEscapeHtml(formatStallLabel(r.yard, r.row, r.place)); } },
+            { label: 'Ожидалось', render: function (r) {
+              return r.expected && r.expected.cattleId
+                ? invEscapeHtml(r.expected.cattleId + (r.expected.nickname ? ' — ' + r.expected.nickname : ''))
+                : 'пусто';
+            } }
+          ]);
+      }
+      if (hasNotCheckedUnassigned) {
+        uncheckedSection +=
+          '<h4 class="stall-inventory-subtitle">Животные без места</h4>' +
+          invResultTableRows(result.withoutPlace.notChecked, [
+            { label: 'Номер', key: 'cattleId' },
+            { label: 'Кличка', key: 'nickname' },
+            { label: 'Группа', key: 'group' }
+          ]);
+      }
+    }
+  }
 
   host.innerHTML =
     '<div class="inventory-print-root">' +
     '<div class="stall-inventory-actions no-print">' + applyBtn +
     invPrintButtonHtml('stallInvResultPrint') +
     '<button type="button" class="small-btn" id="stallInvNewCheck">Новая сверка</button></div>' +
+    earlyBanner +
     '<h3 class="stall-inventory-section-title">1. Поменяли место</h3>' +
     invResultTableRows(result.moved, [
       { label: 'Номер', key: 'cattleId' },
@@ -573,6 +655,7 @@ function invRenderResultTab(host) {
       { label: 'Кличка', key: 'nickname' },
       { label: 'Найдено', render: function (r) { return invEscapeHtml(formatStallLabel(r.found.yard, r.found.row, r.found.place)); } }
     ]) +
+    uncheckedSection +
     '</div>';
 
   var applyEl = host.querySelector('#stallInvApplyBtn');
