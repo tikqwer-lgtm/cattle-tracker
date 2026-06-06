@@ -220,13 +220,18 @@ export function createInventorySession(objectId, yardKey, expectedEntries) {
 /**
  * @param {'ok'|'empty'|'other'} status
  * @param {string|null} [actualCattleId] — для status 'other'
+ * @param {boolean} [isNewToHerd] — для status 'other': животное не было в стаде на старте
  */
-export function recordCellCheck(session, yard, row, place, status, actualCattleId) {
+export function recordCellCheck(session, yard, row, place, status, actualCattleId, isNewToHerd) {
   if (!session) return session;
-  session.cellChecks[cellKey(yard, row, place)] = {
+  var rec = {
     status: status,
     actualCattleId: actualCattleId != null && String(actualCattleId).trim() !== '' ? String(actualCattleId).trim() : null
   };
+  if (status === 'other') {
+    rec.isNewToHerd = !!isNewToHerd;
+  }
+  session.cellChecks[cellKey(yard, row, place)] = rec;
   return session;
 }
 
@@ -354,6 +359,80 @@ function pushMoved(moved, seen, item) {
   moved.push(item);
 }
 
+function pushUnallocated(list, item) {
+  if (!item || !item.cattleId) return;
+  for (var i = 0; i < list.length; i++) {
+    if (cattleIdEqual(list[i].cattleId, item.cattleId)) return;
+  }
+  list.push(item);
+}
+
+function buildNewAnimals(session, snapshot) {
+  var newAnimals = [];
+  var seen = {};
+  Object.keys(session.cellChecks || {}).forEach(function (key) {
+    var parts = key.split('|');
+    if (parts.length < 3) return;
+    var ck = session.cellChecks[key];
+    if (!ck || ck.status !== 'other' || !ck.actualCattleId) return;
+    var isNew = ck.isNewToHerd === true || !findInSnapshot(snapshot, ck.actualCattleId);
+    if (!isNew) return;
+    var id = String(ck.actualCattleId).trim();
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    newAnimals.push({
+      cattleId: id,
+      foundAt: {
+        yard: parts[0],
+        row: parseInt(parts[1], 10),
+        place: parseInt(parts[2], 10)
+      }
+    });
+  });
+  return newAnimals;
+}
+
+function buildUnallocated(session, snapshot, withoutPlace) {
+  var unallocated = [];
+
+  (withoutPlace.stillWithout || []).forEach(function (base) {
+    pushUnallocated(unallocated, {
+      cattleId: base.cattleId,
+      nickname: base.nickname,
+      group: base.group,
+      reason: 'без стойломеста',
+      stallLabel: '—'
+    });
+  });
+
+  (withoutPlace.notChecked || []).forEach(function (base) {
+    pushUnallocated(unallocated, {
+      cattleId: base.cattleId,
+      nickname: base.nickname,
+      group: base.group,
+      reason: 'без стойломеста (не проверено)',
+      stallLabel: '—'
+    });
+  });
+
+  (snapshot || []).forEach(function (entry) {
+    if (!entry || !entry.cattleId || !entryHasStallCoords(entry)) return;
+    var coords = entryStallCoords(entry);
+    var ck = session.cellChecks[cellKey(coords.yard, coords.row, coords.place)];
+    if (!ck || ck.status !== 'empty') return;
+    var base = entrySummary(entry);
+    pushUnallocated(unallocated, {
+      cattleId: base.cattleId,
+      nickname: base.nickname,
+      group: base.group,
+      reason: 'не найдено на месте',
+      stallLabel: formatStallLabel(coords.yard, coords.row, coords.place)
+    });
+  });
+
+  return unallocated;
+}
+
 /**
  * @param {object} session
  * @param {object[]|undefined} expectedEntries
@@ -447,12 +526,16 @@ export function computeInventoryResult(session, expectedEntries, opts) {
 
   var uncheckedCells = buildUncheckedCells(session, layout, yardCells);
   var progress = getInventoryProgress(session, yardCells);
+  var newAnimals = buildNewAnimals(session, snapshot);
+  var unallocated = buildUnallocated(session, snapshot, withoutPlace);
 
   return {
     moved: moved,
     withoutPlace: withoutPlace,
     uncheckedCells: uncheckedCells,
-    progress: progress
+    progress: progress,
+    newAnimals: newAnimals,
+    unallocated: unallocated
   };
 }
 

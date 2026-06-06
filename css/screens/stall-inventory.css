@@ -119,6 +119,27 @@
   margin-bottom: 0.75rem;
 }
 
+.stall-inventory-assign-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.stall-inventory-assign-input-row .stall-map-assign-input {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.stall-inventory-other-save {
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+#stallInvOtherHint {
+  margin: 0.35rem 0 0 0;
+}
+
 .stall-inventory-found-fields {
   display: flex;
   flex-wrap: wrap;

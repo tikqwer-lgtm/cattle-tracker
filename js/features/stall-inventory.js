@@ -257,6 +257,92 @@ function invResolveCattleId(raw) {
   return null;
 }
 
+function invParseActualInput(raw) {
+  var v = String(raw || '').trim();
+  if (!v) return null;
+  var partId = v.split(/\s*[—–\-]\s*/)[0].trim();
+  var resolved = invResolveCattleId(partId || v);
+  if (resolved) return { cattleId: resolved, inHerd: true };
+  var id = partId || v;
+  if (!id) return null;
+  return { cattleId: id, inHerd: false };
+}
+
+function invFilterPendingNewAnimals(newAnimals) {
+  var created = (_inventorySession && _inventorySession.createdNewAnimals) || [];
+  return (newAnimals || []).filter(function (row) {
+    if (!row || !row.cattleId) return false;
+    for (var i = 0; i < created.length; i++) {
+      if (cattleIdEqual(created[i], row.cattleId)) return false;
+    }
+    var list = invGetEntries();
+    for (var j = 0; j < list.length; j++) {
+      if (list[j] && cattleIdEqual(list[j].cattleId, row.cattleId)) return false;
+    }
+    return true;
+  });
+}
+
+function invCreateNewAnimalCards(newAnimals) {
+  if (invIsViewer()) return Promise.resolve(0);
+  var pending = invFilterPendingNewAnimals(newAnimals);
+  if (!pending.length) {
+    if (typeof showToast === 'function') showToast('Нет новых животных для создания', 'info');
+    return Promise.resolve(0);
+  }
+  if (!_inventorySession.createdNewAnimals) _inventorySession.createdNewAnimals = [];
+
+  var chain = Promise.resolve();
+  var created = 0;
+  pending.forEach(function (row) {
+    chain = chain.then(function () {
+      var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && cattleIdEqual(list[i].cattleId, row.cattleId)) {
+          return Promise.resolve();
+        }
+      }
+      var entry = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : { cattleId: '' };
+      entry.cattleId = row.cattleId;
+      entry.stallYard = row.foundAt.yard;
+      entry.stallRow = row.foundAt.row;
+      entry.stallPlace = row.foundAt.place;
+      entry.synced = false;
+      if (typeof getCurrentUser === 'function' && getCurrentUser()) {
+        entry.userId = getCurrentUser().id;
+        entry.lastModifiedBy = getCurrentUser().username;
+      }
+      var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
+      if (useApi) {
+        return window.createEntryViaApi(entry).then(function () {
+          _inventorySession.createdNewAnimals.push(row.cattleId);
+          created++;
+        });
+      }
+      if (list.some(function (e) { return e && cattleIdEqual(e.cattleId, row.cattleId); })) {
+        return Promise.resolve();
+      }
+      list.unshift(entry);
+      if (typeof saveLocally === 'function') saveLocally();
+      _inventorySession.createdNewAnimals.push(row.cattleId);
+      created++;
+      return Promise.resolve();
+    });
+  });
+
+  return chain.then(function () {
+    invSaveSession();
+    if (typeof updateViewList === 'function') updateViewList();
+    if (typeof window.stallMapRedrawIfActive === 'function') window.stallMapRedrawIfActive();
+    if (typeof showToast === 'function') showToast('Создано карточек: ' + created, created ? 'success' : 'info');
+    invRenderActiveTab();
+    return created;
+  }).catch(function (err) {
+    if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка создания карточек', 'error');
+    throw err;
+  });
+}
+
 function invAdvanceAfterCellCheck() {
   if (!_inventorySession) return;
   _inventorySession.currentCellIndex = (_inventorySession.currentCellIndex || 0) + 1;
@@ -332,8 +418,12 @@ function invRenderCellCheck(host) {
     '<p class="stall-inventory-cell-coords">' + invEscapeHtml(formatStallLabel(cell.yard, cell.row, cell.place)) + '</p>' +
     '<p class="stall-inventory-cell-expected"><span>Ожидается:</span> ' + expText + '</p>' +
     '<div class="stall-inventory-other-input" id="stallInvOtherWrap" hidden>' +
-    '<label class="stall-map-field"><span>Фактический номер</span>' +
-    '<input type="text" id="stallInvOtherInput" class="stall-map-assign-input" placeholder="Номер или кличка" autocomplete="off" /></label></div>' +
+    '<label class="stall-map-field"><span>Фактический номер</span></label>' +
+    '<div class="stall-inventory-assign-input-row">' +
+    '<input type="text" id="stallInvOtherInput" class="stall-map-assign-input" placeholder="Номер или кличка" autocomplete="off" />' +
+    '<button type="button" class="action-btn stall-inventory-other-save" id="stallInvOtherSave">Сохранить</button>' +
+    '</div>' +
+    '<p id="stallInvOtherHint" class="stall-inventory-muted" hidden></p></div>' +
     '<div class="stall-inventory-cell-actions">' +
     '<button type="button" class="action-btn" id="stallInvCellOk">Верно</button>' +
     '<button type="button" class="small-btn" id="stallInvCellOther">Другой номер</button>' +
@@ -349,15 +439,34 @@ function invRenderCellCheck(host) {
   var emptyBtn = host.querySelector('#stallInvCellEmpty');
   var otherWrap = host.querySelector('#stallInvOtherWrap');
   var otherInput = host.querySelector('#stallInvOtherInput');
+  var otherSaveBtn = host.querySelector('#stallInvOtherSave');
+  var otherHint = host.querySelector('#stallInvOtherHint');
   var otherMode = false;
 
-  function submitOther() {
-    var cid = invResolveCattleId(otherInput ? otherInput.value : '');
-    if (!cid) {
-      if (typeof showToast === 'function') showToast('Животное не найдено', 'error');
+  function updateOtherHint() {
+    if (!otherHint || !otherInput || otherWrap.hidden) return;
+    var parsed = invParseActualInput(otherInput.value);
+    if (!parsed) {
+      otherHint.hidden = true;
+      otherHint.textContent = '';
       return;
     }
-    recordCellCheck(_inventorySession, cell.yard, cell.row, cell.place, 'other', cid);
+    if (!parsed.inHerd) {
+      otherHint.hidden = false;
+      otherHint.textContent = 'Нет в стаде — будет добавлена в список новых животных';
+    } else {
+      otherHint.hidden = true;
+      otherHint.textContent = '';
+    }
+  }
+
+  function submitOther() {
+    var parsed = invParseActualInput(otherInput ? otherInput.value : '');
+    if (!parsed) {
+      if (typeof showToast === 'function') showToast('Введите номер животного', 'error');
+      return;
+    }
+    recordCellCheck(_inventorySession, cell.yard, cell.row, cell.place, 'other', parsed.cattleId, !parsed.inHerd);
     invStopAssignPoll();
     invAdvanceAfterCellCheck();
   }
@@ -381,16 +490,22 @@ function invRenderCellCheck(host) {
       if (otherMode) {
         otherInput.focus();
         invStartAssignPoll(otherInput);
+        updateOtherHint();
       } else {
         invStopAssignPoll();
+        if (otherHint) otherHint.hidden = true;
       }
     });
+    otherInput.addEventListener('input', updateOtherHint);
     otherInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         submitOther();
       }
     });
+  }
+  if (otherSaveBtn) {
+    otherSaveBtn.addEventListener('click', submitOther);
   }
 
   invBindFinishEarlyButton(host);
@@ -598,13 +713,18 @@ function invRenderResultTab(host) {
       '</div>';
   }
 
+  var pendingNew = invFilterPendingNewAnimals(result.newAnimals || []);
+  var createNewBtn = (!invIsViewer() && pendingNew.length)
+    ? '<button type="button" class="action-btn no-print" id="stallInvCreateNewBtn">Создать карточки (' + pendingNew.length + ')</button>'
+    : '';
+
   var uncheckedSection = '';
   if (_inventorySession.finishedEarly) {
     var hasUncheckedCells = result.uncheckedCells && result.uncheckedCells.length;
     var hasNotCheckedUnassigned = result.withoutPlace.notChecked && result.withoutPlace.notChecked.length;
     if (hasUncheckedCells || hasNotCheckedUnassigned) {
       uncheckedSection =
-        '<h3 class="stall-inventory-section-title">3. Не проверено</h3>';
+        '<h3 class="stall-inventory-section-title">5. Не проверено</h3>';
       if (hasUncheckedCells) {
         uncheckedSection +=
           '<h4 class="stall-inventory-subtitle">Стойломеста</h4>' +
@@ -642,14 +762,20 @@ function invRenderResultTab(host) {
       { label: 'Было', render: function (r) { return invEscapeHtml(formatStallLabel(r.expected.yard, r.expected.row, r.expected.place)); } },
       { label: 'Факт', key: 'actualLabel' }
     ]) +
-    '<h3 class="stall-inventory-section-title">2. Без места</h3>' +
-    '<h4 class="stall-inventory-subtitle">Ещё без места</h4>' +
-    invResultTableRows(result.withoutPlace.stillWithout, [
+    '<h3 class="stall-inventory-section-title">2. Новые животные в стаде</h3>' +
+    (createNewBtn ? '<div class="stall-inventory-actions no-print">' + createNewBtn + '</div>' : '') +
+    invResultTableRows(pendingNew.length ? pendingNew : (result.newAnimals || []), [
+      { label: 'Номер', key: 'cattleId' },
+      { label: 'Стойломесто', render: function (r) { return invEscapeHtml(formatStallLabel(r.foundAt.yard, r.foundAt.row, r.foundAt.place)); } }
+    ]) +
+    '<h3 class="stall-inventory-section-title">3. Нераспределённые</h3>' +
+    invResultTableRows(result.unallocated || [], [
       { label: 'Номер', key: 'cattleId' },
       { label: 'Кличка', key: 'nickname' },
-      { label: 'Группа', key: 'group' }
+      { label: 'Причина', key: 'reason' },
+      { label: 'Место в базе', key: 'stallLabel' }
     ]) +
-    '<h4 class="stall-inventory-subtitle">Найдены при обходе</h4>' +
+    '<h3 class="stall-inventory-section-title">4. Без места — найдены при обходе</h3>' +
     invResultTableRows(result.withoutPlace.foundDuringCheck, [
       { label: 'Номер', key: 'cattleId' },
       { label: 'Кличка', key: 'nickname' },
@@ -657,6 +783,13 @@ function invRenderResultTab(host) {
     ]) +
     uncheckedSection +
     '</div>';
+
+  var createNewEl = host.querySelector('#stallInvCreateNewBtn');
+  if (createNewEl) {
+    createNewEl.addEventListener('click', function () {
+      invCreateNewAnimalCards(result.newAnimals);
+    });
+  }
 
   var applyEl = host.querySelector('#stallInvApplyBtn');
   if (applyEl) {

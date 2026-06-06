@@ -48,23 +48,29 @@ describe('stall-inventory-core', () => {
     expect(result.withoutPlace.stillWithout).toHaveLength(1);
     expect(result.withoutPlace.notChecked).toHaveLength(0);
     expect(result.uncheckedCells).toHaveLength(0);
+    expect(result.unallocated).toHaveLength(1);
+    expect(result.unallocated[0].cattleId).toBe('200');
   });
 
-  it('empty at expected stall marks animal as moved', () => {
+  it('empty at expected stall marks animal as moved and unallocated', () => {
     var session = createInventorySession('default', '1', entries);
     recordCellCheck(session, '1', 1, 1, 'empty');
     finishInventorySession(session, { early: true });
     var yardCells = buildYardCells(layout, '1', entries);
     var result = computeInventoryResult(session, entries, { layout: layout, yardCells: yardCells });
     expect(result.moved.some(function (m) { return cattleIdEqual(m.cattleId, '101'); })).toBe(true);
+    expect(result.unallocated.some(function (u) { return cattleIdEqual(u.cattleId, '101') && u.reason === 'не найдено на месте'; })).toBe(true);
   });
 
-  it('other animal at stall marks both as moved when applicable', () => {
+  it('unknown animal at stall goes to newAnimals and marks expected as moved', () => {
     var session = createInventorySession('default', '1', entries);
-    recordCellCheck(session, '1', 1, 1, 'other', '999');
+    recordCellCheck(session, '1', 1, 1, 'other', '999', true);
     finishInventorySession(session, { early: true });
     var result = computeInventoryResult(session, entries, { layout: layout, yardCells: buildYardCells(layout, '1', entries) });
     expect(result.moved.some(function (m) { return cattleIdEqual(m.cattleId, '101'); })).toBe(true);
+    expect(result.newAnimals).toHaveLength(1);
+    expect(result.newAnimals[0].cattleId).toBe('999');
+    expect(result.newAnimals[0].foundAt.row).toBe(1);
   });
 
   it('unassigned found goes to foundDuringCheck', () => {
@@ -74,12 +80,13 @@ describe('stall-inventory-core', () => {
     var result = computeInventoryResult(session, entries, { layout: layout, yardCells: buildYardCells(layout, '1', entries) });
     expect(result.withoutPlace.foundDuringCheck).toHaveLength(1);
     expect(result.withoutPlace.stillWithout).toHaveLength(0);
+    expect(result.newAnimals).toHaveLength(0);
     var updates = collectApplyUpdates(session, result);
     expect(updates).toHaveLength(1);
     expect(updates[0].stallRow).toBe(2);
   });
 
-  it('early finish leaves unchecked cells and pending unassigned in notChecked', () => {
+  it('early finish leaves unchecked cells and pending unassigned in notChecked and unallocated', () => {
     var session = createInventorySession('default', '1', entries);
     recordCellCheck(session, '1', 1, 1, 'ok');
     finishInventorySession(session, { early: true });
@@ -90,6 +97,8 @@ describe('stall-inventory-core', () => {
     expect(result.withoutPlace.notChecked).toHaveLength(1);
     expect(result.withoutPlace.notChecked[0].cattleId).toBe('200');
     expect(result.withoutPlace.stillWithout).toHaveLength(0);
+    expect(result.unallocated.some(function (u) { return cattleIdEqual(u.cattleId, '200'); })).toBe(true);
+    expect(result.newAnimals).toHaveLength(0);
   });
 
   it('full run with not_found unassigned does not use notChecked', () => {
@@ -103,5 +112,7 @@ describe('stall-inventory-core', () => {
     var result = computeInventoryResult(session, entries, { layout: layout, yardCells: buildYardCells(layout, '1', entries) });
     expect(result.withoutPlace.stillWithout).toHaveLength(1);
     expect(result.withoutPlace.notChecked).toHaveLength(0);
+    expect(result.newAnimals).toHaveLength(0);
+    expect(result.unallocated.filter(function (u) { return cattleIdEqual(u.cattleId, '200'); })).toHaveLength(1);
   });
 });
