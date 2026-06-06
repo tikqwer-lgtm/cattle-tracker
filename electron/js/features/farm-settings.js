@@ -135,12 +135,39 @@
     }
   }
 
+  function normalizeVwpDays(raw) {
+    var n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return 60;
+    if (n < 30) return 30;
+    if (n > 120) return 120;
+    return n;
+  }
+
+  function getFarmVwpDays() {
+    if (window.CattleTrackerObjectData) {
+      var s = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      return normalizeVwpDays(s && s.vwpDays);
+    }
+    return 60;
+  }
+
+  function setFarmVwpDays(days) {
+    var v = normalizeVwpDays(days);
+    if (window.CattleTrackerObjectData) {
+      var s2 = window.CattleTrackerObjectData.loadFarmSettingsLocal(currentObjectId());
+      s2.vwpDays = v;
+      window.CattleTrackerObjectData.saveFarmSettingsLocal(currentObjectId(), s2);
+    }
+    return v;
+  }
+
   function persistFarmSettingsToServer() {
     if (!useFarmSettingsApi()) return Promise.resolve();
     return window.CattleTrackerApi.putFarmSettings(currentObjectId(), {
       technicians: getFarmTechnicians(),
       bulls: getFarmBullsManual(),
-      drugs: getFarmDrugs()
+      drugs: getFarmDrugs(),
+      vwpDays: getFarmVwpDays()
     });
   }
 
@@ -307,6 +334,12 @@
     wireAdd('farmSettingsBullsInput', 'farmSettingsBullsAddBtn', bulls, drawBulls);
     wireAdd('farmSettingsDrugsInput', 'farmSettingsDrugsAddBtn', drugs, drawDrugs);
 
+    var vwpInp = document.getElementById('farmSettingsVwpDays');
+    if (vwpInp) {
+      vwpInp.value = String(getFarmVwpDays());
+      vwpInp.readOnly = !admin;
+    }
+
     var btn = document.getElementById('farmSettingsSaveBtn');
     if (btn) {
       btn.style.display = admin ? '' : 'none';
@@ -315,6 +348,7 @@
         setFarmTechnicians(tech);
         setFarmBullsManual(bulls);
         setFarmDrugs(drugs);
+        if (vwpInp) setFarmVwpDays(vwpInp.value);
         persistFarmSettingsToServer().then(function () {
           refreshFarmDatalists();
           if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
@@ -345,6 +379,8 @@
     window.setFarmDrugs = setFarmDrugs;
     window.refreshFarmDatalists = refreshFarmDatalists;
     window.initFarmSettingsScreen = initFarmSettingsScreen;
+    window.getFarmVwpDays = getFarmVwpDays;
+    window.setFarmVwpDays = setFarmVwpDays;
   }
 })();
 

@@ -260,6 +260,7 @@ function navigate(screenId, options) {
 
   if (screenId === 'menu') {
     updateObjectSwitcher();
+    if (typeof initMenuCalvingForecast === 'function') initMenuCalvingForecast();
     updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
     if (typeof renderNotificationSummary === 'function') renderNotificationSummary('menuNotificationsBody');
@@ -656,6 +657,125 @@ function updateObjectSwitcher() {
   }
 }
 
+var _menuCalvingMonthOffset = 0;
+var _menuCalvingListsOpen = false;
+
+function formatCalvingMonthLabel(year, month) {
+  try {
+    var d = new Date(year, month, 1);
+    return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  } catch (e) {
+    return year + '-' + (month + 1);
+  }
+}
+
+function updateMenuCalvingForecast() {
+  var block = document.getElementById('menuCalvingForecast');
+  if (!block) return;
+  var now = new Date();
+  var viewDate = new Date(now.getFullYear(), now.getMonth() + _menuCalvingMonthOffset, 1);
+  var year = viewDate.getFullYear();
+  var month = viewDate.getMonth();
+  var labelEl = document.getElementById('menuCalvingMonthLabel');
+  var planEl = document.getElementById('menuCalvingPlanCount');
+  var factEl = document.getElementById('menuCalvingFactCount');
+  var warnEl = document.getElementById('menuCalvingWarning');
+  var planList = document.getElementById('menuCalvingPlanList');
+  var factList = document.getElementById('menuCalvingFactList');
+  var listsWrap = document.getElementById('menuCalvingLists');
+  var toggleBtn = document.getElementById('menuCalvingToggle');
+
+  if (labelEl) labelEl.textContent = formatCalvingMonthLabel(year, month);
+
+  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
+  var stats = typeof getCalvingStatsForMonth === 'function'
+    ? getCalvingStatsForMonth(list, year, month, now)
+    : { plan: { count: 0, items: [] }, fact: { count: 0, items: [], hasDataErrors: false } };
+
+  if (planEl) planEl.textContent = String(stats.plan.count);
+  if (factEl) factEl.textContent = String(stats.fact.count);
+
+  if (warnEl) {
+    if (stats.fact.hasDataErrors) {
+      warnEl.hidden = false;
+      warnEl.textContent = 'Факт содержит даты отёла в будущем — проверьте карточки (см. уведомления «Ошибки»).';
+    } else {
+      warnEl.hidden = true;
+      warnEl.textContent = '';
+    }
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/</g, '&lt;');
+  }
+
+  if (planList) {
+    if (!stats.plan.items.length) {
+      planList.innerHTML = '<li class="menu-calving-list-empty">Нет записей</li>';
+    } else {
+      planList.innerHTML = stats.plan.items.map(function (it) {
+        var nick = it.nickname ? ' (' + esc(it.nickname) + ')' : '';
+        var overdue = it.overdue ? ', просрочено' : '';
+        return '<li>№' + esc(it.cattleId) + ' — ' + esc(it.expectedDate) + nick + overdue + '</li>';
+      }).join('');
+    }
+  }
+
+  if (factList) {
+    if (!stats.fact.items.length) {
+      factList.innerHTML = '<li class="menu-calving-list-empty">Нет записей</li>';
+    } else {
+      factList.innerHTML = stats.fact.items.map(function (it) {
+        var nick = it.nickname ? ' (' + esc(it.nickname) + ')' : '';
+        var err = it.dataError ? ', ошибка даты' : '';
+        return '<li class="' + (it.dataError ? 'menu-calving-list-error' : '') + '">№' + esc(it.cattleId) + ' — ' + esc(it.calvingDate) + nick + err + '</li>';
+      }).join('');
+    }
+  }
+
+  if (listsWrap) listsWrap.hidden = !_menuCalvingListsOpen;
+  if (toggleBtn) {
+    toggleBtn.setAttribute('aria-expanded', _menuCalvingListsOpen ? 'true' : 'false');
+    toggleBtn.textContent = _menuCalvingListsOpen ? 'Скрыть списки' : 'Показать списки';
+  }
+}
+
+function initMenuCalvingForecast() {
+  if (document.getElementById('menuCalvingForecast') && document.getElementById('menuCalvingForecast').dataset.inited === '1') {
+    updateMenuCalvingForecast();
+    return;
+  }
+  var prev = document.getElementById('menuCalvingPrev');
+  var next = document.getElementById('menuCalvingNext');
+  var toggle = document.getElementById('menuCalvingToggle');
+  var block = document.getElementById('menuCalvingForecast');
+  if (block) block.dataset.inited = '1';
+  if (prev) {
+    prev.addEventListener('click', function () {
+      _menuCalvingMonthOffset -= 1;
+      updateMenuCalvingForecast();
+    });
+  }
+  if (next) {
+    next.addEventListener('click', function () {
+      _menuCalvingMonthOffset += 1;
+      updateMenuCalvingForecast();
+    });
+  }
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      _menuCalvingListsOpen = !_menuCalvingListsOpen;
+      updateMenuCalvingForecast();
+    });
+  }
+  if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {
+    window.CattleTrackerEvents.on('entries:updated', function () {
+      updateMenuCalvingForecast();
+    });
+  }
+  updateMenuCalvingForecast();
+}
+
 /**
  * Обновляет статистику стада на главном экране
  */
@@ -681,6 +801,7 @@ function updateHerdStats() {
     setText('inseminatedCowsPct', '0%');
     setText('cullCowsPct', '0%');
     setText('notInseminatedCowsPct', '0%');
+    updateMenuCalvingForecast();
     return;
   }
 
@@ -703,6 +824,7 @@ function updateHerdStats() {
   setText('inseminatedCowsPct', pct(inseminatedCows, totalCows) + '%');
   setText('cullCowsPct', pct(cullCows, totalCows) + '%');
   setText('notInseminatedCowsPct', pct(notInseminatedCows, totalCows) + '%');
+  updateMenuCalvingForecast();
 }
 
 function initAddObjectModal() {
@@ -726,21 +848,41 @@ function initAddObjectModal() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-  initAddObjectModal();
+function routeInitialScreenAfterSession(session) {
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API;
+  var loggedIn = session && session.status === 'loggedIn';
+  if (useApi) {
+    if (loggedIn) {
+      syncRouteToScreen();
+    } else {
+      navigate('auth');
+    }
+    return;
+  }
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  // В Electron при каждом запуске показываем экран входа (удобно для проверки авторизации)
-  var isElectron = typeof window !== 'undefined' && window.electronAPI;
-  if (isElectron) {
-    navigate('auth');
-  } else if (currentUser) {
+  if (currentUser) {
     syncRouteToScreen();
   } else {
     navigate('auth');
   }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  initAddObjectModal();
+  if (typeof window.restoreApiSession === 'function') {
+    window.restoreApiSession().then(function (session) {
+      routeInitialScreenAfterSession(session);
+    }).catch(function () {
+      navigate('auth');
+    });
+  } else {
+    routeInitialScreenAfterSession(null);
+  }
 });
 if (typeof window !== 'undefined') {
   window.updateHerdStats = updateHerdStats;
+  window.updateMenuCalvingForecast = updateMenuCalvingForecast;
+  window.initMenuCalvingForecast = initMenuCalvingForecast;
   window.navigate = navigate;
   window.navigateBack = navigateBack;
   window.navigateBackOrFallback = navigateBackOrFallback;

@@ -66,6 +66,7 @@
       </div>
       <!-- Серверный режим (API подключён) -->
       <div id="auth-server-block" style="display: none;">
+        <p id="auth-session-status" class="auth-session-status auth-session-status--pending" hidden aria-live="polite"></p>
         <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация). Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
         <p class="auth-api-switch-server-wrap">
           <button type="button" class="small-btn" onclick="typeof window.switchToPickAnotherApiServer === 'function' && window.switchToPickAnotherApiServer()">Указать другой адрес сервера</button>
@@ -112,7 +113,7 @@
       <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
-    <p id="app-version" class="app-version" data-default-version="0.6.10" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.13" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
     <div id="auth-bar" class="auth-bar" style="display: none;">
       <span id="authBarUser"></span>
@@ -160,6 +161,32 @@
           <span class="herd-stat-num" id="notInseminatedCows">0</span>
           <span class="herd-stat-pct" id="notInseminatedCowsPct">0%</span>
         </div>
+      </div>
+    </div>
+
+    <div class="menu-calving-forecast" id="menuCalvingForecast" aria-label="Отёлы за месяц">
+      <div class="menu-calving-header">
+        <button type="button" id="menuCalvingPrev" class="menu-calving-nav-btn" aria-label="Предыдущий месяц">‹</button>
+        <span id="menuCalvingMonthLabel" class="menu-calving-month-label">—</span>
+        <button type="button" id="menuCalvingNext" class="menu-calving-nav-btn" aria-label="Следующий месяц">›</button>
+      </div>
+      <div class="menu-calving-stats">
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">План</span>
+          <span class="menu-calving-stat-value" id="menuCalvingPlanCount">0</span>
+        </div>
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">Факт</span>
+          <span class="menu-calving-stat-value" id="menuCalvingFactCount">0</span>
+        </div>
+      </div>
+      <p id="menuCalvingWarning" class="menu-calving-warning" hidden></p>
+      <button type="button" class="menu-calving-toggle" id="menuCalvingToggle" aria-expanded="false">Показать списки</button>
+      <div id="menuCalvingLists" class="menu-calving-lists" hidden>
+        <h3 class="menu-calving-list-title">План</h3>
+        <ul id="menuCalvingPlanList" class="menu-calving-list"></ul>
+        <h3 class="menu-calving-list-title">Факт</h3>
+        <ul id="menuCalvingFactList" class="menu-calving-list"></ul>
       </div>
     </div>
 
@@ -294,6 +321,14 @@
           <input type="text" id="farmSettingsDrugsInput" class="farm-settings-inline-input" placeholder="Например: ПГ 500" autocomplete="off" />
           <button type="button" id="farmSettingsDrugsAddBtn" class="small-btn">Добавить</button>
         </div>
+      </section>
+      <section class="farm-settings-section">
+        <h2>ПДО (период добровольного ожидания)</h2>
+        <p class="farm-settings-hint">После этого количества дней лактации без осеменения появится уведомление о рекомендации ИО. Редактирование — только администратор.</p>
+        <label class="farm-settings-vwp-row">
+          <span>Дней</span>
+          <input type="number" id="farmSettingsVwpDays" class="farm-settings-inline-input farm-settings-vwp-input" min="30" max="120" step="1" value="60" />
+        </label>
       </section>
       <section class="farm-settings-section">
         <h2>Код осеменения</h2>
@@ -567,6 +602,7 @@
         <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapRowsInput" min="1" max="200" value="4" /></label>
         <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapColsInput" min="1" max="200" value="10" /></label>
         <button type="button" id="stallMapSaveGridBtn" class="small-btn">Сохранить сетку</button>
+        <button type="button" id="stallMapDeleteYardBtn" class="small-btn stall-map-delete-yard-btn">Удалить двор</button>
       </div>
     </div>
     <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест" style="display: none;"></div>
@@ -947,6 +983,7 @@
         <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
       </div>
       <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div id="syncAuthStatus" class="sync-auth-status" aria-live="polite" hidden></div>
       <div id="sync-admin-server-url-section" class="sync-section" style="display: none;">
         <h3>Адрес сервера API</h3>
         <p class="sync-section-hint">Доступно администратору. Укажите новый URL, если сервер переехал (с протоколом http или https). После применения сессия сбросится — войдите снова.</p>

@@ -67,6 +67,7 @@ export function buildBackupZip(opts) {
     technicians: [],
     bulls: [],
     drugs: [],
+    vwpDays: 60,
     protocols: []
   };
   const protocols = Array.isArray(farmSettings.protocols)
@@ -77,6 +78,7 @@ export function buildBackupZip(opts) {
     technicians: farmSettings.technicians || [],
     bulls: farmSettings.bulls || [],
     drugs: farmSettings.drugs || [],
+    vwpDays: farmSettings.vwpDays != null ? farmSettings.vwpDays : 60,
     protocols: protocols
   };
 

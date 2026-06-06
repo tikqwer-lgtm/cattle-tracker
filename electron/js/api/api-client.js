@@ -127,6 +127,13 @@
           var e = new Error(data.message || data.error || 'Ошибка ' + res.status);
           e.status = res.status;
           if (res.status === 404 && msg404) e.message = msg404;
+          if (res.status === 401 &&
+            path.indexOf('/api/auth/login') === -1 &&
+            path.indexOf('/api/auth/register') === -1 &&
+            path.indexOf('/api/auth/me') === -1 &&
+            typeof global.handleApiUnauthorized === 'function') {
+            global.handleApiUnauthorized();
+          }
           throw e;
         }) : (function () {
           var e = new Error(msg);
@@ -358,8 +365,6 @@
   function getCurrentUser() {
     return request('GET', '/api/auth/me').then(function (data) {
       return data.user || null;
-    }).catch(function () {
-      return null;
     });
   }
 

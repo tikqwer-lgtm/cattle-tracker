@@ -129,7 +129,8 @@
     var settings = {
       technicians: data.technicians || [],
       bulls: data.bulls || [],
-      drugs: data.drugs || []
+      drugs: data.drugs || [],
+      vwpDays: data.vwpDays != null ? data.vwpDays : 60
     };
     if (global.CattleTrackerObjectData) {
       global.CattleTrackerObjectData.saveFarmSettingsLocal(oid, settings);

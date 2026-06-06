@@ -8,8 +8,11 @@
   var LIST_KEY = 'cattleTracker_notification_history';
   var CHECK_INTERVAL_MS = 60 * 1000;
   var timerId = null;
-  var VWP_DAYS = 60;
   var CALVING_REMINDER_DAYS = [7, 3, 1];
+
+  function getVwpDays() {
+    return typeof global.getFarmVwpDays === 'function' ? global.getFarmVwpDays() : 60;
+  }
 
   function parseDate(str) {
     if (!str) return null;
@@ -77,7 +80,12 @@
     return list;
   }
 
-  var CATEGORY_LABELS = {
+  var GROUP_LABELS = {
+    errors: 'Ошибки',
+    data_error: 'Ошибки',
+    calving_check: 'Проверить отёл',
+    uzi1: 'УЗИ1',
+    uzi2: 'УЗИ2',
     calving: 'Предстоящий отёл',
     insemination: 'Осеменение',
     dry: 'Сухостой',
@@ -85,14 +93,64 @@
     other: 'Прочее'
   };
 
-  function inferCategory(n) {
-    if (n.category) return n.category;
+  var GROUP_ORDER = ['errors', 'calving_check', 'uzi1', 'uzi2', 'calving', 'insemination', 'dry', 'sync', 'other'];
+
+  var CATEGORY_LABELS = GROUP_LABELS;
+
+  function inferKind(n) {
+    if (n.meta && n.meta.kind) return n.meta.kind;
+    if (n.category === 'errors') return 'data_error';
     var msg = (n.message || '').toLowerCase();
+    if (msg.indexOf('в будущем') !== -1) return 'data_error';
+    if (msg.indexOf('проверить отел') !== -1) return 'calving_check';
+    if (msg.indexOf('узи1') !== -1) return 'uzi1';
+    if (msg.indexOf('узи2') !== -1) return 'uzi2';
     if (msg.indexOf('отёл') !== -1 || msg.indexOf('отел') !== -1) return 'calving';
-    if (msg.indexOf('осеменен') !== -1) return 'insemination';
+    if (msg.indexOf('осеменен') !== -1 || msg.indexOf('рекомендуется осеменение') !== -1) return 'insemination';
     if (msg.indexOf('сухостой') !== -1) return 'dry';
     if (msg.indexOf('синхрониз') !== -1) return 'sync';
     return 'other';
+  }
+
+  function inferCategory(n) {
+    if (n.category) return n.category;
+    return inferKind(n);
+  }
+
+  function groupNotificationsForDisplay(history) {
+    var byKind = {};
+    (history || []).forEach(function (n) {
+      var kind = inferKind(n);
+      if (kind === 'data_error') kind = 'errors';
+      if (!byKind[kind]) byKind[kind] = [];
+      byKind[kind].push(n);
+    });
+    var groups = [];
+    GROUP_ORDER.forEach(function (kind) {
+      var key = kind === 'data_error' ? 'errors' : kind;
+      var items = byKind[key];
+      if (!items || !items.length) return;
+      var unread = items.filter(function (x) { return x.read === false; }).length;
+      groups.push({
+        kind: key,
+        label: GROUP_LABELS[key] || key,
+        items: items,
+        count: items.length,
+        unreadCount: unread
+      });
+    });
+    Object.keys(byKind).forEach(function (k) {
+      if (GROUP_ORDER.indexOf(k) !== -1 || GROUP_ORDER.indexOf(k === 'errors' ? 'data_error' : k) !== -1) return;
+      var items2 = byKind[k];
+      groups.push({
+        kind: k,
+        label: GROUP_LABELS[k] || k,
+        items: items2,
+        count: items2.length,
+        unreadCount: items2.filter(function (x) { return x.read === false; }).length
+      });
+    });
+    return groups;
   }
 
   function createNotification(type, message, cowId, meta, options) {
@@ -135,9 +193,14 @@
 
   function checkUpcomingEvents() {
     var list = typeof entries !== 'undefined' ? entries : [];
-    if (!list.length) return [];
+    if (!list.length) {
+      if (typeof global.syncDataErrorNotifications === 'function') {
+        global.syncDataErrorNotifications(list, { notified: {} });
+      }
+      return [];
+    }
     var today = dateOnly(new Date());
-    var now = Date.now();
+    var vwpDays = getVwpDays();
     var notified = {};
     var out = [];
 
@@ -178,21 +241,22 @@
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
-            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { daysToCalving: daysToCalving, category: 'calving' }, { showToast: false, showSystem: false }));
+            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { kind: 'calving', daysToCalving: daysToCalving, category: 'calving' }, { showToast: false, showSystem: false }));
           }
         }
       }
 
       var lastCalving = calvingDate;
       var daysSinceCalving = lastCalving ? daysBetween(lastCalving, new Date()) : 0;
-      var otelFirst60Only = statusStr.indexOf('Отёл') !== -1 && (daysSinceCalving < 60 || !lastCalving);
-      var excludeInsemination = statusStr.indexOf('Стельная') !== -1 || statusStr.indexOf('Брак') !== -1 || otelFirst60Only;
+      var daysInLactation = typeof getDaysInLactation === 'function' ? getDaysInLactation(entry) : daysSinceCalving;
+      var otelFirstVwpOnly = statusStr.indexOf('Отёл') !== -1 && (daysSinceCalving < vwpDays || !lastCalving);
+      var excludeInsemination = statusStr.indexOf('Стельная') !== -1 || statusStr.indexOf('Брак') !== -1 || otelFirstVwpOnly;
       if (lastCalving && !inseminationDate && !hasInseminationHistory && !excludeInsemination) {
-        if (daysSinceCalving >= VWP_DAYS) {
+        if (daysInLactation != null && daysInLactation > vwpDays) {
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
             notified[key2] = true;
-            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (прошло ' + daysSinceCalving + ' дн. после отёла)', cattleId, { daysSinceCalving: daysSinceCalving, category: 'insemination' }, { showToast: false, showSystem: false }));
+            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (день лактации ' + daysInLactation + ')', cattleId, { kind: 'insemination', daysInLactation: daysInLactation, category: 'insemination' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -202,11 +266,11 @@
         var calvingForDry = (expectedCalving && expectedCalving >= today) ? expectedCalving : (calvingDate && calvingDate > today ? calvingDate : null);
         if (calvingForDry) {
           var dryOffDue = daysBetween(new Date(), calvingForDry);
-          if (dryOffDue !== null && dryOffDue <= VWP_DAYS && dryOffDue >= VWP_DAYS - 14) {
+          if (dryOffDue !== null && dryOffDue <= vwpDays && dryOffDue >= vwpDays - 14) {
             var key3 = 'dry_' + cattleId;
             if (!notified[key3]) {
               notified[key3] = true;
-              out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
+              out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { kind: 'dry', daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
             }
           }
         }
@@ -222,7 +286,7 @@
             var keyUzi1 = 'uzi1_' + cattleId;
             if (!notified[keyUzi1]) {
               notified[keyUzi1] = true;
-              out.push(createNotification('info', 'УЗИ1: корова ' + cattleId + ' (осеменена ' + daysFromInsem + ' дн. назад)', cattleId, { daysFromInsemination: daysFromInsem, category: 'other' }, { showToast: false, showSystem: false }));
+              out.push(createNotification('info', 'УЗИ1: корова ' + cattleId + ' (осеменена ' + daysFromInsem + ' дн. назад)', cattleId, { kind: 'uzi1', daysFromInsemination: daysFromInsem, category: 'other' }, { showToast: false, showSystem: false }));
             }
           }
         }
@@ -233,7 +297,7 @@
           var keyUzi2 = 'uzi2_' + cattleId;
           if (!notified[keyUzi2]) {
             notified[keyUzi2] = true;
-            out.push(createNotification('info', 'УЗИ2: корова ' + cattleId + ' (стельность ' + daysFromInsem2 + ' дн.)', cattleId, { daysFromInsemination: daysFromInsem2, category: 'other' }, { showToast: false, showSystem: false }));
+            out.push(createNotification('info', 'УЗИ2: корова ' + cattleId + ' (стельность ' + daysFromInsem2 + ' дн.)', cattleId, { kind: 'uzi2', daysFromInsemination: daysFromInsem2, category: 'other' }, { showToast: false, showSystem: false }));
           }
         }
       }
@@ -244,19 +308,26 @@
           var keyOverdue = 'overdue_' + cattleId;
           if (!notified[keyOverdue]) {
             notified[keyOverdue] = true;
-            out.push(createNotification('info', 'Проверить отел: корова ' + cattleId + ' (дней стельности: ' + daysPreg + ')', cattleId, { daysPregnant: daysPreg, category: 'calving' }, { showToast: false, showSystem: false }));
+            out.push(createNotification('info', 'Проверить отел: корова ' + cattleId + ' (дней стельности: ' + daysPreg + ')', cattleId, { kind: 'calving_check', daysPregnant: daysPreg, category: 'calving' }, { showToast: false, showSystem: false }));
           }
         }
       }
     });
 
-    var unsynced = list.filter(function (e) { return e.synced !== true; });
-    if (unsynced.length > 0) {
-      var key4 = 'unsynced_count';
-      if (!notified[key4]) {
-        notified[key4] = true;
-        out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { count: unsynced.length, category: 'sync' }, { showToast: false, showSystem: false }));
+    var useApi = typeof global.CATTLE_TRACKER_USE_API !== 'undefined' && global.CATTLE_TRACKER_USE_API;
+    if (!useApi) {
+      var unsynced = list.filter(function (e) { return e.synced !== true; });
+      if (unsynced.length > 0) {
+        var key4 = 'unsynced_count';
+        if (!notified[key4]) {
+          notified[key4] = true;
+          out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { kind: 'sync', count: unsynced.length, category: 'sync' }, { showToast: false, showSystem: false }));
+        }
       }
+    }
+
+    if (typeof global.syncDataErrorNotifications === 'function') {
+      global.syncDataErrorNotifications(list, { notified: notified });
     }
     return out;
   }
@@ -327,19 +398,26 @@
     var body = document.getElementById(containerId);
     if (!body) return;
     var list = getNotificationHistory().slice().reverse();
-    var limit = 5;
-    var items = list.slice(0, limit);
+    var groups = groupNotificationsForDisplay(list);
     var html = '';
-    if (items.length === 0) {
+    if (!groups.length) {
       html = '<div class="menu-notifications-empty">Нет уведомлений</div>';
     } else {
-      html = '<ul class="menu-notifications-list">';
-      items.forEach(function (n) {
-        var cls = 'menu-notifications-item' + (n.read === false ? ' notification-item-unread' : '');
-        html += '<li class="' + cls + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
-          '<div class="menu-notifications-message">' + (n.message || '').replace(/</g, '&lt;') + '</div>' +
-          '<div class="menu-notifications-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</div>' +
-          '</li>';
+      html = '<ul class="menu-notifications-list menu-notifications-groups">';
+      groups.slice(0, 6).forEach(function (g) {
+        var unreadBadge = g.unreadCount > 0 ? ' <span class="menu-notifications-group-badge">' + g.unreadCount + '</span>' : '';
+        html += '<li class="menu-notifications-group-item">' +
+          '<div class="menu-notifications-group-head">' + (g.label || '').replace(/</g, '&lt;') + ' (' + g.count + ')' + unreadBadge + '</div>';
+        g.items.slice(0, 2).forEach(function (n) {
+          var cls = 'menu-notifications-item' + (n.read === false ? ' notification-item-unread' : '');
+          html += '<div class="' + cls + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + (n.cattleId || '').replace(/"/g, '&quot;') + '">' +
+            '<div class="menu-notifications-message">' + (n.message || '').replace(/</g, '&lt;') + '</div>' +
+            '</div>';
+        });
+        if (g.count > 2) {
+          html += '<div class="menu-notifications-group-more">…ещё ' + (g.count - 2) + '</div>';
+        }
+        html += '</li>';
       });
       html += '</ul>';
     }
@@ -348,7 +426,7 @@
       '</div>';
     body.innerHTML = html;
     updateNotificationIndicators();
-    body.querySelectorAll('.menu-notifications-item').forEach(function (item) {
+    body.querySelectorAll('.menu-notifications-item[data-notif-id]').forEach(function (item) {
       item.addEventListener('click', function () {
         var id = item.getAttribute('data-notif-id');
         if (markNotificationRead(id)) {
@@ -511,23 +589,14 @@
   function renderNotificationCenter(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
-    var history = getNotificationHistory().slice().reverse().slice(0, 50);
-    var order = ['calving', 'insemination', 'dry', 'sync', 'other'];
-    var byCategory = {};
-    order.forEach(function (cat) { byCategory[cat] = []; });
-    history.forEach(function (n) {
-      var cat = inferCategory(n);
-      if (!byCategory[cat]) byCategory[cat] = [];
-      byCategory[cat].push(n);
-    });
+    var history = getNotificationHistory().slice().reverse().slice(0, 100);
+    var groups = groupNotificationsForDisplay(history);
     var listHtml = '';
-    order.forEach(function (cat) {
-      var items = byCategory[cat] || [];
-      if (items.length === 0) return;
-      listHtml += '<div class="notification-group">';
-      listHtml += '<h4 class="notification-group-title">' + (CATEGORY_LABELS[cat] || cat).replace(/</g, '&lt;') + '</h4>';
+    groups.forEach(function (g) {
+      listHtml += '<div class="notification-group" data-group-kind="' + (g.kind || '').replace(/"/g, '&quot;') + '">';
+      listHtml += '<h4 class="notification-group-title">' + (g.label || g.kind).replace(/</g, '&lt;') + ' <span class="notification-group-count">(' + g.count + ')</span></h4>';
       listHtml += '<ul class="notification-list">';
-      items.forEach(function (n) {
+      g.items.forEach(function (n) {
         var unreadClass = n.read === false ? ' notification-item-unread' : '';
         var cattleIdSafe = (n.cattleId || '').replace(/"/g, '&quot;');
         var cardBtn = n.cattleId
@@ -619,6 +688,8 @@
       if (el) renderTasksList(el);
     };
     window.getProtocolTasks = getProtocolTasks;
+    window.groupNotificationsForDisplay = groupNotificationsForDisplay;
+    window.inferNotificationKind = inferKind;
   }
 
   if (typeof window !== 'undefined' && window.document) {

@@ -308,6 +308,8 @@ function runImportWithMapping(rows, columnMapping, headers) {
     saveLocally();
     if (typeof updateList === 'function') updateList();
     if (typeof updateViewList === 'function') updateViewList();
+    if (typeof notifyDataErrorsFromImport === 'function') notifyDataErrorsFromImport(entries);
+    if (typeof updateMenuCalvingForecast === 'function') updateMenuCalvingForecast();
     var msg = 'Импортировано: ' + newCount + ' новых, обновлено: ' + updateCount;
     if (errors.length > 0) msg += '. Ошибок: ' + errors.length;
     if (typeof showToast === 'function') showToast(msg, 'success');

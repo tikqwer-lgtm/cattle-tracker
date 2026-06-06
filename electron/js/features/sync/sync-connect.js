@@ -115,6 +115,7 @@ function switchToPickAnotherApiServer() {
     localStorage.removeItem('cattleTracker_useApiMode');
     localStorage.removeItem('cattleTracker_apiBase');
     localStorage.removeItem('cattleTracker_apiToken');
+    localStorage.removeItem('cattleTracker_currentUser');
   } catch (e) {}
   location.reload();
 }
@@ -188,10 +189,12 @@ function doDisconnect() {
     if (typeof saveLocally === 'function') saveLocally();
     localStorage.removeItem('cattleTracker_apiBase');
     localStorage.removeItem('cattleTracker_useApiMode');
+    localStorage.removeItem('cattleTracker_apiToken');
     localStorage.removeItem('cattleTracker_syncAfterConnect');
     localStorage.removeItem('cattleTracker_sendToServerAfterConnect');
     localStorage.removeItem('cattleTracker_uploadAfterConnect');
     if (typeof window.saveCurrentUser === 'function') window.saveCurrentUser(null);
+    else if (typeof window.clearAuthSession === 'function') window.clearAuthSession();
     if (typeof showToast === 'function') showToast('Отключение… Перезагрузка.', 'info');
     location.reload();
   } catch (e) {

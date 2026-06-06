@@ -12,11 +12,41 @@ function updateConnectionIndicator(connected) {
   });
   }
 
+function getAuthStatusLine() {
+  if (typeof window === 'undefined' || !window.CATTLE_TRACKER_USE_API) return '';
+  var session = typeof window.getAuthSessionStatus === 'function' ? window.getAuthSessionStatus() : null;
+  if (!session) return 'Вход на сервере: не проверен';
+  if (session.status === 'loggedIn' && session.user) {
+    return 'Вход на сервере: выполнен (' + (session.user.username || '') + ')';
+  }
+  if (session.status === 'sessionExpired') return 'Вход на сервере: сессия истекла — войдите снова';
+  if (session.status === 'serverOnly') return 'Вход на сервере: не выполнен';
+  if (session.status === 'offline') return 'Вход на сервере: не проверен (нет связи)';
+  return 'Вход на сервере: не выполнен';
+}
+
+function updateSyncAuthStatusUi() {
+  var el = document.getElementById('syncAuthStatus');
+  if (!el) return;
+  if (!window.CATTLE_TRACKER_USE_API) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  var line = getAuthStatusLine();
+  el.textContent = line;
+  var session = typeof window.getAuthSessionStatus === 'function' ? window.getAuthSessionStatus() : null;
+  el.className = 'sync-auth-status' +
+    (session && session.status === 'loggedIn' ? ' sync-auth-status--ok' : ' sync-auth-status--warn');
+}
+
 function updateSyncServerStatus(message, isError) {
   var el = document.getElementById('syncServerStatus');
   if (!el) return;
   el.textContent = message || '';
   el.className = 'sync-server-status' + (isError ? ' sync-server-status-error' : '');
+  if (typeof updateSyncAuthStatusUi === 'function') updateSyncAuthStatusUi();
 }
 
 /**
@@ -58,8 +88,9 @@ function updateSyncServerStatusFromHealth() {
   updateSyncServerStatus('Проверка…');
   fetch(base + '/api/health').then(function (res) {
     if (res.ok) {
-      updateSyncServerStatus('Подключено к серверу: ' + base);
+      updateSyncServerStatus('Сервер доступен: ' + base);
       updateConnectionIndicator(true);
+      updateSyncAuthStatusUi();
     } else {
       updateSyncServerStatus('Ошибка подключения (код ' + res.status + ')', true);
       updateConnectionIndicator(false);
@@ -120,6 +151,7 @@ window.updateConnectionIndicator = updateConnectionIndicator;
 window.updateSyncServerStatus = updateSyncServerStatus;
 window.refreshFromServer = refreshFromServer;
 window.updateSyncServerStatusFromHealth = updateSyncServerStatusFromHealth;
+window.updateSyncAuthStatusUi = updateSyncAuthStatusUi;
 window.setServerBaseImportProgressVisible = setServerBaseImportProgressVisible;
 window.setServerBaseImportProgress = setServerBaseImportProgress;
 window.setSyncBasesImportButtonsDisabled = setSyncBasesImportButtonsDisabled;

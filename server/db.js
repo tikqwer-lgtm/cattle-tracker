@@ -233,7 +233,15 @@ function parseJsonColumn(raw, fallback) {
   }
 }
 
-const EMPTY_FARM_SETTINGS = { technicians: [], bulls: [], drugs: [] };
+function normalizeVwpDays(raw) {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 60;
+  if (n < 30) return 30;
+  if (n > 120) return 120;
+  return n;
+}
+
+const EMPTY_FARM_SETTINGS = { technicians: [], bulls: [], drugs: [], vwpDays: 60 };
 
 function getObjectProfile(objectId) {
   const row = getSql('SELECT profile_json FROM objects WHERE id = ?', [objectId]);
@@ -258,7 +266,8 @@ function getFarmSettings(objectId) {
   return {
     technicians: Array.isArray(parsed.technicians) ? parsed.technicians : [],
     bulls: Array.isArray(parsed.bulls) ? parsed.bulls : [],
-    drugs: Array.isArray(parsed.drugs) ? parsed.drugs : []
+    drugs: Array.isArray(parsed.drugs) ? parsed.drugs : [],
+    vwpDays: normalizeVwpDays(parsed.vwpDays)
   };
 }
 
@@ -269,7 +278,8 @@ function putFarmSettings(objectId, settings) {
   const normalized = {
     technicians: Array.isArray(s.technicians) ? s.technicians : [],
     bulls: Array.isArray(s.bulls) ? s.bulls : [],
-    drugs: Array.isArray(s.drugs) ? s.drugs : []
+    drugs: Array.isArray(s.drugs) ? s.drugs : [],
+    vwpDays: normalizeVwpDays(s.vwpDays)
   };
   runSql('UPDATE objects SET farm_settings_json = ? WHERE id = ?', [JSON.stringify(normalized), objectId]);
   saveDb();

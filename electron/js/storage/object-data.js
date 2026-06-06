@@ -10,6 +10,7 @@
   var TECH_PREFIX = 'cattleTracker_farmTechnicians_';
   var BULLS_PREFIX = 'cattleTracker_farmBulls_';
   var DRUGS_PREFIX = 'cattleTracker_farmDrugs_';
+  var VWP_PREFIX = 'cattleTracker_farmVwpDays_';
   var PROTOCOLS_PREFIX = 'cattleTracker_protocols_';
   var STALL_PREFIX = 'cattleTracker_stallLayout_';
   var ENTRIES_PREFIX = 'cattleEntries_';
@@ -131,12 +132,21 @@
     try { localStorage.removeItem(keyFor(LEGACY_FARM_CARD_PREFIX, objectId)); } catch (e) {}
   }
 
+  function normalizeVwpDays(raw) {
+    var n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return 60;
+    if (n < 30) return 30;
+    if (n > 120) return 120;
+    return n;
+  }
+
   function loadFarmSettingsLocal(objectId) {
     migrateGlobalToDefaultOnce();
     return {
       technicians: readJson(keyFor(TECH_PREFIX, objectId), []),
       bulls: readJson(keyFor(BULLS_PREFIX, objectId), []),
-      drugs: readJson(keyFor(DRUGS_PREFIX, objectId), [])
+      drugs: readJson(keyFor(DRUGS_PREFIX, objectId), []),
+      vwpDays: normalizeVwpDays(readJson(keyFor(VWP_PREFIX, objectId), 60))
     };
   }
 
@@ -145,6 +155,7 @@
     writeJson(keyFor(TECH_PREFIX, objectId), Array.isArray(s.technicians) ? s.technicians : []);
     writeJson(keyFor(BULLS_PREFIX, objectId), Array.isArray(s.bulls) ? s.bulls : []);
     writeJson(keyFor(DRUGS_PREFIX, objectId), Array.isArray(s.drugs) ? s.drugs : []);
+    writeJson(keyFor(VWP_PREFIX, objectId), normalizeVwpDays(s.vwpDays));
   }
 
   function loadProtocolsLocal(objectId) {

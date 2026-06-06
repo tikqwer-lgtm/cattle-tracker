@@ -93,6 +93,57 @@ function invIsViewer() {
   return !!(u && u.role === 'viewer');
 }
 
+function invToast(text, type) {
+  if (typeof window.showToast === 'function') {
+    window.showToast(text, type);
+    return;
+  }
+  if (type === 'error') console.error(text);
+  else console.log(text);
+}
+
+function invCanCreateCards() {
+  if (typeof window.canAdd === 'function') return window.canAdd();
+  return !invIsViewer();
+}
+
+function invGetActiveObjectId() {
+  var oid = typeof window.getCurrentObjectId === 'function' ? window.getCurrentObjectId() : 'default';
+  var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+  if (pend && oid === pend) return null;
+  return oid || null;
+}
+
+function invPersistNewAnimalEntry(entry) {
+  var useApi = !!(window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi);
+  var objectId = invGetActiveObjectId();
+  if (useApi) {
+    if (!objectId) {
+      return Promise.reject(new Error('Сначала выберите базу в разделе «Синхронизация»'));
+    }
+    if (typeof window.createEntryViaApi === 'function') {
+      return window.createEntryViaApi(entry);
+    }
+    return window.CattleTrackerApi.createEntry(objectId, entry).then(function (created) {
+      if (typeof window.upsertEntryInStore === 'function') {
+        window.upsertEntryInStore(created && created.cattleId ? created : entry);
+      }
+      invRefreshEntriesUi();
+      return created || entry;
+    });
+  }
+  if (typeof window.upsertEntryInStore === 'function') {
+    window.upsertEntryInStore(entry);
+  } else {
+    var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
+    list.unshift(entry);
+    if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list);
+  }
+  if (typeof window.saveLocally === 'function') window.saveLocally();
+  invRefreshEntriesUi();
+  return Promise.resolve(entry);
+}
+
 function invPrintButtonHtml(id) {
   var isMobile = typeof window.isMobile === 'function' && window.isMobile();
   return isMobile ? '' : '<button type="button" class="small-btn" id="' + id + '">Печать</button>';
@@ -347,24 +398,26 @@ function invEntryExistsInHerd(cattleId) {
 }
 
 function invCreateNewAnimalCards(newAnimals) {
-  if (invIsViewer()) {
-    if (typeof window.showToast === 'function') window.showToast('Недостаточно прав для создания карточек', 'error');
+  if (!invCanCreateCards()) {
+    invToast('Недостаточно прав для создания карточек', 'error');
     return Promise.resolve(0);
   }
   if (!_inventorySession) {
-    if (typeof window.showToast === 'function') window.showToast('Сессия инвентаризации не найдена', 'error');
+    invToast('Сессия инвентаризации не найдена', 'error');
+    return Promise.resolve(0);
+  }
+  if (window.CATTLE_TRACKER_USE_API && !invGetActiveObjectId()) {
+    invToast('Сначала выберите базу в разделе «Синхронизация»', 'error');
     return Promise.resolve(0);
   }
   var pending = invFilterPendingNewAnimals(newAnimals);
   if (!pending.length) {
-    if (typeof window.showToast === 'function') window.showToast('Нет новых животных для создания', 'info');
+    invToast('Нет новых животных для создания', 'info');
     return Promise.resolve(0);
   }
   if (!_inventorySession.createdNewAnimals) _inventorySession.createdNewAnimals = [];
 
-  if (typeof window.showToast === 'function') {
-    window.showToast('Создание карточек: ' + pending.length + '…', 'info');
-  }
+  invToast('Создание карточек: ' + pending.length + '…', 'info');
 
   var chain = Promise.resolve();
   var created = 0;
@@ -377,43 +430,29 @@ function invCreateNewAnimalCards(newAnimals) {
         return Promise.resolve();
       }
       var entry = invBuildEntryFromNewAnimal(row);
-      var useApi = window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
-      if (useApi) {
-        return window.createEntryViaApi(entry).then(function () {
-          _inventorySession.createdNewAnimals.push(row.cattleId);
-          invAddToExpectedSnapshot(entry);
-          created++;
-        });
-      }
-      var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
-      list.push(entry);
-      if (typeof window.saveLocally === 'function') window.saveLocally();
-      _inventorySession.createdNewAnimals.push(row.cattleId);
-      invAddToExpectedSnapshot(entry);
-      created++;
-      return Promise.resolve();
+      return invPersistNewAnimalEntry(entry).then(function () {
+        _inventorySession.createdNewAnimals.push(row.cattleId);
+        invAddToExpectedSnapshot(entry);
+        created++;
+      });
     });
   });
 
   return chain.then(function () {
     invSaveSession();
     invRefreshEntriesUi();
-    if (typeof window.showToast === 'function') {
-      if (created > 0) {
-        window.showToast('Создано карточек: ' + created, 'success');
-      } else if (skipped > 0) {
-        window.showToast('Карточки уже есть в стаде (' + skipped + ')', 'info');
-      } else {
-        window.showToast('Не удалось создать карточки', 'error');
-      }
+    if (created > 0) {
+      invToast('Создано карточек: ' + created, 'success');
+    } else if (skipped > 0) {
+      invToast('Карточки уже есть в стаде (' + skipped + ')', 'info');
+    } else {
+      invToast('Не удалось создать карточки', 'error');
     }
     invRenderActiveTab();
     return created;
   }).catch(function (err) {
     invRefreshEntriesUi();
-    if (typeof window.showToast === 'function') {
-      window.showToast((err && err.message) || 'Ошибка создания карточек', 'error');
-    }
+    invToast((err && err.message) || 'Ошибка создания карточек', 'error');
     invRenderActiveTab();
     return 0;
   });
@@ -790,7 +829,7 @@ function invRenderResultTab(host) {
   }
 
   var pendingNew = invFilterPendingNewAnimals(result.newAnimals || []);
-  var createNewBtn = (!invIsViewer() && pendingNew.length)
+  var createNewBtn = (invCanCreateCards() && pendingNew.length)
     ? '<button type="button" class="action-btn no-print" id="stallInvCreateNewBtn">Создать карточки (' + pendingNew.length + ')</button>'
     : '';
 

@@ -17,12 +17,8 @@ if (typeof getDefaultCowEntry === 'undefined' && typeof module !== 'undefined' &
 /**
  * Инициализация приложения при загрузке
  */
-function initApp() {
-  console.log("Инициализация приложения...");
-  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.loadObjectsFromApi === 'function';
-
-  if (useApi) {
-    window.loadObjectsFromApi().then(function () {
+function runApiAppInit() {
+  window.loadObjectsFromApi().then(function () {
       return typeof loadLocally === 'function' ? loadLocally() : Promise.resolve();
     }).then(function () {
       if (typeof initInseminationModule === 'function') initInseminationModule();
@@ -69,6 +65,27 @@ function initApp() {
         if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
       }
     });
+}
+
+function initApp() {
+  console.log("Инициализация приложения...");
+  var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.loadObjectsFromApi === 'function';
+
+  if (useApi) {
+    var startApi = function (session) {
+      if (!session || session.status !== 'loggedIn') {
+        console.log('Приложение (API): вход не выполнен, загрузка данных отложена');
+        if (typeof updateList === 'function') updateList();
+        if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
+        return;
+      }
+      runApiAppInit();
+    };
+    if (typeof window.restoreApiSession === 'function') {
+      window.restoreApiSession().then(startApi);
+    } else {
+      startApi(null);
+    }
   } else {
     if (typeof loadLocally === 'function') loadLocally();
     else console.error('Функция loadLocally не найдена. Проверьте подключение storage.js');
@@ -124,6 +141,14 @@ function addEntry() {
   }
   var entry = getDefaultCowEntry();
   fillCowEntryFromForm(entry);
+  if (typeof validateEntryDatesBeforeSave === 'function') {
+    var dateErrAdd = validateEntryDatesBeforeSave(entry);
+    if (dateErrAdd) {
+      if (typeof showToast === 'function') showToast(dateErrAdd, 'error');
+      else alert(dateErrAdd);
+      return;
+    }
+  }
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;
@@ -212,6 +237,14 @@ function saveCurrentEntry() {
     entry = getDefaultCowEntry();
   }
   fillCowEntryFromForm(entry);
+  if (typeof validateEntryDatesBeforeSave === 'function') {
+    var dateErr = validateEntryDatesBeforeSave(entry);
+    if (dateErr) {
+      if (typeof showToast === 'function') showToast(dateErr, 'error');
+      else alert(dateErr);
+      return;
+    }
+  }
   if (typeof getCurrentUser === 'function' && getCurrentUser()) {
     entry.userId = getCurrentUser().id;
     entry.lastModifiedBy = getCurrentUser().username;

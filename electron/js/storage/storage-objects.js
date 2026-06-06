@@ -20,6 +20,38 @@ function replaceEntriesWith(arr) {
   if (typeof window !== 'undefined') window.entries = entries;
 }
 
+/**
+ * Добавляет или заменяет запись в локальном массиве (офлайн и оптимистично после API).
+ * @param {Object} entry
+ * @returns {boolean} true если запись новая
+ */
+function upsertEntryInStore(entry) {
+  if (!entry || entry.cattleId == null || String(entry.cattleId).trim() === '') return false;
+  var id = String(entry.cattleId).trim();
+  var list = entries.slice();
+  var replaced = false;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && String(list[i].cattleId).trim() === id) {
+      list[i] = entry;
+      replaced = true;
+      break;
+    }
+  }
+  if (!replaced) list.unshift(entry);
+  replaceEntriesWith(list);
+  if (typeof window !== 'undefined') {
+    var oid = typeof window.getCurrentObjectId === 'function' ? window.getCurrentObjectId() : '';
+    var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+    if (oid && (!pend || oid !== pend) && typeof window.writeApiEntriesCache === 'function') {
+      try { window.writeApiEntriesCache(oid, entries); } catch (e) {}
+    }
+    if (typeof window.CattleTrackerEvents !== 'undefined') {
+      try { window.CattleTrackerEvents.emit('entries:updated', entries); } catch (e) {}
+    }
+  }
+  return !replaced;
+}
+
 function getCurrentObjectId() {
   try {
     var id = localStorage.getItem(CURRENT_OBJECT_KEY);
@@ -157,5 +189,6 @@ if (typeof window !== 'undefined') {
   window.updateObject = updateObject;
   window.deleteObject = deleteObject;
   window.replaceEntriesWith = replaceEntriesWith;
+  window.upsertEntryInStore = upsertEntryInStore;
 }
 export {};

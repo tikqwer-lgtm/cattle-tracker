@@ -264,10 +264,31 @@ if (useApi) {
 
   window.saveLocally = function () { /* no-op when API */ };
 
+  function refreshEntriesUiAfterMutation() {
+    if (typeof window.updateList === 'function') window.updateList();
+    if (typeof window.updateViewList === 'function') window.updateViewList();
+    if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+  }
+
   function createEntryViaApi(entry) {
     var objectId = window.getCurrentObjectId();
-    return window.CattleTrackerApi.createEntry(objectId, entry).then(function () {
-      return window.loadLocally({ forceFromServer: true });
+    var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+    if (pendingId && objectId === pendingId) {
+      return Promise.reject(new Error('Сначала выберите базу в разделе «Синхронизация»'));
+    }
+    return window.CattleTrackerApi.createEntry(objectId, entry).then(function (created) {
+      if (typeof window.upsertEntryInStore === 'function') {
+        window.upsertEntryInStore(created && created.cattleId ? created : entry);
+      }
+      refreshEntriesUiAfterMutation();
+      return window.loadLocally({ forceFromServer: true }).then(function () {
+        refreshEntriesUiAfterMutation();
+        return window.entries;
+      }).catch(function (err) {
+        console.warn('createEntryViaApi: перезагрузка после создания не удалась, оставляем локальную копию', err);
+        refreshEntriesUiAfterMutation();
+        return window.entries;
+      });
     });
   }
   function updateEntryViaApi(cattleId, entry, opts) {

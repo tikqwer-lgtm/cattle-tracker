@@ -306,6 +306,77 @@ function stallMapLoadLayout(objectId, callback) {
   done(null, _stallMapLayoutCache);
 }
 
+function stallMapDeleteYard(objectId, yardKey, callback) {
+  var yk = String(yardKey || '').trim();
+  if (!yk) {
+    if (typeof showToast === 'function') showToast('Выберите двор для удаления', 'error');
+    return;
+  }
+  var layout = stallMapNormalizeLayout(_stallMapLayoutCache);
+  if (!layout.yards || !layout.yards[yk]) {
+    if (typeof showToast === 'function') showToast('Двор не найден', 'error');
+    return;
+  }
+  var msg = 'Удалить двор «' + yk + '»? Животные будут сняты с мест, карточки останутся.';
+  if (!confirm(msg)) return;
+
+  delete layout.yards[yk];
+  _stallMapLayoutCache = layout;
+  stallMapWriteLayoutLocal(objectId, layout);
+
+  var list = (typeof window.entries !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
+  var changed = [];
+  list.forEach(function (e) {
+    if (!e) return;
+    if (stallMapYardNorm(stallMapEntryYard(e)) === stallMapYardNorm(yk)) {
+      stallMapClearCoords(e);
+      changed.push(e);
+    }
+  });
+
+  function afterLayoutSaved() {
+    stallMapRefreshYardDatalist();
+    stallMapPopulateYardSelect();
+    if (!stallMapLayoutHasYards()) {
+      stallMapSetToolbarVisible(false);
+      _stallMapYardKey = '';
+    } else {
+      var sel = document.getElementById('stallMapYardSelect');
+      if (sel && sel.options.length) {
+        _stallMapYardKey = sel.value;
+      }
+      stallMapSyncToolbarInputs();
+    }
+    stallMapRenderGrid();
+    if (typeof showToast === 'function') showToast('Двор удалён', 'success');
+    if (typeof callback === 'function') callback();
+  }
+
+  var persistEntries = changed.length
+    ? stallMapPersistEntries(changed).catch(function (err) {
+        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка снятия животных с мест', 'error');
+      })
+    : Promise.resolve();
+
+  var useApi = window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.putStallLayout === 'function';
+  if (useApi && objectId) {
+    persistEntries.then(function () {
+      return window.CattleTrackerApi.putStallLayout(objectId, layout);
+    }).then(function (data) {
+      _stallMapLayoutCache = stallMapNormalizeLayout(data);
+      stallMapWriteLayoutLocal(objectId, _stallMapLayoutCache);
+      afterLayoutSaved();
+    }).catch(function (err) {
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка удаления двора', 'error');
+    });
+    return;
+  }
+
+  persistEntries.then(function () {
+    afterLayoutSaved();
+  });
+}
+
 function stallMapSaveGrid(objectId, yardKey, rows, cols, callback) {
   var yk = String(yardKey || '').trim() || '1';
   var layout = stallMapNormalizeLayout(_stallMapLayoutCache);
@@ -967,13 +1038,14 @@ function initStallMapScreen() {
   var rowsInp = document.getElementById('stallMapRowsInput');
   var colsInp = document.getElementById('stallMapColsInput');
   var saveBtn = document.getElementById('stallMapSaveGridBtn');
+  var deleteBtn = document.getElementById('stallMapDeleteYardBtn');
   var createBtn = document.getElementById('stallMapCreateYardBtn');
   var toolbar = document.getElementById('stallMapToolbar');
   var canEdit = typeof window.canEdit !== 'function' || window.canEdit();
 
   if (toolbar) {
     toolbar.querySelectorAll('input,button,select').forEach(function (el) {
-      if (el.id === 'stallMapSaveGridBtn') el.style.display = canEdit ? '' : 'none';
+      if (el.id === 'stallMapSaveGridBtn' || el.id === 'stallMapDeleteYardBtn') el.style.display = canEdit ? '' : 'none';
     });
     if (yardSel) yardSel.disabled = !canEdit;
     if (rowsInp) rowsInp.readOnly = !canEdit;
@@ -1049,6 +1121,15 @@ function initStallMapScreen() {
     saveBtn.dataset.bound = '1';
     saveBtn.addEventListener('click', function () {
       stallMapSaveGridFromUI();
+    });
+  }
+
+  if (deleteBtn && !deleteBtn.dataset.bound) {
+    deleteBtn.dataset.bound = '1';
+    deleteBtn.addEventListener('click', function () {
+      if (!canEdit) return;
+      var yk = stallMapGetCurrentYardKeyFromUI();
+      stallMapDeleteYard(objectId, yk);
     });
   }
 
@@ -1137,6 +1218,7 @@ function initStallMapScreen() {
 
 if (typeof window !== 'undefined') {
   window.initStallMapScreen = initStallMapScreen;
+  window.stallMapDeleteYard = stallMapDeleteYard;
   window.stallMapSaveGridFromUI = stallMapSaveGridFromUI;
   window.stallMapCloseAssignModal = stallMapCloseAssignModal;
   window.stallMapRedrawIfActive = stallMapRedrawIfActive;

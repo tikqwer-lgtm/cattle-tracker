@@ -149,7 +149,26 @@
   }
 
   function getCurrentUser() {
+    if (useApi) {
+      var api = global.CattleTrackerApi;
+      var token = api && typeof api.getToken === 'function' ? api.getToken() : null;
+      if (!token) {
+        currentUser = null;
+        return null;
+      }
+      if (typeof global.isAuthLoggedIn === 'function' && !global.isAuthLoggedIn()) {
+        return null;
+      }
+    }
     if (!currentUser) loadCurrentUser();
+    if (useApi) {
+      var tok2 = global.CattleTrackerApi && typeof global.CattleTrackerApi.getToken === 'function'
+        ? global.CattleTrackerApi.getToken() : null;
+      if (!tok2) {
+        currentUser = null;
+        return null;
+      }
+    }
     return currentUser;
   }
 
@@ -275,8 +294,45 @@
     return Promise.resolve('local (ПК)');
   }
 
+  function updateAuthSessionStatusUi() {
+    var el = document.getElementById('auth-session-status');
+    if (!el) return;
+    if (!useApi) {
+      el.hidden = true;
+      el.textContent = '';
+      el.className = 'auth-session-status';
+      return;
+    }
+    el.hidden = false;
+    var session = typeof global.getAuthSessionStatus === 'function' ? global.getAuthSessionStatus() : null;
+    var status = session && session.status ? session.status : 'unknown';
+    var base = getSavedServerBase() || (global.CattleTrackerApi && global.CattleTrackerApi.getBaseUrl ? global.CattleTrackerApi.getBaseUrl() : '');
+    var baseLine = base ? 'Сервер: ' + base : 'Сервер не указан';
+    var msg = baseLine;
+    var cls = 'auth-session-status';
+    if (status === 'loggedIn' && session.user) {
+      msg += '\nВход выполнен: ' + (session.user.username || '') + ' (' + (session.user.role || '') + ')';
+      cls += ' auth-session-status--ok';
+    } else if (status === 'sessionExpired') {
+      msg += '\nСессия истекла — введите пароль снова';
+      cls += ' auth-session-status--warn';
+      var input = document.getElementById('authUsername');
+      if (input && session.lastUsername && !input.value) input.value = session.lastUsername;
+    } else if (status === 'serverOnly') {
+      msg += '\nСервер подключён — требуется вход';
+      cls += ' auth-session-status--info';
+    } else if (status === 'offline') {
+      msg += '\nНет связи с сервером — вход не проверен';
+      cls += ' auth-session-status--warn';
+    } else if (status === 'unknown') {
+      msg += '\nПроверка входа…';
+      cls += ' auth-session-status--pending';
+    }
+    el.textContent = msg;
+    el.className = cls;
+  }
+
   function initUsers() {
-    var base = getSavedServerBase();
     var localBlock = document.getElementById('auth-local-block');
     var serverBlock = document.getElementById('auth-server-block');
     if (localBlock) localBlock.style.display = useApi ? 'none' : '';
@@ -286,68 +342,33 @@
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }
+    updateAuthSessionStatusUi();
     var authScreen = document.getElementById('auth-screen');
     if (authScreen && authScreen.classList.contains('active')) {
       setTimeout(focusAuthForm, 0);
     }
-    if (useApi) {
-      global.CattleTrackerApi.getCurrentUser().then(function (u) {
-        currentUser = u || null;
-        updateAuthBar();
-        var isElectron = typeof window !== 'undefined' && window.electronAPI;
-        if (currentUser && typeof navigate === 'function' && !isElectron) {
-          function afterAuthLoad() {
-            if (typeof window.loadObjectsFromApi !== 'function' || typeof window.getCurrentObjectId !== 'function' || typeof window.setCurrentObjectId !== 'function') {
-              if (typeof window.loadLocally === 'function') {
-                return window.loadLocally().then(function () {
-                  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-                  if (typeof window.updateViewList === 'function') window.updateViewList();
-                  navigate('menu');
-                }).catch(function () { navigate('menu'); });
-              }
-              navigate('menu');
-              return Promise.resolve();
-            }
-            return window.loadObjectsFromApi().then(function (list) {
-              list = list || [];
-              var cid = window.getCurrentObjectId();
-              var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
-              if (list.length > 0 && pend && cid !== pend && !list.some(function (o) { return o.id === cid; })) {
-                window.setCurrentObjectId(pend);
-              }
-              if (typeof window.loadLocally === 'function') {
-                return window.loadLocally().then(function () {
-                  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
-                  if (typeof window.updateViewList === 'function') window.updateViewList();
-                  navigate('menu');
-                });
-              }
-              navigate('menu');
-            }).catch(function () { navigate('menu'); });
-          }
-          afterAuthLoad();
-        }
-      }).catch(function () {
-        currentUser = null;
-        updateAuthBar();
-      });
-      return;
+    if (!useApi) {
+      loadCurrentUser();
+      updateAuthBar();
     }
-    loadCurrentUser();
-    updateAuthBar();
-    // В Electron при запуске не переключаем на меню — показываем экран входа
-    var isElectron = typeof window !== 'undefined' && window.electronAPI;
-    if (getCurrentUser() && typeof navigate === 'function' && !isElectron) navigate('menu');
   }
 
   function updateAuthBar() {
     var bar = document.getElementById('auth-bar');
     var span = document.getElementById('authBarUser');
-    var user = getCurrentUser();
+    var user = null;
+    if (useApi) {
+      if (typeof global.isAuthLoggedIn === 'function' && global.isAuthLoggedIn()) {
+        var session = typeof global.getAuthSessionStatus === 'function' ? global.getAuthSessionStatus() : null;
+        user = session && session.user ? session.user : getCurrentUser();
+      }
+    } else {
+      user = getCurrentUser();
+    }
     if (bar && span) {
       if (user) {
         bar.style.display = 'flex';
-        span.textContent = 'Пользователь: ' + (user.username || '') + ' (' + (user.role || '') + ')';
+        span.textContent = 'Вошли: ' + (user.username || '') + ' (' + (user.role || '') + ')';
       } else {
         bar.style.display = 'none';
       }
@@ -483,9 +504,11 @@
         if (data && data.user) {
           saveCurrentUser(data.user);
           addLastUsername(data.user.username || username);
+          if (typeof global.setSessionLoggedIn === 'function') global.setSessionLoggedIn(data.user);
         }
         if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
         updateAuthBar();
+        updateAuthSessionStatusUi();
         var loadAndShow = function () {
           if (typeof window.loadObjectsFromApi !== 'function' || typeof window.getCurrentObjectId !== 'function' || typeof window.setCurrentObjectId !== 'function') {
             if (typeof window.loadLocally === 'function') {
@@ -594,9 +617,13 @@
     });
   }
   function handleLogout() {
-    if (useApi) global.CattleTrackerApi.logout();
+    if (useApi) {
+      global.CattleTrackerApi.logout();
+      if (typeof global.clearAuthSession === 'function') global.clearAuthSession();
+    }
     saveCurrentUser(null);
     updateAuthBar();
+    updateAuthSessionStatusUi();
     if (typeof showToast === 'function') showToast('Выход выполнен', 'info'); else alert('Выход выполнен');
     if (typeof navigate === 'function') navigate('auth');
     setTimeout(function () {
@@ -609,6 +636,7 @@
     window.loginUser = loginUser;
     window.logoutUser = logoutUser;
     window.getCurrentUser = getCurrentUser;
+    window.saveCurrentUser = saveCurrentUser;
     window.getVisibleEntries = getVisibleEntries;
     window.canAdd = canAdd;
     window.canEdit = canEdit;
@@ -627,18 +655,14 @@
     window.initRegisterUsernameCheck = initRegisterUsernameCheck;
     window.fillAuthUsernameList = fillAuthUsernameList;
     window.bindAuthControls = bindAuthControls;
+    window.updateAuthSessionStatusUi = updateAuthSessionStatusUi;
   }
 
   if (typeof window !== 'undefined' && window.document) {
-    function runInit() {
-      initUsers();
-      setTimeout(initUsers, 150);
-      setTimeout(initUsers, 600);
-    }
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', runInit);
+      document.addEventListener('DOMContentLoaded', initUsers);
     } else {
-      runInit();
+      initUsers();
     }
   }
 })(typeof window !== 'undefined' ? window : this);

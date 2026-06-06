@@ -371,6 +371,7 @@ function formatDate(dateStr) {
 function updateList() {
   const list = document.getElementById("entriesList");
   if (!list) return;
+  const entries = (typeof window !== 'undefined' && Array.isArray(window.entries)) ? window.entries : [];
 
   list.innerHTML = `<div><strong>Всего: ${entries.length}</strong></div>`;
   
@@ -446,6 +447,9 @@ function softRepaintCattleTrackerView() {
 }
 
 if (typeof window !== 'undefined') {
+  window.showToast = showToast;
+  window.updateList = updateList;
+  window.formatDate = formatDate;
   window.showConfirmModal = showConfirmModal;
   window.showTripleModal = showTripleModal;
   window.showProtocolAssignModal = showProtocolAssignModal;

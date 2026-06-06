@@ -151,6 +151,124 @@
   cursor: pointer;
 }
 
+.menu-calving-forecast {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg-elevated);
+}
+.menu-calving-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.menu-calving-nav-btn {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+}
+.menu-calving-month-label {
+  font-weight: 600;
+  text-transform: capitalize;
+  min-width: 140px;
+  text-align: center;
+}
+.menu-calving-stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.menu-calving-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+}
+.menu-calving-stat-label {
+  font-size: 0.8em;
+  color: var(--color-text-muted);
+}
+.menu-calving-stat-value {
+  font-size: 1.5em;
+  font-weight: 700;
+}
+.menu-calving-warning {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: #fff3cd;
+  color: #856404;
+  font-size: 0.85em;
+}
+.menu-calving-toggle {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  cursor: pointer;
+}
+.menu-calving-lists {
+  margin-top: 10px;
+}
+.menu-calving-list-title {
+  margin: 8px 0 4px;
+  font-size: 0.9em;
+}
+.menu-calving-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.85em;
+}
+.menu-calving-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.menu-calving-list-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.menu-calving-list-error {
+  color: #b45309;
+}
+.menu-notifications-group-head {
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-bottom: 4px;
+}
+.menu-notifications-group-badge {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+.menu-notifications-group-more {
+  font-size: 0.8em;
+  color: var(--color-text-muted);
+  margin: 2px 0 6px;
+}
+.notification-group-count {
+  font-weight: normal;
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+
 .menu-notifications {
   margin: 12px 0 18px;
   border: 1px solid var(--color-border);
