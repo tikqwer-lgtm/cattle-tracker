@@ -275,7 +275,7 @@ function invFilterPendingNewAnimals(newAnimals) {
     for (var i = 0; i < created.length; i++) {
       if (cattleIdEqual(created[i], row.cattleId)) return false;
     }
-    var list = invGetEntries();
+    var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
     for (var j = 0; j < list.length; j++) {
       if (list[j] && cattleIdEqual(list[j].cattleId, row.cattleId)) return false;
     }
@@ -283,48 +283,113 @@ function invFilterPendingNewAnimals(newAnimals) {
   });
 }
 
+function invBuildEntryFromNewAnimal(row) {
+  var getDef = typeof window.getDefaultCowEntry === 'function' ? window.getDefaultCowEntry : null;
+  var entry = getDef ? getDef() : {
+    cattleId: '',
+    nickname: '',
+    group: '',
+    inseminationHistory: [],
+    actionHistory: [],
+    uziHistory: [],
+    lactationHistory: [],
+    protocol: { name: '', startDate: '' }
+  };
+  entry.cattleId = String(row.cattleId).trim();
+  entry.stallYard = row.foundAt && row.foundAt.yard != null ? String(row.foundAt.yard) : '';
+  entry.stallRow = row.foundAt && row.foundAt.row != null ? row.foundAt.row : '';
+  entry.stallPlace = row.foundAt && row.foundAt.place != null ? row.foundAt.place : '';
+  entry.synced = false;
+  if (typeof window.getCurrentUser === 'function' && window.getCurrentUser()) {
+    entry.userId = window.getCurrentUser().id;
+    entry.lastModifiedBy = window.getCurrentUser().username;
+  }
+  if (typeof window.nowFormatted === 'function' && !entry.dateAdded) {
+    entry.dateAdded = window.nowFormatted();
+  }
+  return entry;
+}
+
+function invAddToExpectedSnapshot(entry) {
+  if (!_inventorySession || !entry || !entry.cattleId) return;
+  if (!_inventorySession.expectedSnapshot) _inventorySession.expectedSnapshot = [];
+  for (var i = 0; i < _inventorySession.expectedSnapshot.length; i++) {
+    if (cattleIdEqual(_inventorySession.expectedSnapshot[i].cattleId, entry.cattleId)) return;
+  }
+  _inventorySession.expectedSnapshot.push({
+    cattleId: String(entry.cattleId).trim(),
+    nickname: entry.nickname || '',
+    group: entry.group || '',
+    stallYard: entry.stallYard || '',
+    stallRow: entry.stallRow !== '' && entry.stallRow != null ? entry.stallRow : '',
+    stallPlace: entry.stallPlace !== '' && entry.stallPlace != null ? entry.stallPlace : ''
+  });
+}
+
+function invRefreshEntriesUi() {
+  if (typeof window.updateList === 'function') window.updateList();
+  if (typeof window.updateViewList === 'function') window.updateViewList();
+  if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+  if (typeof window.stallMapRedrawIfActive === 'function') window.stallMapRedrawIfActive();
+  if (typeof window.CattleTrackerEvents !== 'undefined') {
+    try {
+      window.CattleTrackerEvents.emit('entries:updated', window.entries || []);
+    } catch (e) {}
+  }
+}
+
+function invEntryExistsInHerd(cattleId) {
+  var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && cattleIdEqual(list[i].cattleId, cattleId)) return true;
+  }
+  return false;
+}
+
 function invCreateNewAnimalCards(newAnimals) {
-  if (invIsViewer()) return Promise.resolve(0);
+  if (invIsViewer()) {
+    if (typeof window.showToast === 'function') window.showToast('Недостаточно прав для создания карточек', 'error');
+    return Promise.resolve(0);
+  }
+  if (!_inventorySession) {
+    if (typeof window.showToast === 'function') window.showToast('Сессия инвентаризации не найдена', 'error');
+    return Promise.resolve(0);
+  }
   var pending = invFilterPendingNewAnimals(newAnimals);
   if (!pending.length) {
-    if (typeof showToast === 'function') showToast('Нет новых животных для создания', 'info');
+    if (typeof window.showToast === 'function') window.showToast('Нет новых животных для создания', 'info');
     return Promise.resolve(0);
   }
   if (!_inventorySession.createdNewAnimals) _inventorySession.createdNewAnimals = [];
 
+  if (typeof window.showToast === 'function') {
+    window.showToast('Создание карточек: ' + pending.length + '…', 'info');
+  }
+
   var chain = Promise.resolve();
   var created = 0;
+  var skipped = 0;
+
   pending.forEach(function (row) {
     chain = chain.then(function () {
-      var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
-      for (var i = 0; i < list.length; i++) {
-        if (list[i] && cattleIdEqual(list[i].cattleId, row.cattleId)) {
-          return Promise.resolve();
-        }
+      if (invEntryExistsInHerd(row.cattleId)) {
+        skipped++;
+        return Promise.resolve();
       }
-      var entry = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : { cattleId: '' };
-      entry.cattleId = row.cattleId;
-      entry.stallYard = row.foundAt.yard;
-      entry.stallRow = row.foundAt.row;
-      entry.stallPlace = row.foundAt.place;
-      entry.synced = false;
-      if (typeof getCurrentUser === 'function' && getCurrentUser()) {
-        entry.userId = getCurrentUser().id;
-        entry.lastModifiedBy = getCurrentUser().username;
-      }
-      var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
+      var entry = invBuildEntryFromNewAnimal(row);
+      var useApi = window.CATTLE_TRACKER_USE_API && typeof window.createEntryViaApi === 'function';
       if (useApi) {
         return window.createEntryViaApi(entry).then(function () {
           _inventorySession.createdNewAnimals.push(row.cattleId);
+          invAddToExpectedSnapshot(entry);
           created++;
         });
       }
-      if (list.some(function (e) { return e && cattleIdEqual(e.cattleId, row.cattleId); })) {
-        return Promise.resolve();
-      }
-      list.unshift(entry);
-      if (typeof saveLocally === 'function') saveLocally();
+      var list = typeof window.entries !== 'undefined' && Array.isArray(window.entries) ? window.entries : [];
+      list.push(entry);
+      if (typeof window.saveLocally === 'function') window.saveLocally();
       _inventorySession.createdNewAnimals.push(row.cattleId);
+      invAddToExpectedSnapshot(entry);
       created++;
       return Promise.resolve();
     });
@@ -332,14 +397,25 @@ function invCreateNewAnimalCards(newAnimals) {
 
   return chain.then(function () {
     invSaveSession();
-    if (typeof updateViewList === 'function') updateViewList();
-    if (typeof window.stallMapRedrawIfActive === 'function') window.stallMapRedrawIfActive();
-    if (typeof showToast === 'function') showToast('Создано карточек: ' + created, created ? 'success' : 'info');
+    invRefreshEntriesUi();
+    if (typeof window.showToast === 'function') {
+      if (created > 0) {
+        window.showToast('Создано карточек: ' + created, 'success');
+      } else if (skipped > 0) {
+        window.showToast('Карточки уже есть в стаде (' + skipped + ')', 'info');
+      } else {
+        window.showToast('Не удалось создать карточки', 'error');
+      }
+    }
     invRenderActiveTab();
     return created;
   }).catch(function (err) {
-    if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка создания карточек', 'error');
-    throw err;
+    invRefreshEntriesUi();
+    if (typeof window.showToast === 'function') {
+      window.showToast((err && err.message) || 'Ошибка создания карточек', 'error');
+    }
+    invRenderActiveTab();
+    return 0;
   });
 }
 
@@ -764,7 +840,7 @@ function invRenderResultTab(host) {
     ]) +
     '<h3 class="stall-inventory-section-title">2. Новые животные в стаде</h3>' +
     (createNewBtn ? '<div class="stall-inventory-actions no-print">' + createNewBtn + '</div>' : '') +
-    invResultTableRows(pendingNew.length ? pendingNew : (result.newAnimals || []), [
+    invResultTableRows(pendingNew, [
       { label: 'Номер', key: 'cattleId' },
       { label: 'Стойломесто', render: function (r) { return invEscapeHtml(formatStallLabel(r.foundAt.yard, r.foundAt.row, r.foundAt.place)); } }
     ]) +
@@ -787,7 +863,11 @@ function invRenderResultTab(host) {
   var createNewEl = host.querySelector('#stallInvCreateNewBtn');
   if (createNewEl) {
     createNewEl.addEventListener('click', function () {
-      invCreateNewAnimalCards(result.newAnimals);
+      var btn = createNewEl;
+      btn.disabled = true;
+      invCreateNewAnimalCards(result.newAnimals || []).finally(function () {
+        if (btn.isConnected) btn.disabled = false;
+      });
     });
   }
 
