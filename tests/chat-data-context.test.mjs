@@ -6,6 +6,7 @@ import {
   isCalvingDataQuestion,
   isDataQuestion,
   detectChatDataTopics,
+  detectQuestionWarnings,
   parseMonthFromQuestion,
   buildChatDataContext,
   buildHerdSection
@@ -67,6 +68,18 @@ describe('buildHerdSection', () => {
   });
 });
 
+describe('detectQuestionWarnings', () => {
+  it('конфликт следующий и прошлый месяц', () => {
+    const w = detectQuestionWarnings('Сколько отёлов в прошлом и следующем месяце?', ['calving']);
+    expect(w.some(function (x) { return x.indexOf('следующий') !== -1 && x.indexOf('прошлый') !== -1; })).toBe(true);
+  });
+
+  it('не распознанный запрос данных', () => {
+    const w = detectQuestionWarnings('Сколко ателов в июле?', []);
+    expect(w.length).toBeGreaterThan(0);
+  });
+});
+
 describe('buildChatDataContext', () => {
   const ref = new Date(2026, 5, 10);
   const entries = [{
@@ -90,5 +103,10 @@ describe('buildChatDataContext', () => {
 
   it('null для вопроса не про данные', () => {
     expect(buildChatDataContext('Как синхронизировать?', [], ref)).toBeNull();
+  });
+
+  it('замечания если блок не распознан', () => {
+    const ctx = buildChatDataContext('Сколко чего-то непонятного?', entries, ref);
+    expect(ctx).toContain('Замечания');
   });
 });

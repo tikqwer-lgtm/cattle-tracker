@@ -80,8 +80,80 @@ var TOPICS = [
   }
 ];
 
+var TYPO_REPLACEMENTS = [
+  [/сколко|скольо|скока/g, 'сколько'],
+  [/ател/g, 'отел'],
+  [/стелных/g, 'стельн'],
+  [/сухастой/g, 'сухостой']
+];
+
 function normalizeQuestion(text) {
-  return String(text || '').toLowerCase().replace(/ё/g, 'е');
+  var q = String(text || '').toLowerCase().replace(/ё/g, 'е');
+  TYPO_REPLACEMENTS.forEach(function (pair) {
+    q = q.replace(pair[0], pair[1]);
+  });
+  return q;
+}
+
+function looksLikeDataQuestion(q) {
+  return /сколько|количество|скок|список|показател|стельн|отел|осемен|сухосто|узи|протокол|стойл|голов|животн|\bpr\b|\bcr\b|\bhdr\b|план|факт|групп|задач|инъекц/.test(q);
+}
+
+/**
+ * @param {string} questionText
+ * @param {string[]} [topics]
+ * @param {Date} [refDate]
+ * @returns {string[]}
+ */
+function detectQuestionWarnings(questionText, topics, refDate) {
+  var q = normalizeQuestion(questionText);
+  topics = topics || detectChatDataTopics(questionText);
+  refDate = refDate || new Date();
+  var warnings = [];
+
+  if (/следующ/.test(q) && /прошл/.test(q)) {
+    warnings.push(
+      'В вопросе одновременно «следующий» и «прошлый» период. Для расчёта взят следующий период (он проверяется раньше). Уточните один период, если нужна другая цифра.'
+    );
+  } else if (/следующ/.test(q) && /этом|текущ/.test(q) && /месяц/.test(q)) {
+    warnings.push('Указаны и текущий, и следующий месяц — для отёлов использован следующий месяц.');
+  }
+
+  var namedMonths = [];
+  MONTH_NAME_PATTERNS.forEach(function (pair) {
+    if (q.indexOf(pair[0]) !== -1 && !namedMonths.some(function (m) { return m.month === pair[1]; })) {
+      namedMonths.push({ month: pair[1] });
+    }
+  });
+  if (namedMonths.length > 1 && topics.indexOf('calving') !== -1) {
+    var usedYm = parseMonthFromQuestion(questionText, refDate);
+    warnings.push(
+      'Упомянуто несколько месяцев — для отёлов взят первый найденный в тексте: ' +
+      formatMonthLabel(usedYm.year, usedYm.month) + '.'
+    );
+  }
+
+  if (/стельн/.test(q) && /холост/.test(q)) {
+    warnings.push('«Стельные» и «холостые» — разные статусы; в ответе нужны две отдельные цифры, не суммировать.');
+  }
+
+  if (/сегодня/.test(q) && /завтра/.test(q) &&
+    (topics.indexOf('tasks') !== -1 || topics.indexOf('insemination_list') !== -1)) {
+    warnings.push('Указаны и «сегодня», и «завтра» — для задач использована дата «завтра» (приоритет в разборе).');
+  }
+
+  if (/план/.test(q) && /факт/.test(q) && topics.indexOf('calving') === -1 && /отел/.test(q)) {
+    warnings.push('Запрошены план и факт отёлов — убедитесь, что вопрос про прогноз отёлов за конкретный месяц.');
+  }
+
+  if (looksLikeDataQuestion(q) && !topics.length) {
+    warnings.push(
+      'Вопрос похож на запрос данных стада, но блок не распознан (возможна опечатка или необычная формулировка). ' +
+      'Примеры: «Сколько стельных?», «Отёлы в июле», «PR за месяц», «Задачи на сегодня».'
+    );
+  }
+
+  return warnings;
 }
 
 function detectChatDataTopics(questionText) {
@@ -574,15 +646,22 @@ function defaultDeps() {
  * @returns {string|null}
  */
 function buildChatDataContext(questionText, entries, refDate, deps) {
-  var topics = detectChatDataTopics(questionText);
-  if (!topics.length) return null;
   refDate = refDate || new Date();
   entries = entries || [];
   deps = deps || defaultDeps();
+  var topics = detectChatDataTopics(questionText);
+  var warnings = detectQuestionWarnings(questionText, topics, refDate);
+
+  if (!topics.length) {
+    if (!warnings.length) return null;
+    return 'Сводка по данным не сформирована.\n\n[Замечания к вопросу]\n' + warnings.join('\n');
+  }
 
   if (!entries.length) {
-    return 'Сводка данных стада: в программе нет загруженных записей о животных. ' +
+    var emptyMsg = 'Сводка данных стада: в программе нет загруженных записей о животных. ' +
       'Подскажи пользователю выбрать объект в настройках и при необходимости синхронизировать данные с сервером.';
+    if (warnings.length) emptyMsg += '\n\n[Замечания к вопросу]\n' + warnings.join('\n');
+    return emptyMsg;
   }
 
   var sections = [];
@@ -596,6 +675,10 @@ function buildChatDataContext(questionText, entries, refDate, deps) {
 
   if (!sections.length) return null;
 
+  if (warnings.length) {
+    sections.unshift('[Замечания к вопросу]\n' + warnings.join('\n'));
+  }
+
   return 'Сводка данных стада (посчитано программой — используй эти числа без изменений).\n\n' +
     sections.join('\n\n');
 }
@@ -605,6 +688,7 @@ if (typeof window !== 'undefined') {
   window.isCalvingDataQuestion = isCalvingDataQuestion;
   window.isDataQuestion = isDataQuestion;
   window.detectChatDataTopics = detectChatDataTopics;
+  window.detectQuestionWarnings = detectQuestionWarnings;
 }
 
 export {
@@ -612,6 +696,8 @@ export {
   isCalvingDataQuestion,
   isDataQuestion,
   detectChatDataTopics,
+  detectQuestionWarnings,
+  looksLikeDataQuestion,
   parseMonthFromQuestion,
   parseDateRangeFromQuestion,
   buildChatDataContext,
