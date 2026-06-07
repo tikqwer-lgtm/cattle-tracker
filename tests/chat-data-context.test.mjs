@@ -4,17 +4,44 @@
 import { describe, it, expect } from 'vitest';
 import {
   isCalvingDataQuestion,
+  isDataQuestion,
+  detectChatDataTopics,
   parseMonthFromQuestion,
-  buildChatDataContext
+  buildChatDataContext,
+  buildHerdSection
 } from '../js/features/chat-data-context.js';
+
+describe('detectChatDataTopics', () => {
+  it('отёлы', () => {
+    expect(detectChatDataTopics('Сколько отёлов в следующем месяце?')).toContain('calving');
+  });
+
+  it('статистика стада', () => {
+    expect(detectChatDataTopics('Сколько стельных коров?')).toContain('herd');
+  });
+
+  it('аналитика', () => {
+    expect(detectChatDataTopics('Какой PR за месяц?')).toContain('analytics');
+  });
+
+  it('не срабатывает на справку по программе', () => {
+    expect(detectChatDataTopics('Где список всех животных?')).toEqual([]);
+  });
+});
+
+describe('isDataQuestion', () => {
+  it('true для данных', () => {
+    expect(isDataQuestion('Сколько в сухостое?')).toBe(true);
+  });
+
+  it('false для UI', () => {
+    expect(isDataQuestion('Как синхронизировать?')).toBe(false);
+  });
+});
 
 describe('isCalvingDataQuestion', () => {
   it('распознаёт вопрос про отёлы в следующем месяце', () => {
     expect(isCalvingDataQuestion('Сколько отёлов в следующем месяце?')).toBe(true);
-  });
-
-  it('не срабатывает на общий вопрос по программе', () => {
-    expect(isCalvingDataQuestion('Где список всех животных?')).toBe(false);
   });
 });
 
@@ -26,30 +53,42 @@ describe('parseMonthFromQuestion', () => {
     expect(ym.year).toBe(2026);
     expect(ym.month).toBe(6);
   });
+});
 
-  it('название месяца', () => {
-    const ym = parseMonthFromQuestion('отёлы в июне', ref);
-    expect(ym.month).toBe(5);
+describe('buildHerdSection', () => {
+  it('считает статусы', () => {
+    const text = buildHerdSection([
+      { cattleId: '1', status: 'Стельная' },
+      { cattleId: '2', status: 'Сухостой' }
+    ]);
+    expect(text).toContain('Всего животных: 2');
+    expect(text).toContain('Стельные: 1');
+    expect(text).toContain('В сухостое: 1');
   });
 });
 
 describe('buildChatDataContext', () => {
   const ref = new Date(2026, 5, 10);
+  const entries = [{
+    cattleId: '101',
+    status: 'Стельная',
+    inseminationDate: '2025-09-01',
+    inseminationHistory: [{ date: '2025-09-01' }]
+  }];
 
-  it('возвращает сводку с планом', () => {
-    const entries = [{
-      cattleId: '101',
-      status: 'Стельная',
-      inseminationDate: '2025-09-01',
-      inseminationHistory: [{ date: '2025-09-01' }]
-    }];
+  it('возвращает сводку с планом отёлов', () => {
     const ctx = buildChatDataContext('Сколько отёлов в июне?', entries, ref);
     expect(ctx).toContain('План');
-    expect(ctx).toContain('1');
     expect(ctx).toContain('№101');
   });
 
-  it('null для вопроса не про отёлы', () => {
+  it('возвращает статистику стада', () => {
+    const ctx = buildChatDataContext('Сколько всего коров и стельных?', entries, ref);
+    expect(ctx).toContain('Статистика стада');
+    expect(ctx).toContain('Стельные: 1');
+  });
+
+  it('null для вопроса не про данные', () => {
     expect(buildChatDataContext('Как синхронизировать?', [], ref)).toBeNull();
   });
 });
