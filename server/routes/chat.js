@@ -14,39 +14,106 @@ const REQUEST_TIMEOUT_MS = parseInt(process.env.CHAT_REQUEST_TIMEOUT_MS || '1200
 const OLLAMA_MAX_TOKENS = parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS || '512', 10);
 const DEEPSEEK_MAX_TOKENS = parseInt(process.env.CHAT_DEEPSEEK_MAX_TOKENS || '2048', 10);
 const CHAT_DOCS_MAX_CHARS = parseInt(process.env.CHAT_DOCS_MAX_CHARS || '8000', 10);
+const CHAT_TEMPERATURE = parseFloat(process.env.CHAT_TEMPERATURE || '0.2');
 
 const rootDir = path.join(__dirname, '..', '..');
+const serverDocsDir = path.join(__dirname, '..', 'docs');
+/** Всегда целиком в контекст (меню, навигация) — не обрезается */
+const priorityDocFiles = [{ dir: serverDocsDir, name: 'CHAT_СПРАВКА.md' }];
 const docFiles = [
   'README.md',
+  'ДОКУМЕНТАЦИЯ.md',
   'ИНСТРУКЦИЯ_РАБОТА_С_ДАННЫМИ.md',
   'MULTIPLATFORM.md'
 ];
 
-let systemPromptCache = null;
+let systemPromptCacheFull = null;
+let systemPromptCacheCompact = null;
+let systemPromptCacheGreeting = null;
 
-function loadDocsContext() {
-  if (systemPromptCache !== null) return systemPromptCache;
-  const parts = [];
-  for (const name of docFiles) {
-    const filePath = path.join(rootDir, name);
-    try {
-      if (fs.existsSync(filePath)) {
-        const text = fs.readFileSync(filePath, 'utf8');
-        parts.push('--- ' + name + ' ---\n' + text);
-      }
-    } catch (e) {
-      console.warn('chat: could not read', name, e.message);
+function isGreetingOnly(text) {
+  const t = String(text || '').trim();
+  return /^(привет|здравствуй|здравствуйте|добрый|доброе|hi|hello|hey)[\s!?.…,]*$/i.test(t);
+}
+
+function isCompactChat(messages) {
+  const users = (messages || []).filter((m) => m.role === 'user');
+  const last = users[users.length - 1];
+  if (!last) return true;
+  const t = String(last.content || '').trim();
+  if (!t) return true;
+  if (t.length <= 80 && users.length <= 2) {
+    if (/^(привет|здравствуй|здравствуйте|добрый|доброе|hi|hello|hey|спасибо|пока|да|нет)[\s!?.…,]*$/i.test(t)) {
+      return true;
     }
   }
-  let docsText = parts.length ? parts.join('\n\n') : 'Документация недоступна.';
-  if (docsText.length > CHAT_DOCS_MAX_CHARS) {
-    docsText = docsText.slice(0, CHAT_DOCS_MAX_CHARS) + '\n\n[... документация сокращена ...]';
+  if (users.length === 1 && t.length < 50) return true;
+  return false;
+}
+
+function readDocFile(name, baseDir) {
+  const filePath = path.join(baseDir || rootDir, name);
+  try {
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf8');
+    }
+  } catch (e) {
+    console.warn('chat: could not read', name, e.message);
   }
-  systemPromptCache =
-    'Ты консультант по программе «Учёт коров» — веб-приложению для учёта коров на ферме (осеменение, отёл, аналитика, уведомления). ' +
-    'Отвечай только на вопросы по работе приложения. Не запрашивай и не обрабатывай персональные данные пользователей или данные стада. ' +
-    'Опирайся на следующую документацию:\n\n' + docsText;
-  return systemPromptCache;
+  return '';
+}
+
+function loadPriorityDocsBlock() {
+  const parts = [];
+  for (const item of priorityDocFiles) {
+    const name = typeof item === 'string' ? item : item.name;
+    const dir = typeof item === 'string' ? rootDir : item.dir;
+    const text = readDocFile(name, dir);
+    if (text) parts.push('--- ' + name + ' ---\n' + text);
+  }
+  return parts.join('\n\n');
+}
+
+function loadDocsContext(mode) {
+  if (mode === 'greeting') {
+    if (systemPromptCacheGreeting !== null) return systemPromptCacheGreeting;
+    systemPromptCacheGreeting =
+      'Ты консультант по программе «Учёт коров» для учёта коров на ферме. ' +
+      'Ответь на приветствие одним-двумя короткими предложениями только на русском: поприветствуй и предложи помощь с вопросами по программе.';
+    return systemPromptCacheGreeting;
+  }
+  const compact = mode === 'compact';
+  if (compact) {
+    if (systemPromptCacheCompact !== null) return systemPromptCacheCompact;
+    const priorityBlock = loadPriorityDocsBlock();
+    systemPromptCacheCompact =
+      'Ты консультант по программе «Учёт коров». Пиши только на русском. ' +
+      'На приветствие ответь одним-двумя предложениями: кто ты и чем можешь помочь. ' +
+      'На вопросы по программе отвечай кратко по справке ниже.\n\n' +
+      (priorityBlock || 'Документация недоступна.');
+    return systemPromptCacheCompact;
+  }
+  if (systemPromptCacheFull !== null) return systemPromptCacheFull;
+  const priorityBlock = loadPriorityDocsBlock();
+  let budget = Math.max(0, CHAT_DOCS_MAX_CHARS - priorityBlock.length);
+  const extraParts = [];
+  for (const name of docFiles) {
+    if (budget <= 0) break;
+    const text = readDocFile(name);
+    if (!text) continue;
+    const slice = text.length <= budget ? text : text.slice(0, budget) + '\n\n[... фрагмент обрезан ...]';
+    extraParts.push('--- ' + name + ' ---\n' + slice);
+    budget -= slice.length;
+  }
+  const docsText = [priorityBlock, extraParts.join('\n\n')].filter(Boolean).join('\n\n') || 'Документация недоступна.';
+  systemPromptCacheFull =
+    'Ты консультант по программе «Учёт коров» — приложению для учёта коров на ферме. ' +
+    'Отвечай только на вопросы по работе программы (меню, экраны, синхронизация, ввод данных). ' +
+    'Пиши только на русском языке, без английских вставок и иероглифов. Ответы краткие и по делу (2–6 предложений). ' +
+    'Опирайся на документацию ниже. Если ответа нет в документации — скажи об этом и предложи раздел «Справка» или администратора. ' +
+    'Не выдумывай функции, которых нет в тексте. Не запрашивай персональные данные и данные стада.\n\n' +
+    docsText;
+  return systemPromptCacheFull;
 }
 
 function getChatBackend() {
@@ -57,17 +124,24 @@ function getChatBackend() {
   return null;
 }
 
-function sendToBackend(backend, fullMessages, controller) {
+function sendToBackend(backend, fullMessages, controller, opts) {
+  opts = opts || {};
+  const maxTokens = opts.maxTokens != null ? opts.maxTokens : OLLAMA_MAX_TOKENS;
   if (backend.type === 'ollama') {
     const url = backend.url + '/v1/chat/completions';
+    const body = {
+      model: backend.model,
+      messages: fullMessages,
+      max_tokens: maxTokens,
+      temperature: CHAT_TEMPERATURE
+    };
+    if (opts.compact) {
+      body.options = { num_ctx: 4096, num_predict: maxTokens };
+    }
     return fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: backend.model,
-        messages: fullMessages,
-        max_tokens: OLLAMA_MAX_TOKENS
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal
     });
   }
@@ -80,7 +154,8 @@ function sendToBackend(backend, fullMessages, controller) {
     body: JSON.stringify({
       model: 'deepseek-chat',
       messages: fullMessages,
-      max_tokens: DEEPSEEK_MAX_TOKENS
+      max_tokens: opts.compact ? Math.min(256, maxTokens) : DEEPSEEK_MAX_TOKENS,
+      temperature: CHAT_TEMPERATURE
     }),
     signal: controller.signal
   });
@@ -100,7 +175,12 @@ router.post('/chat', (req, res) => {
     messages = messages.slice(-MAX_HISTORY_MESSAGES);
   }
 
-  const systemContent = loadDocsContext();
+  const users = messages.filter((m) => m.role === 'user');
+  const lastUser = users[users.length - 1];
+  const greetingOnly = lastUser && isGreetingOnly(lastUser.content);
+  const compact = !greetingOnly && isCompactChat(messages);
+  const promptMode = greetingOnly ? 'greeting' : (compact ? 'compact' : 'full');
+  const systemContent = loadDocsContext(promptMode);
   const fullMessages = [
     { role: 'system', content: systemContent },
     ...messages
@@ -108,8 +188,13 @@ router.post('/chat', (req, res) => {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const maxTokens = greetingOnly
+    ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_GREETING || '64', 10)
+    : (compact
+      ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_SHORT || '128', 10)
+      : OLLAMA_MAX_TOKENS);
 
-  sendToBackend(backend, fullMessages, controller)
+  sendToBackend(backend, fullMessages, controller, { compact: greetingOnly || compact, maxTokens: maxTokens })
     .then((r) => {
       clearTimeout(timeoutId);
       if (!r.ok) {

@@ -85,6 +85,13 @@
   color: #c62828;
 }
 
+.chat-consultant-msg.typing {
+  align-self: flex-start;
+  background: #eef3fb;
+  color: #5a6a85;
+  font-style: italic;
+}
+
 .chat-consultant-input-row {
   display: flex;
   gap: 8px;

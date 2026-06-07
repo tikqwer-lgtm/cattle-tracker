@@ -133,7 +133,7 @@
         'error',
         formatDataErrorMessage(err),
         err.cattleId,
-        { kind: 'data_error', category: 'errors', field: err.field, date: err.date },
+        { kind: 'data_error', category: 'errors', field: err.field, date: err.date, dedupeKey: key },
         { showToast: false, showSystem: false }
       );
     });

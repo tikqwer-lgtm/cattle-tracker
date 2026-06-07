@@ -5,6 +5,7 @@
   'use strict';
 
   var chatHistory = [];
+  var chatInFlight = false;
 
   function getBaseUrl() {
     if (global.CattleTrackerApi && typeof global.CattleTrackerApi.getBaseUrl === 'function') {
@@ -39,14 +40,104 @@
     return document.getElementById('chat-consultant-input');
   }
 
+  function getSendBtn() {
+    return document.querySelector('.chat-consultant-send');
+  }
+
   function appendMessage(role, content, isError) {
     var container = getMessagesContainer();
-    if (!container) return;
+    if (!container) return null;
     var div = document.createElement('div');
-    div.className = 'chat-consultant-msg ' + (role === 'user' ? 'user' : (isError ? 'error' : 'assistant'));
+    div.className = 'chat-consultant-msg ' + (role === 'user' ? 'user' : (isError ? 'error' : (role === 'typing' ? 'typing' : 'assistant')));
     div.textContent = content;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    return div;
+  }
+
+  function removeTypingIndicator() {
+    var el = document.getElementById('chat-consultant-typing');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function showTypingIndicator() {
+    removeTypingIndicator();
+    var container = getMessagesContainer();
+    if (!container) return;
+    var div = document.createElement('div');
+    div.id = 'chat-consultant-typing';
+    div.className = 'chat-consultant-msg typing';
+    div.setAttribute('aria-live', 'polite');
+    div.textContent = 'Думаю…';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function hasUnansweredUserMessage() {
+    if (!chatHistory.length) return false;
+    return chatHistory[chatHistory.length - 1].role === 'user';
+  }
+
+  function updateSendButtonState() {
+    var sendBtn = getSendBtn();
+    var input = getInput();
+    if (!sendBtn) return;
+    var hasText = input && (input.value || '').trim().length > 0;
+    sendBtn.disabled = !hasText;
+    if (chatInFlight) {
+      sendBtn.textContent = 'В очереди…';
+    } else {
+      sendBtn.textContent = 'Отправить';
+    }
+  }
+
+  function processChatQueue() {
+    if (chatInFlight || !hasUnansweredUserMessage()) return;
+
+    var base = getBaseUrl();
+    if (!base) return;
+
+    chatInFlight = true;
+    showTypingIndicator();
+    updateSendButtonState();
+
+    var token = getToken();
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    var messages = chatHistory.map(function (m) { return { role: m.role, content: m.content }; });
+
+    fetch(base + '/api/chat', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ messages: messages })
+    })
+      .then(function (res) {
+        var isJson = (res.headers.get('Content-Type') || '').indexOf('application/json') !== -1;
+        if (res.ok) return isJson ? res.json() : { content: '' };
+        return isJson ? res.json().then(function (data) {
+          throw new Error(data.error || data.message || 'Ошибка ' + res.status);
+        }) : Promise.reject(new Error('Ошибка ' + res.status));
+      })
+      .then(function (data) {
+        var content = (data && data.content) ? data.content : '';
+        chatHistory.push({ role: 'assistant', content: content });
+        removeTypingIndicator();
+        appendMessage('assistant', content);
+      })
+      .catch(function (err) {
+        var isNetwork = !err || err.name === 'TypeError' || (err.message && (err.message.indexOf('fetch') !== -1 || err.message.indexOf('Network') !== -1));
+        var msg = isNetwork
+          ? 'Нет подключения к интернету. Чат-консультант работает через сервер и требует сеть.'
+          : (err && err.message ? err.message : 'Ошибка соединения');
+        removeTypingIndicator();
+        appendMessage('assistant', msg, true);
+      })
+      .then(function () {
+        chatInFlight = false;
+        updateSendButtonState();
+        processChatQueue();
+      });
   }
 
   function openChatConsultant() {
@@ -60,12 +151,13 @@
       input.readOnly = false;
       setTimeout(function () {
         input.focus();
+        updateSendButtonState();
       }, 50);
     }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       var container = getMessagesContainer();
       if (container && container.children.length === 0) {
-        appendMessage('assistant', 'Чат-консультант работает только при подключении к интернету (DeepSeek). Сейчас сеть недоступна — дождитесь появления подключения.', true);
+        appendMessage('assistant', 'Чат-консультант работает только при подключении к интернету. Сейчас сеть недоступна — дождитесь появления подключения.', true);
       }
     }
   }
@@ -94,43 +186,8 @@
     chatHistory.push({ role: 'user', content: text });
     appendMessage('user', text);
     input.value = '';
-
-    var sendBtn = document.querySelector('.chat-consultant-send');
-    if (sendBtn) sendBtn.disabled = true;
-
-    var token = getToken();
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-
-    var messages = chatHistory.map(function (m) { return { role: m.role, content: m.content }; });
-
-    fetch(base + '/api/chat', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({ messages: messages })
-    })
-      .then(function (res) {
-        var isJson = (res.headers.get('Content-Type') || '').indexOf('application/json') !== -1;
-        if (res.ok) return isJson ? res.json() : { content: '' };
-        return isJson ? res.json().then(function (data) {
-          throw new Error(data.error || data.message || 'Ошибка ' + res.status);
-        }) : Promise.reject(new Error('Ошибка ' + res.status));
-      })
-      .then(function (data) {
-        var content = (data && data.content) ? data.content : '';
-        chatHistory.push({ role: 'assistant', content: content });
-        appendMessage('assistant', content);
-      })
-      .catch(function (err) {
-        var isNetwork = !err || err.name === 'TypeError' || (err.message && (err.message.indexOf('fetch') !== -1 || err.message.indexOf('Network') !== -1));
-        var msg = isNetwork
-          ? 'Нет подключения к интернету. Чат-консультант использует DeepSeek и работает только при наличии сети.'
-          : (err && err.message ? err.message : 'Ошибка соединения');
-        appendMessage('assistant', msg, true);
-      })
-      .then(function () {
-        if (sendBtn) sendBtn.disabled = false;
-      });
+    updateSendButtonState();
+    processChatQueue();
   }
 
   function contextMenuOpenConsultant() {
@@ -176,12 +233,14 @@
   function initInputSubmit() {
     var input = getInput();
     if (!input) return;
+    input.addEventListener('input', updateSendButtonState);
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendChatMessage();
       }
     });
+    updateSendButtonState();
   }
 
   global.openChatConsultant = openChatConsultant;

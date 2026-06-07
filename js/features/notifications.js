@@ -67,6 +67,49 @@
     } catch (e) {}
   }
 
+  function buildDedupeKey(kind, cattleId, meta) {
+    meta = meta || {};
+    if (meta.dedupeKey) return String(meta.dedupeKey);
+    kind = kind || meta.kind || meta.category || 'other';
+    var parts = [kind, cattleId || ''];
+    if (meta.daysToCalving != null) parts.push('dc' + meta.daysToCalving);
+    if (meta.daysPregnant != null) parts.push('dp' + meta.daysPregnant);
+    if (meta.daysInLactation != null) parts.push('dl' + meta.daysInLactation);
+    if (meta.daysFromInsemination != null) parts.push('di' + meta.daysFromInsemination);
+    if (meta.field) parts.push(String(meta.field), String(meta.date || ''));
+    if (kind === 'sync') parts.push('unsynced');
+    return parts.join('|');
+  }
+
+  function findDedupeKey(n) {
+    if (!n) return '';
+    return buildDedupeKey(inferKind(n), n.cattleId, n.meta || {});
+  }
+
+  /** Оставляет по одному уведомлению на логический ключ (последнее по времени). */
+  function dedupeHistoryList(list) {
+    if (!Array.isArray(list) || !list.length) return list || [];
+    var seen = {};
+    var out = [];
+    for (var i = list.length - 1; i >= 0; i--) {
+      var n = list[i];
+      var key = findDedupeKey(n);
+      if (!key || seen[key]) continue;
+      seen[key] = true;
+      if (!n.meta) n.meta = {};
+      n.meta.dedupeKey = key;
+      out.unshift(n);
+    }
+    return out;
+  }
+
+  function historyHasDedupeKey(key) {
+    if (!key) return false;
+    return loadHistory().some(function (n) {
+      return findDedupeKey(n) === key;
+    });
+  }
+
   function normalizeHistory(list) {
     if (!Array.isArray(list)) return [];
     var changed = false;
@@ -76,6 +119,11 @@
         changed = true;
       }
     });
+    var deduped = dedupeHistoryList(list);
+    if (deduped.length !== list.length) {
+      changed = true;
+      list = deduped;
+    }
     if (changed) saveHistory(list);
     return list;
   }
@@ -156,8 +204,13 @@
   function createNotification(type, message, cowId, meta, options) {
     meta = meta || {};
     options = options || {};
+    var dedupeKey = buildDedupeKey(meta.kind || meta.category, cowId, meta);
+    if (historyHasDedupeKey(dedupeKey)) {
+      return null;
+    }
     var showToastOpt = options.showToast !== false;
     var showSystemOpt = options.showSystem !== false;
+    meta.dedupeKey = dedupeKey;
     var item = {
       id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
       type: type || 'info',
@@ -185,7 +238,7 @@
     if (typeof updateNotificationIndicators === 'function') {
       updateNotificationIndicators();
     }
-    if (document.getElementById('menuNotificationsBody')) {
+    if (typeof document !== 'undefined' && document.getElementById('menuNotificationsBody')) {
       renderNotificationSummary('menuNotificationsBody');
     }
     return item;
@@ -241,7 +294,8 @@
           var key = 'calving_' + cattleId + '_' + daysToCalving;
           if (!notified[key]) {
             notified[key] = true;
-            out.push(createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { kind: 'calving', daysToCalving: daysToCalving, category: 'calving' }, { showToast: false, showSystem: false }));
+            var nCalving = createNotification('info', 'Предстоящий отёл: корова ' + cattleId + ' через ' + daysToCalving + ' дн.', cattleId, { kind: 'calving', daysToCalving: daysToCalving, category: 'calving', dedupeKey: key }, { showToast: false, showSystem: false });
+            if (nCalving) out.push(nCalving);
           }
         }
       }
@@ -256,7 +310,8 @@
           var key2 = 'insem_' + cattleId;
           if (!notified[key2]) {
             notified[key2] = true;
-            out.push(createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (день лактации ' + daysInLactation + ')', cattleId, { kind: 'insemination', daysInLactation: daysInLactation, category: 'insemination' }, { showToast: false, showSystem: false }));
+            var nInsem = createNotification('info', 'Рекомендуется осеменение: корова ' + cattleId + ' (день лактации ' + daysInLactation + ')', cattleId, { kind: 'insemination', daysInLactation: daysInLactation, category: 'insemination', dedupeKey: key2 }, { showToast: false, showSystem: false });
+            if (nInsem) out.push(nInsem);
           }
         }
       }
@@ -270,7 +325,8 @@
             var key3 = 'dry_' + cattleId;
             if (!notified[key3]) {
               notified[key3] = true;
-              out.push(createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { kind: 'dry', daysToCalving: dryOffDue, category: 'dry' }, { showToast: false, showSystem: false }));
+              var nDry = createNotification('info', 'Запуск в сухостой: корова ' + cattleId + ' (отёл через ~' + dryOffDue + ' дн.)', cattleId, { kind: 'dry', daysToCalving: dryOffDue, category: 'dry', dedupeKey: key3 }, { showToast: false, showSystem: false });
+              if (nDry) out.push(nDry);
             }
           }
         }
@@ -286,7 +342,8 @@
             var keyUzi1 = 'uzi1_' + cattleId;
             if (!notified[keyUzi1]) {
               notified[keyUzi1] = true;
-              out.push(createNotification('info', 'УЗИ1: корова ' + cattleId + ' (осеменена ' + daysFromInsem + ' дн. назад)', cattleId, { kind: 'uzi1', daysFromInsemination: daysFromInsem, category: 'other' }, { showToast: false, showSystem: false }));
+              var nUzi1 = createNotification('info', 'УЗИ1: корова ' + cattleId + ' (осеменена ' + daysFromInsem + ' дн. назад)', cattleId, { kind: 'uzi1', daysFromInsemination: daysFromInsem, category: 'other', dedupeKey: keyUzi1 }, { showToast: false, showSystem: false });
+              if (nUzi1) out.push(nUzi1);
             }
           }
         }
@@ -297,7 +354,8 @@
           var keyUzi2 = 'uzi2_' + cattleId;
           if (!notified[keyUzi2]) {
             notified[keyUzi2] = true;
-            out.push(createNotification('info', 'УЗИ2: корова ' + cattleId + ' (стельность ' + daysFromInsem2 + ' дн.)', cattleId, { kind: 'uzi2', daysFromInsemination: daysFromInsem2, category: 'other' }, { showToast: false, showSystem: false }));
+            var nUzi2 = createNotification('info', 'УЗИ2: корова ' + cattleId + ' (стельность ' + daysFromInsem2 + ' дн.)', cattleId, { kind: 'uzi2', daysFromInsemination: daysFromInsem2, category: 'other', dedupeKey: keyUzi2 }, { showToast: false, showSystem: false });
+            if (nUzi2) out.push(nUzi2);
           }
         }
       }
@@ -308,7 +366,8 @@
           var keyOverdue = 'overdue_' + cattleId;
           if (!notified[keyOverdue]) {
             notified[keyOverdue] = true;
-            out.push(createNotification('info', 'Проверить отел: корова ' + cattleId + ' (дней стельности: ' + daysPreg + ')', cattleId, { kind: 'calving_check', daysPregnant: daysPreg, category: 'calving' }, { showToast: false, showSystem: false }));
+            var nOverdue = createNotification('info', 'Проверить отел: корова ' + cattleId + ' (дней стельности: ' + daysPreg + ')', cattleId, { kind: 'calving_check', daysPregnant: daysPreg, category: 'calving', dedupeKey: keyOverdue }, { showToast: false, showSystem: false });
+            if (nOverdue) out.push(nOverdue);
           }
         }
       }
@@ -321,7 +380,8 @@
         var key4 = 'unsynced_count';
         if (!notified[key4]) {
           notified[key4] = true;
-          out.push(createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { kind: 'sync', count: unsynced.length, category: 'sync' }, { showToast: false, showSystem: false }));
+          var nSync = createNotification('info', 'Не синхронизировано записей: ' + unsynced.length, '', { kind: 'sync', count: unsynced.length, category: 'sync', dedupeKey: key4 }, { showToast: false, showSystem: false });
+          if (nSync) out.push(nSync);
         }
       }
     }
@@ -381,6 +441,7 @@
   }
 
   function updateNotificationIndicators() {
+    if (typeof document === 'undefined') return;
     var count = getUnreadCount();
     var badge = document.getElementById('menuNotificationsBadge');
     if (badge) {
@@ -661,6 +722,7 @@
   }
 
   function initNotifications() {
+    normalizeHistory(loadHistory());
     scheduleReminders();
     if (typeof window.requestNotificationPermission === 'undefined') {
       window.requestNotificationPermission = requestNotificationPermission;
