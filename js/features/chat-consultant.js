@@ -91,6 +91,28 @@
     }
   }
 
+  function getEntriesForChat() {
+    var raw = global.entries || [];
+    if (typeof global.getVisibleEntries === 'function') {
+      return global.getVisibleEntries(raw);
+    }
+    return raw;
+  }
+
+  function buildDataContextForLastQuestion() {
+    if (typeof global.buildChatDataContext !== 'function') return null;
+    var lastUser = null;
+    var i;
+    for (i = chatHistory.length - 1; i >= 0; i--) {
+      if (chatHistory[i].role === 'user') {
+        lastUser = chatHistory[i];
+        break;
+      }
+    }
+    if (!lastUser) return null;
+    return global.buildChatDataContext(lastUser.content, getEntriesForChat(), new Date());
+  }
+
   function processChatQueue() {
     if (chatInFlight || !hasUnansweredUserMessage()) return;
 
@@ -106,11 +128,14 @@
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
     var messages = chatHistory.map(function (m) { return { role: m.role, content: m.content }; });
+    var dataContext = buildDataContextForLastQuestion();
+    var payload = { messages: messages };
+    if (dataContext) payload.dataContext = dataContext;
 
     fetch(base + '/api/chat', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ messages: messages })
+      body: JSON.stringify(payload)
     })
       .then(function (res) {
         var isJson = (res.headers.get('Content-Type') || '').indexOf('application/json') !== -1;

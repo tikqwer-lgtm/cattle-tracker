@@ -56,6 +56,7 @@ import './features/stall-inventory.js';
 import './features/admin.js';
 import './features/report-error.js';
 import './features/lists.js';
+import './features/chat-data-context.js';
 import './features/chat-consultant.js';
 import './core/menu.js';
 

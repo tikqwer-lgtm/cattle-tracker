@@ -74,7 +74,22 @@ function loadPriorityDocsBlock() {
   return parts.join('\n\n');
 }
 
+function loadDataContextPrompt(dataContext) {
+  const block = String(dataContext || '').trim();
+  if (!block) return '';
+  return (
+    'Ты консультант по программе «Учёт коров». Пиши только на русском, кратко (2–5 предложений). ' +
+    'Ниже — актуальные данные стада из программы пользователя (уже посчитаны). ' +
+    'Отвечай на вопрос, опираясь ТОЛЬКО на эти цифры и списки. Не меняй числа, не выдумывай животных. ' +
+    'Если данных недостаточно — скажи об этом.\n\n' +
+    block
+  );
+}
+
 function loadDocsContext(mode) {
+  if (mode === 'data') {
+    return '';
+  }
   if (mode === 'greeting') {
     if (systemPromptCacheGreeting !== null) return systemPromptCacheGreeting;
     systemPromptCacheGreeting =
@@ -175,12 +190,16 @@ router.post('/chat', (req, res) => {
     messages = messages.slice(-MAX_HISTORY_MESSAGES);
   }
 
+  const dataContext = typeof body.dataContext === 'string' ? body.dataContext.trim() : '';
   const users = messages.filter((m) => m.role === 'user');
   const lastUser = users[users.length - 1];
-  const greetingOnly = lastUser && isGreetingOnly(lastUser.content);
-  const compact = !greetingOnly && isCompactChat(messages);
-  const promptMode = greetingOnly ? 'greeting' : (compact ? 'compact' : 'full');
-  const systemContent = loadDocsContext(promptMode);
+  const hasDataContext = dataContext.length > 0;
+  const greetingOnly = !hasDataContext && lastUser && isGreetingOnly(lastUser.content);
+  const compact = !hasDataContext && !greetingOnly && isCompactChat(messages);
+  const promptMode = hasDataContext ? 'data' : (greetingOnly ? 'greeting' : (compact ? 'compact' : 'full'));
+  const systemContent = hasDataContext
+    ? loadDataContextPrompt(dataContext)
+    : loadDocsContext(promptMode);
   const fullMessages = [
     { role: 'system', content: systemContent },
     ...messages
@@ -188,13 +207,15 @@ router.post('/chat', (req, res) => {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  const maxTokens = greetingOnly
-    ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_GREETING || '64', 10)
-    : (compact
-      ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_SHORT || '128', 10)
-      : OLLAMA_MAX_TOKENS);
+  const maxTokens = hasDataContext
+    ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_DATA || '256', 10)
+    : (greetingOnly
+      ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_GREETING || '64', 10)
+      : (compact
+        ? parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS_SHORT || '128', 10)
+        : OLLAMA_MAX_TOKENS));
 
-  sendToBackend(backend, fullMessages, controller, { compact: greetingOnly || compact, maxTokens: maxTokens })
+  sendToBackend(backend, fullMessages, controller, { compact: hasDataContext || greetingOnly || compact, maxTokens: maxTokens })
     .then((r) => {
       clearTimeout(timeoutId);
       if (!r.ok) {
