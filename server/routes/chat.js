@@ -10,7 +10,10 @@ const router = express.Router();
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 const MAX_HISTORY_MESSAGES = 20;
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = parseInt(process.env.CHAT_REQUEST_TIMEOUT_MS || '120000', 10);
+const OLLAMA_MAX_TOKENS = parseInt(process.env.CHAT_OLLAMA_MAX_TOKENS || '512', 10);
+const DEEPSEEK_MAX_TOKENS = parseInt(process.env.CHAT_DEEPSEEK_MAX_TOKENS || '2048', 10);
+const CHAT_DOCS_MAX_CHARS = parseInt(process.env.CHAT_DOCS_MAX_CHARS || '8000', 10);
 
 const rootDir = path.join(__dirname, '..', '..');
 const docFiles = [
@@ -35,7 +38,10 @@ function loadDocsContext() {
       console.warn('chat: could not read', name, e.message);
     }
   }
-  const docsText = parts.length ? parts.join('\n\n') : 'Документация недоступна.';
+  let docsText = parts.length ? parts.join('\n\n') : 'Документация недоступна.';
+  if (docsText.length > CHAT_DOCS_MAX_CHARS) {
+    docsText = docsText.slice(0, CHAT_DOCS_MAX_CHARS) + '\n\n[... документация сокращена ...]';
+  }
   systemPromptCache =
     'Ты консультант по программе «Учёт коров» — веб-приложению для учёта коров на ферме (осеменение, отёл, аналитика, уведомления). ' +
     'Отвечай только на вопросы по работе приложения. Не запрашивай и не обрабатывай персональные данные пользователей или данные стада. ' +
@@ -60,7 +66,7 @@ function sendToBackend(backend, fullMessages, controller) {
       body: JSON.stringify({
         model: backend.model,
         messages: fullMessages,
-        max_tokens: 2048
+        max_tokens: OLLAMA_MAX_TOKENS
       }),
       signal: controller.signal
     });
@@ -74,7 +80,7 @@ function sendToBackend(backend, fullMessages, controller) {
     body: JSON.stringify({
       model: 'deepseek-chat',
       messages: fullMessages,
-      max_tokens: 2048
+      max_tokens: DEEPSEEK_MAX_TOKENS
     }),
     signal: controller.signal
   });
