@@ -91,50 +91,37 @@
 
 ## 📂 Структура проекта
 
-Исходники веб-приложения — в корне (`js/`, `css/`, `index.html`). Сборка в корне (`npm run build`) даёт бандл `dist/app.js`. Для десктопа перед сборкой выполняется копирование в `electron/` (см. [MULTIPLATFORM.md](MULTIPLATFORM.md)); скрипт `electron/copy-web.js` копирует исходники и подставляет `dist/app.js` в `electron/web/app.js`. Редактировать нужно только файлы в корне — так снижается риск потери функционала из-за правок только в одной из копий.
+Исходники веб-приложения — в корне (`js/`, `css/`, `html/`, `index.html`). `index.html` собирается из partials (`html/screens/`, `scripts/assemble-html.js`, hook `prebuild`). Сборка (`npm run build`) даёт бандл `dist/app.js`. Для десктопа `electron/copy-web.js` копирует корневые исходники в `electron/`; **редактировать только корень** — устаревшие flat-файлы в `electron/js/*.js` удалены.
 
 ```
 cattle-tracker/
-├── index.html              # Главная страница
-├── manifest.json           # PWA: название, иконки, theme
+├── index.html              # Собран из html/shell-*.html + html/screens/*
+├── html/
+│   ├── shell-start.html, shell-end.html
+│   └── screens/            # Разметка экранов (auth, menu, sync, modals, …)
+├── manifest.json           # PWA
 ├── sw.js                   # Service Worker (офлайн, кэш)
-├── server/                 # Бэкенд API (Node.js, SQLite) — многопользовательский режим
-├── electron/               # Оболочка для десктопа (Electron)
-├── capacitor.config.json   # Конфиг для мобильных приложений (Capacitor)
+├── server/                 # API (Node.js, sql.js)
+│   ├── db.js               # Фасад доступа к БД
+│   └── db/                 # core, users, objects, entries, protocols, farm-card, …
+├── electron/               # Оболочка Electron (копия из корня при сборке)
+├── capacitor.config.json   # Capacitor (Android)
 ├── css/
-│   ├── style.css           # Сводный файл стилей
-│   ├── base.css, layout.css, forms.css, sync.css, responsive.css, view-cow.css, print.css
-│   ├── components.css      # Сборка компонентов (кнопки, таблицы, формы, карточки)
-│   ├── screens/            # Стили экранов (поиск, уведомления, аналитика, модалки, вход, резервы)
-│   │   ├── search-filter.css, notifications.css, tasks-analytics.css, modals-auth-backup.css
-│   └── chat-consultant.css
+│   ├── style.css, components.css
+│   ├── screens/            # Стили экранов + sync-*.css
+│   └── sync.css            # Агрегатор @import sync-экранов
 ├── js/
-│   ├── main.tsx            # Точка входа ESM: импорт модулей, монтирование React
-│   ├── App.tsx             # Корневой компонент React (оболочка для будущей миграции экранов)
-│   ├── global.d.ts         # Расширения типа Window для глобального API
-│   ├── config.js
-│   ├── utils/              # Константы, утилиты, голос
-│   │   ├── constants.js, utils.js, voice-handler.js
-│   ├── core/               # Ядро приложения
-│   │   ├── events.js, core.js, users.js, app.js, menu.js
-│   ├── api/                # API-клиент
-│   │   └── api-client.js
-│   ├── storage/            # Хранилище (объекты, записи, целостность)
-│   │   ├── storage-objects.js, storage-entries.js, storage-integrity.js, storage.js
-│   ├── ui/                 # UI-хелперы, операции с формами, конфиг полей
-│   │   ├── ui-helpers.js, cow-operations.js, field-config.js
-│   └── features/           # Фичи: синхронизация, экспорт/импорт, экраны, аналитика, уведомления, резервы
-│       ├── sync.js, export-import-parse.js, export-import.js, export-excel.js
-│       ├── insemination.js, view-cow.js, view-list-fields.js, view-list.js
-│       ├── analytics-calc.js, analytics.js, notifications.js, backup.js, protocols.js
-│       ├── search-filter.js, chat-consultant.js
-│       └── ...
-├── vite.config.js          # Сборка Vite, копирование dist
-├── tsconfig.json           # TypeScript (strict, ESNext, JSX)
-├── README.md
-├── ДОКУМЕНТАЦИЯ.md
-├── СТАТИСТИКА_И_ИЗМЕНЕНИЯ.md  # Строки кода, этапы, последние изменения
-└── ИНСТРУКЦИЯ_РАБОТА_С_ДАННЫМИ.md
+│   ├── main.tsx            # ESM entry → dist/app.js
+│   ├── App.tsx             # React: порталы в legacy-экраны
+│   ├── screens/            # React-экраны (пилот: FarmSettings.tsx)
+│   ├── core/               # app, menu, users — фасады + подмодули
+│   ├── api/, storage/, ui/, utils/
+│   └── features/           # sync/, action-batch/, stall-map/, … (фасад + подпапка)
+├── scripts/
+│   ├── assemble-html.js    # Сборка index.html
+│   └── split-server-db.js    # Разбиение server/db.js
+├── vite.config.js
+└── tests/                  # Vitest
 ```
 
 ---

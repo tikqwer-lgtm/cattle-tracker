@@ -1,0 +1,156 @@
+  <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
+  <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden data-editing-id="">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="addObjectModalTitle">Новая база (объект)</h2>
+        <button type="button" class="small-btn" id="addObjectModalCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="view-fields-modal-body" style="padding: 1rem 0;">
+        <label for="addObjectNameInput">Название</label>
+        <input type="text" id="addObjectNameInput" class="view-fields-template-input view-fields-template-input--block" placeholder="Новая база" value="Новая база" />
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="addObjectModalCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="addObjectModalOkBtn">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Настройка полей -->
+  <div id="viewFieldsSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2>Настройка полей</h2>
+        <button type="button" class="small-btn" id="viewFieldsCloseBtn">Закрыть</button>
+      </div>
+      <div id="viewFieldsList" class="view-fields-list"></div>
+      <div class="view-fields-templates-section" id="viewFieldsTemplatesSection">
+        <h3 class="view-fields-templates-title">Шаблоны</h3>
+        <div id="viewFieldsTemplatesList" class="view-fields-templates-list"></div>
+        <div class="view-fields-templates-save">
+          <input type="text" id="viewFieldsTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" />
+          <button type="button" class="small-btn" id="viewFieldsSaveTemplateBtn">Сохранить текущий набор</button>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="viewFieldsResetBtn">Сбросить</button>
+        <button type="button" class="action-btn" id="viewFieldsSaveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: История действий карточки животного -->
+  <div id="viewCowActionHistoryModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2>История действий</h2>
+        <button type="button" class="small-btn" id="viewCowActionHistoryCloseBtn">Закрыть</button>
+      </div>
+      <div id="viewCowActionHistoryList" class="view-fields-list" style="max-height: 60vh; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Настройка экспорта -->
+  <div id="exportSettingsModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportSettingsModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="exportSettingsModalTitle">Настройка экспорта</h2>
+        <button type="button" class="small-btn" id="exportSettingsCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="export-settings-body">
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Колонки листа «Коровы»</h3>
+          <div class="export-settings-actions-row">
+            <button type="button" class="small-btn" id="exportSelectAllBtn">Выбрать все</button>
+            <button type="button" class="small-btn" id="exportResetBtn">Сбросить</button>
+          </div>
+          <div id="exportFieldsList" class="view-fields-list"></div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Шаблоны экспорта</h3>
+          <div id="exportTemplatesList" class="view-fields-templates-list"></div>
+          <div class="view-fields-templates-save">
+            <input type="text" id="exportTemplateNameInput" placeholder="Название шаблона" class="view-fields-template-input" aria-label="Название шаблона экспорта" />
+            <button type="button" class="small-btn" id="exportSaveTemplateBtn">Сохранить набор</button>
+          </div>
+        </div>
+        <div class="export-settings-section">
+          <h3 class="export-settings-section-title">Дополнительные листы</h3>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeInseminations" checked /> Включить лист «Осеменения»</label>
+          <label class="export-checkbox-label"><input type="checkbox" id="exportIncludeTasks" /> Включить лист «Список задач»</label>
+          <div id="exportTasksPeriodRow" class="export-tasks-period" style="display: none;">
+            <label>Период задач: с <input type="date" id="exportTasksDateFrom" aria-label="Дата начала периода задач" /></label>
+            <label>по <input type="date" id="exportTasksDateTo" aria-label="Дата окончания периода задач" /></label>
+          </div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="exportSettingsCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="exportSettingsExportBtn">Экспортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: маппинг столбцов при импорте CSV/Excel -->
+  <div id="importMappingModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="importMappingModalTitle">
+    <div class="view-fields-modal-content view-fields-modal-content--wide">
+      <div class="view-fields-modal-header">
+        <h2 id="importMappingModalTitle">Сопоставление столбцов импорта</h2>
+        <button type="button" class="small-btn" id="importMappingCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="import-mapping-body">
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Столбец с номером животного (обязательно)</h3>
+          <select id="importMappingCattleColumn" class="import-mapping-cattle-select" aria-label="Выберите столбец с номером животного">
+            <option value="">— Выберите столбец —</option>
+          </select>
+        </div>
+        <div class="import-mapping-section">
+          <h3 class="import-mapping-section-title">Сопоставление остальных столбцов с полями программы</h3>
+          <div id="importMappingFieldsList" class="import-mapping-fields-list"></div>
+        </div>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="importMappingCloseBtn2">Отмена</button>
+        <button type="button" class="action-btn" id="importMappingImportBtn">Импортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка «Сообщить об ошибке» -->
+  <div id="report-error-modal" class="view-fields-modal" role="dialog" aria-modal="true" aria-labelledby="report-error-modal-title" aria-hidden="true" hidden>
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="report-error-modal-title">Сообщить об ошибке</h2>
+        <button type="button" class="view-fields-modal-close" aria-label="Закрыть" onclick="typeof window.closeReportErrorModal === 'function' && window.closeReportErrorModal()">&times;</button>
+      </div>
+      <div class="view-fields-modal-body">
+        <label for="report-error-message">Опишите проблему или ошибку</label>
+        <textarea id="report-error-message" rows="4" placeholder="Что произошло? Что вы делали перед этим?"></textarea>
+        <label class="report-error-checkbox-label">
+          <input type="checkbox" id="report-error-include-diagnostics" checked />
+          Приложить диагностику (версия, экран, среда) — помогает при разборе проблем
+        </label>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" onclick="typeof window.closeReportErrorModal === 'function' && window.closeReportErrorModal()">Отмена</button>
+        <button type="button" class="action-btn" id="report-error-submit-btn" onclick="typeof window.submitReportError === 'function' && window.submitReportError()">Отправить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Подсказки при первом запуске -->
+  <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="first-run-hints-content">
+      <h2>Добро пожаловать</h2>
+      <ul>
+        <li>Выберите объект (базу) вверху и добавляйте новые кнопкой «Добавить объект».</li>
+        <li>Уведомления доступны на главном экране и в разделе «Уведомления».</li>
+        <li>Базу на сервере выбирайте в «Синхронизация»; импорт/экспорт Excel — в «Администрирование» (для администратора).</li>
+      </ul>
+      <div class="first-run-hints-actions">
+        <button type="button" class="small-btn" id="firstRunHintsSkip">Не показывать снова</button>
+        <button type="button" class="action-btn" id="firstRunHintsClose">Понятно</button>
+      </div>
+    </div>
+  </div>

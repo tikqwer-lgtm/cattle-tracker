@@ -1,0 +1,33 @@
+  <!-- ========== Просмотр списка и карточка животного ========== -->
+  <div id="view-screen" class="screen view-screen">
+    <!-- Верхний блок: закреплён при прокрутке списка -->
+    <div class="view-screen-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
+      <h1>📋 Список всех животных</h1>
+      <button type="button" class="small-btn" id="viewEditorModeBtn" title="Включить редактирование полей прямо в списке">✎ Режим редактора</button>
+      <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
+      <div id="search-filter-container" class="search-filter-container"></div>
+      <div id="viewBulkActions" class="view-bulk-actions"></div>
+    </div>
+    <div id="viewEntriesList" class="view-entries-wrapper"></div>
+    <button type="button" id="viewScrollToTopBtn" class="scroll-to-top-btn" aria-label="Вверх" style="display: none;">↑ Вверх</button>
+  </div>
+
+  <!-- Экран просмотра карточки животного -->
+  <div id="view-cow-screen" class="screen view-cow-screen">
+    <div class="view-cow-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('view')" class="back-button view-cow-back">Назад к списку</button>
+      <h1>🔍 Просмотр животного</h1>
+    </div>
+    <div id="viewCowCard" class="view-cow-body"></div>
+  </div>
+
+  <!-- Экран «Все осеменения» -->
+  <div id="all-inseminations-screen" class="screen">
+    <div class="view-screen-header">
+      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+      <h1>📑 Все осеменения</h1>
+      <div id="allInseminationsFilterContainer" class="search-filter-container"></div>
+    </div>
+    <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
+  </div>

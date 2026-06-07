@@ -1,0 +1,175 @@
+  <!-- ========== Форма добавления/редактирования животного ========== -->
+  <div id="add-screen" class="screen">
+    <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
+    <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
+      <fieldset class="form-cow-section">
+        <legend>Основные данные</legend>
+        <div class="form-cow-editor">
+          <label for="cattleId">Номер коровы *</label>
+          <input type="text" id="cattleId" required />
+          <label for="nickname">Кличка</label>
+          <input type="text" id="nickname" />
+          <label for="group">Группа</label>
+          <input type="text" id="group" placeholder="Место размещения" />
+          <label for="birthDate">Дата рождения</label>
+          <input type="date" id="birthDate" />
+          <label for="lactation">Лактация</label>
+          <input type="number" id="lactation" min="1" max="20" placeholder="—" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Отел и осеменение</legend>
+        <div class="form-cow-editor">
+          <label for="calvingDate">Дата отёла</label>
+          <input type="date" id="calvingDate" />
+          <label for="inseminationDate">Дата осеменения</label>
+          <input type="date" id="inseminationDate" />
+          <label for="attemptNumber">Номер попытки</label>
+          <input type="number" id="attemptNumber" value="1" />
+          <label for="bull">Бык</label>
+          <input type="text" id="bull" list="datalist-farm-bulls" autocomplete="off" />
+          <label for="inseminator">Техник ИО</label>
+          <input type="text" id="inseminator" list="datalist-farm-technicians" autocomplete="off" />
+          <label for="code">Код</label>
+          <select id="code">
+            <option value="">—</option>
+            <option value="Охота">Охота</option>
+            <option value="Датчик">Датчик</option>
+          </select>
+          <label for="status">Статус</label>
+          <select id="status">
+            <option value="">—</option>
+            <option>Осемененная</option>
+            <option>Холостая</option>
+            <option>Стельная</option>
+            <option>Сухостой</option>
+            <option>Отёл</option>
+            <option>Брак</option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Сухостой и протокол</legend>
+        <div class="form-cow-editor">
+          <label for="dryStartDate">Начало сухостоя</label>
+          <input type="date" id="dryStartDate" />
+          <label for="vwp">ПДО</label>
+          <input type="text" id="vwp" readonly placeholder="—" title="Рассчитывается автоматически" />
+          <label for="protocolName">Протокол</label>
+          <input type="text" id="protocolName" />
+          <label for="protocolStartDate">Начало протокола</label>
+          <input type="date" id="protocolStartDate" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Стойломесто</legend>
+        <div class="form-cow-editor">
+          <label for="stallYard">Номер двора</label>
+          <input type="text" id="stallYard" inputmode="numeric" placeholder="например 1" autocomplete="off" />
+          <label for="stallRow">Ряд</label>
+          <input type="number" id="stallRow" min="1" max="200" placeholder="—" />
+          <label for="stallPlace">Место в ряду</label>
+          <input type="number" id="stallPlace" min="1" max="200" placeholder="—" />
+        </div>
+      </fieldset>
+      <fieldset class="form-cow-section">
+        <legend>Выбытие и примечание</legend>
+        <div class="form-cow-editor">
+          <label for="exitDate">Дата выбытия</label>
+          <input type="date" id="exitDate" />
+          <label for="note">Примечание</label>
+          <textarea id="note"></textarea>
+        </div>
+      </fieldset>
+      <div class="form-actions">
+        <button type="button" onclick="typeof window.clearForm === 'function' && window.clearForm();" id="clearFormButton" aria-label="Очистить форму" style="display: none;">Очистить форму</button>
+        <button type="button" onclick="typeof window.cancelEdit === 'function' && window.cancelEdit()" id="cancelButton" aria-label="Отмена">Отмена</button>
+        <button type="submit" id="saveButton" aria-label="Сохранить запись">Сохранить</button>
+      </div>
+    </form>
+
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
+  </div>
+
+  <!-- Экран: схема стойломест -->
+  <div id="stall-map-screen" class="screen stall-map-screen">
+    <h1>▦ Схема стойломест</h1>
+    <div id="stallMapYardSummary" class="stall-map-yard-summary">
+      <span id="stallMapUnassignedCount" class="stall-map-unassigned-count">Не на стойломестах: —</span>
+      <button type="button" id="stallMapCreateYardBtn" class="small-btn stall-map-create-yard-btn">Создать двор</button>
+    </div>
+    <p id="stallMapGridPlaceholder" class="stall-map-grid-placeholder">Создайте двор, чтобы отобразить сетку стойломест. Ряд — вертикальный столбец, места в ряду сверху вниз; между столбцами — зазор «кормостол».</p>
+    <div id="stallMapToolbarWrap" class="stall-map-toolbar-wrap" style="display: none;">
+      <div id="stallMapToolbar" class="stall-map-toolbar">
+        <label class="stall-map-field"><span>Двор</span><select id="stallMapYardSelect" aria-label="Выбор двора"></select></label>
+        <datalist id="stallMapYardDatalist"></datalist>
+        <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapRowsInput" min="1" max="200" value="4" /></label>
+        <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapColsInput" min="1" max="200" value="10" /></label>
+        <button type="button" id="stallMapSaveGridBtn" class="small-btn">Сохранить сетку</button>
+        <button type="button" id="stallMapDeleteYardBtn" class="small-btn stall-map-delete-yard-btn">Удалить двор</button>
+      </div>
+    </div>
+    <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест" style="display: none;"></div>
+    <div class="stall-map-extra-actions">
+      <button type="button" class="small-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">Инвентаризация</button>
+    </div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+  </div>
+
+  <!-- Экран: инвентаризация стойломест -->
+  <div id="stall-inventory-screen" class="screen stall-inventory-screen">
+    <h1>☑ Инвентаризация стойломест</h1>
+    <div class="stall-inventory-tabs" role="tablist">
+      <button type="button" class="stall-inventory-tab active" data-tab="print" role="tab">Опись</button>
+      <button type="button" class="stall-inventory-tab" data-tab="check" role="tab">Сверка</button>
+      <button type="button" class="stall-inventory-tab" data-tab="result" role="tab">Результат</button>
+    </div>
+    <div id="stallInventoryContent" class="stall-inventory-content"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+  </div>
+
+  <div id="stallMapCreateYardModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Новый двор</h2>
+      <p class="stall-map-create-yard-hint">Укажите номер или имя двора и размер сетки. Позже размер можно изменить и нажать «Сохранить сетку».</p>
+      <div class="stall-map-create-yard-fields">
+        <label class="stall-map-field"><span>Номер или имя</span><input type="text" id="stallMapCreateYardKeyInput" inputmode="text" autocomplete="off" placeholder="например 1" /></label>
+        <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapCreateYardRowsInput" min="1" max="200" value="4" /></label>
+        <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapCreateYardColsInput" min="1" max="200" value="10" /></label>
+      </div>
+      <div class="stall-map-modal-actions">
+        <button type="button" id="stallMapCreateYardSubmit" class="action-btn">Создать</button>
+        <button type="button" id="stallMapCreateYardCancel" class="small-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stallMapCellModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Стойломесто занято</h2>
+      <p id="stallMapCellModalBody" class="stall-map-modal-body"></p>
+      <div class="stall-map-modal-actions">
+        <button type="button" id="stallMapCellModalUnassign" class="action-btn">Снять с места</button>
+        <button type="button" id="stallMapCellModalReplace" class="small-btn">Заменить</button>
+        <button type="button" id="stallMapCellModalCancel" class="small-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stallMapAssignModal" class="view-fields-modal stall-map-modal stall-map-assign-modal-shell" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner stall-map-assign-modal-inner">
+      <h2 class="stall-map-modal-title">Назначить на место</h2>
+      <p class="stall-map-assign-hint">Введите номер или кличку и нажмите «Сохранить», либо выберите из списка.</p>
+      <div class="stall-map-assign-scroll">
+        <ul id="stallMapAssignList" class="stall-map-assign-list"></ul>
+      </div>
+      <div class="stall-map-assign-footer">
+        <div class="stall-map-assign-input-row">
+          <input type="text" id="stallMapAssignInput" class="stall-map-assign-input" placeholder="Номер или кличка" autocomplete="off" />
+          <button type="button" id="stallMapAssignSaveBtn" class="action-btn stall-map-assign-save-btn">Сохранить</button>
+        </div>
+        <datalist id="stallMapAssignDatalist"></datalist>
+        <button type="button" id="stallMapAssignModalClose" class="small-btn stall-map-assign-cancel-btn">Отмена</button>
+      </div>
+    </div>
+  </div>

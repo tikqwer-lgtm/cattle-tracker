@@ -18,6 +18,15 @@ declare interface Window {
   CattleTrackerApi?: unknown;
   CattleTrackerEvents?: { on: (a: string, b: () => void) => void; emit: (a: string, b: unknown) => void };
   initFarmSettingsScreen?: () => void;
+  getFarmTechnicians?: () => string[];
+  setFarmTechnicians?: (arr: string[]) => void;
+  getFarmBullsManual?: () => string[];
+  setFarmBullsManual?: (arr: string[]) => void;
+  getFarmDrugs?: () => string[];
+  setFarmDrugs?: (arr: string[]) => void;
+  getFarmVwpDays?: () => number;
+  setFarmVwpDays?: (days: number) => number;
+  persistFarmSettingsToServer?: () => Promise<void>;
   initStallMapScreen?: () => void;
   getDaysInLactation?: (entry: Record<string, unknown>) => number | null;
   getDaysSinceLastInsemination?: (entry: Record<string, unknown>) => number | null;

@@ -1,0 +1,133 @@
+  <!-- ========== Меню (главный экран) ========== -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-branding" aria-hidden="false">
+      <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
+      <span class="menu-branding-text">Молочная компания «Генетика»</span>
+    </div>
+    <p id="app-version" class="app-version" data-default-version="0.6.19" aria-label="Версия приложения"></p>
+    <h1>Меню</h1>
+    <div id="auth-bar" class="auth-bar" style="display: none;">
+      <span id="authBarUser"></span>
+      <button type="button" class="small-btn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">Выйти</button>
+    </div>
+
+    <!-- Переключатель объектов (баз) -->
+    <div id="object-switcher" class="object-switcher">
+      <label for="currentObjectSelect">Объект:</label>
+      <select id="currentObjectSelect" class="object-select" title="Выберите базу для работы"></select>
+      <button type="button" class="small-btn" id="editObjectBtn" title="Изменить название базы" onclick="typeof window.handleEditObjectClick === 'function' && window.handleEditObjectClick()">Изменить</button>
+      <button type="button" class="small-btn" id="deleteObjectBtn" title="Удалить базу" onclick="typeof window.handleDeleteObjectClick === 'function' && window.handleDeleteObjectClick()">Удалить</button>
+      <button type="button" class="small-btn add-object-btn" id="addObjectBtn" title="Добавить новую базу" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">+ Добавить объект</button>
+    </div>
+
+    <!-- Статистика стада: шапка + строки «подпись | кол-во | %» -->
+    <div class="herd-stats">
+      <div class="herd-stats-header">
+        <div class="stat-value" id="totalCows">0</div>
+        <div class="stat-label">Всего коров</div>
+      </div>
+      <div class="herd-stats-table" role="group" aria-label="Статистика по статусам">
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Стельные</span>
+          <span class="herd-stat-num" id="pregnantCows">0</span>
+          <span class="herd-stat-pct" id="pregnantCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Осеменённые</span>
+          <span class="herd-stat-num" id="inseminatedCows">0</span>
+          <span class="herd-stat-pct" id="inseminatedCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">На брак</span>
+          <span class="herd-stat-num" id="cullCows">0</span>
+          <span class="herd-stat-pct" id="cullCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">В сухостое</span>
+          <span class="herd-stat-num" id="dryCows">0</span>
+          <span class="herd-stat-pct" id="dryCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Не осеменённые</span>
+          <span class="herd-stat-num" id="notInseminatedCows">0</span>
+          <span class="herd-stat-pct" id="notInseminatedCowsPct">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-calving-forecast" id="menuCalvingForecast" aria-label="Отёлы за месяц">
+      <div class="menu-calving-header">
+        <button type="button" id="menuCalvingPrev" class="menu-calving-nav-btn" aria-label="Предыдущий месяц">‹</button>
+        <span id="menuCalvingMonthLabel" class="menu-calving-month-label">—</span>
+        <button type="button" id="menuCalvingNext" class="menu-calving-nav-btn" aria-label="Следующий месяц">›</button>
+      </div>
+      <div class="menu-calving-stats">
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">План</span>
+          <span class="menu-calving-stat-value" id="menuCalvingPlanCount">0</span>
+        </div>
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">Факт</span>
+          <span class="menu-calving-stat-value" id="menuCalvingFactCount">0</span>
+        </div>
+      </div>
+      <p id="menuCalvingWarning" class="menu-calving-warning" hidden></p>
+      <button type="button" class="menu-calving-toggle" id="menuCalvingToggle" aria-expanded="false">Показать списки</button>
+      <div id="menuCalvingLists" class="menu-calving-lists" hidden>
+        <h3 class="menu-calving-list-title">План</h3>
+        <ul id="menuCalvingPlanList" class="menu-calving-list"></ul>
+        <h3 class="menu-calving-list-title">Факт</h3>
+        <ul id="menuCalvingFactList" class="menu-calving-list"></ul>
+      </div>
+    </div>
+
+    <!-- Краткие уведомления -->
+    <div id="menu-notifications" class="menu-notifications">
+      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-expanded="false">
+        <span>Уведомления</span>
+        <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
+      </button>
+      <div class="menu-notifications-body" id="menuNotificationsBody" hidden></div>
+    </div>
+
+    <!-- Кнопки действий по группам (главное меню — одна кнопка на группу) -->
+    <div class="action-buttons">
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('data')" class="action-btn menu-group-btn">
+          <span>📁</span>
+          <span>Работа с данными</span>
+        </button>
+      </div>
+      <div class="menu-section" id="menu-section-actions">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('actions')" class="action-btn menu-group-btn">
+          <span>🐄</span>
+          <span>Действия</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('analytics')" class="action-btn menu-group-btn">
+          <span>📊</span>
+          <span>Аналитика</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
+          <span>🔔</span>
+          <span>Уведомления и планы</span>
+          <span class="menu-notifications-button-badge" id="menuNotificationsButtonBadge" style="display: none;"></span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('settings')" class="action-btn menu-group-btn">
+          <span>⚙️</span>
+          <span>Настройки</span>
+        </button>
+      </div>
+      <div class="menu-section" id="admin-menu-section" style="display: none;">
+        <button onclick="typeof window.navigate === 'function' && window.navigate('admin')" class="action-btn menu-group-btn">
+          <span>🛠️</span>
+          <span>Администрирование</span>
+        </button>
+      </div>
+    </div>
+  </div>

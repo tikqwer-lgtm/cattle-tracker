@@ -288,54 +288,10 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Настройки хозяйства (списки техников ИО и быков) -->
+  <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
   <div id="farm-settings-screen" class="screen">
     <h1>Настройки хозяйства</h1>
-    <div class="farm-settings-wrap">
-      <div class="farm-settings-protocols-entry">
-        <button type="button" class="action-btn" onclick="typeof window.navigate === 'function' && window.navigate('protocols')">📋 Протоколы синхронизации</button>
-      </div>
-      <section class="farm-settings-section">
-        <h2>Техники ИО</h2>
-        <p class="farm-settings-hint">Подсказки в поле «Техник ИО» при осеменении и в карточке коровы. Редактирование списка — только администратор.</p>
-        <ul id="farmSettingsTechniciansList" class="farm-settings-chip-list" aria-label="Список техников"></ul>
-        <div class="farm-settings-add-row" id="farmSettingsTechniciansEditor">
-          <input type="text" id="farmSettingsTechniciansInput" class="farm-settings-inline-input" placeholder="Например: Иванов И.И." autocomplete="off" />
-          <button type="button" id="farmSettingsTechniciansAddBtn" class="small-btn">Добавить</button>
-        </div>
-      </section>
-      <section class="farm-settings-section">
-        <h2>Быки (справочник)</h2>
-        <p class="farm-settings-hint">Дополнительно к быкам из описи. Подсказки в поле «Бык». Редактирование — только администратор.</p>
-        <ul id="farmSettingsBullsList" class="farm-settings-chip-list" aria-label="Список быков"></ul>
-        <div class="farm-settings-add-row" id="farmSettingsBullsEditor">
-          <input type="text" id="farmSettingsBullsInput" class="farm-settings-inline-input" placeholder="Номер или кличка быка" autocomplete="off" />
-          <button type="button" id="farmSettingsBullsAddBtn" class="small-btn">Добавить</button>
-        </div>
-      </section>
-      <section class="farm-settings-section">
-        <h2>Список препаратов</h2>
-        <p class="farm-settings-hint">Подсказки в шагах протокола синхронизации. Редактирование — только администратор.</p>
-        <ul id="farmSettingsDrugsList" class="farm-settings-chip-list" aria-label="Список препаратов"></ul>
-        <div class="farm-settings-add-row" id="farmSettingsDrugsEditor">
-          <input type="text" id="farmSettingsDrugsInput" class="farm-settings-inline-input" placeholder="Например: ПГ 500" autocomplete="off" />
-          <button type="button" id="farmSettingsDrugsAddBtn" class="small-btn">Добавить</button>
-        </div>
-      </section>
-      <section class="farm-settings-section">
-        <h2>ПДО (период добровольного ожидания)</h2>
-        <p class="farm-settings-hint">После этого количества дней лактации без осеменения появится уведомление о рекомендации ИО. Редактирование — только администратор.</p>
-        <label class="farm-settings-vwp-row">
-          <span>Дней</span>
-          <input type="number" id="farmSettingsVwpDays" class="farm-settings-inline-input farm-settings-vwp-input" min="30" max="120" step="1" value="60" />
-        </label>
-      </section>
-      <section class="farm-settings-section">
-        <h2>Код осеменения</h2>
-        <p class="farm-settings-hint">В списке кода доступны «Охота», «Датчик» и все протоколы из «Протоколы синхронизации» (кнопка выше).</p>
-      </section>
-      <button type="button" id="farmSettingsSaveBtn" class="action-batch-save-all">Сохранить</button>
-    </div>
+    <div id="farm-settings-react-root"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
   </div>
 

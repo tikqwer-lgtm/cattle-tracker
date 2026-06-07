@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Учёт коров — расширенный функционал</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3d6eb5" />
+  <!-- Подключение основных стилей -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/print.css" media="print" />
+</head>
+<body>
+  <datalist id="datalist-farm-bulls"></datalist>
+  <datalist id="datalist-farm-technicians"></datalist>
+  <datalist id="datalist-farm-drugs"></datalist>
+  <div id="root"></div>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
+  <header id="app-header" class="app-header" aria-label="Шапка приложения">
+    <span id="app-version-header" class="app-version-header"></span>
+    <div class="app-header-actions">
+      <button type="button" id="report-error-btn" class="app-header-report-error-btn" title="Сообщить об ошибке администратору" aria-label="Сообщить об ошибке" style="display: none;" onclick="typeof window.openReportErrorModal === 'function' && window.openReportErrorModal()">Сообщить об ошибке</button>
+      <button type="button" id="restore-input-btn" class="app-header-restore-input-btn" title="Если поля не реагируют на ввод — тот же обход, что раньше был в меню Справка" aria-label="Восстановить ввод" style="display: none;" onclick="typeof window.electronAPI !== 'undefined' && window.electronAPI.requestHitTestWorkaround && window.electronAPI.requestHitTestWorkaround()">Восстановить ввод</button>
+      <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
+        <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+      </button>
+      <button type="button" id="app-header-reload-btn" class="app-header-reload-btn" tabindex="-1" title="Обновить страницу, если поля не нажимаются (как после открытия консоли). Черновики на экранах «Действия» не сохранятся. Не в цепочке Tab — чтобы после обхода DevTools фокус не залипал на этой кнопке." aria-label="Обновить страницу" onclick="typeof window.reloadCattleTrackerPage === 'function' && window.reloadCattleTrackerPage()">Обновить</button>
+    </div>
+  </header>
+  <!-- Шапка для печати (в стиле фирменного бланка МК «Генетика») -->
+  <div id="print-header" class="print-header" aria-hidden="true">
+    <div class="print-header-strip"></div>
+    <div class="print-header-body">
+      <div class="print-header-milk"></div>
+      <div class="print-header-content">
+        <div class="print-logo">
+          <img src="icons/logo.png" alt="" width="120" height="64" class="print-logo-img" />
+          <span class="print-company-name">Молочная компания «Генетика»</span>
+        </div>
+        <div class="print-details">
+          <p>ООО Молочная компания «Генетика»</p>
+          <p>603137, г. Нижний Новгород, ул. 40 лет Победы, д.&nbsp;17</p>
+          <p>тел. 8 (831) 466 17 78, e-mail: info@mkg-nn.ru</p>
+        </div>
+      </div>
+      <div class="print-doc-title" id="print-doc-title">Опись стада</div>
+      <div class="print-doc-date" id="print-doc-date"></div>
+    </div>
+  </div>

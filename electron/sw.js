@@ -1,5 +1,5 @@
 /* Service Worker — оффлайн и кэширование. При релизе увеличивайте версию в CACHE_NAME. */
-var CACHE_NAME = 'cattle-tracker-v5';
+var CACHE_NAME = 'cattle-tracker-v6';
 var urlsToCache = [
   './',
   './index.html',
@@ -20,6 +20,15 @@ var urlsToCache = [
   './css/forms.css',
   './css/responsive.css',
   './css/sync.css',
+  './css/screens/sync-controls.css',
+  './css/screens/sync-connect.css',
+  './css/screens/sync-bases.css',
+  './css/screens/sync-apk.css',
+  './css/screens/action-batch.css',
+  './css/screens/stall-map.css',
+  './css/screens/stall-inventory.css',
+  './css/screens/farm-card.css',
+  './css/chat-consultant.css',
   './css/view-cow.css',
   './css/print.css',
   './dist/app.js'

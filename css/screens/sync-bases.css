@@ -1,0 +1,180 @@
+.sync-server-bases {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+.sync-server-bases h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+}
+.sync-bases-filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.sync-filter-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+.sync-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sync-sortable:hover {
+  text-decoration: underline;
+}
+.sync-server-bases-list .sync-loading,
+.sync-server-bases-list .sync-empty {
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.sync-bases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.sync-bases-table th,
+.sync-bases-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.sync-bases-table th {
+  font-weight: 600;
+}
+.sync-bases-table th:nth-child(4) { text-align: right; }
+.sync-bases-actions {
+  white-space: nowrap;
+}
+.sync-bases-actions .small-btn {
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+.sync-bases-table td:nth-child(1) { min-width: 120px; }
+.sync-bases-table td:nth-child(2) { min-width: 130px; }
+.sync-bases-table td:nth-child(3) { min-width: 100px; }
+.sync-bases-table td:nth-child(4) { min-width: 60px; text-align: right; }
+
+/* Адаптив: карточный вид на мобильных */
+@media (max-width: 600px) {
+  .sync-bases-table thead { display: none; }
+  .sync-bases-table,
+  .sync-bases-table tbody,
+  .sync-bases-table tr,
+  .sync-bases-table td {
+    display: block;
+    width: 100%;
+  }
+  .sync-bases-table tr {
+    background: var(--color-bg-elevated, #f8f9fa);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .sync-bases-table td {
+    padding: 4px 0;
+    border-bottom: none;
+    min-width: unset !important;
+    text-align: left !important;
+  }
+  .sync-bases-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    display: inline;
+  }
+  .sync-bases-table td:last-child::before {
+    content: "";
+  }
+  .sync-bases-actions {
+    white-space: normal;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .sync-bases-actions .small-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
+
+/* Прогресс синхронизации */
+.sync-progress-block {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+.sync-progress-label {
+  font-size: 0.9em;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+.sync-progress-bar-wrap {
+  height: 10px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.sync-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, #5a8fd9 100%);
+  border-radius: 5px;
+  transition: width 0.25s ease;
+}
+.sync-progress-text {
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+}
+
+.sync-replace-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.sync-replace-modal {
+  background: var(--color-bg, #fff);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-width: 400px;
+  width: 90%;
+}
+.sync-replace-modal h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+.sync-replace-modal p {
+  margin: 0 0 12px 0;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+.sync-replace-select {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 1em;
+}
+.sync-replace-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

@@ -1,0 +1,208 @@
+  <!-- ========== Подменю и формы действий (осеменение, отёл, УЗИ) ========== -->
+  <div id="submenu-screen" class="screen">
+    <h1 id="submenu-title">Подменю</h1>
+    <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран «Списки» (УЗИ, осеменение, уколы) -->
+  <div id="lists-screen" class="screen">
+    <h1>📋 Списки</h1>
+    <div id="lists-screen-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран «Список событий» -->
+  <div id="events-screen" class="screen">
+    <h1>📜 Список событий</h1>
+    <div id="events-screen-filters" class="events-filters"></div>
+    <div id="events-screen-container" class="events-screen-container"></div>
+    <div id="events-screen-actions" class="events-actions"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран администрирования (только для admin в режиме API) -->
+  <div id="admin-screen" class="screen">
+    <h1>Администрирование</h1>
+    <section class="admin-section">
+      <h2>Excel</h2>
+      <p class="farm-settings-hint">Экспорт, шаблон и импорт описи (только администратор).</p>
+      <div class="admin-excel-actions">
+        <button type="button" class="action-btn" onclick="typeof exportToExcel === 'function' && exportToExcel()">📤 Экспорт в Excel</button>
+        <button type="button" class="action-btn" onclick="typeof downloadTemplate === 'function' && downloadTemplate()">📋 Шаблон импорта</button>
+        <button type="button" class="action-btn" onclick="document.getElementById('importFile') && document.getElementById('importFile').click()">📥 Импорт из Excel</button>
+      </div>
+      <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" aria-label="Выбор файла для импорта" />
+    </section>
+    <section class="admin-section">
+      <h2>Пользователи</h2>
+      <div id="admin-users-container" class="admin-list-container"></div>
+    </section>
+    <section class="admin-section">
+      <h2>Отчёты пользователей</h2>
+      <div id="admin-reports-container" class="admin-list-container"></div>
+    </section>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
+  <div id="farm-settings-screen" class="screen">
+    <h1>Настройки хозяйства</h1>
+    <div id="farm-settings-react-root"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Карточка хозяйства -->
+  <div id="farm-card-screen" class="screen">
+    <h1>Карточка хозяйства</h1>
+    <div id="farmCardRoot" class="farm-card-root" aria-live="polite"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран ввода осеменения (пакетный) -->
+  <div id="insemination-screen" class="screen">
+    <h1>➕ Ввести осеменение</h1>
+    <div class="action-batch-wrap">
+      <div class="action-batch-add-block">
+        <label for="inseminationBatchAddInput">Добавить по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <ul id="inseminationBatchAddList" class="autocomplete-list" aria-label="Список коров"></ul>
+        </div>
+        <p class="action-batch-add-hint">После выбора коровы укажите попытку (по умолчанию следующая).</p>
+      </div>
+      <div class="action-batch-common">
+        <label for="inseminationDateInsem">Дата осеменения</label>
+        <input type="date" id="inseminationDateInsem" />
+        <label for="bullInsemBatch">Бык</label>
+        <input type="text" id="bullInsemBatch" list="datalist-farm-bulls" placeholder="" autocomplete="off" />
+        <label for="inseminatorInsem">Техник ИО</label>
+        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Ввод или выбор" autocomplete="off" />
+        <label for="codeInsem">Код осеменения</label>
+        <select id="codeInsem">
+          <option value="">—</option>
+          <option value="Охота">Охота</option>
+          <option value="Датчик">Датчик</option>
+        </select>
+      </div>
+      <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="inseminationBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Запуск (начало сухостоя), пакетный -->
+  <div id="dry-screen" class="screen">
+    <h1>🐄 Запуск (начало сухостоя)</h1>
+    <div class="action-batch-wrap">
+      <div class="action-batch-common">
+        <label for="dryStartDateInput">Дата начала сухостоя</label>
+        <input type="date" id="dryStartDateInput" />
+      </div>
+      <div class="action-batch-add-block">
+        <label for="dryBatchAddInput">Добавить по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="dryBatchAddInput" placeholder="Номер коровы" />
+          <ul id="dryBatchAddList" class="autocomplete-list"></ul>
+        </div>
+      </div>
+      <div id="dryBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="dryBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Отёл, пакетный -->
+  <div id="calving-screen" class="screen">
+    <h1>🐄 Отёл</h1>
+    <div class="action-batch-wrap">
+      <div class="action-batch-common">
+        <label for="calvingDateInput">Дата отёла</label>
+        <input type="date" id="calvingDateInput" />
+      </div>
+      <div class="action-batch-add-block">
+        <label for="calvingBatchAddInput">Добавить мать по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="calvingBatchAddInput" placeholder="Номер коровы" />
+          <ul id="calvingBatchAddList" class="autocomplete-list"></ul>
+        </div>
+        <p class="action-batch-add-hint">Можно указать телёнка (номер, пол, вес) или пропустить.</p>
+      </div>
+      <div id="calvingBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="calvingBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: Аборт (пакетный) -->
+  <div id="abort-screen" class="screen">
+    <h1>⚠️ Аборт / рождение раньше срока</h1>
+    <p class="action-batch-add-hint">Сброс телёнка до срока, мертворождение. Для сухостоя — новая лактация как при отёле; иначе статус «Холостая», текущая лактация сохраняется.</p>
+    <div class="action-batch-wrap">
+      <div class="action-batch-common">
+        <label for="abortDateInput">Дата события</label>
+        <input type="date" id="abortDateInput" />
+        <label for="abortNoteInput">Пояснение (необязательно)</label>
+        <input type="text" id="abortNoteInput" placeholder="Комментарий для истории" />
+      </div>
+      <div class="action-batch-add-block">
+        <label for="abortBatchAddInput">Добавить по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="abortBatchAddInput" placeholder="Номер коровы" />
+          <ul id="abortBatchAddList" class="autocomplete-list"></ul>
+        </div>
+      </div>
+      <div id="abortBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="abortBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: На протокол, пакетный -->
+  <div id="protocol-assign-screen" class="screen">
+    <h1>📋 На протокол</h1>
+    <div class="action-batch-wrap">
+      <div class="action-batch-common">
+        <label for="protocolSelectAssign">Протокол</label>
+        <select id="protocolSelectAssign">
+          <option value="">— Выберите протокол —</option>
+        </select>
+        <label for="protocolStartDateInput">Дата постановки на протокол</label>
+        <input type="date" id="protocolStartDateInput" />
+      </div>
+      <div class="action-batch-add-block">
+        <label for="protocolBatchAddInput">Добавить по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="protocolBatchAddInput" placeholder="Номер коровы" />
+          <ul id="protocolBatchAddList" class="autocomplete-list"></ul>
+        </div>
+      </div>
+      <div id="protocolBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="protocolBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран: УЗИ (пакетный) -->
+  <div id="uzi-screen" class="screen">
+    <h1>🩺 УЗИ (проверка на стельность)</h1>
+    <div class="action-batch-wrap">
+      <div class="action-batch-common">
+        <label for="uziDateInput">Дата проверки</label>
+        <input type="date" id="uziDateInput" />
+        <label for="uziSpecialistInput">Специалист</label>
+        <input type="text" id="uziSpecialistInput" placeholder="Кто проводил УЗИ" />
+      </div>
+      <div class="action-batch-add-block">
+        <label for="uziBatchAddInput">Добавить по номеру</label>
+        <div class="autocomplete">
+          <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
+          <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+        </div>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ.</p>
+      </div>
+      <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
+      <button type="button" id="uziBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
+    </div>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+  </div>

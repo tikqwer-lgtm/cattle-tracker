@@ -1,0 +1,98 @@
+  <div id="protocols-screen" class="screen">
+    <h1>📋 Протоколы синхронизации</h1>
+    <div id="protocols-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('farm-settings')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Справка: диагностика консоли (Electron) -->
+  <div id="help-screen" class="screen">
+    <h1>Справка</h1>
+    <p class="help-diagnostics-intro">
+      Журнал событий основного процесса и страницы при открытии и закрытии консоли разработчика.
+      Нужен для поиска остаточных эффектов после закрытия DevTools. При зависании ввода в десктопе используйте кнопку «Восстановить ввод» в шапке.
+    </p>
+    <div class="help-diagnostics-toolbar">
+      <button type="button" class="action-btn" id="help-diagnostics-copy-btn">Копировать журнал</button>
+      <button type="button" class="small-btn" id="help-diagnostics-refresh-btn">Обновить из приложения</button>
+      <button type="button" class="small-btn" id="help-diagnostics-clear-btn">Очистить</button>
+    </div>
+    <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
+    <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <!-- Экран синхронизации -->
+  <div id="sync-screen" class="screen">
+    <h1>🔄 Синхронизация</h1>
+    <!-- Блок когда сервер ещё не подключён -->
+    <div id="sync-connect-block" class="sync-server-section">
+      <div class="sync-section sync-connect-url-section">
+        <p class="sync-section-hint">Логин и пароль хранятся на <strong>выбранном</strong> сервере. Укажите URL API (с http:// или https://), где у вас есть аккаунт. Пустое поле — берётся последний успешный адрес или адрес по умолчанию из сборки.</p>
+        <div class="sync-admin-server-url-row">
+          <input type="url" id="syncConnectServerUrlInput" class="sync-admin-server-url-input" placeholder="" autocomplete="off" inputmode="url" aria-label="Адрес API для входа" />
+        </div>
+      </div>
+      <div class="sync-server-controls sync-connect-row">
+        <span id="connection-indicator-sync" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+        <button type="button" class="action-btn" id="syncConnectBtn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
+        <button type="button" class="action-btn" id="syncSendToServerBtn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Выгрузить на сервер</button>
+      </div>
+      <div id="syncConnectStatus" class="sync-connect-status" aria-live="polite"></div>
+    </div>
+    <!-- Секция для режима API -->
+    <div id="sync-server-block" class="sync-server-section" style="display: none;">
+      <div class="sync-server-controls sync-connected-controls">
+        <span id="connection-indicator-sync-connected" class="connection-indicator connection-indicator--disconnected" role="status" aria-label="Состояние подключения"></span>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.sendToServer === 'function' && window.sendToServer()">Выгрузить на сервер</button>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.updateSyncServerStatusFromHealth === 'function' && window.updateSyncServerStatusFromHealth()">Проверить статус</button>
+        <button type="button" class="action-btn sync-control-btn" onclick="typeof window.disconnectFromServer === 'function' && window.disconnectFromServer()">Отключиться</button>
+      </div>
+      <div id="syncServerStatus" class="sync-server-status" aria-live="polite"></div>
+      <div id="syncAuthStatus" class="sync-auth-status" aria-live="polite" hidden></div>
+      <div id="sync-admin-server-url-section" class="sync-section" style="display: none;">
+        <h3>Адрес сервера API</h3>
+        <p class="sync-section-hint">Доступно администратору. Укажите новый URL, если сервер переехал (с протоколом http или https). После применения сессия сбросится — войдите снова.</p>
+        <div class="sync-admin-server-url-row">
+          <input type="url" id="syncAdminServerUrlInput" class="sync-admin-server-url-input" placeholder="https://пример.ru:3000" autocomplete="off" inputmode="url" aria-label="Адрес API" />
+          <button type="button" class="action-btn" id="syncAdminServerUrlApplyBtn">Проверить и применить</button>
+        </div>
+      </div>
+      <div id="syncProgressBlock" class="sync-progress-block" style="display: none;" aria-live="polite">
+        <div class="sync-progress-label" id="syncProgressLabel">Загрузка…</div>
+        <div class="sync-progress-bar-wrap"><div class="sync-progress-bar" id="syncProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div>
+        <div class="sync-progress-text" id="syncProgressText">0 / 0</div>
+      </div>
+      <div class="sync-server-bases">
+        <h3>Базы на сервере</h3>
+        <div id="syncBasesFilter" class="sync-bases-filter"></div>
+        <div id="syncServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
+      </div>
+    </div>
+    <div id="sync-desktop-apk-admin-section" class="sync-section" style="display: none;">
+      <h3>APK на сервере</h3>
+      <p class="sync-section-hint">Загрузите сборку для мобильных устройств (только администратор). Список — файлы, сохранённые на сервере.</p>
+      <button type="button" class="action-btn" id="syncUploadApkBtn">Загрузить APK</button>
+      <p id="syncApkUploadStatus" class="sync-apk-upload-status" aria-live="polite"></p>
+      <div id="syncApkServerList" class="sync-apk-server-list" aria-live="polite"></div>
+    </div>
+    <details id="sync-mobile-apk-section" class="sync-section sync-mobile-apk-details" style="display: none;">
+      <summary class="sync-mobile-apk-summary">Установка обновления (APK)</summary>
+      <div class="sync-mobile-apk-details-body">
+        <p id="syncMobileApkUpdateLine" class="sync-mobile-apk-update-line" style="display: none;" aria-live="polite"></p>
+        <div id="syncMobileApkMetaBlock" class="sync-mobile-apk-meta-block">
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Версия на сервере</span><span id="syncMobileApkMetaVersion" class="sync-mobile-apk-meta-value">—</span></div>
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Имя файла</span><span id="syncMobileApkMetaName" class="sync-mobile-apk-meta-value">—</span></div>
+          <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Добавлено</span><span id="syncMobileApkMetaDate" class="sync-mobile-apk-meta-value">—</span></div>
+        </div>
+        <p id="syncMobileApkNoFileHint" class="sync-section-hint sync-mobile-apk-no-file-hint" style="display: none;" aria-live="polite"></p>
+        <p class="sync-section-hint">Скачайте APK с сервера — откроется загрузка во внешнем браузере.</p>
+        <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать APK с сервера</button>
+      </div>
+    </details>
+    <div id="sync-backup-section" class="sync-section">
+      <h3>Резервное копирование (локальная утилита)</h3>
+      <div id="sync-backup-container"></div>
+    </div>
+    <div id="syncStatus" class="sync-status"></div>
+    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>

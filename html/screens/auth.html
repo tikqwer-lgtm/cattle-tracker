@@ -1,0 +1,57 @@
+  <!-- ========== Вход и регистрация (обязательно при запуске) ========== -->
+  <div id="auth-screen" class="screen active">
+    <h1>Вход</h1>
+    <div id="auth-form-container" class="auth-form-container">
+      <!-- Локальный режим (без сервера) -->
+      <div id="auth-local-block" class="auth-local-block">
+        <p class="sync-section-hint auth-local-server-hint">Адрес API, на котором у вас есть логин (http:// или https://). Используется при «Подключиться к серверу».</p>
+        <div class="sync-admin-server-url-row auth-local-server-url-row">
+          <input type="url" id="authLocalConnectServerUrlInput" class="sync-admin-server-url-input" placeholder="" autocomplete="off" inputmode="url" aria-label="Адрес API" />
+        </div>
+        <div class="form-actions auth-local-actions">
+          <button type="button" id="auth-skip-btn" class="action-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Войти без пароля</button>
+          <button type="button" id="auth-connect-server-btn" class="action-btn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
+        </div>
+      </div>
+      <!-- Серверный режим (API подключён) -->
+      <div id="auth-server-block" style="display: none;">
+        <p id="auth-session-status" class="auth-session-status auth-session-status--pending" hidden aria-live="polite"></p>
+        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация). Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
+        <p class="auth-api-switch-server-wrap">
+          <button type="button" class="small-btn" onclick="typeof window.switchToPickAnotherApiServer === 'function' && window.switchToPickAnotherApiServer()">Указать другой адрес сервера</button>
+        </p>
+        <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
+          <label for="authUsernameSelect">Выбрать пользователя</label>
+          <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
+            <option value="">— Выберите из списка —</option>
+          </select>
+          <label for="authUsername">Логин</label>
+          <input type="text" id="authUsername" required autocomplete="username" />
+          <label for="authPassword">Пароль</label>
+          <input type="password" id="authPassword" autocomplete="current-password" required />
+          <div class="form-actions">
+            <button type="submit">Войти</button>
+            <button type="button" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
+          </div>
+        </form>
+        <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
+          <label for="regUsername">Логин</label>
+          <input type="text" id="regUsername" required autocomplete="username" />
+          <span id="authUsernameCheck" class="auth-username-check" aria-live="polite"></span>
+          <label for="regPassword">Пароль</label>
+          <input type="password" id="regPassword" autocomplete="new-password" required />
+          <label for="regRole">Роль</label>
+          <select id="regRole">
+            <option value="operator" selected>Оператор</option>
+            <option value="viewer">Только просмотр</option>
+          </select>
+          <p class="auth-api-hint" style="margin-top:8px;font-size:0.9em;opacity:0.9;">Роль «Администратор» назначается только существующим администратором в разделе «Администрирование». Первый зарегистрированный на сервере пользователь получает права администратора автоматически.</p>
+          <div class="form-actions">
+            <button type="submit">Зарегистрироваться</button>
+            <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
+          </div>
+        </form>
+        <p id="auth-user-data-hint" class="auth-user-data-hint">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+      </div>
+    </div>
+  </div>

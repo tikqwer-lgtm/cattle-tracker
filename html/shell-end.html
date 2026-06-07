@@ -1,0 +1,46 @@
+  <!-- Подключение скриптов в правильном порядке -->
+  <!-- Режим API: только если пользователь явно подключился (кнопка «Сохранить и подключиться» в окне синхронизации). По умолчанию — локальная база. -->
+  <script>
+  (function() {
+    try {
+      var useApiMode = localStorage.getItem('cattleTracker_useApiMode') === '1';
+      var base = (localStorage.getItem('cattleTracker_apiBase') || '').trim().replace(/\/$/, '');
+      if (useApiMode && base) {
+        window.CATTLE_TRACKER_USE_API = true;
+        window.CATTLE_TRACKER_API_BASE = base;
+      }
+    } catch (e) {}
+  })();
+  </script>
+  <!-- Внешние библиотеки: PapaParse (CSV), Chart.js (графики); XLSX — в бандле app.js -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Бандл приложения (собрать: npm run build) -->
+  <!-- Чат-консультант (нужен API и DEEPSEEK_API_KEY на сервере) -->
+  <div id="chat-consultant-panel" class="chat-consultant-panel" hidden aria-hidden="true">
+    <div class="chat-consultant-header">
+      <h2 class="chat-consultant-title">Чат-консультант</h2>
+      <button type="button" class="chat-consultant-close" onclick="typeof closeChatConsultant === 'function' && closeChatConsultant()" aria-label="Закрыть">×</button>
+    </div>
+    <div id="chat-consultant-messages" class="chat-consultant-messages" role="log" aria-live="polite"></div>
+    <div class="chat-consultant-input-row">
+      <input type="text" id="chat-consultant-input" class="chat-consultant-input" placeholder="Вопрос по работе программы…" autocomplete="off" />
+      <button type="button" class="chat-consultant-send" onclick="typeof sendChatMessage === 'function' && sendChatMessage()">Отправить</button>
+    </div>
+  </div>
+  <div id="chat-context-menu" class="chat-context-menu" hidden aria-hidden="true">
+    <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
+  </div>
+
+  <script src="dist/app.js"></script>
+  <script>
+  (function() {
+    function setPrintHeaderDate() {
+      var el = document.getElementById('print-doc-date');
+      if (el) el.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    window.addEventListener('beforeprint', setPrintHeaderDate);
+  })();
+  </script>
+</body>
+</html>

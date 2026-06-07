@@ -373,6 +373,8 @@
     window.getFarmTechnicians = getFarmTechnicians;
     window.setFarmTechnicians = setFarmTechnicians;
     window.getFarmBullsManual = getFarmBullsManual;
+    window.setFarmBullsManual = setFarmBullsManual;
+    window.persistFarmSettingsToServer = persistFarmSettingsToServer;
     window.collectBullsFromEntries = collectBullsFromEntries;
     window.getMergedBullSuggestions = getMergedBullSuggestions;
     window.getFarmDrugs = getFarmDrugs;
