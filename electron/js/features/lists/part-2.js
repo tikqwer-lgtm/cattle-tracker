@@ -291,9 +291,9 @@
   }
 
   if (typeof global !== 'undefined') {
-    global.getUziList = getUziList;
-    global.getInseminationProtocolList = getInseminationProtocolList;
-    global.renderListsScreen = renderListsScreen;
+    global.getUziList = NS.getUziList;
+    global.getInseminationProtocolList = NS.getInseminationProtocolList;
+    global.renderListsScreen = NS.renderListsScreen;
     global.exportListToExcel = exportListToExcel;
     global.getAllEvents = getAllEvents;
     global.renderEventsScreen = renderEventsScreen;

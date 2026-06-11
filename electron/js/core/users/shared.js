@@ -11,6 +11,7 @@
     NS.state.LAST_USERNAMES_KEY = 'cattleTracker_lastUsernames';;
     NS.state.MAX_LAST_USERNAMES = 15;;
     NS.state.currentUser = null;;
+    NS.state.loginInProgress = false;;
   }
 })();
 export {};

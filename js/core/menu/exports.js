@@ -3,22 +3,22 @@ import './part-3.js';
 
 if (typeof window !== 'undefined') {
   var SM = globalThis['__menu'];
-  window.updateHerdStats = updateHerdStats;
-  window.updateMenuCalvingForecast = updateMenuCalvingForecast;
-  window.initMenuCalvingForecast = initMenuCalvingForecast;
-  window.navigate = navigate;
-  window.navigateBack = navigateBack;
-  window.navigateBackOrFallback = navigateBackOrFallback;
-  window.navigateToSubmenu = navigateToSubmenu;
-  window.handleAddObjectClick = handleAddObjectClick;
-  window.handleEditObjectClick = handleEditObjectClick;
-  window.handleDeleteObjectClick = handleDeleteObjectClick;
-  window.updateObjectSwitcher = updateObjectSwitcher;
-  window.addEventListener('hashchange', syncRouteToScreen);
+  window.updateHerdStats = SM.updateHerdStats;
+  window.updateMenuCalvingForecast = SM.updateMenuCalvingForecast;
+  window.initMenuCalvingForecast = SM.initMenuCalvingForecast;
+  window.navigate = SM.navigate;
+  window.navigateBack = SM.navigateBack;
+  window.navigateBackOrFallback = SM.navigateBackOrFallback;
+  window.navigateToSubmenu = SM.navigateToSubmenu;
+  window.handleAddObjectClick = SM.handleAddObjectClick;
+  window.handleEditObjectClick = SM.handleEditObjectClick;
+  window.handleDeleteObjectClick = SM.handleDeleteObjectClick;
+  window.updateObjectSwitcher = SM.updateObjectSwitcher;
+  window.addEventListener('hashchange', function () { SM.syncRouteToScreen(); });
 
   var _backExitPending = false;
   window._handleBackButton = function () {
-    if (navigateBack()) return;
+    if (SM.navigateBack()) return;
     if (_backExitPending) {
       try {
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
@@ -41,7 +41,7 @@ if (typeof window !== 'undefined') {
 
 window.addEventListener('load', () => {
   if (document.getElementById('menu-screen').classList.contains('active')) {
-    updateHerdStats();
+    SM.updateHerdStats();
   }
 });
 export {};

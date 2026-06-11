@@ -3,12 +3,12 @@ import './part-2.js';
 
 if (typeof window !== 'undefined') {
   var SM = globalThis['__exportImport'];
-  window.handleImportFile = handleImportFile;
+  window.handleImportFile = SM.handleImportFile;
   function bindImportFileInput() {
     var input = document.getElementById('importFile');
     if (input && !input.dataset.importBound) {
       input.dataset.importBound = '1';
-      input.addEventListener('change', handleImportFile);
+      input.addEventListener('change', SM.handleImportFile);
     }
   }
   if (document.readyState === 'loading') {

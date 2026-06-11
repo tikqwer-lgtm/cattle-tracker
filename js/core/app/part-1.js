@@ -117,13 +117,13 @@ function initApp() {
   if (versionEl || versionHeaderEl) {
     if (typeof window.electronAPI !== 'undefined' && window.electronAPI.getAppVersion) {
       window.electronAPI.getAppVersion().then(function (v) {
-        globalThis['__app'].setVersionText('Версия ' + v, v);
+        setVersionText('Версия ' + v, v);
       });
     } else {
       var fallback = (versionEl && versionEl.getAttribute('data-default-version')) || '1.0.0';
-      globalThis['__app'].setVersionText('Версия ' + fallback, fallback);
+      setVersionText('Версия ' + fallback, fallback);
       fetch('package.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (pkg) {
-        if (pkg && pkg.version) globalThis['__app'].setVersionText('Версия ' + pkg.version, pkg.version);
+        if (pkg && pkg.version) setVersionText('Версия ' + pkg.version, pkg.version);
       }).catch(function () {});
     }
   }

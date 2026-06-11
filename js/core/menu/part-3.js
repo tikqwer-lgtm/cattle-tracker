@@ -190,17 +190,17 @@ function updateHerdStats() {
     if (el) el.textContent = text;
   }
   if (!list || list.length === 0) {
-    globalThis['__menu'].setText('totalCows', '0');
-    globalThis['__menu'].setText('pregnantCows', '0');
-    globalThis['__menu'].setText('dryCows', '0');
-    globalThis['__menu'].setText('inseminatedCows', '0');
-    globalThis['__menu'].setText('cullCows', '0');
-    globalThis['__menu'].setText('notInseminatedCows', '0');
-    globalThis['__menu'].setText('pregnantCowsPct', '0%');
-    globalThis['__menu'].setText('dryCowsPct', '0%');
-    globalThis['__menu'].setText('inseminatedCowsPct', '0%');
-    globalThis['__menu'].setText('cullCowsPct', '0%');
-    globalThis['__menu'].setText('notInseminatedCowsPct', '0%');
+    setText('totalCows', '0');
+    setText('pregnantCows', '0');
+    setText('dryCows', '0');
+    setText('inseminatedCows', '0');
+    setText('cullCows', '0');
+    setText('notInseminatedCows', '0');
+    setText('pregnantCowsPct', '0%');
+    setText('dryCowsPct', '0%');
+    setText('inseminatedCowsPct', '0%');
+    setText('cullCowsPct', '0%');
+    setText('notInseminatedCowsPct', '0%');
     updateMenuCalvingForecast();
     return;
   }
@@ -212,18 +212,18 @@ function updateHerdStats() {
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
   const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
 
-  globalThis['__menu'].setText('totalCows', String(totalCows));
-  globalThis['__menu'].setText('pregnantCows', String(pregnantCows));
-  globalThis['__menu'].setText('dryCows', String(dryCows));
-  globalThis['__menu'].setText('inseminatedCows', String(inseminatedCows));
-  globalThis['__menu'].setText('cullCows', String(cullCows));
-  globalThis['__menu'].setText('notInseminatedCows', String(notInseminatedCows));
+  setText('totalCows', String(totalCows));
+  setText('pregnantCows', String(pregnantCows));
+  setText('dryCows', String(dryCows));
+  setText('inseminatedCows', String(inseminatedCows));
+  setText('cullCows', String(cullCows));
+  setText('notInseminatedCows', String(notInseminatedCows));
 
-  globalThis['__menu'].setText('pregnantCowsPct', pct(pregnantCows, totalCows) + '%');
-  globalThis['__menu'].setText('dryCowsPct', pct(dryCows, totalCows) + '%');
-  globalThis['__menu'].setText('inseminatedCowsPct', pct(inseminatedCows, totalCows) + '%');
-  globalThis['__menu'].setText('cullCowsPct', pct(cullCows, totalCows) + '%');
-  globalThis['__menu'].setText('notInseminatedCowsPct', pct(notInseminatedCows, totalCows) + '%');
+  setText('pregnantCowsPct', pct(pregnantCows, totalCows) + '%');
+  setText('dryCowsPct', pct(dryCows, totalCows) + '%');
+  setText('inseminatedCowsPct', pct(inseminatedCows, totalCows) + '%');
+  setText('cullCowsPct', pct(cullCows, totalCows) + '%');
+  setText('notInseminatedCowsPct', pct(notInseminatedCows, totalCows) + '%');
   updateMenuCalvingForecast();
 }
 
@@ -238,7 +238,7 @@ function initAddObjectModal() {
   function close() { globalThis['__menu'].hideAddObjectModal(); }
   if (closeBtn) closeBtn.addEventListener('click', close);
   if (cancelBtn) cancelBtn.addEventListener('click', close);
-  if (okBtn) okBtn.addEventListener('click', confirmAddObject);
+  if (okBtn) okBtn.addEventListener('click', function () { globalThis['__menu'].confirmAddObject(); });
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); globalThis['__menu'].confirmAddObject(); }
     if (e.key === 'Escape') { e.preventDefault(); globalThis['__menu'].close(); }

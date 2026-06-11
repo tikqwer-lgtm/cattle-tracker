@@ -3,10 +3,10 @@ import './part-2.js';
 
 if (typeof window !== 'undefined') {
   var SM = globalThis['__protocols'];
-  window.renderProtocolsScreen = renderProtocolsScreen;
-  window.ensureProtocolsLoaded = ensureProtocolsLoaded;
-  window.invalidateProtocolsForObjectSwitch = invalidateProtocolsForObjectSwitch;
-  window.getProtocols = getProtocols;
-  window.fillAllInseminationCodeSelects = fillAllInseminationCodeSelects;
+  window.renderProtocolsScreen = SM.renderProtocolsScreen;
+  window.ensureProtocolsLoaded = SM.ensureProtocolsLoaded;
+  window.invalidateProtocolsForObjectSwitch = SM.invalidateProtocolsForObjectSwitch;
+  window.getProtocols = SM.getProtocols;
+  window.fillAllInseminationCodeSelects = SM.fillAllInseminationCodeSelects;
 }
 export {};

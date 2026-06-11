@@ -4,6 +4,7 @@
   var root = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this);
   var NS = root['__users'] = root['__users'] || {};
   var global = typeof window !== 'undefined' ? window : this;
+  var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
 
   function handleRegister(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();

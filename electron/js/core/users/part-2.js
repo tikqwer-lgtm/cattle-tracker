@@ -4,6 +4,7 @@
   var root = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this);
   var NS = root['__users'] = root['__users'] || {};
   var global = typeof window !== 'undefined' ? window : this;
+  var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
 
   function bindAuthControls() {
     var connectionBtn = document.getElementById('app-header-connection-btn');
@@ -235,13 +236,13 @@
     var username = document.getElementById('authUsername') && document.getElementById('authUsername').value;
     var password = document.getElementById('authPassword') && document.getElementById('authPassword').value;
     if (useApi) {
-      if (loginInProgress) return false;
+      if (NS.state.loginInProgress) return false;
       var form = document.getElementById('authLoginForm');
       var submitBtn = form && form.querySelector('button[type="submit"]');
-      loginInProgress = true;
+      NS.state.loginInProgress = true;
       if (submitBtn) submitBtn.disabled = true;
       global.CattleTrackerApi.login(username, password).then(function (data) {
-        loginInProgress = false;
+        NS.state.loginInProgress = false;
         if (submitBtn) submitBtn.disabled = false;
         if (data && data.user) {
           globalThis['__users'].saveCurrentUser(data.user);
@@ -286,7 +287,7 @@
         };
         loadAndShow();
       }).catch(function (err) {
-        loginInProgress = false;
+        NS.state.loginInProgress = false;
         if (submitBtn) submitBtn.disabled = false;
         var msg = (err && err.message) ? err.message : 'Ошибка входа';
         if (err && err.status === 429) {

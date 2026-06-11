@@ -1,15 +1,18 @@
 /** Public window exports */
 import './part-3.js';
 
-window.renderSyncServerBasesList = renderSyncServerBasesList;
-window.showLoadBaseModal = showLoadBaseModal;
-window.showDeleteBaseModal = showDeleteBaseModal;
-window.loadServerBaseIntoNewObject = loadServerBaseIntoNewObject;
-window.showReplaceBaseModal = showReplaceBaseModal;
-window.replaceServerBaseInObject = replaceServerBaseInObject;
-window.uploadCurrentBaseToServer = uploadCurrentBaseToServer;
-window.showImportNewObjectModal = showImportNewObjectModal;
-window.hideServerBaseLocalOnly = hideServerBaseLocalOnly;
-window.overwriteCurrentServerBaseWithLocal = overwriteCurrentServerBaseWithLocal;
+if (typeof window !== 'undefined') {
+  var SM = globalThis['__syncBases'];
+  window.renderSyncServerBasesList = SM.renderSyncServerBasesList;
+  window.showLoadBaseModal = SM.showLoadBaseModal;
+  window.showDeleteBaseModal = SM.showDeleteBaseModal;
+  window.loadServerBaseIntoNewObject = SM.loadServerBaseIntoNewObject;
+  window.showReplaceBaseModal = SM.showReplaceBaseModal;
+  window.replaceServerBaseInObject = SM.replaceServerBaseInObject;
+  window.uploadCurrentBaseToServer = SM.uploadCurrentBaseToServer;
+  window.showImportNewObjectModal = SM.showImportNewObjectModal;
+  window.hideServerBaseLocalOnly = SM.hideServerBaseLocalOnly;
+  window.overwriteCurrentServerBaseWithLocal = SM.overwriteCurrentServerBaseWithLocal;
+}
 
 export {};

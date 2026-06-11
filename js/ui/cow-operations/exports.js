@@ -3,38 +3,38 @@ import './part-3.js';
 
 if (typeof window !== 'undefined') {
   var SM = globalThis['__cowOps'];
-  window.editEntry = editEntry;
-  window.deleteSelectedEntries = deleteSelectedEntries;
-  window.saveUziEntry = saveUziEntry;
-  window.saveCalvingEntry = saveCalvingEntry;
-  window.saveDryRunEntry = saveDryRunEntry;
-  window.saveProtocolAssignEntry = saveProtocolAssignEntry;
-  window.applyUziToEntry = applyUziToEntry;
-  window.applyDryRunToEntry = applyDryRunToEntry;
-  window.applyCalvingToEntry = applyCalvingToEntry;
-  window.applyProtocolAssignToEntry = applyProtocolAssignToEntry;
-  window.applyProtocolClearToEntry = applyProtocolClearToEntry;
-  window.applyAbortToEntry = applyAbortToEntry;
-  window.getLastInseminationRecordBefore = getLastInseminationRecordBefore;
-  window.getLastInseminationDateBefore = getLastInseminationDateBefore;
-  window.setupCattleAutocompleteFor = setupCattleAutocompleteFor;
-  window.buildCalfEntryFromCalving = buildCalfEntryFromCalving;
-  window.initUziScreen = initUziScreen;
-  window.initDryScreen = initDryScreen;
-  window.initCalvingScreen = initCalvingScreen;
-  window.initProtocolAssignScreen = initProtocolAssignScreen;
-  window.initAbortScreen = initAbortScreen;
+  window.editEntry = SM.editEntry;
+  window.deleteSelectedEntries = SM.deleteSelectedEntries;
+  window.saveUziEntry = SM.saveUziEntry;
+  window.saveCalvingEntry = SM.saveCalvingEntry;
+  window.saveDryRunEntry = SM.saveDryRunEntry;
+  window.saveProtocolAssignEntry = SM.saveProtocolAssignEntry;
+  window.applyUziToEntry = SM.applyUziToEntry;
+  window.applyDryRunToEntry = SM.applyDryRunToEntry;
+  window.applyCalvingToEntry = SM.applyCalvingToEntry;
+  window.applyProtocolAssignToEntry = SM.applyProtocolAssignToEntry;
+  window.applyProtocolClearToEntry = SM.applyProtocolClearToEntry;
+  window.applyAbortToEntry = SM.applyAbortToEntry;
+  window.getLastInseminationRecordBefore = SM.getLastInseminationRecordBefore;
+  window.getLastInseminationDateBefore = SM.getLastInseminationDateBefore;
+  window.setupCattleAutocompleteFor = SM.setupCattleAutocompleteFor;
+  window.buildCalfEntryFromCalving = SM.buildCalfEntryFromCalving;
+  window.initUziScreen = SM.initUziScreen;
+  window.initDryScreen = SM.initDryScreen;
+  window.initCalvingScreen = SM.initCalvingScreen;
+  window.initProtocolAssignScreen = SM.initProtocolAssignScreen;
+  window.initAbortScreen = SM.initAbortScreen;
 }
 
 // Экспорт функций
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    editEntry,
-    deleteEntry,
-    deleteSelectedEntries,
-    fillFormFromCowEntry,
-    fillCowEntryFromForm,
-    cancelEdit
+    editEntry: SM.editEntry,
+    deleteEntry: SM.deleteEntry,
+    deleteSelectedEntries: SM.deleteSelectedEntries,
+    fillFormFromCowEntry: SM.fillFormFromCowEntry,
+    fillCowEntryFromForm: SM.fillCowEntryFromForm,
+    cancelEdit: SM.cancelEdit
   };
 }
 export {};
