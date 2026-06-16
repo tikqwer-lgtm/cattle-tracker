@@ -27,7 +27,11 @@ function isSyncMobileLimited() {
 function isSyncUserElevated() {
   if (typeof window.getCurrentUser !== 'function') return false;
   var u = window.getCurrentUser();
-  return !!(u && (u.role === 'admin' || u.role === 'manager'));
+  if (!u) return false;
+  if (typeof window.hasCapability === 'function') {
+    return window.hasCapability('multiBase', u) || window.hasCapability('adminUsersRoles', u);
+  }
+  return !!(u && u.role === 'admin');
 }
 
 function normalizeBaseName(s) {

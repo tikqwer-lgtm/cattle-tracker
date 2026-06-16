@@ -33,16 +33,16 @@ function updateObjectSwitcher() {
   }).join('');
   select.innerHTML = htmlOpts;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  var viewer = user && user.role === 'viewer';
+  var canCards = typeof hasCapability === 'function' ? hasCapability('cards', user) : true;
+  var canMultiBase = typeof hasCapability === 'function' ? hasCapability('multiBase', user) : false;
+  var canFarmSettings = typeof hasCapability === 'function' ? hasCapability('farmCardSettings', user) : false;
   var useApi = window.CATTLE_TRACKER_USE_API;
-  var isApiAdmin = useApi && user && (user.role === 'admin' || user.role === 'manager');
-  var isApiOperator = useApi && user && user.role === 'operator';
-  var showObjCrud = !viewer && (!useApi || (typeof canAdd === 'function' && canAdd()));
+  var showObjCrud = canCards && (!useApi || canMultiBase || canFarmSettings);
   var mobileApi = useApi && typeof window.isMobile === 'function' && window.isMobile();
-  if (addBtn) addBtn.style.display = !viewer && (!useApi || isApiAdmin) && !mobileApi ? '' : 'none';
-  if (editBtn) editBtn.style.display = !viewer && (!useApi || isApiAdmin || isApiOperator) ? '' : 'none';
+  if (addBtn) addBtn.style.display = canMultiBase && !mobileApi ? '' : 'none';
+  if (editBtn) editBtn.style.display = showObjCrud ? '' : 'none';
   if (deleteBtn) {
-    var showDeleteBtn = useApi ? (isApiAdmin && !viewer) : showObjCrud;
+    var showDeleteBtn = useApi ? canMultiBase : showObjCrud;
     deleteBtn.style.display = showDeleteBtn ? '' : 'none';
     deleteBtn.disabled = (select.value === 'default' || (pendingId && select.value === pendingId));
   }
@@ -55,6 +55,28 @@ function updateObjectSwitcher() {
   if (addBtn && !addBtn.getAttribute('onclick')) {
     addBtn.onclick = function () { globalThis['__menu'].handleAddObjectClick(); };
   }
+}
+
+function updateMenuGroupVisibility() {
+  var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  var canEvents = typeof hasCapability === 'function' ? hasCapability('eventsInput', user) : true;
+  var canNotifications = typeof hasCapability === 'function' ? hasCapability('notifications', user) : true;
+  var canAnalytics = typeof hasCapability === 'function' ? hasCapability('analytics', user) : true;
+  var canSettings = typeof hasCapability === 'function' ? hasCapability('farmCardSettings', user) : true;
+  var canAdmin = typeof hasCapability === 'function' ? hasCapability('adminUsersRoles', user) : false;
+
+  function setGroupVisible(fragment, visible) {
+    var btn = document.querySelector("button.menu-group-btn[onclick*=\"" + fragment + "\"]");
+    if (!btn) return;
+    var section = btn.closest('.menu-section');
+    if (section) section.style.display = visible ? '' : 'none';
+  }
+
+  setGroupVisible("navigateToSubmenu('actions')", canEvents);
+  setGroupVisible("navigateToSubmenu('notifications')", canNotifications);
+  setGroupVisible("navigateToSubmenu('analytics')", canAnalytics);
+  setGroupVisible("navigateToSubmenu('settings')", canSettings || canAdmin);
+  setGroupVisible("navigate('admin')", canAdmin);
 }
 
 var _menuCalvingMonthOffset = 0;
@@ -282,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // register functions
   NS.updateObjectSwitcher = updateObjectSwitcher;
+  NS.updateMenuGroupVisibility = updateMenuGroupVisibility;
   NS.formatCalvingMonthLabel = formatCalvingMonthLabel;
   NS.updateMenuCalvingForecast = updateMenuCalvingForecast;
   NS.initMenuCalvingForecast = initMenuCalvingForecast;

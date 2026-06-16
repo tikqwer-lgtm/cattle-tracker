@@ -295,7 +295,8 @@ function renderProtocolsScreenInner(containerId) {
     try { window.refreshFarmDatalists(); } catch (e) {}
   }
 
-  var userViewer = typeof getCurrentUser === 'function' && getCurrentUser() && getCurrentUser().role === 'viewer';
+  var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  var userViewer = typeof window.hasCapability === 'function' ? !window.hasCapability('eventsInput', user) : false;
 
   var list = getProtocols();
   var editingId = window._protocolsEditingId || null;

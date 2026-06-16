@@ -75,8 +75,8 @@ function _handleViewListClick(ev) {
     if (virtualBody && tableContainer && tableContainer._virtualData && tableContainer._virtualData.renderVisible) {
       var cattleId = target.getAttribute('data-cattle-id');
       if (cattleId) {
-        if (viewListSelectedIds.has(cattleId)) viewListSelectedIds.delete(cattleId);
-        else viewListSelectedIds.add(cattleId);
+        if (globalThis.viewListSelectedIds.has(cattleId)) globalThis.viewListSelectedIds.delete(cattleId);
+        else globalThis.viewListSelectedIds.add(cattleId);
         tableContainer._virtualData.globalThis['__viewList'].renderVisible();
       }
     }
@@ -84,7 +84,7 @@ function _handleViewListClick(ev) {
     return;
   }
 
-  if (viewListEditorMode) {
+  if (globalThis.viewListEditorMode) {
     var cell = target.closest('td.editable-cell, td[data-field-key]');
     if (cell && cell.classList && cell.classList.contains('editable-cell')) {
       ev.preventDefault();
@@ -112,7 +112,7 @@ function _handleViewListClick(ev) {
 function selectAllEntries() {
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.list) {
-    container._virtualData.list.forEach(function (entry) { viewListSelectedIds.add(entry.cattleId); });
+    container._virtualData.list.forEach(function (entry) { globalThis.viewListSelectedIds.add(entry.cattleId); });
     if (container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
   } else {
     var checkboxes = document.querySelectorAll('.entry-checkbox');
@@ -124,7 +124,7 @@ function selectAllEntries() {
 }
 
 function deselectAllEntries() {
-  viewListSelectedIds.clear();
+  globalThis.viewListSelectedIds.clear();
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.renderVisible) {
     container._virtualData.globalThis['__viewList'].renderVisible();
@@ -141,9 +141,9 @@ function toggleSelectAll(checked) {
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.list) {
     if (checked) {
-      container._virtualData.list.forEach(function (entry) { viewListSelectedIds.add(entry.cattleId); });
+      container._virtualData.list.forEach(function (entry) { globalThis.viewListSelectedIds.add(entry.cattleId); });
     } else {
-      viewListSelectedIds.clear();
+      globalThis.viewListSelectedIds.clear();
     }
     if (container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
   } else {
@@ -158,7 +158,7 @@ function updateSelectedCount() {
   var count;
   var total;
   if (container && container._virtualData && container._virtualData.list) {
-    count = viewListSelectedIds.size;
+    count = globalThis.viewListSelectedIds.size;
     total = container._virtualData.list.length;
   } else {
     var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
@@ -187,7 +187,7 @@ function updateSelectedCount() {
 function getSelectedCattleIds() {
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.list) {
-    return Array.from(viewListSelectedIds);
+    return Array.from(globalThis.viewListSelectedIds);
   }
   var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
   return Array.prototype.map.call(checkboxes, function (cb) { return cb.getAttribute('data-cattle-id'); });

@@ -242,7 +242,9 @@
 
   function farmSettingsIsAdmin() {
     var u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-    return !!(u && (u.role === 'admin' || u.role === 'manager'));
+    if (!u) return false;
+    if (typeof window.hasCapability === 'function') return window.hasCapability('farmCardSettings', u);
+    return u.role === 'admin';
   }
 
   function renderFarmChipList(ulId, items, editable, onRemoveAt) {

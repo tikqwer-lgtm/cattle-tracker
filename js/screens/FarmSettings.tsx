@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 function isAdmin(): boolean {
   const u = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
-  return !!(u && (u.role === 'admin' || u.role === 'manager'));
+  if (!u) return false;
+  if (typeof window.hasCapability === 'function') return window.hasCapability('farmCardSettings', u);
+  return u.role === 'admin';
 }
 
 function loadLists() {

@@ -9,7 +9,9 @@
   function isAdmin() {
     if (typeof global.getCurrentUser !== 'function') return false;
     var u = global.getCurrentUser();
-    return u && (u.role === 'admin' || u.role === 'manager');
+    if (!u) return false;
+    if (typeof global.hasCapability === 'function') return global.hasCapability('adminReleaseControls', u);
+    return u.role === 'admin';
   }
 
   /** Версия десктопной сборки (как в корневом package.json → data-default-version в index.html). */

@@ -150,19 +150,19 @@ function initViewEditorModeButton() {
   if (typeof window.isMobile === 'function' && window.isMobile()) {
     btn.style.display = 'none';
     btn.dataset.editorBound = '1';
-    viewListEditorMode = false;
+    globalThis.viewListEditorMode = false;
     if (typeof updateViewList === 'function') globalThis['__viewList'].updateViewList();
     return;
   }
   btn.dataset.editorBound = '1';
   btn.addEventListener('click', function () {
-    viewListEditorMode = !viewListEditorMode;
-    btn.textContent = viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
-    btn.classList.toggle('active', viewListEditorMode);
+    globalThis.viewListEditorMode = !globalThis.viewListEditorMode;
+    btn.textContent = globalThis.viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
+    btn.classList.toggle('active', globalThis.viewListEditorMode);
     globalThis['__viewList'].updateViewList();
   });
-  btn.textContent = viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
-  btn.classList.toggle('active', viewListEditorMode);
+  btn.textContent = globalThis.viewListEditorMode ? '✎ Выкл. редактор' : '✎ Режим редактора';
+  btn.classList.toggle('active', globalThis.viewListEditorMode);
 }
 
 function _getEntryRawValue(entry, fieldKey) {

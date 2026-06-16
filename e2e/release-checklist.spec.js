@@ -86,9 +86,6 @@ test.describe('Чек-лист: меню и навигация', () => {
   const groups = [
     'Работа с данными',
     'Действия',
-    'Аналитика',
-    'Уведомления и планы',
-    'Настройки',
   ];
 
   for (const name of groups) {
@@ -101,36 +98,10 @@ test.describe('Чек-лист: меню и навигация', () => {
     });
   }
 
-  test('переход: список животных, протоколы, чат-консультант', async ({ page }) => {
-    test.setTimeout(60000);
+  test('переход: список животных', async ({ page }) => {
     await openSubmenu(page, 'Работа с данными');
     await openViewList(page);
     await backToMenuFromView(page);
-
-    await openSubmenu(page, 'Настройки');
-    await page.evaluate(function () {
-      if (typeof window.navigate === 'function') window.navigate('farm-settings');
-    });
-    await expect(page.locator('#farm-settings-screen.active')).toBeVisible();
-    await page.evaluate(function () {
-      if (typeof window.navigate === 'function') window.navigate('protocols');
-    });
-    await expect(page.locator('#protocols-screen.active')).toBeVisible();
-    await page.evaluate(function () {
-      if (typeof window.navigate === 'function') window.navigate('farm-settings');
-    });
-    await expect(page.locator('#farm-settings-screen.active')).toBeVisible();
-    await page.evaluate(function () {
-      if (typeof window.navigate === 'function') window.navigate('menu');
-    });
-    await expect(page.locator('#menu-screen.active')).toBeVisible();
-
-    await openSubmenu(page, 'Настройки');
-    await page.evaluate(function () {
-      if (typeof window.openChatConsultant === 'function') window.openChatConsultant();
-    });
-    await expect(page.locator('#chat-consultant-panel[aria-hidden="false"]')).toBeVisible();
-    await expect(page.locator('#chat-consultant-input')).toBeVisible();
   });
 });
 

@@ -76,7 +76,9 @@ function invClearSession() {
 
 function invIsViewer() {
   var u = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
-  return !!(u && u.role === 'viewer');
+  if (!u) return false;
+  if (typeof window.hasCapability === 'function') return !window.hasCapability('inventory', u);
+  return false;
 }
 
 function invToast(text, type) {

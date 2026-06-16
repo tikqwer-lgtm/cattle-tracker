@@ -295,6 +295,7 @@ function navigate(screenId, options) {
   }
 
   if (screenId === 'menu') {
+    if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
     globalThis['__menu'].updateObjectSwitcher();
     if (typeof initMenuCalvingForecast === 'function') globalThis['__menu'].initMenuCalvingForecast();
     globalThis['__menu'].updateHerdStats();

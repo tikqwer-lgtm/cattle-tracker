@@ -66,7 +66,7 @@ function initSyncServerBlock() {
     if (inp && window.CattleTrackerApi && typeof window.CattleTrackerApi.getBaseUrl === 'function') {
       if (typeof window.getCurrentUser === 'function') {
         var u = window.getCurrentUser();
-        if (u && (u.role === 'admin' || u.role === 'manager')) {
+        if (u && typeof window.hasCapability === 'function' && window.hasCapability('adminUsersRoles', u)) {
           inp.value = window.CattleTrackerApi.getBaseUrl() || '';
         }
       }

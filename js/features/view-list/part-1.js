@@ -8,8 +8,8 @@
 /** При большом числе строк — виртуальный список (меньше DOM и быстрее скролл) */
 var VIRTUAL_LIST_THRESHOLD = 200;
 var VIRTUAL_ROW_HEIGHT = 40;
-var viewListSelectedIds = new Set();
-var viewListEditorMode = false;
+if (!globalThis.viewListSelectedIds) globalThis.viewListSelectedIds = new Set();
+if (typeof globalThis.viewListEditorMode !== 'boolean') globalThis.viewListEditorMode = false;
 
 function _compareViewList(a, b, key, dir) {
   var mul = dir === 'asc' ? 1 : -1;
@@ -123,7 +123,7 @@ function updateViewList() {
     return sortAsc ? ' sort-asc' : ' sort-desc';
   };
 
-  if (listToShow.length > VIRTUAL_LIST_THRESHOLD && !viewListEditorMode) {
+  if (listToShow.length > VIRTUAL_LIST_THRESHOLD && !globalThis.viewListEditorMode) {
     _renderVirtualList(tableContainer, listToShow, fields, sortMark, sortClass, bulkContainer);
     var viewScreen = document.getElementById('view-screen');
     if (viewScreen) {
@@ -140,8 +140,8 @@ function updateViewList() {
     return;
   }
 
-  viewListSelectedIds.clear();
-  var tableClass = 'entries-table' + (viewListEditorMode ? ' view-list-editor-mode' : '');
+  globalThis.viewListSelectedIds.clear();
+  var tableClass = 'entries-table' + (globalThis.viewListEditorMode ? ' view-list-editor-mode' : '');
   tableContainer.innerHTML = `
     <table class="${tableClass}">
       <thead>
@@ -162,7 +162,7 @@ function updateViewList() {
           const cells = fields.map(field => {
             const v = field.render(entry);
             const show = (field.key === 'lactation' && (v === 0 || v === '0')) ? '0' : v;
-            var editable = viewListEditorMode && (window.VIEW_LIST_EDITABLE_KEYS || {})[field.key];
+            var editable = globalThis.viewListEditorMode && (window.VIEW_LIST_EDITABLE_KEYS || {})[field.key];
             return `<td data-field-key="${field.key}" ${editable ? ' class="editable-cell"' : ''}>${show}</td>`;
           }).join('');
           return `
@@ -275,13 +275,13 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     for (var i = start; i < end; i++) {
       var entry = listToShow[i];
       var safeCattleId = window.viewListEscapeHtml(entry.cattleId).replace(/"/g, '&quot;');
-      var checked = viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
+      var checked = globalThis.viewListSelectedIds.has(entry.cattleId) ? ' checked' : '';
       var cells = fields.map(function (field) {
         var v = field.render(entry);
         if (field.key === 'lactation' && (v === 0 || v === '0')) v = '0';
         return '<div class="view-virtual-cell">' + (v || '') + '</div>';
       }).join('');
-      html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + '" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
+      html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (globalThis.viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + '" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
         '<div class="view-virtual-cell view-virtual-checkbox"><input type="checkbox" class="entry-checkbox" data-cattle-id="' + safeCattleId + '" aria-label="Выделить"' + checked + '></div>' +
         cells + '</div>';
     }

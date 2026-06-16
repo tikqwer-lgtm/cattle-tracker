@@ -97,7 +97,8 @@
   function farmCardCanEdit() {
     var u = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
     if (!u) return false;
-    return u.role === 'admin' || u.role === 'manager' || u.role === 'operator';
+    if (typeof window.hasCapability === 'function') return window.hasCapability('farmCardSettings', u);
+    return u.role === 'admin';
   }
 
   function normalizeBundle(raw) {
