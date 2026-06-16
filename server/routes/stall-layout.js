@@ -18,7 +18,7 @@ router.get('/:objectId/stall-layout', requireAuth, (req, res) => {
   res.json(db.getStallLayout(objectId));
 });
 
-router.put('/:objectId/stall-layout', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+router.put('/:objectId/stall-layout', requireAuth, requireRole('admin', 'pro', 'medium', 'lite', 'manager', 'operator'), (req, res) => {
   const objectId = getObjectId(req);
   if (!objectId) return res.status(400).json({ error: 'objectId обязателен' });
   const obj = db.getObjectById(objectId);

@@ -14,7 +14,7 @@ router.get('/:objectId/farm-card', requireAuth, (req, res) => {
   res.json(bundle);
 });
 
-router.put('/:objectId/farm-card', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+router.put('/:objectId/farm-card', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const objectId = String(req.params.objectId || '').trim();
   if (!objectId) return res.status(400).json({ error: 'objectId обязателен' });
   if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });

@@ -3,7 +3,7 @@ const { runSql, getSql, allSql, saveDb } = require('./core');
 function createUser(id, username, passwordHash, role) {
   runSql(
     'INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)',
-    [id, username, passwordHash, role || 'operator']
+    [id, username, passwordHash, role || 'lite']
   );
   saveDb();
 }
@@ -19,7 +19,7 @@ function countAdmins() {
 }
 
 function updateUserRole(targetId, newRole) {
-  const allowed = ['admin', 'manager', 'operator', 'viewer'];
+  const allowed = ['admin', 'lite', 'medium', 'pro', 'manager', 'operator', 'viewer'];
   if (!allowed.includes(newRole)) {
     return { ok: false, error: 'Недопустимая роль' };
   }

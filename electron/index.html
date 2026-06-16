@@ -93,10 +93,10 @@
           <input type="password" id="regPassword" autocomplete="new-password" required />
           <label for="regRole">Роль</label>
           <select id="regRole">
-            <option value="operator" selected>Оператор</option>
-            <option value="viewer">Только просмотр</option>
+            <option value="lite" selected>Lite</option>
+            <option value="medium">Medium</option>
           </select>
-          <p class="auth-api-hint" style="margin-top:8px;font-size:0.9em;opacity:0.9;">Роль «Администратор» назначается только существующим администратором в разделе «Администрирование». Первый зарегистрированный на сервере пользователь получает права администратора автоматически.</p>
+          <p class="auth-api-hint" style="margin-top:8px;font-size:0.9em;opacity:0.9;">Роли Pro и Admin назначаются только администратором в разделе «Администрирование». Первый зарегистрированный на сервере пользователь получает права администратора автоматически.</p>
           <div class="form-actions">
             <button type="submit">Зарегистрироваться</button>
             <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>

@@ -6,10 +6,8 @@
   var global = typeof window !== 'undefined' ? window : this;
 
 function navigateBackOrFallback() {
-  if (_navStack.length > 0) {
-    return globalThis['__menu'].navigateBack();
-  }
-  if (typeof navigate === 'function') globalThis['__menu'].navigate('submenu');
+  if (globalThis['__menu'].navigateBack()) return;
+  globalThis['__menu'].navigate('submenu');
 }
 
 function syncRouteToScreen() {
@@ -22,7 +20,7 @@ function syncRouteToScreen() {
     screenId = 'auth';
     if (typeof location !== 'undefined') location.hash = 'auth';
   }
-  if (currentUser && currentUser.role === 'viewer' && globalThis['__menu'].viewerForbiddenScreen(screenId)) {
+  if (currentUser && globalThis['__menu'].viewerForbiddenScreen(screenId)) {
     screenId = 'menu';
     if (typeof location !== 'undefined') location.hash = 'menu';
   }
@@ -111,21 +109,27 @@ function closeFirstRunHints(setFlag) {
  */
 function renderSubmenu() {
   var groupId = window._submenuGroup || 'data';
-  var group = MENU_GROUPS[groupId];
+  var groups = globalThis['__menu'].MENU_GROUPS;
+  var group = groups && groups[groupId];
   var titleEl = document.getElementById('submenu-title');
   var containerEl = document.getElementById('submenu-buttons');
   if (!titleEl || !containerEl || !group) return;
   titleEl.textContent = group.title;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  var isViewer = user && user.role === 'viewer';
-  if (isViewer && groupId === 'actions') {
-    containerEl.innerHTML = '<p class="farm-settings-hint">Действия недоступны в режиме только просмотра.</p>';
+  var canEvents = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('eventsInput', user) : true;
+  var canNotifications = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('notifications', user) : true;
+  var canAnalytics = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('analytics', user) : true;
+  var canSettings = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardSettings', user) : true;
+  if ((groupId === 'actions' && !canEvents) || (groupId === 'notifications' && !canNotifications) || (groupId === 'analytics' && !canAnalytics)) {
+    containerEl.innerHTML = '<p class="farm-settings-hint">Раздел недоступен для вашей роли.</p>';
     return;
   }
   var html = '';
   for (var i = 0; i < group.buttons.length; i++) {
     var btn = group.buttons[i];
-    if (isViewer && btn.viewerHide) continue;
+    var onclick = String(btn.onclick || '');
+    if (!canEvents && onclick.indexOf("navigate('add')") !== -1) continue;
+    if (!canSettings && (onclick.indexOf("navigate('farm-card')") !== -1 || onclick.indexOf("navigate('farm-settings')") !== -1 || onclick.indexOf("navigate('protocols')") !== -1)) continue;
     var styleAttr = btn.style ? ' style="' + String(btn.style).replace(/"/g, '&quot;') + '"' : '';
     html += '<button class="action-btn"' + styleAttr + ' onclick="' + String(btn.onclick).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">';
     html += '<span>' + (btn.icon || '') + '</span><span>' + (btn.text || '').replace(/</g, '&lt;') + '</span></button>';

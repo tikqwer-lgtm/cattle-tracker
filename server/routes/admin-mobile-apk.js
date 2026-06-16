@@ -11,13 +11,13 @@ const apk = require('../lib/mobile-apk-storage');
 const router = express.Router();
 const apkUploadMulter = apk.createApkUploadMulter();
 
-router.get('/mobile-apk/list', requireAuth, requireRole('admin', 'manager'), (req, res) => {
+router.get('/mobile-apk/list', requireAuth, requireRole('admin'), (req, res) => {
   apk.migrateLegacyLatestIfNeeded();
   const m = apk.readManifest();
   res.json({ ok: true, items: m.items });
 });
 
-router.delete('/mobile-apk/:filename', requireAuth, requireRole('admin', 'manager'), (req, res) => {
+router.delete('/mobile-apk/:filename', requireAuth, requireRole('admin'), (req, res) => {
   apk.migrateLegacyLatestIfNeeded();
   const name = path.basename((req.params.filename || '').trim());
   if (!name || name !== req.params.filename || name.indexOf('..') !== -1) {
@@ -53,7 +53,7 @@ router.delete('/mobile-apk/:filename', requireAuth, requireRole('admin', 'manage
 router.post(
   '/mobile-apk',
   requireAuth,
-  requireRole('admin', 'manager'),
+  requireRole('admin'),
   (req, res, next) => {
     apkUploadMulter.single('apk')(req, res, (err) => {
       if (err) {

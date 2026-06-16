@@ -118,7 +118,11 @@
     }
     var adminSection = document.getElementById('admin-menu-section');
     if (adminSection) {
-      var showAdmin = user && (user.role === 'admin' || user.role === 'manager') && (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
+      var showAdmin =
+        user &&
+        typeof globalThis['__users'].hasCapability === 'function' &&
+        globalThis['__users'].hasCapability('adminUsersRoles', user) &&
+        (typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API);
       adminSection.style.display = showAdmin ? '' : 'none';
     }
     var adminServerUrlSection = document.getElementById('sync-admin-server-url-section');
@@ -149,7 +153,8 @@
     }
     var actionsSection = document.getElementById('menu-section-actions');
     if (actionsSection) {
-      actionsSection.style.display = user && user.role === 'viewer' ? 'none' : '';
+      var showActions = !user || globalThis['__users'].hasCapability('eventsInput', user);
+      actionsSection.style.display = showActions ? '' : 'none';
     }
   }
 

@@ -9,6 +9,8 @@ if (typeof window !== 'undefined') {
   window.getCurrentUser = SM.getCurrentUser;
   window.saveCurrentUser = SM.saveCurrentUser;
   window.getVisibleEntries = SM.getVisibleEntries;
+  window.getEffectiveRole = SM.getEffectiveRole;
+  window.hasCapability = SM.hasCapability;
   window.canAdd = SM.canAdd;
   window.canEdit = SM.canEdit;
   window.canDelete = SM.canDelete;

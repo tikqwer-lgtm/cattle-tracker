@@ -48,9 +48,9 @@
           var roleSelect =
             '<select class="admin-role-select" data-user-id="' + escapeHtml(u.id) + '" aria-label="Роль пользователя">' +
             '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>admin</option>' +
-            '<option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>manager</option>' +
-            '<option value="operator"' + (u.role === 'operator' ? ' selected' : '') + '>operator</option>' +
-            '<option value="viewer"' + (u.role === 'viewer' ? ' selected' : '') + '>viewer</option>' +
+            '<option value="pro"' + (u.role === 'pro' ? ' selected' : '') + '>pro</option>' +
+            '<option value="medium"' + (u.role === 'medium' ? ' selected' : '') + '>medium</option>' +
+            '<option value="lite"' + (u.role === 'lite' ? ' selected' : '') + '>lite</option>' +
             '</select>';
           html += '<tr><td>' + escapeHtml(u.username) + '</td><td>' + roleSelect + '</td><td>' + escapeHtml(u.created_at || '') + '</td><td>' + deleteBtn + '</td></tr>';
         }

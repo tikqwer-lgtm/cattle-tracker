@@ -57,22 +57,52 @@ var MENU_GROUPS = {
 };
 
 function viewerForbiddenScreen(screenId) {
-  return (
-    screenId === 'add' ||
-    screenId === 'insemination' ||
-    screenId === 'dry' ||
-    screenId === 'calving' ||
-    screenId === 'abort' ||
-    screenId === 'uzi' ||
-    screenId === 'protocol-assign' ||
-    screenId === 'admin'
-  );
+  var groupByScreen = {
+    add: 'data',
+    view: 'data',
+    'all-inseminations': 'data',
+    lists: 'data',
+    events: 'data',
+    'stall-map': 'data',
+    'stall-inventory': 'data',
+    insemination: 'actions',
+    dry: 'actions',
+    calving: 'actions',
+    abort: 'actions',
+    uzi: 'actions',
+    'protocol-assign': 'actions',
+    notifications: 'notifications',
+    tasks: 'notifications',
+    analytics: 'analytics',
+    'interval-analysis': 'analytics',
+    reproduction: 'analytics',
+    'farm-card': 'settings',
+    'farm-settings': 'settings',
+    protocols: 'settings',
+    admin: 'admin'
+  };
+  var groupId = groupByScreen[screenId];
+  if (!groupId) return false;
+  if (typeof window === 'undefined' || typeof window.hasCapability !== 'function') {
+    return false;
+  }
+  if (groupId === 'admin') return !window.hasCapability('adminUsersRoles');
+  if (groupId === 'analytics') return !window.hasCapability('analytics');
+  if (groupId === 'notifications') return !window.hasCapability('notifications');
+  if (groupId === 'settings') return !window.hasCapability('farmCardSettings');
+  if (groupId === 'actions') return !window.hasCapability('eventsInput');
+  return !window.hasCapability('cards');
 }
 
 /**
  * Переход на экран подменю с заданной группой
  */
 function navigateToSubmenu(groupId) {
+  if (typeof window !== 'undefined' && typeof window.hasCapability === 'function') {
+    if (groupId === 'actions' && !window.hasCapability('eventsInput')) return;
+    if (groupId === 'notifications' && !window.hasCapability('notifications')) return;
+    if (groupId === 'analytics' && !window.hasCapability('analytics')) return;
+  }
   window._submenuGroup = groupId;
   navigate('submenu');
 }
@@ -96,7 +126,7 @@ function navigate(screenId, options) {
     screenId = 'auth';
   }
 
-  if (currentUser && currentUser.role === 'viewer' && viewerForbiddenScreen(screenId)) {
+  if (currentUser && viewerForbiddenScreen(screenId)) {
     if (typeof showToast === 'function') showToast('Недостаточно прав (только просмотр)', 'error');
     screenId = 'menu';
   }
@@ -299,6 +329,7 @@ function navigateBack() {
  */
 
   // register functions
+  NS.MENU_GROUPS = MENU_GROUPS;
   NS.viewerForbiddenScreen = viewerForbiddenScreen;
   NS.navigateToSubmenu = navigateToSubmenu;
   NS.navigate = navigate;

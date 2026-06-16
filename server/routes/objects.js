@@ -20,7 +20,7 @@ router.get('/:id/profile', requireAuth, (req, res) => {
   res.json(profile != null ? profile : {});
 });
 
-router.put('/:id/profile', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+router.put('/:id/profile', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
   if (!objectId) return res.status(400).json({ error: 'id обязателен' });
   if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
@@ -35,7 +35,7 @@ router.get('/:id/farm-settings', requireAuth, (req, res) => {
   res.json(db.getFarmSettings(objectId));
 });
 
-router.put('/:id/farm-settings', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+router.put('/:id/farm-settings', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
   if (!objectId) return res.status(400).json({ error: 'id обязателен' });
   if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
@@ -63,7 +63,7 @@ router.get('/:id/export', requireAuth, (req, res) => {
 });
 
 // Import object from export package (creates new object with entries and protocols)
-router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) => {
+router.post('/import', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const body = req.body || {};
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];
@@ -115,7 +115,7 @@ router.post('/import', requireAuth, requireRole('admin', 'manager'), (req, res) 
   res.status(201).json({ id, name });
 });
 
-router.post('/', requireAuth, requireRole('admin', 'manager', 'operator', 'viewer'), (req, res) => {
+router.post('/', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
   const copyFromId = (req.body && req.body.copyFromObjectId != null)
     ? String(req.body.copyFromObjectId).trim()
@@ -143,7 +143,7 @@ router.post('/', requireAuth, requireRole('admin', 'manager', 'operator', 'viewe
   res.status(201).json({ id, name, entriesCopied });
 });
 
-router.put('/:id', requireAuth, requireRole('admin', 'manager', 'operator'), (req, res) => {
+router.put('/:id', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   const name = (req.body && req.body.name != null) ? String(req.body.name).trim() : '';
@@ -173,7 +173,7 @@ router.delete('/:id', requireAuth, (req, res) => {
   const list = db.getObjectsWithMeta();
   const meta = list.find((o) => o.id === id);
   const createdById = (meta && meta.created_by) || null;
-  const isElevated = req.user.role === 'admin' || req.user.role === 'manager';
+  const isElevated = req.user.role === 'admin' || req.user.role === 'pro' || req.user.role === 'manager';
   if (createdById && createdById !== req.user.id && !isElevated) {
     return res.status(403).json({ error: 'Удалить базу может только пользователь, который её создал' });
   }

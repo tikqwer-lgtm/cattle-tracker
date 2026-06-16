@@ -355,7 +355,7 @@
   }
 
   function register(username, password, role) {
-    return request('POST', '/api/auth/register', { username: username, password: password, role: role || 'operator' });
+    return request('POST', '/api/auth/register', { username: username, password: password, role: role || 'lite' });
   }
 
   function updateUserRole(userId, role) {

@@ -60,7 +60,7 @@
       return { ok: false, message: 'Пользователь с таким логином уже есть' };
     }
     var id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'operator' };
+    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'lite' };
     users.push(newUser);
     saveUsers(users);
     return { ok: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
@@ -175,22 +175,101 @@
     return list;
   }
 
+  function getEffectiveRole(user) {
+    var u = user || getCurrentUser() || {};
+    var role = String(u.role || '').trim().toLowerCase();
+    if (!role) return 'lite';
+    if (role === 'manager') return 'pro';
+    if (role === 'operator') return 'medium';
+    return role;
+  }
+
+  var CAPABILITY_MATRIX = {
+    admin: {
+      cards: true,
+      eventsInput: true,
+      workLists: true,
+      stallMap: true,
+      inventory: true,
+      notifications: true,
+      analytics: true,
+      farmCardSettings: true,
+      multiBase: true,
+      adminUsersRoles: true,
+      adminReleaseControls: true
+    },
+    pro: {
+      cards: true,
+      eventsInput: true,
+      workLists: true,
+      stallMap: true,
+      inventory: true,
+      notifications: true,
+      analytics: true,
+      farmCardSettings: true,
+      multiBase: true,
+      adminUsersRoles: false,
+      adminReleaseControls: false
+    },
+    medium: {
+      cards: true,
+      eventsInput: true,
+      workLists: true,
+      stallMap: true,
+      inventory: true,
+      notifications: true,
+      analytics: true,
+      farmCardSettings: false,
+      multiBase: false,
+      adminUsersRoles: false,
+      adminReleaseControls: false
+    },
+    lite: {
+      cards: true,
+      eventsInput: true,
+      workLists: true,
+      stallMap: true,
+      inventory: true,
+      notifications: false,
+      analytics: false,
+      farmCardSettings: false,
+      multiBase: false,
+      adminUsersRoles: false,
+      adminReleaseControls: false
+    },
+    viewer: {
+      cards: true,
+      eventsInput: false,
+      workLists: true,
+      stallMap: true,
+      inventory: false,
+      notifications: false,
+      analytics: false,
+      farmCardSettings: false,
+      multiBase: false,
+      adminUsersRoles: false,
+      adminReleaseControls: false
+    }
+  };
+
+  function hasCapability(capability, user) {
+    var key = String(capability || '').trim();
+    if (!key) return false;
+    var role = getEffectiveRole(user);
+    var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.lite;
+    return !!roleCaps[key];
+  }
+
   function canAdd() {
-    var user = getCurrentUser();
-    if (!user) return true;
-    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
+    return hasCapability('cards') && hasCapability('eventsInput');
   }
 
   function canEdit() {
-    var user = getCurrentUser();
-    if (!user) return true;
-    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
+    return hasCapability('eventsInput');
   }
 
   function canDelete() {
-    var user = getCurrentUser();
-    if (!user) return true;
-    return user.role === 'admin' || user.role === 'manager' || user.role === 'operator';
+    return hasCapability('eventsInput');
   }
 
   /**
@@ -200,8 +279,9 @@
   function filterObjectsListForRole(list) {
     if (!useApi || !list || !list.length) return list || [];
     var user = getCurrentUser();
-    if (!user || user.role === 'admin' || user.role === 'manager' || user.role === 'viewer') return list;
-    if (user.role !== 'operator') return list;
+    if (!user || hasCapability('multiBase', user)) return list;
+    var effectiveRole = getEffectiveRole(user);
+    if (effectiveRole === 'viewer') return list;
     var uid = String(user.id || '');
     var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
     var cur = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
@@ -275,6 +355,8 @@
   NS.logoutUser = logoutUser;
   NS.getCurrentUser = getCurrentUser;
   NS.getVisibleEntries = getVisibleEntries;
+  NS.getEffectiveRole = getEffectiveRole;
+  NS.hasCapability = hasCapability;
   NS.canAdd = canAdd;
   NS.canEdit = canEdit;
   NS.canDelete = canDelete;
