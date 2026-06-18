@@ -82,10 +82,16 @@ function requireRole(...roles) {
   };
 }
 
+function isAppAdminRole(role) {
+  const r = String(role || '').trim().toLowerCase();
+  return r === 'admin' || r === 'manager';
+}
+
 module.exports = {
   signToken,
   verifyToken,
   requireAuth,
   optionalAuth,
-  requireRole
+  requireRole,
+  isAppAdminRole
 };

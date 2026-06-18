@@ -55,6 +55,31 @@
     return div;
   }
 
+  function pushAssistantMessage(content, opts) {
+    opts = opts || {};
+    if (!content) return;
+    chatHistory.push({ role: 'assistant', content: content });
+    appendMessage('assistant', content);
+    if (opts.proactive) {
+      var panel = getPanel();
+      var isOpen = panel && panel.getAttribute('aria-hidden') === 'false';
+      if (!isOpen) {
+        var title = document.querySelector('.chat-consultant-title');
+        if (title) title.setAttribute('data-has-proactive', '1');
+        if (typeof global.updateChatProactiveBadge === 'function') global.updateChatProactiveBadge();
+        if (typeof showToast === 'function') {
+          showToast('Чат-консультант: новое напоминание по планам', 'info', 5000);
+        }
+      }
+    }
+  }
+
+  function clearProactiveBadge() {
+    var title = document.querySelector('.chat-consultant-title');
+    if (title) title.removeAttribute('data-has-proactive');
+    if (typeof global.updateChatProactiveBadge === 'function') global.updateChatProactiveBadge();
+  }
+
   function removeTypingIndicator() {
     var el = document.getElementById('chat-consultant-typing');
     if (el && el.parentNode) el.parentNode.removeChild(el);
@@ -170,6 +195,7 @@
     if (!panel) return;
     panel.removeAttribute('hidden');
     panel.setAttribute('aria-hidden', 'false');
+    clearProactiveBadge();
     var input = getInput();
     if (input) {
       input.disabled = false;
@@ -212,6 +238,15 @@
     appendMessage('user', text);
     input.value = '';
     updateSendButtonState();
+
+    if (typeof global.tryLocalChatPlanResponse === 'function') {
+      var localReply = global.tryLocalChatPlanResponse(text);
+      if (localReply != null) {
+        pushAssistantMessage(localReply);
+        return;
+      }
+    }
+
     processChatQueue();
   }
 
@@ -272,6 +307,9 @@
   global.closeChatConsultant = closeChatConsultant;
   global.sendChatMessage = sendChatMessage;
   global.contextMenuOpenConsultant = contextMenuOpenConsultant;
+  global.chatConsultantPushProactive = function (content) {
+    pushAssistantMessage(content, { proactive: true });
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

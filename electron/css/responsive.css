@@ -82,6 +82,15 @@
     max-width: 100%;
   }
 
+  .menu-calving-stats {
+    max-width: 100%;
+  }
+
+  .menu-calving-stat {
+    grid-template-columns: 1fr minmax(2.25rem, auto);
+    gap: 8px;
+  }
+
   .herd-stat-row {
     grid-template-columns: 1fr minmax(2.25rem, auto) minmax(2.5rem, auto);
     gap: 8px; 

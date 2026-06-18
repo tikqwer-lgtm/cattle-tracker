@@ -5,7 +5,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole } = require('../auth');
+const { requireAuth, requireRole, isAppAdminRole } = require('../auth');
 
 router.get('/', requireAuth, (req, res) => {
   const list = db.getObjectsWithMeta();
@@ -170,7 +170,7 @@ router.delete('/:id', requireAuth, (req, res) => {
   if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });
   const obj = db.getObjectById(id);
   if (!obj) return res.status(404).json({ error: 'Объект не найден' });
-  if (req.user.role !== 'admin') {
+  if (!isAppAdminRole(req.user.role)) {
     return res.status(403).json({ error: 'Удалить базу на сервере может только администратор' });
   }
   const password = (req.body && req.body.password) != null ? String(req.body.password) : '';

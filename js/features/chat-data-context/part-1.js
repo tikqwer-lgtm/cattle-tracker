@@ -13,6 +13,18 @@ var MONTH_NAME_PATTERNS = [
 
 var TOPICS = [
   {
+    id: 'whats_next',
+    match: function (q) {
+      return /что дальше|что далее|какие планы|предстоящ|что на очереди|ближайш/.test(q);
+    }
+  },
+  {
+    id: 'daily_plan',
+    match: function (q) {
+      return /дай план|план на день|задачи на день|расписание на день/.test(q);
+    }
+  },
+  {
     id: 'herd',
     match: function (q) {
       return /стад|сколько коров|всего коров|животн|голов|стельн|сухосто|осеменен|не осеменен|холост|брак|статистик/.test(q) &&

@@ -19,7 +19,8 @@ var STORAGE_KEYS = {
   viewListFieldTemplates: CATTLE_TRACKER_PREFIX + 'viewList_fieldTemplates',
   analyticsSettings: CATTLE_TRACKER_PREFIX + 'analytics_settings',
   searchFilter: CATTLE_TRACKER_PREFIX + 'search_filter',
-  notificationHistory: CATTLE_TRACKER_PREFIX + 'notification_history',
+  chatAssistantSettings: CATTLE_TRACKER_PREFIX + 'chatAssistantSettings',
+  chatPlanAnnounced: CATTLE_TRACKER_PREFIX + 'chatPlanAnnounced',
   notifications: CATTLE_TRACKER_PREFIX + 'notifications',
   protocols: CATTLE_TRACKER_PREFIX + 'protocols',
   backupPrefix: CATTLE_TRACKER_PREFIX + 'backup_'

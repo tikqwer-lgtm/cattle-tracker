@@ -297,6 +297,18 @@ function buildErrorsSection(entries, refDate, deps) {
 }
 
 var SECTION_BUILDERS = {
+  whats_next: function (q, entries, refDate) {
+    if (typeof global.buildChatWhatsNextSection === 'function') {
+      return global.buildChatWhatsNextSection(entries, refDate);
+    }
+    return null;
+  },
+  daily_plan: function (q, entries, refDate) {
+    if (typeof global.buildChatDailyPlanSection === 'function') {
+      return global.buildChatDailyPlanSection(entries, refDate);
+    }
+    return null;
+  },
   herd: function (q, entries) { return globalThis['__chatCtx'].buildHerdSection(entries); },
   calving: function (q, entries, refDate) { return buildCalvingSection(q, entries, refDate); },
   analytics: function (q, entries, refDate, deps) { return buildAnalyticsSection(q, entries, deps); },

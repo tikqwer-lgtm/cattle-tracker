@@ -53,6 +53,9 @@ function runApiAppInit() {
       if (typeof window.refreshFarmDatalists === 'function') {
         try { window.refreshFarmDatalists(); } catch (e) {}
       }
+      if (typeof window.runChatPlanProactiveChecks === 'function') {
+        try { window.runChatPlanProactiveChecks(); } catch (e) {}
+      }
     }).catch(function (err) {
       console.error("Ошибка инициализации (API):", err);
       if (typeof updateList === 'function') updateList();
@@ -93,6 +96,9 @@ function initApp() {
     if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
     if (typeof updateHerdStats === 'function') updateHerdStats();
     console.log("Приложение инициализировано. Записей:", entries.length);
+    if (typeof window.runChatPlanProactiveChecks === 'function') {
+      try { window.runChatPlanProactiveChecks(); } catch (e) {}
+    }
   }
 
   if (typeof VoiceAssistant !== 'undefined') {

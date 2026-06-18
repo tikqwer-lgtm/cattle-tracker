@@ -175,6 +175,12 @@
     return list;
   }
 
+  function isAppAdminRole(user) {
+    var u = user || getCurrentUser() || {};
+    var role = String(u.role || '').trim().toLowerCase();
+    return role === 'admin' || role === 'manager';
+  }
+
   function getEffectiveRole(user) {
     var u = user || getCurrentUser() || {};
     var role = String(u.role || '').trim().toLowerCase();
@@ -356,6 +362,7 @@
   NS.getCurrentUser = getCurrentUser;
   NS.getVisibleEntries = getVisibleEntries;
   NS.getEffectiveRole = getEffectiveRole;
+  NS.isAppAdminRole = isAppAdminRole;
   NS.hasCapability = hasCapability;
   NS.canAdd = canAdd;
   NS.canEdit = canEdit;

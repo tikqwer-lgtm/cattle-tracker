@@ -31,10 +31,12 @@ function isSyncUserElevated() {
   if (typeof window.getCurrentUser !== 'function') return false;
   var u = window.getCurrentUser();
   if (!u) return false;
+  if (typeof window.isAppAdminRole === 'function' && window.isAppAdminRole(u)) return true;
   if (typeof window.hasCapability === 'function') {
     return window.hasCapability('adminUsersRoles', u);
   }
-  return !!(u && u.role === 'admin');
+  var role = String(u.role || '').trim().toLowerCase();
+  return role === 'admin' || role === 'manager';
 }
 
 function normalizeBaseName(s) {

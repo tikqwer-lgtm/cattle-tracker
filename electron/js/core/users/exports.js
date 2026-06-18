@@ -10,6 +10,7 @@ if (typeof window !== 'undefined') {
   window.saveCurrentUser = SM.saveCurrentUser;
   window.getVisibleEntries = SM.getVisibleEntries;
   window.getEffectiveRole = SM.getEffectiveRole;
+  window.isAppAdminRole = SM.isAppAdminRole;
   window.hasCapability = SM.hasCapability;
   window.canAdd = SM.canAdd;
   window.canEdit = SM.canEdit;

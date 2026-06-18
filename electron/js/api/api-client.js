@@ -262,7 +262,7 @@
     return request('DELETE', '/api/objects/' + encodeURIComponent(id));
   }
 
-  /** Удалить базу на сервере (только создатель). Пароль — подтверждение. */
+  /** Удалить базу на сервере (только администратор). Пароль — подтверждение. */
   function deleteObjectWithPassword(id, password) {
     return request('DELETE', '/api/objects/' + encodeURIComponent(id), { password: password || '' });
   }

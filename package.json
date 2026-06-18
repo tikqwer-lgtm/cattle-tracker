@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker",
-  "version": "0.6.26",
+  "version": "0.6.28",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
     "prebuild": "node scripts/assemble-html.js",

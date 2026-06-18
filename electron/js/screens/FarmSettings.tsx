@@ -88,6 +88,54 @@ function AddRow({
   );
 }
 
+function ChatAssistantToggles(): React.ReactElement {
+  const [settings, setSettings] = useState({
+    planHints: true,
+    overdueHints: true,
+    dailyPlanHints: true,
+  });
+
+  useEffect(() => {
+    const s = window.getChatAssistantSettings?.();
+    if (s) setSettings(s);
+  }, []);
+
+  const update = (key: keyof typeof settings, value: boolean) => {
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    window.setChatAssistantSettings?.(next);
+  };
+
+  return (
+    <div className="farm-settings-chat-toggles">
+      <label className="farm-settings-toggle-row">
+        <input
+          type="checkbox"
+          checked={settings.planHints}
+          onChange={(e) => update('planHints', e.target.checked)}
+        />
+        <span>Подсказка по планам («Что дальше»)</span>
+      </label>
+      <label className="farm-settings-toggle-row">
+        <input
+          type="checkbox"
+          checked={settings.overdueHints}
+          onChange={(e) => update('overdueHints', e.target.checked)}
+        />
+        <span>Подсказка просрочек (на следующий день после задачи)</span>
+      </label>
+      <label className="farm-settings-toggle-row">
+        <input
+          type="checkbox"
+          checked={settings.dailyPlanHints}
+          onChange={(e) => update('dailyPlanHints', e.target.checked)}
+        />
+        <span>Подсказка плана на день («Дай план» и утреннее напоминание)</span>
+      </label>
+    </div>
+  );
+}
+
 export default function FarmSettings(): React.ReactElement {
   const admin = isAdmin();
   const [tech, setTech] = useState<string[]>([]);
@@ -236,6 +284,15 @@ export default function FarmSettings(): React.ReactElement {
         <p className="farm-settings-hint">
           В списке кода доступны «Охота», «Датчик» и все протоколы из «Протоколы синхронизации» (кнопка выше).
         </p>
+      </section>
+
+      <section className="farm-settings-section">
+        <h2>Чат-консультант</h2>
+        <p className="farm-settings-hint">
+          Подсказки по планам работ (уколы, УЗИ, осеменения). Команды в чате: «Что дальше» и «Дай план».
+          Настройки сохраняются на этом устройстве.
+        </p>
+        <ChatAssistantToggles />
       </section>
 
       {admin && (

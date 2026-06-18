@@ -41,7 +41,7 @@ function buildBaseRowHtml(obj, currentUser, currentId) {
   var safeId = String(obj.id).replace(/'/g, "\\'");
   var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   var isOwner = currentUser && obj._creator && obj._creator.toLowerCase() === currentUser.toLowerCase();
-  var showDelete = globalThis['__syncBases'].isSyncUserElevated() && !globalThis['__syncBases'].isSyncMobileLimited();
+  var showDelete = globalThis['__syncBases'].isSyncUserElevated();
   var loadClick =
     'showLoadBaseModal(' + JSON.stringify(obj.id) + ',' + JSON.stringify(obj.name || '') + ',' + JSON.stringify(obj._dateRaw || '') + ')';
   return '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
@@ -237,7 +237,7 @@ function showLoadBaseModal(sourceId, sourceName, sourceDateRaw) {
 }
 
 /**
- * Модалка удаления базы на сервере: запрос пароля пользователя-создателя.
+ * Модалка удаления базы на сервере: пароль учётной записи администратора.
  */
 function showDeleteBaseModal(baseId, baseName) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
