@@ -8,7 +8,8 @@
     "server": "node server.js",
     "init-db": "node scripts/init-db.js",
     "migrate": "node scripts/init-db.js",
-    "reset-password": "node scripts/reset-user-password.js"
+    "reset-password": "node scripts/reset-user-password.js",
+    "deploy": "node scripts/deploy-node.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,5 +21,8 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "sql.js": "^1.10.0"
+  },
+  "devDependencies": {
+    "ssh2": "^1.17.0"
   }
 }

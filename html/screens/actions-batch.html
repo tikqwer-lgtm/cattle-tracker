@@ -26,7 +26,15 @@
     <h1>Администрирование</h1>
     <section class="admin-section">
       <h2>Excel</h2>
-      <p class="farm-settings-hint">Экспорт, шаблон и импорт описи (только администратор).</p>
+      <p class="farm-settings-hint">Экспорт, шаблон и импорт описи (только администратор). Перед импортом выберите нужную базу в «Синхронизация».</p>
+      <details class="admin-import-help">
+        <summary>Как импортировать данные</summary>
+        <div class="admin-import-help-body">
+          <p><strong>Полный импорт</strong> — один файл CSV/XLSX со всеми столбцами: в окне сопоставления укажите столбец с номером животного и замапьте остальные поля.</p>
+          <p><strong>Поэтапный импорт</strong> — сначала файл только с номерами (остальные столбцы «Не импортировать»), затем отдельные файлы с группами, отёлами, осеменениями, УЗИ. Повторный импорт дополняет данные по номеру, пустые ячейки не затирают уже загруженное.</p>
+          <p>Несколько строк с одним номером — несколько осеменений. Шаблон заголовков — кнопка «Шаблон импорта».</p>
+        </div>
+      </details>
       <div class="admin-excel-actions">
         <button type="button" class="action-btn" onclick="typeof exportToExcel === 'function' && exportToExcel()">📤 Экспорт в Excel</button>
         <button type="button" class="action-btn" onclick="typeof downloadTemplate === 'function' && downloadTemplate()">📋 Шаблон импорта</button>

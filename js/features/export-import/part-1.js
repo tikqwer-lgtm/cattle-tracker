@@ -147,6 +147,8 @@ function runImportWithMapping(rows, columnMapping, headers) {
   }
 
   var newCount = 0, updateCount = 0, errors = [];
+  var createdEntries = [];
+  var updatedEntries = [];
   var profileKeys = ['nickname', 'group', 'birthDate', 'lactation', 'calvingDate', 'status', 'exitDate', 'dryStartDate', 'note', 'protocolName', 'protocolStartDate', 'inseminator', 'code'];
 
   for (var cattleId in byCattleId) {
@@ -287,9 +289,11 @@ function runImportWithMapping(rows, columnMapping, headers) {
         });
         existing.uziHistory = existingUzi.sort(function (a, b) { var da = (a.date || '').toString(), db = (b.date || '').toString(); return da < db ? -1 : da > db ? 1 : 0; });
         if (entry.status) existing.status = entry.status;
+        updatedEntries.push(existing);
         updateCount++;
       } else {
         entries.unshift(entry);
+        createdEntries.push(entry);
         newCount++;
       }
     } catch (err) {
@@ -297,23 +301,59 @@ function runImportWithMapping(rows, columnMapping, headers) {
     }
   }
 
-  if (newCount > 0 || updateCount > 0) {
-    saveLocally();
+  function refreshUiAfterImport() {
     if (typeof updateList === 'function') updateList();
     if (typeof updateViewList === 'function') updateViewList();
     if (typeof notifyDataErrorsFromImport === 'function') notifyDataErrorsFromImport(entries);
     if (typeof updateMenuCalvingForecast === 'function') updateMenuCalvingForecast();
+    if (typeof updateHerdStats === 'function') updateHerdStats();
+  }
+
+  function showImportResultMsg(apiErrors) {
+    apiErrors = apiErrors || [];
     var msg = 'Импортировано: ' + newCount + ' новых, обновлено: ' + updateCount;
-    if (errors.length > 0) msg += '. Ошибок: ' + errors.length;
-    if (typeof showToast === 'function') showToast(msg, 'success');
+    if (global.CATTLE_TRACKER_USE_API) msg += '. Данные сохранены на сервере';
+    if (errors.length > 0) msg += '. Ошибок разбора: ' + errors.length;
+    if (apiErrors.length > 0) msg += '. Ошибок сохранения на сервер: ' + apiErrors.length;
+    var toastType = (errors.length > 0 || apiErrors.length > 0) ? 'error' : 'success';
+    if (typeof showToast === 'function') showToast(msg, toastType, apiErrors.length ? 8000 : 5000);
     else alert(msg);
     if (errors.length > 0) console.warn('Ошибки импорта:', errors);
-  } else {
-    var msgErr = 'Нет данных для импорта или все строки пропущены.';
-    if (errors.length > 0) msgErr += ' Ошибки: ' + errors.slice(0, 3).join('; ');
-    if (typeof showToast === 'function') showToast(msgErr, 'error');
-    else alert(msgErr);
+    if (apiErrors.length > 0) console.warn('Ошибки сохранения импорта на API:', apiErrors);
   }
+
+  if (newCount > 0 || updateCount > 0) {
+    var useApi = typeof global.CATTLE_TRACKER_USE_API !== 'undefined' && global.CATTLE_TRACKER_USE_API &&
+      global.CattleTrackerApi && typeof global.persistImportEntriesToApi === 'function';
+
+    if (useApi) {
+      if (typeof showToast === 'function') {
+        showToast('Импорт: сохранение ' + (newCount + updateCount) + ' записей на сервер…', 'info', 4000);
+      }
+      return global.persistImportEntriesToApi(createdEntries, updatedEntries).then(function (apiErrors) {
+        refreshUiAfterImport();
+        showImportResultMsg(apiErrors);
+      }).catch(function (err) {
+        refreshUiAfterImport();
+        var failMsg = 'Импорт выполнен локально, но сохранение на сервер не удалось: ' +
+          (err && err.message ? err.message : String(err)) +
+          '. Выгрузите базу вручную или повторите импорт после выбора базы.';
+        if (typeof showToast === 'function') showToast(failMsg, 'error', 10000);
+        else alert(failMsg);
+      });
+    }
+
+    saveLocally();
+    refreshUiAfterImport();
+    showImportResultMsg([]);
+    return Promise.resolve();
+  }
+
+  var msgErr = 'Нет данных для импорта или все строки пропущены.';
+  if (errors.length > 0) msgErr += ' Ошибки: ' + errors.slice(0, 3).join('; ');
+  if (typeof showToast === 'function') showToast(msgErr, 'error');
+  else alert(msgErr);
+  return Promise.resolve();
 }
 
 /**

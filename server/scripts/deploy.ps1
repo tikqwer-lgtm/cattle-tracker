@@ -104,8 +104,15 @@ try {
 
     Write-Host "Uploading to server ($target)..." -ForegroundColor Cyan
     if ($sshPassword) {
-        Write-Host "Using password from deploy.env (Posh-SSH)..." -ForegroundColor Cyan
-        Invoke-DeployWithPoshSsh -Password $sshPassword -TempDir $tempDir -RemoteNew $remoteNew -RemotePath $remotePath
+        $deployNode = Join-Path $scriptDir "deploy-node.js"
+        if (Test-Path $deployNode) {
+            Write-Host "Using password from deploy.env (Node ssh2)..." -ForegroundColor Cyan
+            & node $deployNode
+            if ($LASTEXITCODE -ne 0) { throw "deploy-node.js failed" }
+        } else {
+            Write-Host "Using password from deploy.env (Posh-SSH)..." -ForegroundColor Cyan
+            Invoke-DeployWithPoshSsh -Password $sshPassword -TempDir $tempDir -RemoteNew $remoteNew -RemotePath $remotePath
+        }
     } else {
         Write-Host "You will be asked for password 3 times. When typing, nothing appears - that is normal." -ForegroundColor Yellow
         Write-Host "Tip: copy server/deploy.env.example to server/deploy.env and set CATTLE_TRACKER_SSH_PASSWORD for non-interactive deploy." -ForegroundColor Yellow

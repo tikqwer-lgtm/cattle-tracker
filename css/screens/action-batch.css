@@ -340,6 +340,29 @@
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
+.admin-import-help {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.92rem;
+}
+.admin-import-help summary {
+  cursor: pointer;
+  color: var(--color-primary, #2563eb);
+  font-weight: 600;
+}
+.admin-import-help-body {
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid var(--color-primary-border, #93c5fd);
+  background: var(--color-primary-light, #f0f7ff);
+  border-radius: var(--radius-md, 6px);
+}
+.admin-import-help-body p {
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+.admin-import-help-body p:last-child {
+  margin-bottom: 0;
+}
 .admin-table .admin-role-select {
   min-width: 9rem;
   font-size: 0.9rem;

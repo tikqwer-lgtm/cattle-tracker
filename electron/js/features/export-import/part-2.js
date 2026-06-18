@@ -115,8 +115,19 @@ function openImportMappingModal(headers, rows) {
       }
       var mapping = globalThis['__exportImport'].buildColumnMapping();
       if (!mapping) return;
-      globalThis['__exportImport'].runImportWithMapping(currentRows, mapping, currentHeaders);
-      globalThis['__exportImport'].closeImportMappingModal();
+      importBtn.disabled = true;
+      var importPromise = globalThis['__exportImport'].runImportWithMapping(currentRows, mapping, currentHeaders);
+      Promise.resolve(importPromise).then(function () {
+        globalThis['__exportImport'].closeImportMappingModal();
+      }).catch(function (err) {
+        if (typeof showToast === 'function') {
+          showToast((err && err.message) ? err.message : 'Ошибка импорта', 'error');
+        } else {
+          alert((err && err.message) ? err.message : 'Ошибка импорта');
+        }
+      }).then(function () {
+        importBtn.disabled = false;
+      });
     });
   }
 

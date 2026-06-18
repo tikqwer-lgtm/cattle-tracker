@@ -308,6 +308,54 @@ if (useApi) {
   window.createEntryViaApi = createEntryViaApi;
   window.updateEntryViaApi = updateEntryViaApi;
   window.deleteEntryViaApi = deleteEntryViaApi;
+
+  /**
+   * Сохраняет результаты Excel-импорта на сервер (создание + обновление), одна перезагрузка в конце.
+   * @returns {Promise<string[]>} список ошибок по cattleId (пустой при полном успехе)
+   */
+  function persistImportEntriesToApi(createdEntries, updatedEntries) {
+    var objectId = window.getCurrentObjectId();
+    var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+    if (pendingId && objectId === pendingId) {
+      return Promise.reject(new Error('Сначала выберите базу в разделе «Синхронизация»'));
+    }
+    var api = window.CattleTrackerApi;
+    if (!api || typeof api.createEntry !== 'function' || typeof api.updateEntry !== 'function') {
+      return Promise.reject(new Error('API недоступен'));
+    }
+    var chain = Promise.resolve();
+    var apiErrors = [];
+
+    (createdEntries || []).forEach(function (entry) {
+      chain = chain.then(function () {
+        return api.createEntry(objectId, entry).then(function (created) {
+          if (typeof window.upsertEntryInStore === 'function') {
+            window.upsertEntryInStore(created && created.cattleId ? created : entry);
+          }
+        }).catch(function (err) {
+          apiErrors.push(String(entry.cattleId || '?') + ': ' + (err && err.message ? err.message : String(err)));
+        });
+      });
+    });
+
+    (updatedEntries || []).forEach(function (entry) {
+      if (!entry || !entry.cattleId) return;
+      chain = chain.then(function () {
+        return api.updateEntry(objectId, entry.cattleId, entry).catch(function (err) {
+          apiErrors.push(String(entry.cattleId) + ': ' + (err && err.message ? err.message : String(err)));
+        });
+      });
+    });
+
+    return chain.then(function () {
+      return window.loadLocally({ forceFromServer: true }).then(function () {
+        refreshEntriesUiAfterMutation();
+        return apiErrors;
+      });
+    });
+  }
+  window.persistImportEntriesToApi = persistImportEntriesToApi;
+
   window.loadObjectsFromApi = loadObjectsFromApi;
   window.loadLocally = loadLocally;
 }
