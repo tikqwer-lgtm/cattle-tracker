@@ -12,24 +12,27 @@ function formatServerDate(isoStr) {
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-var _syncBasesData = [];
-window.__getSyncBasesCache = function () { return _syncBasesData; };
-var _syncBasesSort = { key: 'name', dir: 'asc' };
-var _syncBasesFilterName = '';
-var _syncBasesFilterUser = '';
+var syncBasesState = NS._syncState = NS._syncState || {
+  data: [],
+  sort: { key: 'name', dir: 'asc' },
+  filterName: '',
+  filterUser: ''
+};
+window.__getSyncBasesCache = function () { return syncBasesState.data; };
+window.__setSyncBasesCache = function (list) { syncBasesState.data = list; };
 
 /** На телефоне: только скачать с сервера под новым именем, без выгрузки/удаления/замены в другую базу. */
 function isSyncMobileLimited() {
   return typeof window.isMobile === 'function' && window.isMobile();
 }
 
-/** Полномочия как у администратора в интерфейсе баз (в т.ч. удаление любой базы на сервере — у manager). */
+/** Полномочия администратора для управления базами на сервере (удаление и т.п.). */
 function isSyncUserElevated() {
   if (typeof window.getCurrentUser !== 'function') return false;
   var u = window.getCurrentUser();
   if (!u) return false;
   if (typeof window.hasCapability === 'function') {
-    return window.hasCapability('multiBase', u) || window.hasCapability('adminUsersRoles', u);
+    return window.hasCapability('adminUsersRoles', u);
   }
   return !!(u && u.role === 'admin');
 }

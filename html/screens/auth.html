@@ -16,7 +16,7 @@
       <!-- Серверный режим (API подключён) -->
       <div id="auth-server-block" style="display: none;">
         <p id="auth-session-status" class="auth-session-status auth-session-status--pending" hidden aria-live="polite"></p>
-        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю или зарегистрируйтесь (первый пользователь создаётся через Регистрация). Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
+        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю. Новые аккаунты создаёт администратор в разделе «Администрирование». Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
         <p class="auth-api-switch-server-wrap">
           <button type="button" class="small-btn" onclick="typeof window.switchToPickAnotherApiServer === 'function' && window.switchToPickAnotherApiServer()">Указать другой адрес сервера</button>
         </p>
@@ -31,7 +31,7 @@
           <input type="password" id="authPassword" autocomplete="current-password" required />
           <div class="form-actions">
             <button type="submit">Войти</button>
-            <button type="button" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
+            <button type="button" id="auth-register-switch-btn" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
           </div>
         </form>
         <form id="authRegisterForm" class="form" style="display: none;" onsubmit="event.preventDefault(); if(typeof window.handleRegister==='function'){window.handleRegister(event);} return false;">
@@ -45,7 +45,7 @@
             <option value="lite" selected>Lite</option>
             <option value="medium">Medium</option>
           </select>
-          <p class="auth-api-hint" style="margin-top:8px;font-size:0.9em;opacity:0.9;">Роли Pro и Admin назначаются только администратором в разделе «Администрирование». Первый зарегистрированный на сервере пользователь получает права администратора автоматически.</p>
+          <p id="auth-register-bootstrap-hint" class="auth-api-hint" style="margin-top:8px;font-size:0.9em;opacity:0.9;">Первый пользователь на пустом сервере получает права администратора.</p>
           <div class="form-actions">
             <button type="submit">Зарегистрироваться</button>
             <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>

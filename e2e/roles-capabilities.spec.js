@@ -46,8 +46,26 @@ test.beforeAll(async () => {
       sendJson(res, 200, { user: { id: 'e2e-role', username: 'role-user', role } });
       return;
     }
+    if (pathname === '/api/auth/register-status' && req.method === 'GET') {
+      sendJson(res, 200, { allowed: false });
+      return;
+    }
+    if (pathname === '/api/admin/users' && req.method === 'GET') {
+      sendJson(res, 200, {
+        ok: true,
+        users: [{ id: 'u1', username: 'farmer', role: 'lite', created_at: '2026-01-01', password_plain: 'pass1' }],
+      });
+      return;
+    }
+    if (pathname === '/api/reports' && req.method === 'GET') {
+      sendJson(res, 200, { ok: true, reports: [] });
+      return;
+    }
     if (pathname === '/api/objects' && req.method === 'GET') {
-      sendJson(res, 200, [{ id: 'obj-e2e', name: 'E2E база', entries_count: 0 }]);
+      sendJson(res, 200, [
+        { id: 'obj-e2e', name: 'E2E база', entries_count: 0, created_by_username: 'farmer' },
+        { id: 'obj-e2e-2', name: 'Вторая', entries_count: 1, created_by_username: 'farmer' },
+      ]);
       return;
     }
     if (req.method === 'GET' && /^\/api\/objects\/[^/]+\/entries$/.test(pathname)) {
@@ -124,7 +142,7 @@ const CASES = [
   },
   {
     role: 'admin',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Уведомления и планы', 'Настройки'],
+    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Уведомления и планы', 'Настройки', 'Администрирование'],
     hidden: [],
     blockedScreens: [],
     allowedScreen: 'sync',
@@ -159,5 +177,18 @@ for (const tcase of CASES) {
       }, tcase.allowedScreen);
       await expect(page.locator('#' + tcase.allowedScreen + '-screen.active')).toBeVisible({ timeout: 10000 });
     });
+
+    if (tcase.role === 'admin') {
+      test('экран администрирования: пользователи и базы по аккаунтам', async ({ page }) => {
+        await page.evaluate(() => {
+          if (typeof window.navigate === 'function') window.navigate('admin');
+        });
+        await expect(page.locator('#admin-screen.active')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#admin-users-container .admin-table')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#admin-users-container .admin-password-input')).toBeVisible();
+        await expect(page.locator('#adminServerBasesList .admin-bases-user-group')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#adminServerBasesList summary')).toContainText('farmer');
+      });
+    }
   });
 }

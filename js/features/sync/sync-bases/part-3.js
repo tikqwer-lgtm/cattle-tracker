@@ -252,7 +252,8 @@ function replaceServerBaseInObject(sourceId, targetId, sourceName) {
     var sourceEntries = normalizeEntriesList(rawSource);
     return window.CattleTrackerApi.loadEntries(targetId).then(function (rawTarget) {
       var targetEntries = normalizeEntriesList(rawTarget);
-      var targetMeta = (_syncBasesData || []).filter(function (o) { return o && o.id === targetId; })[0];
+      var cache = typeof window.__getSyncBasesCache === 'function' ? window.__getSyncBasesCache() : [];
+      var targetMeta = (cache || []).filter(function (o) { return o && o.id === targetId; })[0];
       var targetName = (targetMeta && (targetMeta.name || targetMeta.id)) ? String(targetMeta.name || targetMeta.id) : String(targetId);
       globalThis['__syncBases'].saveSnapshotBeforeServerOverwrite(targetId, targetName, targetEntries, 'replace-target-server');
       var deleteNext = function (idx) {

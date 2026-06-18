@@ -163,19 +163,15 @@ router.put('/:id', requireAuth, requireRole('admin', 'pro', 'manager'), (req, re
   res.json({ id: obj.id, name: obj.name });
 });
 
-// Удаление базы: создатель или администратор/менеджер (с паролем своей учётной записи)
+// Удаление базы: только администратор (с паролем своей учётной записи)
 router.delete('/:id', requireAuth, (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });
   const obj = db.getObjectById(id);
   if (!obj) return res.status(404).json({ error: 'Объект не найден' });
-  const list = db.getObjectsWithMeta();
-  const meta = list.find((o) => o.id === id);
-  const createdById = (meta && meta.created_by) || null;
-  const isElevated = req.user.role === 'admin' || req.user.role === 'pro' || req.user.role === 'manager';
-  if (createdById && createdById !== req.user.id && !isElevated) {
-    return res.status(403).json({ error: 'Удалить базу может только пользователь, который её создал' });
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Удалить базу на сервере может только администратор' });
   }
   const password = (req.body && req.body.password) != null ? String(req.body.password) : '';
   if (!password) return res.status(400).json({ error: 'Введите пароль для подтверждения удаления' });

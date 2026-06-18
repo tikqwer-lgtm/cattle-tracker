@@ -75,6 +75,31 @@
     el.className = cls;
   }
 
+  function updateRegisterAvailability() {
+    if (!useApi || !global.CattleTrackerApi || typeof global.CattleTrackerApi.getRegisterStatus !== 'function') return;
+    global.CattleTrackerApi.getRegisterStatus().then(function (st) {
+      var allowed = !!(st && st.allowed);
+      var regBtn = document.getElementById('auth-register-switch-btn');
+      if (regBtn) regBtn.style.display = allowed ? '' : 'none';
+      var bootstrapHint = document.getElementById('auth-register-bootstrap-hint');
+      if (bootstrapHint) bootstrapHint.style.display = allowed ? '' : 'none';
+      var regRoleWrap = document.getElementById('regRole');
+      if (regRoleWrap && regRoleWrap.closest('label')) {
+        regRoleWrap.closest('label').style.display = allowed ? 'none' : 'none';
+      }
+      if (!allowed) {
+        var regForm = document.getElementById('authRegisterForm');
+        var loginForm = document.getElementById('authLoginForm');
+        if (regForm && loginForm && regForm.style.display !== 'none') {
+          globalThis['__users'].showAuthLogin();
+        }
+      }
+    }).catch(function () {
+      var regBtn = document.getElementById('auth-register-switch-btn');
+      if (regBtn) regBtn.style.display = 'none';
+    });
+  }
+
   function initUsers() {
     var localBlock = document.getElementById('auth-local-block');
     var serverBlock = document.getElementById('auth-server-block');
@@ -85,6 +110,7 @@
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }
+    if (useApi) updateRegisterAvailability();
     updateAuthSessionStatusUi();
     var authScreen = document.getElementById('auth-screen');
     if (authScreen && authScreen.classList.contains('active')) {
@@ -339,6 +365,7 @@
   NS.updateAuthSessionStatusUi = updateAuthSessionStatusUi;
   NS.initUsers = initUsers;
   NS.updateAuthBar = updateAuthBar;
+  NS.updateRegisterAvailability = updateRegisterAvailability;
   NS.initRegisterUsernameCheck = initRegisterUsernameCheck;
   NS.focusAuthForm = focusAuthForm;
   NS.showAuthLogin = showAuthLogin;

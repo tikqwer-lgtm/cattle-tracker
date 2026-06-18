@@ -5,102 +5,119 @@
   var NS = root['__syncBases'] = root['__syncBases'] || {};
   var global = typeof window !== 'undefined' ? window : this;
 
+function sbState() {
+  var st = root['__syncBases']._syncState;
+  if (!st) {
+    st = root['__syncBases']._syncState = { data: [], sort: { key: 'name', dir: 'asc' }, filterName: '', filterUser: '' };
+  }
+  return st;
+}
+
+function getBasesListContainer() {
+  return document.getElementById('adminServerBasesList') || document.getElementById('syncServerBasesList');
+}
+
+function getBasesFilterEl() {
+  return document.getElementById('adminBasesFilter') || document.getElementById('syncBasesFilter');
+}
+
 function renderSyncBasesFilters() {
-  var filterEl = document.getElementById('syncBasesFilter');
+  var filterEl = getBasesFilterEl();
   if (!filterEl) return;
-  var userNames = [];
-  _syncBasesData.forEach(function (o) {
-    var u = (o._user || '').trim();
-    if (u && userNames.indexOf(u) === -1) userNames.push(u);
-  });
-  userNames.sort(function (a, b) { return a.localeCompare(b, 'ru'); });
-  var userOpts =
-    '<option value="">Все пользователи</option>' +
-    userNames.map(function (u) {
-      var sel = _syncBasesFilterUser === u ? ' selected' : '';
-      return '<option value="' + u.replace(/"/g, '&quot;') + '"' + sel + '>' + u.replace(/</g, '&lt;').replace(/&/g, '&amp;') + '</option>';
-    }).join('');
   filterEl.innerHTML =
     '<div class="sync-bases-filter-row">' +
-    '<input type="text" id="syncFilterName" class="sync-filter-input" placeholder="Фильтр по названию" value="' + (_syncBasesFilterName || '').replace(/"/g, '&quot;') + '" />' +
-    '<label class="sync-filter-user-label" for="syncFilterUserSelect">Пользователь</label>' +
-    '<select id="syncFilterUserSelect" class="sync-filter-input sync-filter-user-select" aria-label="Фильтр по пользователю">' +
-    userOpts +
-    '</select>' +
+    '<input type="text" id="syncFilterName" class="sync-filter-input" placeholder="Фильтр по названию" value="' + (sbState().filterName || '').replace(/"/g, '&quot;') + '" />' +
     '</div>';
   var nameInp = document.getElementById('syncFilterName');
-  var userSel = document.getElementById('syncFilterUserSelect');
   function onFilter() {
-    _syncBasesFilterName = (nameInp ? nameInp.value : '').trim().toLowerCase();
-    _syncBasesFilterUser = (userSel ? userSel.value : '').trim();
+    sbState().filterName = (nameInp ? nameInp.value : '').trim().toLowerCase();
     renderSyncBasesTable();
   }
   if (nameInp) nameInp.addEventListener('input', onFilter);
-  if (userSel) userSel.addEventListener('change', onFilter);
+}
+
+function buildBaseRowHtml(obj, currentUser, currentId) {
+  var safeName = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  var safeId = String(obj.id).replace(/'/g, "\\'");
+  var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  var isOwner = currentUser && obj._creator && obj._creator.toLowerCase() === currentUser.toLowerCase();
+  var showDelete = globalThis['__syncBases'].isSyncUserElevated() && !globalThis['__syncBases'].isSyncMobileLimited();
+  var loadClick =
+    'showLoadBaseModal(' + JSON.stringify(obj.id) + ',' + JSON.stringify(obj.name || '') + ',' + JSON.stringify(obj._dateRaw || '') + ')';
+  return '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
+    '<td data-label="Название">' + safeName + '</td>' +
+    '<td data-label="Дата">' + obj._dateStr + '</td>' +
+    '<td data-label="Записей">' + obj._count + '</td>' +
+    '<td class="sync-bases-actions" data-label="Действия">' +
+    '<button type="button" class="small-btn sync-base-import-btn" onclick=\'' + loadClick.replace(/'/g, '&#39;') + '\'>Загрузить</button>' +
+    ' <button type="button" class="small-btn sync-hide-local-base-btn sync-base-import-btn" onclick="hideServerBaseLocalOnly(\'' + safeId + '\', \'' + safeSrcName + '\')">Скрыть у себя</button>' +
+    (isOwner && !globalThis['__syncBases'].isSyncMobileLimited() ? ' <button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="overwriteCurrentServerBaseWithLocal()">Выгрузить на сервер</button>' : '') +
+    (showDelete ? ' <button type="button" class="small-btn sync-delete-base-btn sync-base-import-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
+    '</td></tr>';
 }
 
 function renderSyncBasesTable() {
-  var container = document.getElementById('syncServerBasesList');
+  var container = getBasesListContainer();
   if (!container) return;
   var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
   var currentUser = globalThis['__syncBases'].getCurrentUsername();
-  var filtered = _syncBasesData.filter(function (obj) {
+  var filtered = sbState().data.filter(function (obj) {
     var n = (obj.name || '').toLowerCase();
-    var u = (obj._user || '').trim();
-    if (_syncBasesFilterName && n.indexOf(_syncBasesFilterName) === -1) return false;
-    if (_syncBasesFilterUser && u !== _syncBasesFilterUser) return false;
+    if (sbState().filterName && n.indexOf(sbState().filterName) === -1) return false;
     return true;
   });
-  var sk = _syncBasesSort.key;
-  var sd = _syncBasesSort.dir === 'asc' ? 1 : -1;
+  var sk = sbState().sort.key;
+  var sd = sbState().sort.dir === 'asc' ? 1 : -1;
   filtered.sort(function (a, b) {
     var va = '', vb = '';
     if (sk === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
     else if (sk === 'date') { va = a._dateRaw || ''; vb = b._dateRaw || ''; }
-    else if (sk === 'user') { va = (a._user || '').toLowerCase(); vb = (b._user || '').toLowerCase(); }
+    else if (sk === 'user') { va = (a._creator || '').toLowerCase(); vb = (b._creator || '').toLowerCase(); }
     else if (sk === 'count') { return (a._count - b._count) * sd; }
     return va < vb ? -sd : (va > vb ? sd : 0);
   });
 
-  var arrow = function (key) { return _syncBasesSort.key === key ? (_syncBasesSort.dir === 'asc' ? ' ▲' : ' ▼') : ''; };
-  var html = '<table class="sync-bases-table"><thead><tr>' +
+  var groups = {};
+  filtered.forEach(function (obj) {
+    var key = (obj._creator || '').trim() || '—';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(obj);
+  });
+  var groupKeys = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'ru'); });
+
+  var arrow = function (key) { return sbState().sort.key === key ? (sbState().sort.dir === 'asc' ? ' ▲' : ' ▼') : ''; };
+  var tableHead = '<table class="sync-bases-table"><thead><tr>' +
     '<th class="sync-sortable" data-sort="name">Название' + arrow('name') + '</th>' +
     '<th class="sync-sortable" data-sort="date">Дата изменения' + arrow('date') + '</th>' +
-    '<th class="sync-sortable" data-sort="user">Пользователь' + arrow('user') + '</th>' +
     '<th class="sync-sortable" data-sort="count">Записей' + arrow('count') + '</th>' +
     '<th>Действия</th></tr></thead><tbody>';
 
-  filtered.forEach(function (obj) {
-    var safeName = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    var safeId = String(obj.id).replace(/'/g, "\\'");
-    var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    var isOwner = currentUser && obj._user && obj._user.toLowerCase() === currentUser.toLowerCase();
-    var showDelete = globalThis['__syncBases'].isSyncUserElevated() && !globalThis['__syncBases'].isSyncMobileLimited();
-    var loadClick =
-      'showLoadBaseModal(' + JSON.stringify(obj.id) + ',' + JSON.stringify(obj.name || '') + ',' + JSON.stringify(obj._dateRaw || '') + ')';
-    html += '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
-      '<td data-label="Название">' + safeName + '</td>' +
-      '<td data-label="Дата">' + obj._dateStr + '</td>' +
-      '<td data-label="Пользователь">' + (obj._user || '—').replace(/</g, '&lt;') + '</td>' +
-      '<td data-label="Записей">' + obj._count + '</td>' +
-      '<td class="sync-bases-actions" data-label="Действия">' +
-      '<button type="button" class="small-btn sync-base-import-btn" onclick=\'' + loadClick.replace(/'/g, '&#39;') + '\'>Загрузить</button>' +
-      ' <button type="button" class="small-btn sync-hide-local-base-btn sync-base-import-btn" onclick="hideServerBaseLocalOnly(\'' + safeId + '\', \'' + safeSrcName + '\')">Скрыть у себя</button>' +
-      (isOwner && !globalThis['__syncBases'].isSyncMobileLimited() ? ' <button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="overwriteCurrentServerBaseWithLocal()">Выгрузить на сервер</button>' : '') +
-      (showDelete ? ' <button type="button" class="small-btn sync-delete-base-btn sync-base-import-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
-      '</td></tr>';
+  var html = '';
+  groupKeys.forEach(function (key) {
+    var items = groups[key];
+    var safeKey = key.replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    var label = key === '—' ? 'Без владельца' : safeKey;
+    html += '<details class="admin-bases-user-group" open>' +
+      '<summary class="admin-bases-user-summary">' + label + ' (' + items.length + ')</summary>' +
+      tableHead;
+    items.forEach(function (obj) {
+      html += buildBaseRowHtml(obj, currentUser, currentId);
+    });
+    html += '</tbody></table></details>';
   });
 
-  var currentOnServer = _syncBasesData.some(function (o) { return o.id === currentId; });
-  if (!globalThis['__syncBases'].isSyncMobileLimited() && !currentOnServer && currentId) {
-    html += '<tr><td colspan="4">Текущая база не на сервере</td><td class="sync-bases-actions">' +
-      '<button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="uploadCurrentBaseToServer()">Выгрузить на сервер</button>' +
-      '</td></tr>';
+  var currentOnServer = sbState().data.some(function (o) { return o.id === currentId; });
+  if (!globalThis['__syncBases'].isSyncMobileLimited() && !currentOnServer && currentId && groupKeys.length) {
+    html += '<p class="sync-admin-current-base-hint">Текущая локальная база не найдена на сервере. ' +
+      '<button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="uploadCurrentBaseToServer()">Выгрузить на сервер</button></p>';
   }
 
-  html += '</tbody></table>';
-  if (filtered.length === 0 && _syncBasesData.length === 0 && !currentId) {
+  if (filtered.length === 0 && sbState().data.length === 0) {
     container.innerHTML = '<p class="sync-empty">На сервере пока нет баз.</p>';
+    return;
+  }
+  if (filtered.length === 0) {
+    container.innerHTML = '<p class="sync-empty">Нет баз по фильтру.</p>';
     return;
   }
   container.innerHTML = html;
@@ -109,11 +126,11 @@ function renderSyncBasesTable() {
     th.style.cursor = 'pointer';
     th.addEventListener('click', function () {
       var key = th.getAttribute('data-sort');
-      if (_syncBasesSort.key === key) {
-        _syncBasesSort.dir = _syncBasesSort.dir === 'asc' ? 'desc' : 'asc';
+      if (sbState().sort.key === key) {
+        sbState().sort.dir = sbState().sort.dir === 'asc' ? 'desc' : 'asc';
       } else {
-        _syncBasesSort.key = key;
-        _syncBasesSort.dir = 'asc';
+        sbState().sort.key = key;
+        sbState().sort.dir = 'asc';
       }
       renderSyncBasesTable();
     });
@@ -121,19 +138,17 @@ function renderSyncBasesTable() {
 }
 
 function renderSyncServerBasesList() {
-  var container = document.getElementById('syncServerBasesList');
+  var container = getBasesListContainer();
   if (!container || !window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
   container.innerHTML = '<p class="sync-loading">Загрузка списка…</p>';
   window.CattleTrackerApi.getObjectsList().then(function (list) {
     list = list || [];
-    _syncBasesData = list.map(function (obj) {
+    sbState().data = list.map(function (obj) {
       var dateRaw = obj.last_updated_at || obj.lastUpdatedAt || obj.created_at || '';
-      var userRaw = obj.last_modified_by != null ? obj.last_modified_by : (obj.lastModifiedBy != null ? obj.lastModifiedBy : null);
       var creatorRaw = obj.created_by_username != null ? obj.created_by_username : (obj.createdByUsername != null ? obj.createdByUsername : null);
       var rawCount = obj.entries_count != null ? obj.entries_count : obj.entriesCount;
       obj._dateRaw = dateRaw;
       obj._dateStr = globalThis['__syncBases'].formatServerDate(dateRaw);
-      obj._user = (userRaw !== null && userRaw !== '') ? String(userRaw) : '';
       obj._creator = (creatorRaw !== null && creatorRaw !== '') ? String(creatorRaw) : '';
       obj._count = (rawCount !== undefined && rawCount !== null && rawCount !== '') ? Number(rawCount) : 0;
       return obj;

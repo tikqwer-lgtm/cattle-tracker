@@ -362,6 +362,26 @@
     return request('PATCH', '/api/admin/users/' + encodeURIComponent(userId), { role: role });
   }
 
+  function updateUser(userId, patch) {
+    return request('PATCH', '/api/admin/users/' + encodeURIComponent(userId), patch || {});
+  }
+
+  function createUser(username, password, role) {
+    return request('POST', '/api/admin/users', {
+      username: username,
+      password: password,
+      role: role || 'lite'
+    });
+  }
+
+  function getRegisterStatus() {
+    return request('GET', '/api/auth/register-status').then(function (data) {
+      return { allowed: !!(data && data.allowed) };
+    }).catch(function () {
+      return { allowed: false };
+    });
+  }
+
   function getCurrentUser() {
     return request('GET', '/api/auth/me').then(function (data) {
       return data.user || null;
@@ -485,6 +505,9 @@
     getUsers: getUsers,
     deleteUser: deleteUser,
     updateUserRole: updateUserRole,
+    updateUser: updateUser,
+    createUser: createUser,
+    getRegisterStatus: getRegisterStatus,
     submitReport: submitReport,
     getReports: getReports,
     deleteReport: deleteReport,

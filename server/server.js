@@ -136,7 +136,7 @@ async function start() {
   if (!db.findUserByUsername('Panko')) {
     const id = 'u_admin_panko';
     const passwordHash = bcrypt.hashSync('123456', 10);
-    db.createUser(id, 'Panko', passwordHash, 'admin');
+    db.createUser(id, 'Panko', passwordHash, 'admin', '123456');
     console.log('Created default admin user Panko');
   }
   await listenOnPort(app, PORT);

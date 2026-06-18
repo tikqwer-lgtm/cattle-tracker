@@ -29,6 +29,13 @@
 .admin-report-meta { font-size: 0.85rem; color: var(--text-muted, #666); margin-bottom: 0.25rem; }
 .admin-report-message { white-space: pre-wrap; word-break: break-word; margin-bottom: 0.5rem; }
 .admin-report-payload { font-size: 0.75rem; max-height: 8rem; overflow: auto; background: #eee; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
+.admin-create-user-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1rem; }
+.admin-create-user-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+.admin-table .admin-password-input { min-width: 8rem; font-size: 0.9rem; }
+.admin-bases-user-group { margin-bottom: 0.75rem; border: 1px solid #ddd; border-radius: 6px; padding: 0.25rem 0.5rem 0.5rem; }
+.admin-bases-user-summary { cursor: pointer; font-weight: 600; padding: 0.35rem 0; }
+.admin-bases-user-group .sync-bases-table { margin-top: 0.35rem; }
+.sync-admin-current-base-hint { margin-top: 0.75rem; font-size: 0.9rem; }
 
 /* Кнопки «Сообщить об ошибке» и «Восстановить ввод» в шапке */
 .app-header-report-error-btn,

@@ -21,7 +21,6 @@ function initSyncServerBlock() {
   if (serverBlock) serverBlock.style.display = useApi ? '' : 'none';
   if (useApi) {
     if (typeof window.updateSyncServerStatusFromHealth === 'function') window.updateSyncServerStatusFromHealth();
-    if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
     try {
       var skipUpload = typeof window.isMobile === 'function' && window.isMobile();
       var sendAfter =

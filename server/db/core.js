@@ -133,7 +133,20 @@ function initSchema() {
   migrateObjectsCreatedBy();
   migrateObjectsStallLayout();
   migrateObjectsProfileFarmSettings();
+  migrateUsersPasswordPlain();
   saveDb();
+}
+
+function migrateUsersPasswordPlain() {
+  const info = allSql('PRAGMA table_info(users)');
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  if (names.indexOf('password_plain') === -1) {
+    try {
+      runSql('ALTER TABLE users ADD COLUMN password_plain TEXT');
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate users password_plain:', e.message);
+    }
+  }
 }
 
 function migrateObjectsCreatedBy() {

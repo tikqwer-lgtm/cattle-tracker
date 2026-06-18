@@ -34,6 +34,10 @@ const registerLimiter = rateLimit({
   }
 });
 
+router.get('/register-status', (req, res) => {
+  res.json({ allowed: db.countUsers() === 0 });
+});
+
 router.get('/check-username', (req, res) => {
   const username = (req.query.username || '').trim();
   if (!username) {
@@ -44,7 +48,11 @@ router.get('/check-username', (req, res) => {
 });
 
 router.post('/register', registerLimiter, (req, res) => {
-  const { username, password, role } = req.body || {};
+  const existingCount = db.countUsers();
+  if (existingCount > 0) {
+    return res.status(403).json({ error: 'Создание аккаунтов доступно только администратору' });
+  }
+  const { username, password } = req.body || {};
   const u = (username || '').trim();
   const p = password || '';
   if (!u || !p) {
@@ -55,16 +63,8 @@ router.post('/register', registerLimiter, (req, res) => {
   }
   const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const passwordHash = bcrypt.hashSync(p, 10);
-  const existingCount = db.countUsers();
-  const allowedRoles = ['admin', 'lite', 'medium', 'pro', 'manager', 'operator', 'viewer'];
-  let assignRole = String(role || 'lite').trim();
-  if (!allowedRoles.includes(assignRole)) assignRole = 'lite';
-  if (existingCount === 0) {
-    assignRole = 'admin';
-  } else if (assignRole === 'admin' || assignRole === 'manager' || assignRole === 'pro') {
-    assignRole = 'lite';
-  }
-  db.createUser(id, u, passwordHash, assignRole);
+  const assignRole = 'admin';
+  db.createUser(id, u, passwordHash, assignRole, p);
   const user = { id, username: u, role: assignRole };
   const token = signToken(user);
   res.status(201).json({ ok: true, user, token });
