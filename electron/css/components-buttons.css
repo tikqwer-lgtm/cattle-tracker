@@ -103,24 +103,6 @@
   border-top: 1px solid var(--color-border);
 }
 
-.menu-section-logout {
-  grid-column: 1 / -1;
-}
-
-.action-btn.menu-logout-btn {
-  background: var(--color-bg-soft, #f5f5f5);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-}
-
-.action-btn.menu-logout-btn:hover {
-  background: #ffebee;
-  color: #b71c1c;
-  border-color: #ef9a9a;
-  box-shadow: var(--shadow-button-hover);
-}
-
 .action-btn {
   display: flex;
   flex-direction: column;

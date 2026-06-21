@@ -28,5 +28,17 @@ parts.forEach((rel) => {
   out += fs.readFileSync(p, 'utf8').trimEnd() + '\n\n';
 });
 
+const pkgPath = path.join(root, 'package.json');
+if (fs.existsSync(pkgPath)) {
+  try {
+    const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
+    if (version) {
+      out = out.replace(/data-default-version="[^"]*"/g, `data-default-version="${version}"`);
+    }
+  } catch (e) {
+    console.warn('assemble-html: не удалось прочитать version из package.json');
+  }
+}
+
 fs.writeFileSync(path.join(root, 'index.html'), out.trimEnd() + '\n');
 console.log('Assembled index.html from', parts.length, 'partials');

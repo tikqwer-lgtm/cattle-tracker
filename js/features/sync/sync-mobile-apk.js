@@ -57,7 +57,31 @@
     }
   }
 
-  function getLocalAppVersion() {
+  function readEmbeddedDefaultVersion() {
+    var versionEl = document.getElementById('app-version');
+    if (versionEl) {
+      var fromEl = versionEl.getAttribute('data-default-version');
+      if (fromEl && String(fromEl).trim()) return String(fromEl).trim();
+    }
+    var rootEl = document.documentElement;
+    if (rootEl) {
+      var fromRoot = rootEl.getAttribute('data-default-version');
+      if (fromRoot && String(fromRoot).trim()) return String(fromRoot).trim();
+    }
+    return '';
+  }
+
+  function getLocalAppVersionFromCapacitor() {
+    var C = global.Capacitor;
+    if (C && C.Plugins && C.Plugins.App && typeof C.Plugins.App.getInfo === 'function') {
+      return Promise.resolve(C.Plugins.App.getInfo())
+        .then(function (info) {
+          return info && info.version ? String(info.version).trim() : '';
+        })
+        .catch(function () {
+          return '';
+        });
+    }
     return import('@capacitor/app')
       .then(function (mod) {
         return mod.App.getInfo();
@@ -67,13 +91,25 @@
       })
       .catch(function () {
         return '';
-      })
-      .then(function (v) {
-        if (v) return v;
-        var el = document.documentElement;
-        var d = el && el.getAttribute && el.getAttribute('data-default-version');
-        return (d || '').trim();
       });
+  }
+
+  function getLocalAppVersion() {
+    return getLocalAppVersionFromCapacitor().then(function (v) {
+      if (v) return v;
+      var embedded = readEmbeddedDefaultVersion();
+      if (embedded) return embedded;
+      return fetch('package.json', { cache: 'no-cache' })
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
+        .then(function (pkg) {
+          return pkg && pkg.version ? String(pkg.version).trim() : '';
+        })
+        .catch(function () {
+          return '';
+        });
+    });
   }
 
   function setText(id, text) {
@@ -204,10 +240,17 @@
       headerBtn.dataset.versionBound = '1';
       headerBtn.addEventListener('click', handleAppVersionHeaderClick);
     }
+    var embedded = readEmbeddedDefaultVersion();
+    if (embedded) {
+      _mobileUpdateState.localVer = embedded;
+      applyVersionUpdateBadge();
+    }
     if (typeof global.electronAPI !== 'undefined' && global.electronAPI.getAppVersion) {
       global.electronAPI.getAppVersion().then(function (v) {
-        _mobileUpdateState.localVer = v || '';
-        applyVersionUpdateBadge();
+        if (v) {
+          _mobileUpdateState.localVer = v;
+          applyVersionUpdateBadge();
+        }
       });
       return;
     }

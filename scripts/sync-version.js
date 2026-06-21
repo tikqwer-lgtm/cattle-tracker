@@ -20,12 +20,21 @@ if (!version) {
   process.exit(1);
 }
 
-// index.html
+// index.html (все вхождения data-default-version)
 const indexPath = path.join(root, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
-html = html.replace(/data-default-version="[^"]*"/, `data-default-version="${version}"`);
+html = html.replace(/data-default-version="[^"]*"/g, `data-default-version="${version}"`);
 fs.writeFileSync(indexPath, html);
 console.log('index.html: data-default-version =', version);
+
+// html/screens/menu.html — источник для assemble-html
+const menuPath = path.join(root, 'html', 'screens', 'menu.html');
+if (fs.existsSync(menuPath)) {
+  let menuHtml = fs.readFileSync(menuPath, 'utf8');
+  menuHtml = menuHtml.replace(/data-default-version="[^"]*"/g, `data-default-version="${version}"`);
+  fs.writeFileSync(menuPath, menuHtml);
+  console.log('html/screens/menu.html: data-default-version =', version);
+}
 
 // electron/package.json
 const electronPkgPath = path.join(root, 'electron', 'package.json');
