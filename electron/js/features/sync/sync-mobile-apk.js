@@ -95,6 +95,125 @@
     el.style.display = text ? '' : 'none';
   }
 
+  var _mobileUpdateState = {
+    hasUpdate: false,
+    available: false,
+    localVer: '',
+    serverVer: ''
+  };
+
+  function formatVersionLabel(localVer, hasUpdate) {
+    var v = (localVer || '').trim() || '—';
+    return 'Версия ' + v + (hasUpdate ? '*' : '');
+  }
+
+  function applyVersionUpdateBadge() {
+    var text = formatVersionLabel(_mobileUpdateState.localVer, _mobileUpdateState.hasUpdate);
+    var versionEl = document.getElementById('app-version');
+    var versionHeaderEl = document.getElementById('app-version-header');
+    if (versionEl) {
+      versionEl.textContent = text;
+      if (_mobileUpdateState.localVer) {
+        versionEl.setAttribute('data-default-version', _mobileUpdateState.localVer);
+      }
+      versionEl.classList.toggle('app-version--update', _mobileUpdateState.hasUpdate);
+    }
+    if (versionHeaderEl) {
+      versionHeaderEl.textContent = text;
+      versionHeaderEl.classList.toggle('app-version-header--update', _mobileUpdateState.hasUpdate);
+      var canUpdate = isAndroidCapacitor() && !!getApiBase();
+      versionHeaderEl.disabled = !canUpdate;
+      versionHeaderEl.title = canUpdate
+        ? (_mobileUpdateState.hasUpdate
+          ? 'Доступно обновление — нажмите для загрузки'
+          : 'Нажмите для проверки обновления')
+        : '';
+    }
+  }
+
+  function checkMobileApkUpdate(forceRefresh) {
+    if (!isAndroidCapacitor() || !getApiBase()) {
+      return getLocalAppVersion().then(function (localVer) {
+        _mobileUpdateState.localVer = localVer;
+        _mobileUpdateState.hasUpdate = false;
+        applyVersionUpdateBadge();
+        return _mobileUpdateState;
+      });
+    }
+    if (!forceRefresh && _mobileUpdateState.localVer && _mobileUpdateState.serverVer) {
+      applyVersionUpdateBadge();
+      return Promise.resolve(_mobileUpdateState);
+    }
+    var infoUrl = getApiBase() + '/api/mobile/info';
+    return fetch(infoUrl, { cache: 'no-cache' })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            throw new Error((data && (data.error || data.message)) || 'Ошибка ' + res.status);
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        return getLocalAppVersion().then(function (localVer) {
+          _mobileUpdateState.localVer = localVer;
+          _mobileUpdateState.available = !!(data && data.available);
+          _mobileUpdateState.serverVer = data && data.version ? String(data.version).trim() : '';
+          var cmp = _mobileUpdateState.available
+            ? compareAppVersions(_mobileUpdateState.serverVer, localVer)
+            : null;
+          _mobileUpdateState.hasUpdate = cmp !== null && cmp > 0;
+          applyVersionUpdateBadge();
+          return _mobileUpdateState;
+        });
+      })
+      .catch(function () {
+        return getLocalAppVersion().then(function (localVer) {
+          _mobileUpdateState.localVer = localVer;
+          _mobileUpdateState.hasUpdate = false;
+          applyVersionUpdateBadge();
+          return _mobileUpdateState;
+        });
+      });
+  }
+
+  function handleAppVersionHeaderClick() {
+    if (!isAndroidCapacitor() || !getApiBase()) {
+      return;
+    }
+    checkMobileApkUpdate(true).then(function (state) {
+      if (state.hasUpdate) {
+        downloadApkFromServer();
+        return;
+      }
+      if (state.available) {
+        if (typeof global.showToast === 'function') {
+          global.showToast('У вас установлена актуальная версия', 'info', 4000);
+        }
+        return;
+      }
+      if (typeof global.showToast === 'function') {
+        global.showToast('На сервере нет файла обновления', 'info', 4000);
+      }
+    });
+  }
+
+  function initAppVersionUpdateUi() {
+    var headerBtn = document.getElementById('app-version-header');
+    if (headerBtn && headerBtn.dataset.versionBound !== '1') {
+      headerBtn.dataset.versionBound = '1';
+      headerBtn.addEventListener('click', handleAppVersionHeaderClick);
+    }
+    if (typeof global.electronAPI !== 'undefined' && global.electronAPI.getAppVersion) {
+      global.electronAPI.getAppVersion().then(function (v) {
+        _mobileUpdateState.localVer = v || '';
+        applyVersionUpdateBadge();
+      });
+      return;
+    }
+    checkMobileApkUpdate(true);
+  }
+
   function refreshMobileApkServerUi() {
     var base = getApiBase();
     var metaBlock = document.getElementById('syncMobileApkMetaBlock');
@@ -157,6 +276,11 @@
             'sync-mobile-apk-update-line--new',
             'Доступна новая версия на сервере (у вас ' + localVer + ', на сервере ' + data.version + ').'
           );
+          _mobileUpdateState.hasUpdate = true;
+          _mobileUpdateState.localVer = localVer;
+          _mobileUpdateState.serverVer = data.version || '';
+          _mobileUpdateState.available = true;
+          applyVersionUpdateBadge();
         } else if (cmp < 0) {
           setUpdateLine(
             'sync-mobile-apk-update-line--ahead',
@@ -167,6 +291,11 @@
             'sync-mobile-apk-update-line--ok',
             'У вас установлена актуальная версия (' + localVer + ').'
           );
+          _mobileUpdateState.hasUpdate = false;
+          _mobileUpdateState.localVer = localVer;
+          _mobileUpdateState.serverVer = data.version || '';
+          _mobileUpdateState.available = true;
+          applyVersionUpdateBadge();
         }
       })
       .catch(function (err) {
@@ -213,8 +342,7 @@
   }
 
   /**
-   * Custom Tabs (@capacitor/browser) часто не запускают загрузку APK (пустой экран).
-   * На Android открываем через нативный OpenExternalUrlPlugin (Intent → системный браузер).
+   * Fallback: открыть URL во внешнем браузере (старые сборки без ApkUpdatePlugin).
    */
   function openApkDownloadUrl(apkUrl) {
     var C = global.Capacitor;
@@ -254,6 +382,60 @@
       });
   }
 
+  function downloadApkViaNative(apkUrl) {
+    var C = global.Capacitor;
+    var isAndroidNative =
+      C &&
+      typeof C.isNativePlatform === 'function' &&
+      C.isNativePlatform() &&
+      typeof C.getPlatform === 'function' &&
+      C.getPlatform() === 'android';
+    if (!isAndroidNative) {
+      return openApkDownloadUrl(apkUrl);
+    }
+    if (typeof global.showToast === 'function') {
+      global.showToast('Скачивание обновления…', 'info', 3000);
+    }
+    return import('@capacitor/core')
+      .then(function (core) {
+        var ApkUpdate = core.registerPlugin('ApkUpdate', {
+          web: {
+            downloadApk: function () {
+              return Promise.reject(new Error('web'));
+            }
+          }
+        });
+        return ApkUpdate.downloadApk({ url: apkUrl });
+      })
+      .then(function () {
+        if (typeof global.showToast === 'function') {
+          global.showToast('Откройте установщик на экране', 'success', 4000);
+        }
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? String(err.message) : '';
+        if (
+          msg === 'NEED_INSTALL_PERMISSION' ||
+          msg.indexOf('Разрешите установку') !== -1 ||
+          msg.indexOf('NEED_INSTALL') !== -1
+        ) {
+          if (typeof global.showToast === 'function') {
+            global.showToast(
+              'Установка из приложения недоступна. Открываем загрузку в браузере…',
+              'info',
+              6000
+            );
+          }
+          return openApkDownloadUrl(apkUrl);
+        }
+        if (msg && msg !== 'web') {
+          if (typeof global.showToast === 'function') global.showToast(msg, 'error', 6000);
+          return;
+        }
+        return openApkDownloadUrl(apkUrl);
+      });
+  }
+
   function downloadApkFromServer() {
     var base = getApiBase();
     if (!base) {
@@ -279,7 +461,7 @@
           return;
         }
         var apkUrl = base + (data.downloadPath || '/api/mobile/app.apk');
-        return openApkDownloadUrl(apkUrl);
+        return downloadApkViaNative(apkUrl);
       })
       .catch(function (err) {
         var msg = err && err.message ? err.message : 'Не удалось проверить обновление';
@@ -293,6 +475,9 @@
   global.initSyncMobileApkSection = initSyncMobileApkSection;
   global.downloadApkFromServer = downloadApkFromServer;
   global.refreshMobileApkServerUi = refreshMobileApkServerUi;
+  global.checkMobileApkUpdate = checkMobileApkUpdate;
+  global.initAppVersionUpdateUi = initAppVersionUpdateUi;
+  global.handleAppVersionHeaderClick = handleAppVersionHeaderClick;
 })(typeof window !== 'undefined' ? window : this);
 
 export {};

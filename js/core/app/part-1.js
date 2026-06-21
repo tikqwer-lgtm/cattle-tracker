@@ -113,14 +113,16 @@ function initApp() {
 
   var versionEl = document.getElementById('app-version');
   var versionHeaderEl = document.getElementById('app-version-header');
-  function setVersionText(text, versionValue) {
-    if (versionEl) {
-      versionEl.textContent = text;
-      if (versionValue != null) versionEl.setAttribute('data-default-version', String(versionValue));
+  if (typeof window.initAppVersionUpdateUi === 'function') {
+    window.initAppVersionUpdateUi();
+  } else if (versionEl || versionHeaderEl) {
+    function setVersionText(text, versionValue) {
+      if (versionEl) {
+        versionEl.textContent = text;
+        if (versionValue != null) versionEl.setAttribute('data-default-version', String(versionValue));
+      }
+      if (versionHeaderEl) versionHeaderEl.textContent = text;
     }
-    if (versionHeaderEl) versionHeaderEl.textContent = text;
-  }
-  if (versionEl || versionHeaderEl) {
     if (typeof window.electronAPI !== 'undefined' && window.electronAPI.getAppVersion) {
       window.electronAPI.getAppVersion().then(function (v) {
         setVersionText('Версия ' + v, v);

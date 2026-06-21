@@ -12,7 +12,8 @@ import { buildStallChecklist, entryHasStallCoords } from '../stall-inventory-cor
 function formatPlanItem(it) {
   var nick = it.nickname ? ' (' + it.nickname + ')' : '';
   var overdue = it.overdue ? ', просрочено' : '';
-  return '№' + it.cattleId + ' — ' + it.expectedDate + nick + overdue;
+  var dateStr = it.expectedCalvingDate || it.expectedDate || '—';
+  return '№' + it.cattleId + ' — ' + dateStr + nick + overdue;
 }
 
 function formatFactItem(it) {

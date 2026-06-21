@@ -235,9 +235,6 @@
     if (typeof updateNotificationIndicators === 'function') {
       globalThis['__notif'].updateNotificationIndicators();
     }
-    if (typeof document !== 'undefined' && document.getElementById('menuNotificationsBody')) {
-      globalThis['__notif'].renderNotificationSummary('menuNotificationsBody');
-    }
     return item;
   }
 

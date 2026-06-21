@@ -77,7 +77,7 @@ function _handleViewListClick(ev) {
       if (cattleId) {
         if (globalThis.viewListSelectedIds.has(cattleId)) globalThis.viewListSelectedIds.delete(cattleId);
         else globalThis.viewListSelectedIds.add(cattleId);
-        tableContainer._virtualData.globalThis['__viewList'].renderVisible();
+        tableContainer._virtualData.renderVisible();
       }
     }
     setTimeout(updateSelectedCount, 0);
@@ -113,7 +113,7 @@ function selectAllEntries() {
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.list) {
     container._virtualData.list.forEach(function (entry) { globalThis.viewListSelectedIds.add(entry.cattleId); });
-    if (container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
+    if (container._virtualData.renderVisible) container._virtualData.renderVisible();
   } else {
     var checkboxes = document.querySelectorAll('.entry-checkbox');
     checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
@@ -127,7 +127,7 @@ function deselectAllEntries() {
   globalThis.viewListSelectedIds.clear();
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.renderVisible) {
-    container._virtualData.globalThis['__viewList'].renderVisible();
+    container._virtualData.renderVisible();
   } else {
     var checkboxes = document.querySelectorAll('.entry-checkbox');
     checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
@@ -145,7 +145,7 @@ function toggleSelectAll(checked) {
     } else {
       globalThis.viewListSelectedIds.clear();
     }
-    if (container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
+    if (container._virtualData.renderVisible) container._virtualData.renderVisible();
   } else {
     var checkboxes = document.querySelectorAll('.entry-checkbox');
     checkboxes.forEach(function (checkbox) { checkbox.checked = checked; });

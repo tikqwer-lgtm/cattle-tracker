@@ -1,7 +1,9 @@
 /**
  * calving-calc.js — план и факт отёлов по месяцам.
+ * План: стельная текущей лактации, осеменение + GESTATION_DAYS, rollover displayMonth.
+ * Факт: отёлы из lactationHistory (осеменение той же лактации, не текущее поле карточки).
  */
-var GESTATION_DAYS = 280;
+var GESTATION_DAYS = 285;
 
 function parseCalvingDate(str) {
   if (!str) return null;
@@ -34,6 +36,14 @@ function compareMonth(year, month, refDate) {
   if (month < rm) return -1;
   if (month > rm) return 1;
   return 0;
+}
+
+function monthOrdinal(year, month) {
+  return year * 12 + month;
+}
+
+function ordinalToYearMonth(ord) {
+  return { year: Math.floor(ord / 12), month: ord % 12 };
 }
 
 function getLastInseminationDateFromHistory(history, insemDate) {
@@ -75,58 +85,123 @@ function isExited(entry, refDate) {
 
 function formatDateKey(d) {
   if (!d) return '';
+  if (typeof d === 'string') return String(d).slice(0, 10);
   var y = d.getFullYear();
   var m = String(d.getMonth() + 1).padStart(2, '0');
   var day = String(d.getDate()).padStart(2, '0');
   return y + '-' + m + '-' + day;
 }
 
-function collectPlanSources(entry) {
-  var out = [];
-  if (isSterlyana(entry)) {
-    var insem = getFertileInseminationDate(entry);
-    var exp = getExpectedCalvingDateFromInsem(insem);
-    if (exp) {
-      out.push({ cattleId: entry.cattleId, nickname: entry.nickname || '', expectedDate: exp, source: 'current' });
-    }
+function daysBetween(fromStr, toStr) {
+  if (!fromStr || !toStr) return null;
+  var a = dateOnly(parseCalvingDate(fromStr));
+  var b = dateOnly(parseCalvingDate(toStr));
+  if (!a || !b) return null;
+  return Math.round((b - a) / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Месяц отображения просроченной стельной: planned или текущий (rollover).
+ */
+function getPlanDisplayMonth(expectedDate, refDate) {
+  refDate = refDate || new Date();
+  if (!expectedDate) return null;
+  var plannedOrd = monthOrdinal(expectedDate.getFullYear(), expectedDate.getMonth());
+  var currentOrd = monthOrdinal(refDate.getFullYear(), refDate.getMonth());
+  var displayOrd = currentOrd <= plannedOrd ? plannedOrd : currentOrd;
+  return ordinalToYearMonth(displayOrd);
+}
+
+function findSnapshotForCalving(entry, calvingDateKey) {
+  if (!entry || !Array.isArray(entry.lactationHistory) || !calvingDateKey) return null;
+  for (var i = entry.lactationHistory.length - 1; i >= 0; i--) {
+    var snap = entry.lactationHistory[i];
+    if (!snap || !snap.calvingDate) continue;
+    var key = formatDateKey(dateOnly(parseCalvingDate(snap.calvingDate)));
+    if (key === calvingDateKey) return snap;
   }
-  var hist = entry.lactationHistory;
-  if (Array.isArray(hist)) {
-    hist.forEach(function (snap) {
-      if (!snap) return;
-      var insem2 = getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate);
-      var exp2 = getExpectedCalvingDateFromInsem(insem2);
-      if (exp2) {
-        out.push({
-          cattleId: entry.cattleId,
-          nickname: entry.nickname || '',
-          expectedDate: exp2,
-          source: 'history'
-        });
-      }
+  return null;
+}
+
+/**
+ * Фактические отёлы с осеменением той же лактации (снимок lactationHistory).
+ */
+function collectFactLactationEvents(entry) {
+  var seen = Object.create(null);
+  var out = [];
+
+  function pushEvent(calvingDateKey, insemDateStr) {
+    if (!calvingDateKey || !insemDateStr || seen[calvingDateKey]) return;
+    seen[calvingDateKey] = true;
+    var d = dateOnly(parseCalvingDate(calvingDateKey));
+    if (!d) return;
+    out.push({ calvingDate: d, inseminationDate: insemDateStr });
+  }
+
+  if (Array.isArray(entry.lactationHistory)) {
+    entry.lactationHistory.forEach(function (snap) {
+      if (!snap || !snap.calvingDate) return;
+      var insem = getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate);
+      if (!insem) return;
+      pushEvent(formatDateKey(dateOnly(parseCalvingDate(snap.calvingDate))), insem);
     });
+  }
+
+  var currentCd = parseCalvingDate(entry && entry.calvingDate);
+  if (currentCd) {
+    var currentKey = formatDateKey(dateOnly(currentCd));
+    if (!seen[currentKey]) {
+      var snap = findSnapshotForCalving(entry, currentKey);
+      if (snap) {
+        var insem2 = getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate);
+        if (insem2) pushEvent(currentKey, insem2);
+      }
+    }
   }
   return out;
 }
 
-function collectFactDates(entry) {
-  var out = [];
-  var cd = parseCalvingDate(entry && entry.calvingDate);
-  if (cd) out.push({ date: dateOnly(cd), source: 'current' });
-  if (Array.isArray(entry.lactationHistory)) {
-    entry.lactationHistory.forEach(function (snap) {
-      if (!snap || !snap.calvingDate) return;
-      var d = parseCalvingDate(snap.calvingDate);
-      if (d) out.push({ date: dateOnly(d), source: 'history' });
-    });
-  }
-  return out;
+function buildCalvingRow(entry, opts) {
+  var insem = opts.inseminationDate;
+  var expected = getExpectedCalvingDateFromInsem(insem);
+  var expectedKey = expected ? formatDateKey(expected) : '';
+  var actualDate = opts.actualCalvingDate || null;
+  var actualKey = actualDate ? formatDateKey(actualDate) : null;
+  var refDate = opts.refDate || new Date();
+  var refKey = formatDateKey(dateOnly(refDate));
+  var daysPregnant = insem
+    ? daysBetween(insem, actualKey || refKey)
+    : null;
+  var planFactDiffDays = (actualKey && expectedKey) ? daysBetween(expectedKey, actualKey) : null;
+
+  return {
+    cattleId: entry.cattleId,
+    nickname: entry.nickname || '',
+    inseminationDate: insem || '',
+    daysPregnant: daysPregnant,
+    expectedCalvingDate: expectedKey,
+    expectedDate: expectedKey,
+    actualCalvingDate: actualKey,
+    calvingDate: actualKey,
+    planFactDiffDays: planFactDiffDays,
+    overdue: !!opts.overdue,
+    rowKind: opts.rowKind || 'plan',
+    dataError: actualDate ? isFutureDate(actualDate, refDate) : false
+  };
 }
 
 function isFutureDate(d, refDate) {
   if (!d) return false;
   var today = dateOnly(refDate || new Date());
-  return d > today;
+  return dateOnly(d) > today;
+}
+
+function sortCalvingRows(a, b) {
+  if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+  var ea = a.expectedCalvingDate || a.actualCalvingDate || '';
+  var eb = b.expectedCalvingDate || b.actualCalvingDate || '';
+  if (ea !== eb) return ea < eb ? -1 : 1;
+  return String(a.cattleId).localeCompare(String(b.cattleId), 'ru');
 }
 
 /**
@@ -137,65 +212,70 @@ function isFutureDate(d, refDate) {
  */
 function getCalvingStatsForMonth(entries, year, month, refDate) {
   refDate = refDate || new Date();
-  var monthCmp = compareMonth(year, month, refDate);
-  var planItems = [];
-  var factItems = [];
-  var planSeen = Object.create(null);
+  var planRows = [];
+  var factRows = [];
+  var mergedRows = [];
+  var mergedSeen = Object.create(null);
 
   (entries || []).forEach(function (entry) {
     if (!entry || !entry.cattleId) return;
     if (isExited(entry, refDate)) return;
 
-    collectPlanSources(entry).forEach(function (src) {
-      var exp = src.expectedDate;
-      var inMonth = isDateInMonth(exp, year, month);
-      var overdue = false;
-      if (!inMonth && monthCmp >= 0 && isSterlyana(entry) && src.source === 'current') {
-        var bounds = monthBounds(year, month);
-        if (exp < bounds.start) {
-          inMonth = true;
-          overdue = true;
+    if (isSterlyana(entry)) {
+      var insem = getFertileInseminationDate(entry);
+      if (insem) {
+        var expected = getExpectedCalvingDateFromInsem(insem);
+        if (expected) {
+          var display = getPlanDisplayMonth(expected, refDate);
+          if (display && display.year === year && display.month === month) {
+            var plannedOrd = monthOrdinal(expected.getFullYear(), expected.getMonth());
+            var displayOrd = monthOrdinal(display.year, display.month);
+            var row = buildCalvingRow(entry, {
+              inseminationDate: insem,
+              actualCalvingDate: null,
+              refDate: refDate,
+              overdue: displayOrd > plannedOrd,
+              rowKind: 'plan'
+            });
+            planRows.push(row);
+            mergedSeen[String(entry.cattleId) + '_plan'] = row;
+          }
         }
       }
-      if (!inMonth) return;
-      var key = String(entry.cattleId) + '_plan';
-      if (planSeen[key]) return;
-      planSeen[key] = true;
-      planItems.push({
-        cattleId: entry.cattleId,
-        nickname: src.nickname,
-        expectedDate: formatDateKey(exp),
-        overdue: overdue
-      });
-    });
+    }
 
-    collectFactDates(entry).forEach(function (fd) {
-      if (!isDateInMonth(fd.date, year, month)) return;
-      var dataError = isFutureDate(fd.date, refDate);
-      factItems.push({
-        cattleId: entry.cattleId,
-        nickname: entry.nickname || '',
-        calvingDate: formatDateKey(fd.date),
-        dataError: dataError
+    collectFactLactationEvents(entry).forEach(function (ev) {
+      if (!isDateInMonth(ev.calvingDate, year, month)) return;
+      var factRow = buildCalvingRow(entry, {
+        inseminationDate: ev.inseminationDate,
+        actualCalvingDate: ev.calvingDate,
+        refDate: refDate,
+        overdue: false,
+        rowKind: 'fact'
       });
+      factRows.push(factRow);
+      var factKey = String(entry.cattleId) + '_' + formatDateKey(ev.calvingDate);
+      mergedSeen[factKey] = factRow;
+      delete mergedSeen[String(entry.cattleId) + '_plan'];
     });
   });
 
-  planItems.sort(function (a, b) {
-    if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-    if (a.expectedDate !== b.expectedDate) return a.expectedDate < b.expectedDate ? -1 : 1;
-    return String(a.cattleId).localeCompare(String(b.cattleId), 'ru');
+  Object.keys(mergedSeen).forEach(function (k) {
+    mergedRows.push(mergedSeen[k]);
   });
-  factItems.sort(function (a, b) {
+  mergedRows.sort(sortCalvingRows);
+  planRows.sort(sortCalvingRows);
+  factRows.sort(function (a, b) {
     if (a.calvingDate !== b.calvingDate) return a.calvingDate < b.calvingDate ? -1 : 1;
     return String(a.cattleId).localeCompare(String(b.cattleId), 'ru');
   });
 
-  var factDataErrors = factItems.some(function (x) { return x.dataError; });
+  var factDataErrors = factRows.some(function (x) { return x.dataError; });
 
   return {
-    plan: { count: planItems.length, items: planItems },
-    fact: { count: factItems.length, items: factItems, hasDataErrors: factDataErrors }
+    plan: { count: planRows.length, items: planRows },
+    fact: { count: factRows.length, items: factRows, hasDataErrors: factDataErrors },
+    rows: mergedRows
   };
 }
 
@@ -210,6 +290,7 @@ export {
   dateOnly,
   monthBounds,
   compareMonth,
+  getPlanDisplayMonth,
   getFertileInseminationDate,
   getExpectedCalvingDateFromInsem,
   getCalvingStatsForMonth,

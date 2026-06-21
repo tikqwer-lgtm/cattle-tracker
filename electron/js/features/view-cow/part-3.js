@@ -6,34 +6,32 @@
   var global = typeof window !== 'undefined' ? window : this;
 
 function renderAllInseminationsScreen() {
-  var container = document.getElementById('allInseminationsList');
-  var filterContainer = document.getElementById('allInseminationsFilterContainer');
+  var vc = globalThis['__viewCow'];
+  var sortKey = vc.allInseminationsSortKey || 'date';
+  var sortDir = vc.allInseminationsSortDir || 'asc';
+  var container = vc.getAllInseminationsListContainer();
   if (!container) return;
-  if (filterContainer && !filterContainer.dataset.rendered) {
-    filterContainer.dataset.rendered = '1';
-    globalThis['__viewCow'].renderAllInseminationsFilterUI();
-  }
-  var flat = globalThis['__viewCow'].getAllInseminationsFlat();
-  var listToShow = globalThis['__viewCow'].getFilteredAllInseminations(flat);
-  if (listToShow.length > 0 && allInseminationsSortKey) {
+  var flat = vc.getAllInseminationsFlat();
+  var listToShow = flat;
+  if (listToShow.length > 0 && sortKey) {
     listToShow = listToShow.slice();
     listToShow.sort(function (a, b) {
-      return globalThis['__viewCow'].compareAllInseminationsRow(a, b, allInseminationsSortKey, allInseminationsSortDir);
+      return vc.compareAllInseminationsRow(a, b, sortKey, sortDir);
     });
   }
   if (listToShow.length === 0) {
     if (container._pinchZoomDestroy) { try { container._pinchZoomDestroy(); } catch (e) {} container._pinchZoomDestroy = null; }
-    container.innerHTML = '<p class="cow-insemination-empty">Нет данных об осеменениях.' + (flat.length > 0 ? ' Измените фильтры.' : '') + '</p>';
+    container.innerHTML = '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
     return;
   }
   if (container._pinchZoomDestroy) { try { container._pinchZoomDestroy(); } catch (e) {} container._pinchZoomDestroy = null; }
-  var sortAsc = allInseminationsSortDir === 'asc';
+  var sortAsc = sortDir === 'asc';
   var sortMark = function (key) {
-    if (allInseminationsSortKey !== key) return '';
+    if (sortKey !== key) return '';
     return sortAsc ? ' <span class="sort-indicator" aria-hidden="true">▲</span>' : ' <span class="sort-indicator" aria-hidden="true">▼</span>';
   };
   var sortClass = function (key) {
-    if (allInseminationsSortKey !== key) return '';
+    if (sortKey !== key) return '';
     return sortAsc ? ' sort-asc' : ' sort-desc';
   };
   var th = function (key, label) {
@@ -68,8 +66,12 @@ function renderAllInseminationsScreen() {
     thEl.addEventListener('click', function () {
       var key = thEl.getAttribute('data-sort-key');
       if (!key) return;
-      if (allInseminationsSortKey === key) allInseminationsSortDir = allInseminationsSortDir === 'asc' ? 'desc' : 'asc';
-      else { allInseminationsSortKey = key; allInseminationsSortDir = 'asc'; }
+      if (sortKey === key) {
+        vc.allInseminationsSortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        vc.allInseminationsSortKey = key;
+        vc.allInseminationsSortDir = 'asc';
+      }
       renderAllInseminationsScreen();
     });
     thEl.addEventListener('keydown', function (e) {
@@ -82,12 +84,35 @@ function renderAllInseminationsScreen() {
   if (typeof window.initPinchZoom === 'function') container._pinchZoomDestroy = window.initPinchZoom(container, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
 }
 
-/** Возврат с карточки: в уведомления или в список животных */
+function isAllInseminationsJournalActive() {
+  var listScreen = document.getElementById('list-insemination-screen');
+  var allScreen = document.getElementById('all-inseminations-screen');
+  return (listScreen && listScreen.classList.contains('active')) ||
+    (allScreen && allScreen.classList.contains('active'));
+}
+
+function initAllInseminationsJournalRefresh() {
+  if (initAllInseminationsJournalRefresh._done) return;
+  initAllInseminationsJournalRefresh._done = true;
+  if (typeof global.CattleTrackerEvents === 'undefined' || typeof global.CattleTrackerEvents.on !== 'function') return;
+  global.CattleTrackerEvents.on('entries:updated', function () {
+    if (!isAllInseminationsJournalActive()) return;
+    renderAllInseminationsScreen();
+  });
+}
+
+initAllInseminationsJournalRefresh();
+
+/** Возврат с карточки: на экран-источник, по стеку или в список животных */
 function viewCowBack() {
   var returnTo = (typeof window !== 'undefined' && window._viewCowReturnTo) ? window._viewCowReturnTo : null;
   if (typeof window !== 'undefined') window._viewCowReturnTo = null;
-  if (returnTo && typeof navigate === 'function') navigate(returnTo);
-  else if (typeof navigate === 'function') navigate('view');
+  if (returnTo && typeof navigate === 'function') {
+    navigate(returnTo);
+    return;
+  }
+  if (typeof navigateBack === 'function' && navigateBack()) return;
+  if (typeof navigate === 'function') navigate('view');
 }
 
 // Список записей с групповым выделением рисуется в menu.js (updateViewList).
@@ -95,6 +120,7 @@ function viewCowBack() {
 
   // register functions
   NS.renderAllInseminationsScreen = renderAllInseminationsScreen;
+  NS.initAllInseminationsJournalRefresh = initAllInseminationsJournalRefresh;
   NS.viewCowBack = viewCowBack;
 })();
 export {};

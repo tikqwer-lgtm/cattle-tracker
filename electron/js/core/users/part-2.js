@@ -122,9 +122,18 @@
     }
   }
 
+  function formatRoleLabel(user) {
+    if (!user) return '';
+    var role = typeof globalThis['__users'].getEffectiveRole === 'function'
+      ? globalThis['__users'].getEffectiveRole(user)
+      : String(user.role || 'lite').trim().toLowerCase();
+    var labels = { lite: 'Lite', medium: 'Medium', pro: 'Pro', admin: 'Admin', viewer: 'Viewer' };
+    return labels[role] || (role.charAt(0).toUpperCase() + role.slice(1));
+  }
+
   function updateAuthBar() {
+    var sessionEl = document.getElementById('menu-user-session');
     var bar = document.getElementById('auth-bar');
-    var span = document.getElementById('authBarUser');
     var user = null;
     if (useApi) {
       if (typeof global.isAuthLoggedIn === 'function' && global.isAuthLoggedIn()) {
@@ -134,14 +143,18 @@
     } else {
       user = globalThis['__users'].getCurrentUser();
     }
-    if (bar && span) {
+    if (sessionEl) {
       if (user) {
-        bar.style.display = 'flex';
-        span.textContent = 'Вошли: ' + (user.username || '') + ' (' + (user.role || '') + ')';
+        var roleLabel = formatRoleLabel(user);
+        var login = (user.username || '').trim();
+        sessionEl.textContent = roleLabel + (login ? ' — ' + login : '');
+        sessionEl.hidden = false;
       } else {
-        bar.style.display = 'none';
+        sessionEl.textContent = '';
+        sessionEl.hidden = true;
       }
     }
+    if (bar) bar.style.display = 'none';
     var adminSection = document.getElementById('admin-menu-section');
     if (adminSection) {
       var showAdmin =
@@ -365,6 +378,7 @@
   NS.updateAuthSessionStatusUi = updateAuthSessionStatusUi;
   NS.initUsers = initUsers;
   NS.updateAuthBar = updateAuthBar;
+  NS.formatRoleLabel = formatRoleLabel;
   NS.updateRegisterAvailability = updateRegisterAvailability;
   NS.initRegisterUsernameCheck = initRegisterUsernameCheck;
   NS.focusAuthForm = focusAuthForm;

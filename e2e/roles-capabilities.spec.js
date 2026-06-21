@@ -122,30 +122,34 @@ const CASES = [
   {
     role: 'lite',
     visible: ['Работа с данными', 'Действия'],
-    hidden: ['Аналитика', 'Уведомления и планы'],
+    hidden: ['Аналитика'],
     blockedScreens: ['analytics', 'notifications', 'farm-settings'],
     allowedScreen: 'sync',
+    menuNotificationsVisible: true,
   },
   {
     role: 'medium',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Уведомления и планы'],
+    visible: ['Работа с данными', 'Действия', 'Аналитика'],
     hidden: [],
     blockedScreens: ['farm-settings'],
     allowedScreen: 'sync',
+    menuNotificationsVisible: true,
   },
   {
     role: 'pro',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Уведомления и планы', 'Настройки'],
+    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Настройки'],
     hidden: [],
     blockedScreens: ['admin'],
     allowedScreen: 'sync',
+    menuNotificationsVisible: true,
   },
   {
     role: 'admin',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Уведомления и планы', 'Настройки', 'Администрирование'],
+    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Настройки', 'Администрирование'],
     hidden: [],
     blockedScreens: [],
     allowedScreen: 'sync',
+    menuNotificationsVisible: true,
   },
 ];
 
@@ -161,6 +165,11 @@ for (const tcase of CASES) {
       }
       for (const title of tcase.hidden) {
         await expect(menuGroup(page, title)).toBeHidden();
+      }
+      if (tcase.menuNotificationsVisible) {
+        await expect(page.locator('#menu-notifications')).toBeVisible();
+      } else {
+        await expect(page.locator('#menu-notifications')).toBeHidden();
       }
     });
 

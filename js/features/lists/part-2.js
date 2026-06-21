@@ -5,87 +5,200 @@
   var NS = root['__lists'] = root['__lists'] || {};
   var global = typeof window !== 'undefined' ? window : this;
 
-  function renderInseminationListSubScreen(sub) {
-    var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    var toStr = weekEnd.getFullYear() + '-' + String(weekEnd.getMonth() + 1).padStart(2, '0') + '-' + String(weekEnd.getDate()).padStart(2, '0');
-    var groups = globalThis['__lists'].getUniqueGroups();
-    var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + globalThis['__lists'].escapeHtml(g) + '">' + globalThis['__lists'].escapeHtml(g) + '</option>'; }).join('');
-    var printBtnHtml = globalThis['__lists'].listPrintButtonHtml('insemListPrint');
-    var html = '<div class="list-sub-header"><h3>Список на осеменение</h3>' +
-      '<div class="list-filters">' +
-      '<label>С <input type="date" id="insemListDateFrom" value="' + globalThis['__lists'].escapeHtml(todayStr) + '" /></label>' +
-      '<label>По <input type="date" id="insemListDateTo" value="' + globalThis['__lists'].escapeHtml(toStr) + '" /></label>' +
-      '<label>Категория: <select id="insemListCowHeifer"><option value="all">Все</option><option value="cow">Коровы</option><option value="heifer">Телки</option></select></label>' +
-      '<label>Группа: <select id="insemListGroup">' + groupOptions + '</select></label>' +
+  function formatCalvingMonthLabel(year, month) {
+    try {
+      return new Date(year, month, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    } catch (e) {
+      return year + '-' + (month + 1);
+    }
+  }
+
+  var CALVING_LIST_KEYS = ['cattleId', 'nickname', 'inseminationDate', 'daysPregnant', 'expectedCalvingDate', 'actualCalvingDate', 'planFactDiffDays'];
+  var CALVING_LIST_HEADERS = ['Номер', 'Кличка', 'Дата осеменения', 'Дни стельности', 'Ожидаемый отёл', 'Фактический отёл', 'Разница план/факт'];
+
+  function formatCalvingDiffDays(val) {
+    if (val === null || val === undefined || val === '') return '—';
+    var n = Number(val);
+    if (isNaN(n)) return '—';
+    if (n > 0) return '+' + n;
+    return String(n);
+  }
+
+  function mapCalvingRowForDisplay(row, formatDateFn) {
+    return {
+      cattleId: row.cattleId,
+      nickname: row.nickname || '',
+      inseminationDate: row.inseminationDate ? formatDateFn(row.inseminationDate) : '—',
+      daysPregnant: row.daysPregnant != null ? String(row.daysPregnant) : '—',
+      expectedCalvingDate: row.expectedCalvingDate ? formatDateFn(row.expectedCalvingDate) : '—',
+      actualCalvingDate: row.actualCalvingDate ? formatDateFn(row.actualCalvingDate) : '—',
+      planFactDiffDays: formatCalvingDiffDays(row.planFactDiffDays)
+    };
+  }
+
+  function resolveCalvingListView(preset) {
+    if (preset && preset.year != null && preset.month != null) return preset;
+    if (typeof window !== 'undefined' && window._listsCalvingView) return window._listsCalvingView;
+    if (typeof globalThis['__menu'] !== 'undefined' && typeof globalThis['__menu'].getMenuCalvingViewYearMonth === 'function') {
+      return globalThis['__menu'].getMenuCalvingViewYearMonth();
+    }
+    var now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  }
+
+  function persistCalvingListView(sub) {
+    if (typeof window !== 'undefined' && sub && sub._calvingYear != null && sub._calvingMonth != null) {
+      window._listsCalvingView = { year: sub._calvingYear, month: sub._calvingMonth };
+    }
+  }
+
+  function renderCalvingListSubScreen(sub, preset) {
+    var view = resolveCalvingListView(preset);
+    sub._calvingYear = view.year;
+    sub._calvingMonth = view.month;
+    persistCalvingListView(sub);
+    var printBtnHtml = globalThis['__lists'].listPrintButtonHtml('calvingListPrint');
+    var html = '<div class="list-sub-header"><h3>Отёлы за месяц</h3>' +
+      '<div class="menu-calving-header list-calving-month-nav">' +
+      '<button type="button" id="calvingListPrev" class="menu-calving-nav-btn" aria-label="Предыдущий месяц">‹</button>' +
+      '<span id="calvingListMonthLabel" class="menu-calving-month-label">—</span>' +
+      '<button type="button" id="calvingListNext" class="menu-calving-nav-btn" aria-label="Следующий месяц">›</button>' +
       '</div>' +
       '<div class="list-actions list-actions-inline">' +
-      '<button type="button" class="small-btn" id="insemListRefresh">Обновить</button>' +
+      '<button type="button" class="small-btn" id="calvingListRefresh">Обновить</button>' +
       printBtnHtml +
-      '<button type="button" class="small-btn" id="insemListExcel">Экспорт в Excel</button>' +
+      '<button type="button" class="small-btn" id="calvingListExcel">Экспорт в Excel</button>' +
       '</div></div>' +
-      '<div id="insem-list-table-wrap" class="list-table-wrap"></div>';
+      '<div id="calving-list-table-wrap" class="list-table-wrap"></div>';
     sub.innerHTML = html;
     sub._activeRefresh = null;
+
     function refresh() {
-      var fromEl = sub.querySelector('#insemListDateFrom');
-      var toEl = sub.querySelector('#insemListDateTo');
-      var cowHeiferEl = sub.querySelector('#insemListCowHeifer');
-      var groupEl = sub.querySelector('#insemListGroup');
-      var from = (fromEl && fromEl.value) || todayStr;
-      var to = (toEl && toEl.value) || toStr;
-      var filter = (cowHeiferEl && cowHeiferEl.value) || 'all';
-      var groupVal = (groupEl && groupEl.value) || '';
-      var filterGroups = groupVal ? [groupVal] : null;
-      var rows = globalThis['__lists'].getInseminationProtocolList(from, to, filter, filterGroups);
-      var wrap = sub.querySelector('#insem-list-table-wrap');
+      var year = sub._calvingYear;
+      var month = sub._calvingMonth;
+      var labelEl = sub.querySelector('#calvingListMonthLabel');
+      if (labelEl) labelEl.textContent = formatCalvingMonthLabel(year, month);
+      var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(global.entries || []) : (global.entries || []);
+      var getStats = (typeof window !== 'undefined' && typeof window.getCalvingStatsForMonth === 'function')
+        ? window.getCalvingStatsForMonth
+        : (typeof getCalvingStatsForMonth === 'function' ? getCalvingStatsForMonth : null);
+      var stats = getStats
+        ? getStats(list, year, month, new Date())
+        : { plan: { count: 0, items: [] }, fact: { count: 0, items: [], hasDataErrors: false }, rows: [] };
+      var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
+      var wrap = sub.querySelector('#calving-list-table-wrap');
       if (!wrap) return;
-      if (rows.length === 0) {
-        if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
-        wrap.innerHTML = '<p class="list-empty">Нет записей по заданным фильтрам.</p>';
+      sub._calvingStats = stats;
+      sub._calvingMonthLabel = formatCalvingMonthLabel(year, month);
+      var rows = stats.rows || [];
+
+      if (!rows.length) {
+        wrap.innerHTML = '<p class="list-empty">Нет записей за выбранный месяц</p>';
         wrap._listData = [];
         return;
       }
-      if (wrap._pinchZoomDestroy) { try { wrap._pinchZoomDestroy(); } catch (e) {} wrap._pinchZoomDestroy = null; }
-      var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
-      var thead = '<tr><th>Номер животного</th><th>Группа</th><th>Попытка</th><th>Протокол синхронизации</th><th>Бык</th><th>День лактации</th><th>Дата</th></tr>';
-      var tbody = rows.map(function (r) {
-        var cid = (r.cattleId || '').replace(/"/g, '&quot;');
-        return '<tr data-cattle-id="' + cid + '"><td>' + globalThis['__lists'].escapeHtml(r.cattleId) + '</td><td>' + globalThis['__lists'].escapeHtml(r.group) + '</td><td>' + globalThis['__lists'].escapeHtml(r.attemptNumber) + '</td><td>' + globalThis['__lists'].escapeHtml(r.protocolName) + '</td><td>' + globalThis['__lists'].escapeHtml(r.bull) + '</td><td>' + globalThis['__lists'].escapeHtml(r.daysInMilk) + '</td><td>' + globalThis['__lists'].escapeHtml(formatDateFn(r.date)) + '</td></tr>';
+
+      wrap._listData = rows.map(function (r) { return mapCalvingRowForDisplay(r, formatDateFn); });
+      var thead = '<tr>' + CALVING_LIST_HEADERS.map(function (h) { return '<th>' + globalThis['__lists'].escapeHtml(h) + '</th>'; }).join('') + '</tr>';
+      var tbody = rows.map(function (it) {
+        var disp = mapCalvingRowForDisplay(it, formatDateFn);
+        var cid = (it.cattleId || '').replace(/"/g, '&quot;');
+        var rowClass = it.overdue ? ' class="calving-row-overdue"' : '';
+        return '<tr data-cattle-id="' + cid + '"' + rowClass + '>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.cattleId) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.nickname) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.inseminationDate) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.daysPregnant) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.expectedCalvingDate) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.actualCalvingDate) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.planFactDiffDays) + '</td></tr>';
       }).join('');
       wrap.innerHTML = '<table class="list-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
-      wrap.querySelector('tbody') && wrap.querySelector('tbody').addEventListener('click', function (e) {
-        var tr = e.target && e.target.closest ? e.target.closest('tr[data-cattle-id]') : null;
-        if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
-      });
-      wrap._listData = rows;
-      wrap._listType = 'insemination';
-      if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
+
+    sub.addEventListener('click', function (e) {
+      var tr = e.target && e.target.closest ? e.target.closest('tr[data-cattle-id]') : null;
+      if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
+    });
+
     sub._activeRefresh = refresh;
-    globalThis['__lists'].globalThis['__lists'].globalThis['__lists'].refresh();
-    var refreshBtn = sub.querySelector('#insemListRefresh');
-    if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
-    var fromInput = sub.querySelector('#insemListDateFrom');
-    var toInput = sub.querySelector('#insemListDateTo');
-    var groupInput = sub.querySelector('#insemListGroup');
-    if (fromInput) fromInput.addEventListener('change', refresh);
-    if (toInput) toInput.addEventListener('change', refresh);
-    if (groupInput) groupInput.addEventListener('change', refresh);
-    var printBtn = sub.querySelector('#insemListPrint');
+    refresh();
+
+    var prevBtn = sub.querySelector('#calvingListPrev');
+    var nextBtn = sub.querySelector('#calvingListNext');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function () {
+        sub._calvingMonth -= 1;
+        if (sub._calvingMonth < 0) { sub._calvingMonth = 11; sub._calvingYear -= 1; }
+        persistCalvingListView(sub);
+        refresh();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () {
+        sub._calvingMonth += 1;
+        if (sub._calvingMonth > 11) { sub._calvingMonth = 0; sub._calvingYear += 1; }
+        persistCalvingListView(sub);
+        refresh();
+      });
+    }
+    var refreshBtn = sub.querySelector('#calvingListRefresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', refresh);
+
+    var printBtn = sub.querySelector('#calvingListPrint');
     if (printBtn) {
       printBtn.addEventListener('click', function () {
-        var wrap = sub.querySelector('#insem-list-table-wrap');
-        if (wrap && wrap._listData && wrap._listData.length) printListTable('Список на осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
+        if (!sub._calvingStats || !sub._calvingStats.rows || !sub._calvingStats.rows.length) {
+          window.print();
+          return;
+        }
+        var title = 'Отёлы за ' + (sub._calvingMonthLabel || '');
+        var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || '—'; };
+        var printRows = sub._calvingStats.rows.map(function (r) { return mapCalvingRowForDisplay(r, formatDateFn); });
+        printListTable(title, printRows, CALVING_LIST_KEYS, CALVING_LIST_HEADERS);
       });
     }
-    var excelBtn = sub.querySelector('#insemListExcel');
-    if (excelBtn) excelBtn.addEventListener('click', function () {
-      var wrap = sub.querySelector('#insem-list-table-wrap');
-      if (wrap && wrap._listData) exportListToExcel('Список_на_осеменение', wrap._listData, ['cattleId', 'group', 'attemptNumber', 'protocolName', 'bull', 'daysInMilk', 'date'], ['Номер животного', 'Группа', 'Попытка', 'Протокол синхронизации', 'Бык', 'День лактации', 'Дата']);
-    });
+
+    var excelBtn = sub.querySelector('#calvingListExcel');
+    if (excelBtn) {
+      excelBtn.addEventListener('click', function () {
+        if (!sub._calvingStats || !sub._calvingStats.rows || !sub._calvingStats.rows.length) return;
+        if (typeof XLSX === 'undefined') {
+          if (typeof showToast === 'function') showToast('Библиотека Excel не загружена', 'error');
+          return;
+        }
+        var formatDateFn = typeof formatDate === 'function' ? formatDate : function (d) { return d || ''; };
+        var data = [CALVING_LIST_HEADERS];
+        sub._calvingStats.rows.forEach(function (r) {
+          var disp = mapCalvingRowForDisplay(r, formatDateFn);
+          data.push(CALVING_LIST_KEYS.map(function (k) { return disp[k]; }));
+        });
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Отёлы');
+        var filename = 'Отёлы_' + sub._calvingYear + '-' + String(sub._calvingMonth + 1).padStart(2, '0') + '.xlsx';
+        var binary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+        var blob = new Blob([s2ab(binary)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+      });
+    }
+  }
+
+  function renderInseminationListSubScreen(sub) {
+    sub.innerHTML = '<div id="list-insem-table" class="view-entries-wrapper list-table-wrap"></div>';
+    var listEl = sub.querySelector('#list-insem-table');
+    var vc = globalThis['__viewCow'];
+    if (vc && typeof vc.setAllInseminationsRenderTarget === 'function') {
+      vc.setAllInseminationsRenderTarget(listEl);
+    }
+    if (vc && typeof vc.renderAllInseminationsScreen === 'function') {
+      vc.renderAllInseminationsScreen();
+    }
   }
 
   function printListTable(title, rows, keys, headers) {
@@ -263,7 +376,7 @@
         if (tr && typeof viewCow === 'function') viewCow(tr.getAttribute('data-cattle-id'));
       });
     }
-    globalThis['__lists'].globalThis['__lists'].globalThis['__lists'].refresh();
+    refresh();
     var refreshBtn = document.getElementById('eventsFilterRefresh');
     if (refreshBtn) refreshBtn.addEventListener('click', refresh);
     var typeSelect = document.getElementById('eventsFilterType');
@@ -290,23 +403,27 @@
     });
   }
 
-  if (typeof global !== 'undefined') {
-    global.getUziList = NS.getUziList;
-    global.getInseminationProtocolList = NS.getInseminationProtocolList;
-    global.renderListsScreen = NS.renderListsScreen;
-    global.exportListToExcel = exportListToExcel;
-    global.getAllEvents = getAllEvents;
-    global.renderEventsScreen = renderEventsScreen;
-  }
-
-
-
   // register functions
   NS.renderInseminationListSubScreen = renderInseminationListSubScreen;
+  NS.renderCalvingListSubScreen = renderCalvingListSubScreen;
+  NS.formatCalvingMonthLabel = formatCalvingMonthLabel;
   NS.printListTable = printListTable;
   NS.s2ab = s2ab;
   NS.exportListToExcel = exportListToExcel;
   NS.getAllEvents = getAllEvents;
   NS.renderEventsScreen = renderEventsScreen;
+
+  if (typeof global !== 'undefined') {
+    global.getUziList = NS.getUziList;
+    global.getInseminationProtocolList = NS.getInseminationProtocolList;
+    global.renderListsScreen = NS.renderListsScreen;
+    global.renderListSubScreen = NS.renderListSubScreen;
+    global.renderUziListSubScreen = NS.renderUziListSubScreen;
+    global.renderInseminationListSubScreen = NS.renderInseminationListSubScreen;
+    global.renderCalvingListSubScreen = NS.renderCalvingListSubScreen;
+    global.exportListToExcel = exportListToExcel;
+    global.getAllEvents = getAllEvents;
+    global.renderEventsScreen = renderEventsScreen;
+  }
 })();
 export {};

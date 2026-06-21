@@ -5,11 +5,29 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран «Списки» (УЗИ, осеменение, уколы) -->
+  <!-- Экран «Списки» -->
   <div id="lists-screen" class="screen">
     <h1>📋 Списки</h1>
     <div id="lists-screen-container" class="lists-screen-container"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-uzi-screen" class="screen">
+    <h1>🩺 Список на УЗИ</h1>
+    <div id="list-uzi-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-insemination-screen" class="screen">
+    <h1>📑 Журнал осеменений</h1>
+    <div id="list-insemination-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-calving-screen" class="screen">
+    <h1>🐄 Список отёлов</h1>
+    <div id="list-calving-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Список событий» -->

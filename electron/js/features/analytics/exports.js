@@ -7,7 +7,7 @@ if (typeof window !== 'undefined') {
   window.renderAnalyticsScreen = SM.renderAnalyticsScreen;
   window.renderIntervalAnalysisScreen = SM.renderIntervalAnalysisScreen;
   window.renderReproductionScreen = SM.renderReproductionScreen;
-  window.getAnalyticsFilteredEntries = window.getFilteredEntries;
+  window.getAnalyticsFilteredEntries = window.getAnalyticsFilteredEntries || SM.getAnalyticsFilteredEntries;
   window.getPeriodBounds = window.getPeriodBounds;
 }
 

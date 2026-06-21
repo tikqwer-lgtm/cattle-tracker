@@ -209,36 +209,21 @@ function getAllInseminationsFlat() {
 
 var allInseminationsSortKey = 'date';
 var allInseminationsSortDir = 'asc';
-var allInseminationsFilter = { query: '', dateFrom: '', dateTo: '', lactation: null };
+NS.allInseminationsSortKey = allInseminationsSortKey;
+NS.allInseminationsSortDir = allInseminationsSortDir;
+var _allInsemRenderTarget = null;
 
-function getFilteredAllInseminations(flat) {
-  if (!flat || !flat.length) return flat;
-  var list = flat.slice();
-  var q = (allInseminationsFilter.query || '').toLowerCase().trim();
-  if (q) {
-    list = list.filter(function (row) {
-      var cattleId = (row.cattleId || '').toLowerCase();
-      var nickname = (row.nickname || '').toLowerCase();
-      var bull = (row.bull || '').toLowerCase();
-      var code = (row.code || '').toLowerCase();
-      var inseminator = (row.inseminator || '').toLowerCase();
-      return cattleId.indexOf(q) !== -1 || nickname.indexOf(q) !== -1 ||
-        bull.indexOf(q) !== -1 || code.indexOf(q) !== -1 || inseminator.indexOf(q) !== -1;
-    });
-  }
-  if (allInseminationsFilter.dateFrom) {
-    list = list.filter(function (row) { return (row.date || '') >= allInseminationsFilter.dateFrom; });
-  }
-  if (allInseminationsFilter.dateTo) {
-    list = list.filter(function (row) { return (row.date || '') <= allInseminationsFilter.dateTo; });
-  }
-  if (allInseminationsFilter.lactation != null && allInseminationsFilter.lactation !== '') {
-    var lact = parseInt(allInseminationsFilter.lactation, 10);
-    if (!isNaN(lact)) {
-      list = list.filter(function (row) { return (row.lactation !== undefined && parseInt(row.lactation, 10) === lact) || (row.lactation === lact); });
-    }
-  }
-  return list;
+function setAllInseminationsRenderTarget(listEl) {
+  _allInsemRenderTarget = listEl || null;
+}
+
+function resetAllInseminationsRenderTarget() {
+  _allInsemRenderTarget = null;
+}
+
+function getAllInseminationsListContainer() {
+  if (_allInsemRenderTarget) return _allInsemRenderTarget;
+  return document.getElementById('allInseminationsList');
 }
 
 function compareAllInseminationsRow(a, b, key, dir) {
@@ -267,74 +252,8 @@ function compareAllInseminationsRow(a, b, key, dir) {
   return mul * sa.localeCompare(sb, 'ru');
 }
 
-function renderAllInseminationsFilterUI() {
-  var container = document.getElementById('allInseminationsFilterContainer');
-  if (!container) return;
-  var q = (allInseminationsFilter.query || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  var lactVal = allInseminationsFilter.lactation !== null && allInseminationsFilter.lactation !== '' ? allInseminationsFilter.lactation : '';
-  container.innerHTML =
-    '<div class="search-filter-bar">' +
-      '<div class="search-row">' +
-        '<input type="text" id="allInsemSearchInput" class="search-input" placeholder="Поиск по номеру, кличке, быку, осеменителю..." value="' + q + '">' +
-        '<button type="button" id="allInsemFilterClearBtn" class="small-btn">Сбросить фильтры</button>' +
-      '</div>' +
-      '<div class="filter-row">' +
-        '<span class="filter-label">Период (дата осеменения):</span>' +
-        '<input type="date" id="allInsemDateFrom" value="' + (allInseminationsFilter.dateFrom || '') + '"> — ' +
-        '<input type="date" id="allInsemDateTo" value="' + (allInseminationsFilter.dateTo || '') + '">' +
-        '<span class="filter-label">Лактация:</span>' +
-        '<input type="number" id="allInsemFilterLactation" min="1" max="20" placeholder="—" value="' + lactVal + '">' +
-      '</div>' +
-    '</div>';
-  var searchInput = document.getElementById('allInsemSearchInput');
-  var clearBtn = document.getElementById('allInsemFilterClearBtn');
-  var dateFrom = document.getElementById('allInsemDateFrom');
-  var dateTo = document.getElementById('allInsemDateTo');
-  var filterLact = document.getElementById('allInsemFilterLactation');
-  function applyFilterAndRender() {
-    allInseminationsFilter.query = searchInput ? searchInput.value.trim() : '';
-    allInseminationsFilter.dateFrom = dateFrom ? dateFrom.value : '';
-    allInseminationsFilter.dateTo = dateTo ? dateTo.value : '';
-    allInseminationsFilter.lactation = filterLact && filterLact.value !== '' ? parseInt(filterLact.value, 10) : null;
-    globalThis['__viewCow'].renderAllInseminationsScreen();
-  }
-  var allInsemSearchDebounce = null;
-  if (searchInput) {
-    searchInput.addEventListener('input', function () {
-      if (allInsemSearchDebounce) clearTimeout(allInsemSearchDebounce);
-      allInsemSearchDebounce = setTimeout(function () {
-        allInsemSearchDebounce = null;
-        globalThis['__viewCow'].applyFilterAndRender();
-      }, 200);
-    });
-    searchInput.addEventListener('keyup', function (e) {
-      if (e.key === 'Enter') {
-        if (allInsemSearchDebounce) {
-          clearTimeout(allInsemSearchDebounce);
-          allInsemSearchDebounce = null;
-        }
-        globalThis['__viewCow'].applyFilterAndRender();
-      }
-    });
-  }
-  if (clearBtn) {
-    clearBtn.addEventListener('click', function () {
-      allInseminationsFilter = { query: '', dateFrom: '', dateTo: '', lactation: null };
-      if (searchInput) searchInput.value = '';
-      if (dateFrom) dateFrom.value = '';
-      if (dateTo) dateTo.value = '';
-      if (filterLact) filterLact.value = '';
-      globalThis['__viewCow'].renderAllInseminationsScreen();
-      renderAllInseminationsFilterUI();
-    });
-  }
-  [dateFrom, dateTo, filterLact].forEach(function (el) {
-    if (el) el.addEventListener('change', applyFilterAndRender);
-  });
-}
-
 /**
- * Заполняет экран «Все осеменения» таблицей по всем животным (с фильтром и сортировкой)
+ * Заполняет экран «Все осеменения» таблицей по всем животным (хронологический журнал)
  */
 
   // register functions
@@ -345,8 +264,9 @@ function renderAllInseminationsFilterUI() {
   NS.renderViewCowActionHistoryModal = renderViewCowActionHistoryModal;
   NS.deleteActionHistoryItem = deleteActionHistoryItem;
   NS.getAllInseminationsFlat = getAllInseminationsFlat;
-  NS.getFilteredAllInseminations = getFilteredAllInseminations;
   NS.compareAllInseminationsRow = compareAllInseminationsRow;
-  NS.renderAllInseminationsFilterUI = renderAllInseminationsFilterUI;
+  NS.setAllInseminationsRenderTarget = setAllInseminationsRenderTarget;
+  NS.resetAllInseminationsRenderTarget = resetAllInseminationsRenderTarget;
+  NS.getAllInseminationsListContainer = getAllInseminationsListContainer;
 })();
 export {};

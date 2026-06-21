@@ -8,7 +8,7 @@
 function refreshViewListVisible() {
   var container = document.getElementById('viewEntriesList');
   if (container && container._virtualData && container._virtualData.renderVisible) {
-    container._virtualData.globalThis['__viewList'].renderVisible();
+    container._virtualData.renderVisible();
   }
 }
 

@@ -201,7 +201,7 @@ function showLoadBaseModal(sourceId, sourceName, sourceDateRaw) {
   }
   if (select) {
     select.addEventListener('change', toggleNewName);
-    globalThis['__syncBases'].toggleNewName();
+    toggleNewName();
   } else if (newNameWrap) {
     newNameWrap.style.display = '';
   }
@@ -210,7 +210,7 @@ function showLoadBaseModal(sourceId, sourceName, sourceDateRaw) {
   overlay.querySelector('[data-action="cancel"]').onclick = close;
   overlay.querySelector('[data-action="load"]').onclick = function () {
     if (mobileOnly) {
-      globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close();
+      close();
       globalThis['__syncBases'].openServerBaseOnMobile(sourceId, sourceName);
       return;
     }
@@ -221,23 +221,23 @@ function showLoadBaseModal(sourceId, sourceName, sourceDateRaw) {
         if (typeof showToast === 'function') showToast('Введите название базы', 'error');
         return;
       }
-      globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close();
+      close();
       globalThis['__syncBases'].loadServerBaseIntoNewObject(sourceId, String(newName).trim());
     } else {
       globalThis['__syncBases'].confirmDownloadIfStale(sourceName, sourceDateRaw, targetVal).then(function (ok) {
         if (!ok) return;
-        globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close();
+        close();
         globalThis['__syncBases'].replaceServerBaseInObject(sourceId, targetVal, sourceName);
       });
     }
   };
-  overlay.addEventListener('click', function (e) { if (e.target === overlay) globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close(); });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
 }
 
 /**
- * Модалка удаления базы на сервере: пароль учётной записи администратора.
+ * Модалка удаления базы на сервере (только администратор).
  */
 function showDeleteBaseModal(baseId, baseName) {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
@@ -249,8 +249,6 @@ function showDeleteBaseModal(baseId, baseName) {
   overlay.innerHTML = '<div class="sync-replace-modal">' +
     '<h4>Удалить базу «' + safeName + '»?</h4>' +
     '<p>Удаление необратимо. Все записи в этой базе на сервере будут удалены.</p>' +
-    '<p>Введите пароль вашей учётной записи для подтверждения:</p>' +
-    '<input type="password" id="syncDeleteBasePassword" class="sync-replace-select" placeholder="Пароль" autocomplete="current-password" style="margin-bottom:12px;" />' +
     '<div class="sync-replace-actions">' +
     '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
     '<button type="button" class="action-btn" data-action="delete" style="background:var(--color-error, #c00);">Удалить</button>' +
@@ -259,30 +257,21 @@ function showDeleteBaseModal(baseId, baseName) {
   function close() { overlay.remove(); document.body.style.overflow = ''; }
   overlay.querySelector('[data-action="cancel"]').onclick = close;
   overlay.querySelector('[data-action="delete"]').onclick = function () {
-    var pwdEl = document.getElementById('syncDeleteBasePassword');
-    var password = (pwdEl && pwdEl.value) ? String(pwdEl.value) : '';
-    if (!password) {
-      if (typeof showToast === 'function') showToast('Введите пароль', 'error');
-      return;
-    }
-    overlay.querySelector('[data-action="delete"]').disabled = true;
-    window.CattleTrackerApi.deleteObjectWithPassword(baseId, password).then(function () {
-      globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close();
+    var deleteBtn = overlay.querySelector('[data-action="delete"]');
+    deleteBtn.disabled = true;
+    window.CattleTrackerApi.deleteObject(baseId).then(function () {
+      close();
       if (typeof showToast === 'function') showToast('База удалена', 'success');
       renderSyncServerBasesList();
       if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
     }).catch(function (err) {
       if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Ошибка удаления', 'error');
-      overlay.querySelector('[data-action="delete"]').disabled = false;
+      deleteBtn.disabled = false;
     });
   };
-  overlay.addEventListener('click', function (e) { if (e.target === overlay) globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close(); });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
-  setTimeout(function () {
-    var el = document.getElementById('syncDeleteBasePassword');
-    if (el) el.focus();
-  }, 100);
 }
 
 /**

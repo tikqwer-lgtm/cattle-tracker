@@ -18,7 +18,7 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
-    <span id="app-version-header" class="app-version-header"></span>
+    <button type="button" id="app-version-header" class="app-version-header app-version-header-btn" aria-label="Версия приложения. Нажмите для проверки обновления."></button>
     <div class="app-header-actions">
       <button type="button" id="report-error-btn" class="app-header-report-error-btn" title="Сообщить об ошибке администратору" aria-label="Сообщить об ошибке" style="display: none;" onclick="typeof window.openReportErrorModal === 'function' && window.openReportErrorModal()">Сообщить об ошибке</button>
       <button type="button" id="restore-input-btn" class="app-header-restore-input-btn" title="Если поля не реагируют на ввод — тот же обход, что раньше был в меню Справка" aria-label="Восстановить ввод" style="display: none;" onclick="typeof window.electronAPI !== 'undefined' && window.electronAPI.requestHitTestWorkaround && window.electronAPI.requestHitTestWorkaround()">Восстановить ввод</button>
@@ -113,12 +113,9 @@
       <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
+    <p id="menu-user-session" class="menu-user-session" hidden></p>
     <p id="app-version" class="app-version" data-default-version="0.6.19" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
-    <div id="auth-bar" class="auth-bar" style="display: none;">
-      <span id="authBarUser"></span>
-      <button type="button" class="small-btn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">Выйти</button>
-    </div>
 
     <!-- Переключатель объектов (баз) -->
     <div id="object-switcher" class="object-switcher">
@@ -182,22 +179,15 @@
         </div>
       </div>
       <p id="menuCalvingWarning" class="menu-calving-warning" hidden></p>
-      <button type="button" class="menu-calving-toggle" id="menuCalvingToggle" aria-expanded="false">Показать списки</button>
-      <div id="menuCalvingLists" class="menu-calving-lists" hidden>
-        <h3 class="menu-calving-list-title">План</h3>
-        <ul id="menuCalvingPlanList" class="menu-calving-list"></ul>
-        <h3 class="menu-calving-list-title">Факт</h3>
-        <ul id="menuCalvingFactList" class="menu-calving-list"></ul>
-      </div>
+      <button type="button" class="menu-calving-toggle" id="menuCalvingToggle">Список</button>
     </div>
 
-    <!-- Краткие уведомления -->
+    <!-- Уведомления: переход на полный экран -->
     <div id="menu-notifications" class="menu-notifications">
-      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-expanded="false">
+      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-label="Открыть уведомления">
         <span>Уведомления</span>
         <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
       </button>
-      <div class="menu-notifications-body" id="menuNotificationsBody" hidden></div>
     </div>
 
     <!-- Кнопки действий по группам (главное меню — одна кнопка на группу) -->
@@ -221,13 +211,6 @@
         </button>
       </div>
       <div class="menu-section">
-        <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('notifications')" class="action-btn menu-group-btn">
-          <span>🔔</span>
-          <span>Уведомления и планы</span>
-          <span class="menu-notifications-button-badge" id="menuNotificationsButtonBadge" style="display: none;"></span>
-        </button>
-      </div>
-      <div class="menu-section">
         <button onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('settings')" class="action-btn menu-group-btn">
           <span>⚙️</span>
           <span>Настройки</span>
@@ -237,6 +220,12 @@
         <button onclick="typeof window.navigate === 'function' && window.navigate('admin')" class="action-btn menu-group-btn">
           <span>🛠️</span>
           <span>Администрирование</span>
+        </button>
+      </div>
+      <div class="menu-section menu-section-logout">
+        <button type="button" class="action-btn menu-logout-btn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">
+          <span>🚪</span>
+          <span>Выход</span>
         </button>
       </div>
     </div>
@@ -249,11 +238,29 @@
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
 
-  <!-- Экран «Списки» (УЗИ, осеменение, уколы) -->
+  <!-- Экран «Списки» -->
   <div id="lists-screen" class="screen">
     <h1>📋 Списки</h1>
     <div id="lists-screen-container" class="lists-screen-container"></div>
     <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-uzi-screen" class="screen">
+    <h1>🩺 Список на УЗИ</h1>
+    <div id="list-uzi-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-insemination-screen" class="screen">
+    <h1>📑 Журнал осеменений</h1>
+    <div id="list-insemination-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+  </div>
+
+  <div id="list-calving-screen" class="screen">
+    <h1>🐄 Список отёлов</h1>
+    <div id="list-calving-container" class="lists-screen-container"></div>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Список событий» -->
@@ -644,7 +651,7 @@
   <div id="view-screen" class="screen view-screen">
     <!-- Верхний блок: закреплён при прокрутке списка -->
     <div class="view-screen-header">
-      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button view-screen-back">Назад в меню</button>
+      <button onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button view-screen-back">Назад в меню</button>
       <h1>📋 Список всех животных</h1>
       <button type="button" class="small-btn" id="viewEditorModeBtn" title="Включить редактирование полей прямо в списке">✎ Режим редактора</button>
       <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
@@ -658,7 +665,7 @@
   <!-- Экран просмотра карточки животного -->
   <div id="view-cow-screen" class="screen view-cow-screen">
     <div class="view-cow-header">
-      <button onclick="typeof window.navigate === 'function' && window.navigate('view')" class="back-button view-cow-back">Назад к списку</button>
+      <button onclick="typeof window.viewCowBack === 'function' && window.viewCowBack()" class="back-button view-cow-back">← Назад</button>
       <h1>🔍 Просмотр животного</h1>
     </div>
     <div id="viewCowCard" class="view-cow-body"></div>
@@ -667,16 +674,15 @@
   <!-- Экран «Все осеменения» -->
   <div id="all-inseminations-screen" class="screen">
     <div class="view-screen-header">
-      <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+      <button onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад в меню</button>
       <h1>📑 Все осеменения</h1>
-      <div id="allInseminationsFilterContainer" class="search-filter-container"></div>
     </div>
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
   </div>
 
   <!-- ========== Уведомления, планы, аналитика ========== -->
   <div id="notifications-screen" class="screen">
-    <h1>🔔 Уведомления и планы</h1>
+    <h1>🔔 Уведомления</h1>
     <div id="notification-center-container"></div>
     <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
   </div>
@@ -685,7 +691,7 @@
   <div id="tasks-screen" class="screen">
     <h1>📋 Список задач</h1>
     <div id="tasksScreenContainer" class="tasks-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран аналитики -->
@@ -986,7 +992,7 @@
         </div>
         <p id="syncMobileApkNoFileHint" class="sync-section-hint sync-mobile-apk-no-file-hint" style="display: none;" aria-live="polite"></p>
         <p class="sync-section-hint">Скачайте APK с сервера — откроется загрузка во внешнем браузере.</p>
-        <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать APK с сервера</button>
+        <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать и установить</button>
       </div>
     </details>
     <div id="sync-backup-section" class="sync-section">

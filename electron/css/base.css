@@ -69,6 +69,26 @@ body {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+.app-version-header-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  cursor: default;
+  font: inherit;
+  text-align: left;
+}
+.app-version-header-btn:not(:disabled) {
+  cursor: pointer;
+}
+.app-version-header-btn:not(:disabled):hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.app-version-header--update,
+.app-version.app-version--update {
+  color: var(--color-primary);
+  font-weight: 600;
+}
 .app-header-connection-btn {
   display: inline-flex;
   align-items: center;

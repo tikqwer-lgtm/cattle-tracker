@@ -73,14 +73,28 @@ function updateMenuGroupVisibility() {
   }
 
   setGroupVisible("navigateToSubmenu('actions')", canEvents);
-  setGroupVisible("navigateToSubmenu('notifications')", canNotifications);
   setGroupVisible("navigateToSubmenu('analytics')", canAnalytics);
   setGroupVisible("navigateToSubmenu('settings')", canSettings || canAdmin);
   setGroupVisible("navigate('admin')", canAdmin);
+
+  var notifBlock = document.getElementById('menu-notifications');
+  if (notifBlock) notifBlock.style.display = canNotifications ? '' : 'none';
 }
 
 var _menuCalvingMonthOffset = 0;
-var _menuCalvingListsOpen = false;
+
+function getMenuCalvingViewYearMonth() {
+  var now = new Date();
+  var viewDate = new Date(now.getFullYear(), now.getMonth() + _menuCalvingMonthOffset, 1);
+  return { year: viewDate.getFullYear(), month: viewDate.getMonth() };
+}
+
+function openCalvingListFromMenu() {
+  if (typeof window !== 'undefined') {
+    window._listsCalvingView = getMenuCalvingViewYearMonth();
+  }
+  if (typeof navigate === 'function') navigate('list-calving');
+}
 
 function formatCalvingMonthLabel(year, month) {
   try {
@@ -102,10 +116,6 @@ function updateMenuCalvingForecast() {
   var planEl = document.getElementById('menuCalvingPlanCount');
   var factEl = document.getElementById('menuCalvingFactCount');
   var warnEl = document.getElementById('menuCalvingWarning');
-  var planList = document.getElementById('menuCalvingPlanList');
-  var factList = document.getElementById('menuCalvingFactList');
-  var listsWrap = document.getElementById('menuCalvingLists');
-  var toggleBtn = document.getElementById('menuCalvingToggle');
 
   if (labelEl) labelEl.textContent = formatCalvingMonthLabel(year, month);
 
@@ -125,40 +135,6 @@ function updateMenuCalvingForecast() {
       warnEl.hidden = true;
       warnEl.textContent = '';
     }
-  }
-
-  function esc(s) {
-    return String(s || '').replace(/</g, '&lt;');
-  }
-
-  if (planList) {
-    if (!stats.plan.items.length) {
-      planList.innerHTML = '<li class="menu-calving-list-empty">Нет записей</li>';
-    } else {
-      planList.innerHTML = stats.plan.items.map(function (it) {
-        var nick = it.nickname ? ' (' + globalThis['__menu'].esc(it.nickname) + ')' : '';
-        var overdue = it.overdue ? ', просрочено' : '';
-        return '<li>№' + globalThis['__menu'].esc(it.cattleId) + ' — ' + globalThis['__menu'].esc(it.expectedDate) + nick + overdue + '</li>';
-      }).join('');
-    }
-  }
-
-  if (factList) {
-    if (!stats.fact.items.length) {
-      factList.innerHTML = '<li class="menu-calving-list-empty">Нет записей</li>';
-    } else {
-      factList.innerHTML = stats.fact.items.map(function (it) {
-        var nick = it.nickname ? ' (' + globalThis['__menu'].esc(it.nickname) + ')' : '';
-        var err = it.dataError ? ', ошибка даты' : '';
-        return '<li class="' + (it.dataError ? 'menu-calving-list-error' : '') + '">№' + globalThis['__menu'].esc(it.cattleId) + ' — ' + globalThis['__menu'].esc(it.calvingDate) + nick + err + '</li>';
-      }).join('');
-    }
-  }
-
-  if (listsWrap) listsWrap.hidden = !_menuCalvingListsOpen;
-  if (toggleBtn) {
-    toggleBtn.setAttribute('aria-expanded', _menuCalvingListsOpen ? 'true' : 'false');
-    toggleBtn.textContent = _menuCalvingListsOpen ? 'Скрыть списки' : 'Показать списки';
   }
 }
 
@@ -186,8 +162,7 @@ function initMenuCalvingForecast() {
   }
   if (toggle) {
     toggle.addEventListener('click', function () {
-      _menuCalvingListsOpen = !_menuCalvingListsOpen;
-      updateMenuCalvingForecast();
+      openCalvingListFromMenu();
     });
   }
   if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {
@@ -306,6 +281,8 @@ document.addEventListener('DOMContentLoaded', function () {
   NS.updateObjectSwitcher = updateObjectSwitcher;
   NS.updateMenuGroupVisibility = updateMenuGroupVisibility;
   NS.formatCalvingMonthLabel = formatCalvingMonthLabel;
+  NS.getMenuCalvingViewYearMonth = getMenuCalvingViewYearMonth;
+  NS.openCalvingListFromMenu = openCalvingListFromMenu;
   NS.updateMenuCalvingForecast = updateMenuCalvingForecast;
   NS.initMenuCalvingForecast = initMenuCalvingForecast;
   NS.updateHerdStats = updateHerdStats;

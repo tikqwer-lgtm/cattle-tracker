@@ -64,8 +64,27 @@
 
 /* Экран «Списки» и списки событий */
 .lists-screen-container { margin: 1rem 0; }
-.lists-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
-.lists-buttons .action-btn { padding: 0.5rem 0.75rem; font-size: 0.95rem; }
+#lists-screen,
+#list-uzi-screen,
+#list-insemination-screen,
+#list-calving-screen {
+  padding: 0 16px;
+}
+.lists-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  max-width: 420px;
+  margin-inline: auto;
+}
+.lists-buttons .action-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+}
 .lists-sub-container { margin-top: 1rem; }
 .list-sub-header { margin-bottom: 1rem; }
 .list-sub-header h3 { font-size: 1.15rem; margin-bottom: 0.75rem; }

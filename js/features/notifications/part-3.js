@@ -85,11 +85,7 @@
     if (typeof window.requestNotificationPermission === 'undefined') {
       window.requestNotificationPermission = requestNotificationPermission;
     }
-    if (document.getElementById('menuNotificationsBody')) {
-      globalThis['__notif'].renderNotificationSummary('menuNotificationsBody');
-    } else {
-      globalThis['__notif'].updateNotificationIndicators();
-    }
+    globalThis['__notif'].updateNotificationIndicators();
   }
 
 

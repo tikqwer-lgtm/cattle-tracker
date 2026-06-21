@@ -178,6 +178,33 @@ function getInseminationListForEntry(entry) {
       code: entry.code || ''
     }];
   }
+  var hist = entry.actionHistory || [];
+  for (var hi = 0; hi < hist.length; hi++) {
+    var item = hist[hi];
+    if (!item) continue;
+    var eventType = (item.eventType || item.action || '').toString();
+    if (eventType !== 'Осеменение') continue;
+    var rawDt = (item.dateTime || '').toString().trim();
+    var dateStr = rawDt.length >= 10 ? rawDt.slice(0, 10) : rawDt;
+    if (!dateStr) continue;
+    var dup = false;
+    for (var di = 0; di < list.length; di++) {
+      var ta = parseInseminationDateToTime(list[di].date);
+      var tb = parseInseminationDateToTime(dateStr);
+      if (!isNaN(ta) && !isNaN(tb) && ta === tb) {
+        dup = true;
+        break;
+      }
+    }
+    if (dup) continue;
+    list.push({
+      date: dateStr,
+      attemptNumber: item.attemptNumber !== undefined && item.attemptNumber !== null ? item.attemptNumber : '',
+      bull: item.bull || '',
+      inseminator: item.inseminator || '',
+      code: item.code || ''
+    });
+  }
   list.sort(function (a, b) {
     var ta = parseInseminationDateToTime(a.date);
     var tb = parseInseminationDateToTime(b.date);
@@ -216,6 +243,15 @@ function viewCow(cattleId) {
   if (!entry) {
     console.warn('Животное не найдено:', cattleId);
     return;
+  }
+
+  if (typeof window !== 'undefined') {
+    var menu = globalThis['__menu'];
+    var current =
+      menu && typeof menu.getCurrentScreenId === 'function' ? menu.getCurrentScreenId() : null;
+    if (!window._viewCowReturnTo && current && current !== 'view-cow') {
+      window._viewCowReturnTo = current;
+    }
   }
 
   // Перейти на экран просмотра карточки (с cattleId для роутинга)

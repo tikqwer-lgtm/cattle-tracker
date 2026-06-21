@@ -137,7 +137,7 @@ function overwriteCurrentServerBaseWithLocal() {
                 if (typeof updateList === 'function') updateList();
                 if (typeof updateHerdStats === 'function') updateHerdStats();
                 if (typeof updateViewList === 'function') updateViewList();
-                if (typeof window.renderSyncServerBasesList === 'function') window.globalThis['__syncBases'].renderSyncServerBasesList();
+                if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
               });
             }
             var entry = localEntries[i];
@@ -321,7 +321,7 @@ function openServerBaseOnMobile(sourceId, sourceName) {
     if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
     if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
     if (typeof window.updateViewList === 'function') window.updateViewList();
-    if (typeof window.renderSyncServerBasesList === 'function') window.globalThis['__syncBases'].renderSyncServerBasesList();
+    if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
   }).catch(function (err) {
     var msg = err && err.message ? err.message : 'Ошибка загрузки';
     if (statusEl) {

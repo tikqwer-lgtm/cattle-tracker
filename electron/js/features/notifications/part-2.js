@@ -61,11 +61,6 @@
       badge.textContent = count ? String(count) : '';
       badge.style.display = count ? 'inline-flex' : 'none';
     }
-    var btnBadge = document.getElementById('menuNotificationsButtonBadge');
-    if (btnBadge) {
-      btnBadge.textContent = count ? String(count) : '';
-      btnBadge.style.display = count ? 'inline-flex' : 'none';
-    }
   }
 
   function renderNotificationSummary(containerId) {

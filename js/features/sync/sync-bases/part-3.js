@@ -35,11 +35,11 @@ function uploadCurrentBaseToServer() {
         if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
         return;
       }
-      window.CattleTrackerApi.createEntry(newObj.id, list[i]).then(function () { i++; globalThis['__syncBases'].globalThis['__syncBases'].next(); }).catch(function (err) {
+      window.CattleTrackerApi.createEntry(newObj.id, list[i]).then(function () { i++; next(); }).catch(function (err) {
         if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
       });
     }
-    globalThis['__syncBases'].globalThis['__syncBases'].next();
+    next();
   }).catch(function (err) {
     var em = err && err.message ? err.message : '';
     if (statusEl) { statusEl.textContent = 'Ошибка: ' + em; statusEl.className = 'sync-server-status sync-server-status-error'; }
@@ -107,13 +107,13 @@ function fallbackClientCopyEntriesFromServer(sourceId, targetId, baseName, statu
         if (typeof window.setServerBaseImportProgress === 'function') {
           window.setServerBaseImportProgress(i, entries.length, 'Добавление записей на сервер…');
         }
-        globalThis['__syncBases'].globalThis['__syncBases'].next();
+        next();
       }).catch(function (err) {
         if (statusEl) statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error';
         return Promise.reject(err);
       });
     }
-    globalThis['__syncBases'].globalThis['__syncBases'].next();
+    next();
   });
 }
 
@@ -185,7 +185,7 @@ function hideServerBaseLocalOnly(baseId, baseName) {
       }
     }).then(function () {
       if (typeof showToast === 'function') showToast('База скрыта на этом устройстве', 'info', 4000);
-      if (typeof window.renderSyncServerBasesList === 'function') window.globalThis['__syncBases'].renderSyncServerBasesList();
+      if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
     }).catch(function (err) {
       var m = err && err.message ? err.message : 'Ошибка';
       if (typeof showToast === 'function') showToast(m, 'error', 5000);
@@ -233,11 +233,11 @@ function showReplaceBaseModal(sourceId) {
       if (!targetId) return;
       (typeof showConfirmModal === 'function' ? showConfirmModal('Заменить все данные в выбранном объекте? Текущие записи будут удалены.') : Promise.resolve(confirm('Заменить все данные в выбранном объекте? Текущие записи будут удалены.'))).then(function (ok) {
         if (!ok) return;
-        globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close();
+        close();
         replaceServerBaseInObject(sourceId, targetId, typeof nameOpt === 'string' ? nameOpt : String(nameOpt || ''));
       });
     };
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) globalThis['__syncBases'].globalThis['__syncBases'].globalThis['__syncBases'].close(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     document.body.style.overflow = 'hidden';
     document.body.appendChild(overlay);
   }).catch(function (err) { if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : ''), 'error'); else alert('Ошибка: ' + (err && err.message ? err.message : '')); });

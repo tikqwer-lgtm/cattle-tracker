@@ -242,7 +242,7 @@ function _cattleAutocompleteOnDocumentClick(e) {
     }
     var outer = reg.outer || reg.wrap;
     if (outer && outer.contains(e.target)) continue;
-    reg.globalThis['__cowOps'].closeList();
+    reg.closeList();
   }
 }
 
@@ -287,7 +287,7 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   }
   function pickEntry(entry) {
     input.value = entry.cattleId;
-    globalThis['__cowOps'].closeList();
+    closeList();
     if (typeof onPick === 'function') onPick(entry.cattleId);
   }
   function tryPickFromTypedValue(e) {
@@ -295,7 +295,7 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     if (e.isComposing || e.keyCode === 229) return;
     var v = (input.value || '').trim();
     if (!v) return;
-    var source = globalThis['__cowOps'].getEntries();
+    var source = getEntries();
     var exact = null;
     for (var i = 0; i < source.length; i++) {
       if (String(source[i].cattleId || '').trim() === v) {
@@ -305,7 +305,7 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     }
     if (exact) {
       e.preventDefault();
-      globalThis['__cowOps'].pickEntry(exact);
+      pickEntry(exact);
       return;
     }
     var lv = v.toLowerCase();
@@ -319,13 +319,13 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
       .slice(0, 10);
     if (matching.length === 1) {
       e.preventDefault();
-      globalThis['__cowOps'].pickEntry(matching[0]);
+      pickEntry(matching[0]);
     }
   }
   function populate() {
     list.innerHTML = '';
     var filter = (input.value || '').toLowerCase().trim();
-    var source = globalThis['__cowOps'].getEntries();
+    var source = getEntries();
     var matching = filter
       ? source.filter(function (e) {
           return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
@@ -345,12 +345,12 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
       li.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        globalThis['__cowOps'].pickEntry(entry);
+        pickEntry(entry);
       });
       li.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          globalThis['__cowOps'].pickEntry(entry);
+          pickEntry(entry);
         }
       });
       list.appendChild(li);
@@ -395,11 +395,11 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
   input._cattleAutocompleteKeydown = tryPickFromTypedValue;
   input.addEventListener('keydown', input._cattleAutocompleteKeydown);
   input._cattleAutocompleteComposition = function () {
-    globalThis['__cowOps'].populate();
+    populate();
   };
   input.addEventListener('compositionend', input._cattleAutocompleteComposition);
   input._cattleAutocompleteFocus = function () {
-    globalThis['__cowOps'].populate();
+    populate();
   };
   input.addEventListener('focus', input._cattleAutocompleteFocus);
   input._cattleAutocompleteEntriesCb = function () {

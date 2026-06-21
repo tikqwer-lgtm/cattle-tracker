@@ -18,7 +18,6 @@ var SUBMENU_GROUP_IDS = {
   'Работа с данными': 'data',
   'Действия': 'actions',
   'Аналитика': 'analytics',
-  'Уведомления и планы': 'notifications',
   'Настройки': 'settings',
 };
 

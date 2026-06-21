@@ -250,7 +250,7 @@ function monthLabel(m) {
 }
 
 if (typeof window !== 'undefined') {
-  window.getFilteredEntries = getFilteredEntries;
+  window.getAnalyticsFilteredEntries = getFilteredEntries;
   window.calculateCR = calculateCR;
   window.calculateHDR = calculateHDR;
   window.calculatePR = calculatePR;

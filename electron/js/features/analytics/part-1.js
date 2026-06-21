@@ -17,7 +17,7 @@ var chartInstances = [];
     chartInstances = [];
 
     var pdoVal = (report && report.pdo !== undefined) ? report.pdo : (pdo || 0);
-    var list = window.getFilteredEntries(report.period, report.dateFrom, report.dateTo, pdoVal);
+    var list = window.getAnalyticsFilteredEntries(report.period, report.dateFrom, report.dateTo, pdoVal);
     var statusCounts = {};
     list.forEach(function (e) {
       var s = (e.status || '—').toString();
@@ -201,7 +201,7 @@ var chartInstances = [];
     var breakdownTableEl = document.getElementById('analyticsBreakdownTable');
     if (breakdownTableEl) {
       if (breakdownBy) {
-        var list = window.getFilteredEntries(period, dateFrom, dateTo, pdo);
+        var list = window.getAnalyticsFilteredEntries(period, dateFrom, dateTo, pdo);
         var groups = {};
         list.forEach(function (e) {
           var k = window.getBreakdownKey(e, breakdownBy);
@@ -241,7 +241,7 @@ var chartInstances = [];
     months.forEach(function (m) {
       var fromStr = m.start.toISOString().slice(0, 10);
       var toStr = m.end.toISOString().slice(0, 10);
-      var listM = window.getFilteredEntries('custom', fromStr, toStr, pdo);
+      var listM = window.getAnalyticsFilteredEntries('custom', fromStr, toStr, pdo);
       var r = window.generateReport('custom', fromStr, toStr, pdo, listM);
       monthlyData.push({
         label: window.monthLabel(m),

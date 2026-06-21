@@ -37,34 +37,13 @@ function updateWindowModeForScreen(screenId) {
   else window.electronAPI.setWindowMode('default');
 }
 
-function initMenuNotificationsToggle() {
+function initMenuNotificationsLink() {
   var toggle = document.getElementById('menuNotificationsToggle');
-  var body = document.getElementById('menuNotificationsBody');
-  if (!toggle || !body || toggle.dataset.bound === '1') return;
+  if (!toggle || toggle.dataset.bound === '1') return;
   toggle.dataset.bound = '1';
-  var savedOpen = false;
-  try {
-    savedOpen = localStorage.getItem('cattleTracker_notifications_open') === '1';
-  } catch (e) {}
-  setMenuNotificationsOpen(savedOpen);
   toggle.addEventListener('click', function () {
-    var isOpen = toggle.getAttribute('aria-expanded') === 'true';
-    setMenuNotificationsOpen(!isOpen);
+    if (typeof navigate === 'function') navigate('notifications');
   });
-}
-
-function setMenuNotificationsOpen(isOpen) {
-  var toggle = document.getElementById('menuNotificationsToggle');
-  var body = document.getElementById('menuNotificationsBody');
-  if (!toggle || !body) return;
-  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  body.hidden = !isOpen;
-  if (isOpen && typeof renderNotificationSummary === 'function') {
-    renderNotificationSummary('menuNotificationsBody');
-  }
-  try {
-    localStorage.setItem('cattleTracker_notifications_open', isOpen ? '1' : '0');
-  } catch (e) {}
 }
 
 function initFirstRunHints() {
@@ -117,10 +96,9 @@ function renderSubmenu() {
   titleEl.textContent = group.title;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   var canEvents = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('eventsInput', user) : true;
-  var canNotifications = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('notifications', user) : true;
   var canAnalytics = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('analytics', user) : true;
   var canSettings = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardSettings', user) : true;
-  if ((groupId === 'actions' && !canEvents) || (groupId === 'notifications' && !canNotifications) || (groupId === 'analytics' && !canAnalytics)) {
+  if ((groupId === 'actions' && !canEvents) || (groupId === 'analytics' && !canAnalytics)) {
     containerEl.innerHTML = '<p class="farm-settings-hint">Раздел недоступен для вашей роли.</p>';
     return;
   }
@@ -328,8 +306,7 @@ function confirmAddObject() {
   NS.navigateBackOrFallback = navigateBackOrFallback;
   NS.syncRouteToScreen = syncRouteToScreen;
   NS.updateWindowModeForScreen = updateWindowModeForScreen;
-  NS.initMenuNotificationsToggle = initMenuNotificationsToggle;
-  NS.setMenuNotificationsOpen = setMenuNotificationsOpen;
+  NS.initMenuNotificationsLink = initMenuNotificationsLink;
   NS.initFirstRunHints = initFirstRunHints;
   NS.maybeShowFirstRunHints = maybeShowFirstRunHints;
   NS.closeFirstRunHints = closeFirstRunHints;

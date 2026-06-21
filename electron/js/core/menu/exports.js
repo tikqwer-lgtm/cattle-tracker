@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
   window.navigate = SM.navigate;
   window.navigateBack = SM.navigateBack;
   window.navigateBackOrFallback = SM.navigateBackOrFallback;
+  window.getCurrentScreenId = SM.getCurrentScreenId;
   window.navigateToSubmenu = SM.navigateToSubmenu;
   window.handleAddObjectClick = SM.handleAddObjectClick;
   window.handleEditObjectClick = SM.handleEditObjectClick;
@@ -18,6 +19,10 @@ if (typeof window !== 'undefined') {
 
   var _backExitPending = false;
   window._handleBackButton = function () {
+    if (SM.getCurrentScreenId && SM.getCurrentScreenId() === 'view-cow' && typeof window.viewCowBack === 'function') {
+      window.viewCowBack();
+      return;
+    }
     if (SM.navigateBack()) return;
     if (_backExitPending) {
       try {

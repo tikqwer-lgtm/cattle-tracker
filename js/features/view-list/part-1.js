@@ -288,16 +288,16 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     rowsEl.innerHTML = html;
   }
   container._virtualData.renderVisible = renderVisible;
-  globalThis['__viewList'].renderVisible();
+  renderVisible();
   var body = document.getElementById('viewVirtualBody');
   if (body) {
     body.addEventListener('scroll', renderVisible);
   }
   requestAnimationFrame(function () {
-    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
+    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   });
   setTimeout(function () {
-    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.globalThis['__viewList'].renderVisible();
+    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   }, 0);
 }
 

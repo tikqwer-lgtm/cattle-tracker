@@ -23,6 +23,14 @@
   font-weight: 500;
 }
 
+.menu-user-session {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
 .app-version {
   margin: 0 0 8px 0;
   font-size: 0.8rem;
@@ -317,4 +325,8 @@
 
 .menu-calving-list-error {
   color: var(--color-error, #c00);
+}
+
+.calving-row-overdue td {
+  background: #fff8e1;
 }

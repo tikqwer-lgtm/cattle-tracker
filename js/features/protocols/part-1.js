@@ -137,7 +137,7 @@ function notifyInseminationCodeSelects() {
   _notifyInsemCodeRaf = requestAnimationFrame(function () {
     _notifyInsemCodeRaf = null;
     try {
-      window.globalThis['__protocols'].fillAllInseminationCodeSelects();
+      if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
     } catch (e) {}
   });
 }

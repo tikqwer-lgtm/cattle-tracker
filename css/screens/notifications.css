@@ -73,6 +73,7 @@
 }
 .notification-message {
   font-size: 0.95em;
+  text-align: justify;
 }
 .notification-time {
   font-size: 0.8em;
@@ -83,6 +84,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px 12px;
+  padding-left: 4px;
 }
 .notification-item-actions {
   margin-top: 6px;
@@ -94,8 +96,15 @@
   cursor: pointer;
 }
 
-.menu-notifications {
-  margin: 12px 0 18px;
+#notifications-screen {
+  padding: 0 16px;
+}
+
+#menu-screen .menu-notifications {
+  margin: 12px 16px 18px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-bg-elevated);
@@ -144,8 +153,10 @@
   background: #fff;
   cursor: pointer;
 }
-.menu-notifications-message {
+.menu-notifications-message,
+.menu-notifications-group-head {
   font-size: 0.9em;
+  text-align: justify;
 }
 .menu-notifications-time {
   font-size: 0.75em;

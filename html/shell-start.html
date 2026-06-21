@@ -18,7 +18,7 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
   <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" aria-label="Нет подключения к интернету" hidden>📴 Нет подключения к интернету</div>
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
-    <span id="app-version-header" class="app-version-header"></span>
+    <button type="button" id="app-version-header" class="app-version-header app-version-header-btn" aria-label="Версия приложения. Нажмите для проверки обновления."></button>
     <div class="app-header-actions">
       <button type="button" id="report-error-btn" class="app-header-report-error-btn" title="Сообщить об ошибке администратору" aria-label="Сообщить об ошибке" style="display: none;" onclick="typeof window.openReportErrorModal === 'function' && window.openReportErrorModal()">Сообщить об ошибке</button>
       <button type="button" id="restore-input-btn" class="app-header-restore-input-btn" title="Если поля не реагируют на ввод — тот же обход, что раньше был в меню Справка" aria-label="Восстановить ввод" style="display: none;" onclick="typeof window.electronAPI !== 'undefined' && window.electronAPI.requestHitTestWorkaround && window.electronAPI.requestHitTestWorkaround()">Восстановить ввод</button>

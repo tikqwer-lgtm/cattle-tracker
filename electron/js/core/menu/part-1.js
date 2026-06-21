@@ -37,13 +37,6 @@ var MENU_GROUPS = {
       { icon: '🐄', text: 'Воспроизводство', onclick: "navigate('reproduction')" }
     ]
   },
-  notifications: {
-    title: 'Уведомления и планы',
-    buttons: [
-      { icon: '🔔', text: 'Уведомления', onclick: "navigate('notifications')" },
-      { icon: '📋', text: 'Планы', onclick: "navigate('tasks')" }
-    ]
-  },
   settings: {
     title: 'Настройки',
     buttons: [
@@ -62,6 +55,10 @@ function viewerForbiddenScreen(screenId) {
     view: 'data',
     'all-inseminations': 'data',
     lists: 'data',
+    'list-uzi': 'data',
+    'list-insemination': 'data',
+    'list-calving': 'data',
+    tasks: 'data',
     events: 'data',
     'stall-map': 'data',
     'stall-inventory': 'data',
@@ -72,7 +69,6 @@ function viewerForbiddenScreen(screenId) {
     uzi: 'actions',
     'protocol-assign': 'actions',
     notifications: 'notifications',
-    tasks: 'notifications',
     analytics: 'analytics',
     'interval-analysis': 'analytics',
     reproduction: 'analytics',
@@ -100,7 +96,6 @@ function viewerForbiddenScreen(screenId) {
 function navigateToSubmenu(groupId) {
   if (typeof window !== 'undefined' && typeof window.hasCapability === 'function') {
     if (groupId === 'actions' && !window.hasCapability('eventsInput')) return;
-    if (groupId === 'notifications' && !window.hasCapability('notifications')) return;
     if (groupId === 'analytics' && !window.hasCapability('analytics')) return;
   }
   window._submenuGroup = groupId;
@@ -220,6 +215,10 @@ function navigate(screenId, options) {
     }, 0);
   }
   if (screenId === 'all-inseminations' && typeof window.renderAllInseminationsScreen === 'function') {
+    var vcAllInsem = globalThis['__viewCow'];
+    if (vcAllInsem && typeof vcAllInsem.resetAllInseminationsRenderTarget === 'function') {
+      vcAllInsem.resetAllInseminationsRenderTarget();
+    }
     window.renderAllInseminationsScreen();
   }
   if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
@@ -266,6 +265,30 @@ function navigate(screenId, options) {
   if (screenId === 'lists' && typeof window.renderListsScreen === 'function') {
     window.renderListsScreen();
   }
+  if (screenId === 'list-uzi' && typeof window.renderUziListSubScreen === 'function') {
+    var uziContainer = document.getElementById('list-uzi-container');
+    if (uziContainer) window.renderUziListSubScreen(uziContainer);
+  }
+  if (screenId === 'list-insemination' && typeof window.renderInseminationListSubScreen === 'function') {
+    var insemContainer = document.getElementById('list-insemination-container');
+    if (insemContainer) window.renderInseminationListSubScreen(insemContainer);
+  }
+  if (screenId === 'list-calving' && typeof window.renderCalvingListSubScreen === 'function') {
+    var calvingContainer = document.getElementById('list-calving-container');
+    if (calvingContainer) {
+      var calvingPreset = null;
+      if (window._listsCalvingPreset) {
+        calvingPreset = window._listsCalvingPreset;
+        window._listsCalvingPreset = null;
+        window._listsCalvingView = calvingPreset;
+      } else if (window._listsCalvingView) {
+        calvingPreset = window._listsCalvingView;
+      } else if (typeof globalThis['__menu'].getMenuCalvingViewYearMonth === 'function') {
+        calvingPreset = globalThis['__menu'].getMenuCalvingViewYearMonth();
+      }
+      window.renderCalvingListSubScreen(calvingContainer, calvingPreset);
+    }
+  }
   if (screenId === 'events' && typeof window.renderEventsScreen === 'function') {
     window.renderEventsScreen();
   }
@@ -300,10 +323,10 @@ function navigate(screenId, options) {
     if (typeof initMenuCalvingForecast === 'function') globalThis['__menu'].initMenuCalvingForecast();
     globalThis['__menu'].updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
-    if (typeof renderNotificationSummary === 'function') renderNotificationSummary('menuNotificationsBody');
-    if (typeof initMenuNotificationsToggle === 'function') globalThis['__menu'].initMenuNotificationsToggle();
+    if (typeof initMenuNotificationsLink === 'function') globalThis['__menu'].initMenuNotificationsLink();
     if (typeof initFirstRunHints === 'function') globalThis['__menu'].initFirstRunHints();
     if (typeof maybeShowFirstRunHints === 'function') globalThis['__menu'].maybeShowFirstRunHints();
+    if (typeof window.checkMobileApkUpdate === 'function') window.checkMobileApkUpdate(true);
   }
   if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
 
@@ -325,6 +348,10 @@ function navigateBack() {
   return false;
 }
 
+function getCurrentScreenId() {
+  return _currentScreenId;
+}
+
 /**
  * Назад: предыдущий экран из стека; если стек пуст — подменю (не главное меню).
  */
@@ -335,5 +362,6 @@ function navigateBack() {
   NS.navigateToSubmenu = navigateToSubmenu;
   NS.navigate = navigate;
   NS.navigateBack = navigateBack;
+  NS.getCurrentScreenId = getCurrentScreenId;
 })();
 export {};

@@ -187,9 +187,9 @@ function dateOnly(d) {
       '<div class="lists-buttons">' +
       '<button type="button" class="action-btn" data-list="uzi">🩺 УЗИ</button>' +
       '<button type="button" class="action-btn" data-list="insemination">🐄 Осеменение</button>' +
-      '<button type="button" class="action-btn" data-list="tasks">💉 Уколы</button>' +
-      '</div>' +
-      '<div id="lists-sub-container" class="lists-sub-container"></div>';
+      '<button type="button" class="action-btn" data-list="calving">🐄 Отёлы</button>' +
+      '<button type="button" class="action-btn" data-list="tasks">📋 Список задач на дату</button>' +
+      '</div>';
     container.querySelectorAll('.lists-buttons button').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var listType = btn.getAttribute('data-list');
@@ -197,18 +197,20 @@ function dateOnly(d) {
           if (typeof global.navigate === 'function') global.navigate('tasks');
           return;
         }
-        renderListSubScreen(listType);
+        if (typeof global.navigate === 'function') global.navigate('list-' + listType);
       });
     });
   }
 
-  function renderListSubScreen(listType) {
+  function renderListSubScreen(listType, preset) {
     var sub = document.getElementById('lists-sub-container');
     if (!sub) return;
     if (listType === 'uzi') {
       renderUziListSubScreen(sub);
     } else if (listType === 'insemination') {
       globalThis['__lists'].renderInseminationListSubScreen(sub);
+    } else if (listType === 'calving') {
+      globalThis['__lists'].renderCalvingListSubScreen(sub, preset);
     }
   }
 
@@ -309,7 +311,7 @@ function dateOnly(d) {
             var cbs = lactFilterEl.querySelectorAll('.uzi-lactation-cb');
             var allChecked = cbs.length > 0 && Array.prototype.every.call(cbs, function (cb) { return cb.checked; });
             cbs.forEach(function (cb) { cb.checked = !allChecked; });
-            globalThis['__lists'].globalThis['__lists'].globalThis['__lists'].refresh();
+            globalThis['__lists'].refresh();
           });
         }
         lactFilterEl.querySelectorAll('.uzi-lactation-cb').forEach(function (cb) {
@@ -397,7 +399,7 @@ function dateOnly(d) {
       if (typeof window.initPinchZoom === 'function') wrap._pinchZoomDestroy = window.initPinchZoom(wrap, { innerSelector: 'table', minScale: 0.7, maxScale: 1.5 });
     }
     sub._activeRefresh = refresh;
-    globalThis['__lists'].globalThis['__lists'].globalThis['__lists'].refresh();
+    refresh();
     var refreshBtn = sub.querySelector('#uziListRefresh');
     if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
     var dateInput = sub.querySelector('#uziListDate');
