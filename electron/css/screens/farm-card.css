@@ -112,3 +112,85 @@
   margin: 0.5rem 0;
   font-size: 0.95rem;
 }
+
+/* CRM: пункты, цели, динамика */
+.farm-card-form--mobile .farm-card-input-lg,
+.farm-card-input-lg {
+  min-height: 2.5rem;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.farm-card-item-thumb {
+  max-width: 72px;
+  max-height: 72px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #ddd);
+}
+.farm-card-item-value .link-btn,
+button.link-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary, #1e3a5f);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+.farm-card-goal--overdue td {
+  color: #b33;
+}
+.farm-card-goal--done td {
+  opacity: 0.65;
+  text-decoration: line-through;
+}
+.farm-card-ev--done {
+  opacity: 0.65;
+}
+.farm-card-dyn-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0.5rem 0;
+}
+.farm-card-dyn-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+.farm-card-dyn-chart-wrap {
+  margin: 0.75rem 0;
+  max-width: 100%;
+}
+.farm-card-delta-up {
+  color: #2a9d8f;
+}
+.farm-card-delta-down {
+  color: #e76f51;
+}
+.farm-card-print-sheet-host {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .farm-card-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .farm-card-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .farm-card-grid2 {
+    grid-template-columns: 1fr;
+  }
+  .farm-card-form--mobile label {
+    margin: 0.5rem 0;
+  }
+}
+

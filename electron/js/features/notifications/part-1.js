@@ -135,10 +135,12 @@
     insemination: 'Осеменение',
     dry: 'Сухостой',
     sync: 'Синхронизация',
+    farm_goal: 'Цели хозяйства',
+    farm_event: 'События хозяйства',
     other: 'Прочее'
   };
 
-  var GROUP_ORDER = ['errors', 'calving_check', 'uzi1', 'uzi2', 'calving', 'insemination', 'dry', 'sync', 'other'];
+  var GROUP_ORDER = ['errors', 'calving_check', 'uzi1', 'uzi2', 'calving', 'insemination', 'dry', 'farm_goal', 'farm_event', 'sync', 'other'];
 
   var CATEGORY_LABELS = GROUP_LABELS;
 
@@ -150,6 +152,8 @@
     if (msg.indexOf('проверить отел') !== -1) return 'calving_check';
     if (msg.indexOf('узи1') !== -1) return 'uzi1';
     if (msg.indexOf('узи2') !== -1) return 'uzi2';
+    if (msg.indexOf('цель') !== -1 || msg.indexOf('просрочен') !== -1) return 'farm_goal';
+    if (msg.indexOf('событие хозяйства') !== -1 || msg.indexOf('напоминание: ') !== -1) return 'farm_event';
     if (msg.indexOf('отёл') !== -1 || msg.indexOf('отел') !== -1) return 'calving';
     if (msg.indexOf('осеменен') !== -1 || msg.indexOf('рекомендуется осеменение') !== -1) return 'insemination';
     if (msg.indexOf('сухостой') !== -1) return 'dry';
@@ -238,14 +242,84 @@
     return item;
   }
 
+  function checkFarmCardReminders(notified, out) {
+    notified = notified || {};
+    out = out || [];
+    var bundle = null;
+    if (typeof window !== 'undefined' && window.__farmCardBundle) {
+      bundle = window.__farmCardBundle;
+    } else if (typeof window !== 'undefined' && typeof window.getFarmCardBundleForExport === 'function') {
+      try {
+        bundle = window.getFarmCardBundleForExport();
+      } catch (e) {
+        bundle = null;
+      }
+    }
+    if (!bundle) return out;
+
+    var today = dateOnly(new Date());
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    var now = Date.now();
+
+    (bundle.goals || []).forEach(function (g) {
+      if (!g || g.status === 'done') return;
+      var deadline = g.deadline ? String(g.deadline).slice(0, 10) : '';
+      if (!deadline) return;
+      var d = parseDate(deadline);
+      if (!d) return;
+      var daysLeft = daysBetween(new Date(), d);
+      var overdue = deadline < todayStr;
+      var dueSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+      if (!overdue && !dueSoon) return;
+      var key = 'farm_goal_' + (g.id || '') + '_' + deadline + (overdue ? '_od' : '_soon');
+      if (notified[key] || historyHasDedupeKey(key)) return;
+      notified[key] = true;
+      var msg = overdue
+        ? 'Просрочена цель хозяйства: «' + (g.title || '') + '» (срок ' + deadline + ')'
+        : 'Цель хозяйства скоро: «' + (g.title || '') + '» (через ' + daysLeft + ' дн.)';
+      var n = createNotification(
+        overdue ? 'warning' : 'info',
+        msg,
+        '',
+        { kind: 'farm_goal', category: 'farm_goal', goalId: g.id, dedupeKey: key },
+        { showToast: false, showSystem: true }
+      );
+      if (n) out.push(n);
+    });
+
+    (bundle.events || []).forEach(function (ev) {
+      if (!ev || ev.completed || ev.notifyLocal === false) return;
+      var rem = ev.reminderAt ? String(ev.reminderAt) : '';
+      if (!rem) return;
+      var remDate = parseDate(rem);
+      if (!remDate) {
+        try {
+          remDate = new Date(rem);
+        } catch (e2) {
+          remDate = null;
+        }
+      }
+      if (!remDate || isNaN(remDate.getTime())) return;
+      if (remDate.getTime() > now) return;
+      var keyEv = 'farm_event_' + (ev.id || '') + '_' + rem;
+      if (notified[keyEv] || historyHasDedupeKey(keyEv)) return;
+      notified[keyEv] = true;
+      var label = ev.description || ev.task || ev.goal || ev.eventType || 'событие';
+      var nEv = createNotification(
+        'info',
+        'Напоминание: событие хозяйства «' + label + '»',
+        '',
+        { kind: 'farm_event', category: 'farm_event', eventId: ev.id, dedupeKey: keyEv },
+        { showToast: false, showSystem: true }
+      );
+      if (nEv) out.push(nEv);
+    });
+
+    return out;
+  }
+
   function checkUpcomingEvents() {
     var list = typeof entries !== 'undefined' ? entries : [];
-    if (!list.length) {
-      if (typeof global.syncDataErrorNotifications === 'function') {
-        global.syncDataErrorNotifications(list, { notified: {} });
-      }
-      return [];
-    }
     var today = dateOnly(new Date());
     var vwpDays = getVwpDays();
     var notified = {};
@@ -261,18 +335,28 @@
     }
 
     function getExpectedCalvingDate(e) {
-      var lastInsem = globalThis['__notif'].getLastInseminationDate(e);
+      var lastInsem = getLastInseminationDate(e);
       if (!lastInsem) return null;
       var d = parseDate(lastInsem);
       if (!d) return null;
       d.setDate(d.getDate() + 280);
       return d;
     }
+    NS.getLastInseminationDate = getLastInseminationDate;
+    NS.getExpectedCalvingDate = getExpectedCalvingDate;
+
+    if (!list.length) {
+      if (typeof global.syncDataErrorNotifications === 'function') {
+        global.syncDataErrorNotifications(list, { notified: notified });
+      }
+      checkFarmCardReminders(notified, out);
+      return out;
+    }
 
     list.forEach(function (entry) {
       var cattleId = entry.cattleId || '';
       var calvingDate = parseDate(entry.calvingDate);
-      var lastInsemDateStr = globalThis['__notif'].getLastInseminationDate(entry);
+      var lastInsemDateStr = getLastInseminationDate(entry);
       var inseminationDate = parseDate(entry.inseminationDate);
       var hasInseminationHistory = Array.isArray(entry.inseminationHistory) && entry.inseminationHistory.length > 0;
       var dryStartDate = parseDate(entry.dryStartDate);
@@ -280,7 +364,7 @@
       var statusStr = (entry.status || '').toString();
       if (exitDate && exitDate <= today) return;
 
-      var expectedCalving = (statusStr.indexOf('Стельная') !== -1) ? globalThis['__notif'].getExpectedCalvingDate(entry) : null;
+      var expectedCalving = (statusStr.indexOf('Стельная') !== -1) ? getExpectedCalvingDate(entry) : null;
       var calvingForReminder = (expectedCalving && expectedCalving >= today) ? expectedCalving : (calvingDate && calvingDate >= today ? calvingDate : null);
       if (calvingForReminder) {
         var daysToCalving = daysBetween(new Date(), calvingForReminder);
@@ -383,6 +467,7 @@
     if (typeof global.syncDataErrorNotifications === 'function') {
       global.syncDataErrorNotifications(list, { notified: notified });
     }
+    checkFarmCardReminders(notified, out);
     return out;
   }
 
@@ -404,6 +489,7 @@
   NS.inferCategory = inferCategory;
   NS.groupNotificationsForDisplay = groupNotificationsForDisplay;
   NS.createNotification = createNotification;
+  NS.checkFarmCardReminders = checkFarmCardReminders;
   NS.checkUpcomingEvents = checkUpcomingEvents;
 })();
 export {};

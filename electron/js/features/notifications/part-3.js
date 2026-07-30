@@ -86,6 +86,18 @@
       window.requestNotificationPermission = requestNotificationPermission;
     }
     globalThis['__notif'].updateNotificationIndicators();
+    if (typeof window !== 'undefined' && window.CattleTrackerEvents && typeof window.CattleTrackerEvents.on === 'function') {
+      window.CattleTrackerEvents.on('farm-goal:changed', function () {
+        try {
+          globalThis['__notif'].checkUpcomingEvents();
+        } catch (e) {}
+      });
+      window.CattleTrackerEvents.on('farm-card:updated', function () {
+        try {
+          globalThis['__notif'].checkUpcomingEvents();
+        } catch (e) {}
+      });
+    }
   }
 
 
