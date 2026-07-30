@@ -103,4 +103,51 @@
   body {
     padding-top: 140px;
   }
+
+  /* Печать карточки хозяйства (A4 краткий обзор) */
+  body.print-farm-card * {
+    visibility: hidden;
+  }
+  body.print-farm-card .print-header,
+  body.print-farm-card .print-header *,
+  body.print-farm-card .farm-card-print-sheet-host,
+  body.print-farm-card .farm-card-print-sheet-host * {
+    visibility: visible;
+  }
+  body.print-farm-card .farm-card-print-sheet-host {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 140px;
+    width: 100%;
+    padding: 16px 24px;
+    color: #222;
+  }
+  body.print-farm-card .farm-card-print-sheet h2 {
+    font-size: 18pt;
+    margin: 0 0 4pt;
+    color: #1e3a5f;
+  }
+  body.print-farm-card .farm-card-print-date {
+    font-size: 10pt;
+    color: #666;
+    margin-bottom: 12pt;
+  }
+  body.print-farm-card .farm-card-print-sheet h3 {
+    font-size: 12pt;
+    margin: 10pt 0 4pt;
+    color: #1e3a5f;
+    border-bottom: 1px solid #b3d9ff;
+  }
+  body.print-farm-card .farm-card-print-sheet ul {
+    margin: 0;
+    padding-left: 18pt;
+    font-size: 10pt;
+    line-height: 1.45;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
 }

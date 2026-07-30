@@ -58,7 +58,9 @@ function getFarmCardBundle(objectId) {
       metricDefinitions: [],
       metricValues: [],
       events: [],
-      specialists: []
+      specialists: [],
+      items: [],
+      goals: []
     };
   }
   return {
@@ -68,6 +70,8 @@ function getFarmCardBundle(objectId) {
     metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
     events: Array.isArray(p.events) ? p.events : [],
     specialists: Array.isArray(p.specialists) ? p.specialists : [],
+    items: Array.isArray(p.items) ? p.items : [],
+    goals: Array.isArray(p.goals) ? p.goals : [],
     name: p.name != null ? String(p.name) : '',
     legalName: p.legalName != null ? String(p.legalName) : '',
     notes: p.notes != null ? String(p.notes) : ''
@@ -86,7 +90,9 @@ function replaceFarmCardBundle(objectId, body) {
     specialists: Array.isArray(b.specialists) ? b.specialists : [],
     metricDefinitions: Array.isArray(b.metricDefinitions) ? b.metricDefinitions : [],
     metricValues: Array.isArray(b.metricValues) ? b.metricValues : [],
-    events: Array.isArray(b.events) ? b.events : []
+    events: Array.isArray(b.events) ? b.events : [],
+    items: Array.isArray(b.items) ? b.items : [],
+    goals: Array.isArray(b.goals) ? b.goals : []
   };
   putObjectProfile(objectId, profile);
   return { ok: true };

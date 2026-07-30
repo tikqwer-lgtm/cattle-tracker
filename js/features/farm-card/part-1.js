@@ -25,6 +25,8 @@
       metricDefinitions: [],
       metricValues: [],
       events: [],
+      items: [],
+      goals: [],
       notes: ''
     };
   }
@@ -66,7 +68,9 @@
         specialists: Array.isArray(p.specialists) ? p.specialists : [],
         metricDefinitions: Array.isArray(p.metricDefinitions) ? p.metricDefinitions : [],
         metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
-        events: Array.isArray(p.events) ? p.events : []
+        events: Array.isArray(p.events) ? p.events : [],
+        items: Array.isArray(p.items) ? p.items : [],
+        goals: Array.isArray(p.goals) ? p.goals : []
       };
     } catch (e) {
       return null;
@@ -101,6 +105,79 @@
     return u.role === 'admin';
   }
 
+  function normalizeItem(raw, idx) {
+    if (!raw || typeof raw !== 'object') return null;
+    var type = String(raw.type || 'text');
+    if (['text', 'number', 'date', 'image', 'geo'].indexOf(type) === -1) type = 'text';
+    var value = raw.value;
+    if (type === 'geo' && value && typeof value === 'object') {
+      value = {
+        lat: value.lat != null ? Number(value.lat) : null,
+        lng: value.lng != null ? Number(value.lng) : null,
+        label: value.label != null ? String(value.label) : '',
+        navUrl: value.navUrl != null ? String(value.navUrl) : ''
+      };
+    } else if (type === 'number' && value != null && value !== '') {
+      var n = Number(value);
+      value = isNaN(n) ? value : n;
+    } else if (value == null) {
+      value = type === 'geo' ? { lat: null, lng: null, label: '', navUrl: '' } : '';
+    }
+    return {
+      id: raw.id != null ? String(raw.id) : 'it_' + idx,
+      label: raw.label != null ? String(raw.label) : '',
+      type: type,
+      value: value,
+      updatedAt: raw.updatedAt != null ? String(raw.updatedAt) : '',
+      sortOrder: raw.sortOrder != null ? Number(raw.sortOrder) || idx : idx,
+      objectId: raw.objectId != null ? String(raw.objectId) : ''
+    };
+  }
+
+  function normalizeGoal(raw, idx) {
+    if (!raw || typeof raw !== 'object') return null;
+    var status = String(raw.status || 'open');
+    if (['open', 'done', 'overdue'].indexOf(status) === -1) status = 'open';
+    return {
+      id: raw.id != null ? String(raw.id) : 'g_' + idx,
+      title: raw.title != null ? String(raw.title) : '',
+      deadline: raw.deadline != null ? String(raw.deadline) : '',
+      status: status,
+      linkedItemIds: Array.isArray(raw.linkedItemIds) ? raw.linkedItemIds.map(String) : [],
+      notes: raw.notes != null ? String(raw.notes) : ''
+    };
+  }
+
+  function normalizeEvent(raw, idx) {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      id: raw.id != null ? String(raw.id) : 'ev_' + idx,
+      eventType: raw.eventType != null ? String(raw.eventType) : 'info',
+      eventDate: raw.eventDate != null ? String(raw.eventDate) : '',
+      participants: raw.participants != null ? String(raw.participants) : '',
+      description: raw.description != null ? String(raw.description) : '',
+      task: raw.task != null ? String(raw.task) : '',
+      goal: raw.goal != null ? String(raw.goal) : '',
+      reminderAt: raw.reminderAt != null ? String(raw.reminderAt) : '',
+      completed: !!raw.completed,
+      notifyLocal: raw.notifyLocal !== false
+    };
+  }
+
+  function refreshGoalStatuses(goals) {
+    var today = new Date().toISOString().slice(0, 10);
+    return (goals || []).map(function (g) {
+      if (!g || g.status === 'done') return g;
+      if (g.deadline && String(g.deadline) < today) {
+        return Object.assign({}, g, { status: 'overdue' });
+      }
+      if (g.status === 'overdue' && (!g.deadline || String(g.deadline) >= today)) {
+        return Object.assign({}, g, { status: 'open' });
+      }
+      return g;
+    });
+  }
+
   function normalizeBundle(raw) {
     var b = emptyBundle();
     if (!raw || typeof raw !== 'object') return mergeDefaultMetrics(b);
@@ -109,9 +186,19 @@
     b.specialists = Array.isArray(raw.specialists) ? raw.specialists : [];
     if (!b.specialists.length) b.specialists = [];
     b.notes = raw.notes != null ? String(raw.notes) : '';
+    b.name = raw.name != null ? String(raw.name) : '';
+    b.legalName = raw.legalName != null ? String(raw.legalName) : '';
     b.metricDefinitions = Array.isArray(raw.metricDefinitions) ? raw.metricDefinitions : [];
     b.metricValues = Array.isArray(raw.metricValues) ? raw.metricValues : [];
-    b.events = Array.isArray(raw.events) ? raw.events : [];
+    b.events = (Array.isArray(raw.events) ? raw.events : [])
+      .map(normalizeEvent)
+      .filter(Boolean);
+    b.items = (Array.isArray(raw.items) ? raw.items : [])
+      .map(normalizeItem)
+      .filter(Boolean);
+    b.goals = refreshGoalStatuses(
+      (Array.isArray(raw.goals) ? raw.goals : []).map(normalizeGoal).filter(Boolean)
+    );
     return mergeDefaultMetrics(b);
   }
 
@@ -207,18 +294,29 @@
     var b = normalizeBundle(bundle);
     window.__farmCardBundle = b;
     writeFarmCardCache(oid, b);
-    if (window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.putFarmCard === 'function') {
+    var hasServerToken =
+      window.CattleTrackerApi &&
+      typeof window.CattleTrackerApi.getToken === 'function' &&
+      !!window.CattleTrackerApi.getToken();
+    var canSyncApi =
+      window.CATTLE_TRACKER_USE_API &&
+      hasServerToken &&
+      window.CattleTrackerApi &&
+      typeof window.CattleTrackerApi.putFarmCard === 'function';
+    if (canSyncApi) {
       return window.CattleTrackerApi.putFarmCard(oid, b).then(function (data) {
         window.__farmCardBundle = normalizeBundle(data);
         writeFarmCardCache(oid, window.__farmCardBundle);
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('farm-card:updated', window.__farmCardBundle);
+          window.CattleTrackerEvents.emit('farm-goal:changed', window.__farmCardBundle.goals || []);
         }
         return window.__farmCardBundle;
       });
     }
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('farm-card:updated', b);
+      window.CattleTrackerEvents.emit('farm-goal:changed', b.goals || []);
     }
     return Promise.resolve(b);
   }
@@ -269,8 +367,17 @@
       (_activeTab === 'specialists' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="specialists">Специалисты</button>' +
       '<button type="button" class="farm-card-tab' +
+      (_activeTab === 'items' ? ' farm-card-tab--active' : '') +
+      '" data-farm-tab="items">Пункты</button>' +
+      '<button type="button" class="farm-card-tab' +
       (_activeTab === 'metrics' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="metrics">Показатели</button>' +
+      '<button type="button" class="farm-card-tab' +
+      (_activeTab === 'goals' ? ' farm-card-tab--active' : '') +
+      '" data-farm-tab="goals">Цели</button>' +
+      '<button type="button" class="farm-card-tab' +
+      (_activeTab === 'dynamics' ? ' farm-card-tab--active' : '') +
+      '" data-farm-tab="dynamics">Динамика</button>' +
       '<button type="button" class="farm-card-tab' +
       (_activeTab === 'timeline' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="timeline">Лента событий</button>' +
@@ -354,13 +461,23 @@
     var addrRows = (b.addresses || [])
       .map(function (a, idx) {
         var line = [a.region, a.locality, a.street, a.house].filter(Boolean).join(', ');
+        var nav =
+          a.navUrl ||
+          (a.lat != null && a.lng != null
+            ? 'https://yandex.ru/maps/?rtext=~' + a.lat + ',' + a.lng
+            : '');
+        var navCell = nav
+          ? '<a class="farm-card-nav-link" href="' +
+            escapeHtml(nav) +
+            '" target="_blank" rel="noopener">Маршрут</a>'
+          : '—';
         return (
           '<tr data-addr-idx="' +
           idx +
           '"><td>' +
           escapeHtml(line) +
           '</td><td>' +
-          escapeHtml(a.navUrl || '') +
+          navCell +
           '</td>' +
           (canEdit
             ? '<td><button type="button" class="small-btn farm-card-addr-edit" data-addr-idx="' +
@@ -521,11 +638,17 @@
         return true;
       })
       .map(function (e, idx) {
+        var doneMark = e.completed ? ' ✓' : '';
+        var rem = e.reminderAt ? String(e.reminderAt).slice(0, 16).replace('T', ' ') : '';
         return (
-          '<tr><td>' +
+          '<tr class="' +
+          (e.completed ? 'farm-card-ev--done' : '') +
+          '"><td>' +
           escapeHtml(evTypeLabels[e.eventType] || e.eventType) +
+          doneMark +
           '</td><td>' +
           escapeHtml(e.eventDate) +
+          (rem ? '<br/><small>⏰ ' + escapeHtml(rem) + '</small>' : '') +
           '</td><td>' +
           escapeHtml(e.participants) +
           '</td><td>' +
@@ -536,7 +659,11 @@
           escapeHtml(e.goal) +
           '</td>' +
           (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
+            ? '<td><button type="button" class="small-btn farm-card-ev-toggle" data-ev-id="' +
+              escapeHtml(e.id) +
+              '">' +
+              (e.completed ? 'Открыть' : 'Готово') +
+              '</button> <button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
               escapeHtml(e.id) +
               '">Удал.</button></td>'
             : '') +
@@ -589,9 +716,24 @@
           '<label>Описание <textarea id="farmCardNewEvDesc" class="farm-settings-textarea" rows="2"></textarea></label>' +
           '<label>Задача <input type="text" id="farmCardNewEvTask" class="farm-settings-inline-input" /></label>' +
           '<label>Цель <input type="text" id="farmCardNewEvGoal" class="farm-settings-inline-input" /></label>' +
+          '<label>Напоминание <input type="datetime-local" id="farmCardNewEvReminder" class="farm-card-input-lg" /></label>' +
+          '<label><input type="checkbox" id="farmCardNewEvNotify" checked /> Локальное уведомление</label>' +
           '<button type="button" class="small-btn" id="farmCardAddEvBtn">Добавить</button></div>'
         : '') +
       '</div>';
+
+    var itemsHtml =
+      typeof globalThis['__farmCard'].buildItemsPaneHtml === 'function'
+        ? globalThis['__farmCard'].buildItemsPaneHtml(b, canEdit, _activeTab)
+        : '';
+    var goalsHtml =
+      typeof globalThis['__farmCard'].buildGoalsPaneHtml === 'function'
+        ? globalThis['__farmCard'].buildGoalsPaneHtml(b, canEdit, _activeTab)
+        : '';
+    var dynamicsHtml =
+      typeof globalThis['__farmCard'].buildDynamicsPaneHtml === 'function'
+        ? globalThis['__farmCard'].buildDynamicsPaneHtml(b, canEdit, _activeTab)
+        : '';
 
     root.innerHTML =
       '<div class="farm-card-inner">' +
@@ -600,10 +742,14 @@
       contactsHtml +
       addressesHtml +
       specialistsHtml +
+      itemsHtml +
       metricsHtml +
+      goalsHtml +
+      dynamicsHtml +
       timelineHtml +
       '</div>' +
       '<div class="farm-card-footer">' +
+      '<button type="button" class="small-btn" id="farmCardPrintBtn">Печать A4</button> ' +
       (window.CATTLE_TRACKER_USE_API
         ? '<button type="button" class="small-btn" id="farmCardReloadBtn">Обновить с сервера</button> '
         : '') +
@@ -884,7 +1030,21 @@
             participants: participants,
             description: description,
             task: task,
-            goal: goal
+            goal: goal,
+            reminderAt: (function () {
+              var rem = (document.getElementById('farmCardNewEvReminder') || {}).value || '';
+              if (!rem) return '';
+              try {
+                return new Date(rem).toISOString();
+              } catch (e) {
+                return rem;
+              }
+            })(),
+            completed: false,
+            notifyLocal: !(
+              document.getElementById('farmCardNewEvNotify') &&
+              !document.getElementById('farmCardNewEvNotify').checked
+            )
           });
           renderFarmCardPanel();
         };
@@ -894,6 +1054,15 @@
           var id = btn.getAttribute('data-ev-id');
           window.__farmCardBundle.events = (window.__farmCardBundle.events || []).filter(function (e) {
             return e.id !== id;
+          });
+          renderFarmCardPanel();
+        };
+      });
+      root.querySelectorAll('.farm-card-ev-toggle').forEach(function (btn) {
+        btn.onclick = function () {
+          var id = btn.getAttribute('data-ev-id');
+          (window.__farmCardBundle.events || []).forEach(function (e) {
+            if (e && e.id === id) e.completed = !e.completed;
           });
           renderFarmCardPanel();
         };
@@ -941,6 +1110,9 @@
     if (canEdit) {
       globalThis['__farmCard'].bindFarmCardGeosuggest();
     }
+    if (typeof globalThis['__farmCard'].bindCrmHandlers === 'function') {
+      globalThis['__farmCard'].bindCrmHandlers(root, canEdit, renderFarmCardPanel);
+    }
   }
 
   var _addrSuggestResults = [];
@@ -957,6 +1129,10 @@
   NS.getObjectIdForFarm = getObjectIdForFarm;
   NS.farmCardCanEdit = farmCardCanEdit;
   NS.normalizeBundle = normalizeBundle;
+  NS.normalizeItem = normalizeItem;
+  NS.normalizeGoal = normalizeGoal;
+  NS.normalizeEvent = normalizeEvent;
+  NS.refreshGoalStatuses = refreshGoalStatuses;
   NS.countHerdCows = countHerdCows;
   NS.countCalves = countCalves;
   NS.computeFromEntries = computeFromEntries;
