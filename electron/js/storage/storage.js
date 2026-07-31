@@ -53,7 +53,7 @@ if (useApi) {
   window.clearAllApiEntriesCaches = clearAllApiEntriesCaches;
 
   function objectsListAfterHiddenFilter() {
-    var list = _objectsCache.length ? _objectsCache.slice() : [{ id: 'default', name: 'Основная база' }];
+    var list = _objectsCache.length ? _objectsCache.slice() : [];
     if (window.CattleTrackerApi && typeof window.CattleTrackerApi.filterObjectsListVisible === 'function') {
       list = window.CattleTrackerApi.filterObjectsListVisible(list);
     }
@@ -65,8 +65,13 @@ if (useApi) {
     if (typeof window.filterObjectsListForRole === 'function') {
       list = window.filterObjectsListForRole(list);
     }
-    if (!list || !list.length) return;
     var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+    if (!list || !list.length) {
+      if (pend && typeof window.setCurrentObjectId === 'function') {
+        window.setCurrentObjectId(pend);
+      }
+      return;
+    }
     var cur = window.getCurrentObjectId();
     if (pend && cur === pend) return;
     var found = list.some(function (o) { return o && o.id === cur; });
@@ -75,7 +80,7 @@ if (useApi) {
 
   function loadObjectsFromApi() {
     return window.CattleTrackerApi.getObjectsList().then(function (list) {
-      _objectsCache = list && list.length ? list : [{ id: 'default', name: 'Основная база' }];
+      _objectsCache = list && list.length ? list : [];
       normalizeApiObjectSelectionForRole();
       return _objectsCache;
     });
@@ -87,13 +92,11 @@ if (useApi) {
     if (typeof window.filterObjectsListForRole === 'function') {
       list = window.filterObjectsListForRole(list);
     }
-    if (!list || !list.length) {
-      list = [{ id: 'default', name: 'Основная база' }];
-    }
-    return list;
+    // Не подставлять фейковый default: иначе «Удалить/Скрыть» выглядит как «ничего не произошло».
+    return list || [];
   };
 
-  /** После скрытия базы локально — переключить текущую, если она скрыта. */
+  /** После скрытия/удаления базы — переключить текущую, если она пропала из списка. */
   window.afterLocalHideObject = function (hiddenId) {
     return loadObjectsFromApi().then(function () {
       var list = window.getObjectsList();
@@ -105,7 +108,11 @@ if (useApi) {
           window.switchToObject(list[0].id);
           return;
         }
-        window.setCurrentObjectId(pendingId || 'default');
+        if (pendingId) {
+          window.setCurrentObjectId(pendingId);
+        } else {
+          window.setCurrentObjectId('default');
+        }
         return window.loadLocally();
       }
       return window.loadLocally();
@@ -139,12 +146,15 @@ if (useApi) {
         window.CattleTrackerObjectData.removeKeysForObject(id);
       }
       return loadObjectsFromApi().then(function () {
-        var list = _objectsCache.length ? _objectsCache : [{ id: 'default', name: 'Основная база' }];
-        if (currentId === id && list.length) {
-          window.switchToObject(list[0].id);
-        } else if (currentId === id) {
-          window.setCurrentObjectId('default');
-          if (typeof window.loadLocally === 'function') window.loadLocally();
+        var list = window.getObjectsList();
+        var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+        if (currentId === id) {
+          if (list.length) {
+            window.switchToObject(list[0].id);
+          } else if (pendingId) {
+            window.setCurrentObjectId(pendingId);
+            if (typeof window.loadLocally === 'function') window.loadLocally();
+          }
         }
         if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
       });

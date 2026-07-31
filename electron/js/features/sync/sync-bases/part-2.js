@@ -14,10 +14,24 @@ function sbState() {
 }
 
 function getBasesListContainer() {
-  return document.getElementById('adminServerBasesList') || document.getElementById('syncServerBasesList');
+  var adminList = document.getElementById('adminServerBasesList');
+  var syncList = document.getElementById('syncServerBasesList');
+  var adminScreen = document.getElementById('admin-screen');
+  if (adminScreen && adminScreen.classList.contains('active') && adminList) return adminList;
+  var syncScreen = document.getElementById('sync-screen');
+  if (syncScreen && syncScreen.classList.contains('active') && syncList) return syncList;
+  return adminList || syncList;
 }
 
 function getBasesFilterEl() {
+  var adminScreen = document.getElementById('admin-screen');
+  if (adminScreen && adminScreen.classList.contains('active')) {
+    return document.getElementById('adminBasesFilter') || document.getElementById('syncBasesFilter');
+  }
+  var syncScreen = document.getElementById('sync-screen');
+  if (syncScreen && syncScreen.classList.contains('active')) {
+    return document.getElementById('syncBasesFilter') || document.getElementById('adminBasesFilter');
+  }
   return document.getElementById('adminBasesFilter') || document.getElementById('syncBasesFilter');
 }
 
@@ -36,24 +50,81 @@ function renderSyncBasesFilters() {
   if (nameInp) nameInp.addEventListener('input', onFilter);
 }
 
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function buildBaseRowHtml(obj, currentUser, currentId) {
-  var safeName = (obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  var safeId = String(obj.id).replace(/'/g, "\\'");
-  var safeSrcName = String(obj.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  var safeName = String(obj.name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  var idAttr = escapeAttr(obj.id);
+  var nameAttr = escapeAttr(obj.name || '');
   var isOwner = currentUser && obj._creator && obj._creator.toLowerCase() === currentUser.toLowerCase();
   var showDelete = globalThis['__syncBases'].isSyncUserElevated();
-  var loadClick =
-    'showLoadBaseModal(' + JSON.stringify(obj.id) + ',' + JSON.stringify(obj.name || '') + ',' + JSON.stringify(obj._dateRaw || '') + ')';
-  return '<tr data-base-id="' + String(obj.id).replace(/"/g, '&quot;') + '">' +
+  return '<tr data-base-id="' + idAttr + '">' +
     '<td data-label="Название">' + safeName + '</td>' +
     '<td data-label="Дата">' + obj._dateStr + '</td>' +
     '<td data-label="Записей">' + obj._count + '</td>' +
     '<td class="sync-bases-actions" data-label="Действия">' +
-    '<button type="button" class="small-btn sync-base-import-btn" onclick=\'' + loadClick.replace(/'/g, '&#39;') + '\'>Загрузить</button>' +
-    ' <button type="button" class="small-btn sync-hide-local-base-btn sync-base-import-btn" onclick="hideServerBaseLocalOnly(\'' + safeId + '\', \'' + safeSrcName + '\')">Скрыть у себя</button>' +
-    (isOwner && !globalThis['__syncBases'].isSyncMobileLimited() ? ' <button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" onclick="overwriteCurrentServerBaseWithLocal()">Выгрузить на сервер</button>' : '') +
-    (showDelete ? ' <button type="button" class="small-btn sync-delete-base-btn sync-base-import-btn" onclick="showDeleteBaseModal(\'' + safeId + '\', \'' + safeSrcName + '\')">Удалить</button>' : '') +
+    '<button type="button" class="small-btn sync-base-import-btn" data-action="load-base" data-base-id="' + idAttr + '" data-base-name="' + nameAttr + '" data-base-date="' + escapeAttr(obj._dateRaw || '') + '">Загрузить</button>' +
+    ' <button type="button" class="small-btn sync-hide-local-base-btn sync-base-import-btn" data-action="hide-base" data-base-id="' + idAttr + '" data-base-name="' + nameAttr + '">Скрыть у себя</button>' +
+    (isOwner && !globalThis['__syncBases'].isSyncMobileLimited()
+      ? ' <button type="button" class="small-btn sync-current-base-btn sync-base-import-btn" data-action="overwrite-base">Выгрузить на сервер</button>'
+      : '') +
+    (showDelete
+      ? ' <button type="button" class="small-btn sync-delete-base-btn sync-base-import-btn" data-action="delete-base" data-base-id="' + idAttr + '" data-base-name="' + nameAttr + '">Удалить</button>'
+      : '') +
     '</td></tr>';
+}
+
+function bindBasesListActions(container) {
+  if (!container || container.dataset.basesActionsBound === '1') return;
+  container.dataset.basesActionsBound = '1';
+  container.addEventListener('click', function (ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-action]') : null;
+    if (!btn || !container.contains(btn)) return;
+    var action = btn.getAttribute('data-action');
+    var baseId = btn.getAttribute('data-base-id') || '';
+    var baseName = btn.getAttribute('data-base-name') || '';
+    var baseDate = btn.getAttribute('data-base-date') || '';
+    if (action === 'load-base') {
+      ev.preventDefault();
+      if (typeof window.showLoadBaseModal === 'function') {
+        window.showLoadBaseModal(baseId, baseName, baseDate);
+      } else if (typeof globalThis['__syncBases'].showLoadBaseModal === 'function') {
+        globalThis['__syncBases'].showLoadBaseModal(baseId, baseName, baseDate);
+      }
+      return;
+    }
+    if (action === 'hide-base') {
+      ev.preventDefault();
+      if (typeof window.hideServerBaseLocalOnly === 'function') {
+        window.hideServerBaseLocalOnly(baseId, baseName);
+      }
+      return;
+    }
+    if (action === 'overwrite-base') {
+      ev.preventDefault();
+      if (typeof window.overwriteCurrentServerBaseWithLocal === 'function') {
+        window.overwriteCurrentServerBaseWithLocal();
+      }
+      return;
+    }
+    if (action === 'delete-base') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (typeof window.showDeleteBaseModal === 'function') {
+        window.showDeleteBaseModal(baseId, baseName);
+      } else if (typeof globalThis['__syncBases'].showDeleteBaseModal === 'function') {
+        globalThis['__syncBases'].showDeleteBaseModal(baseId, baseName);
+      } else if (typeof showToast === 'function') {
+        showToast('Удаление базы недоступно', 'error');
+      }
+    }
+  });
 }
 
 function renderSyncBasesTable() {
@@ -121,6 +192,7 @@ function renderSyncBasesTable() {
     return;
   }
   container.innerHTML = html;
+  bindBasesListActions(container);
 
   container.querySelectorAll('.sync-sortable').forEach(function (th) {
     th.style.cursor = 'pointer';
@@ -237,41 +309,105 @@ function showLoadBaseModal(sourceId, sourceName, sourceDateRaw) {
 }
 
 /**
- * Модалка удаления базы на сервере (только администратор).
+ * Модалка удаления базы на сервере (только администратор, с паролем).
  */
 function showDeleteBaseModal(baseId, baseName) {
-  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return;
+  if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) {
+    if (typeof showToast === 'function') showToast('API недоступен — удаление на сервере невозможно', 'error');
+    return;
+  }
+  if (!baseId) {
+    if (typeof showToast === 'function') showToast('Не указан id базы', 'error');
+    return;
+  }
+  var existing = document.getElementById('syncDeleteBaseOverlay');
+  if (existing) existing.remove();
+
   var overlay = document.createElement('div');
+  overlay.id = 'syncDeleteBaseOverlay';
   overlay.className = 'sync-replace-overlay';
   overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', 'Удаление базы');
   var safeName = String(baseName || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   overlay.innerHTML = '<div class="sync-replace-modal">' +
     '<h4>Удалить базу «' + safeName + '»?</h4>' +
     '<p>Удаление необратимо. Все записи в этой базе на сервере будут удалены.</p>' +
+    '<p>Введите пароль вашей учётной записи для подтверждения:</p>' +
+    '<input type="password" id="syncDeleteBasePassword" class="sync-replace-select" placeholder="Пароль" autocomplete="current-password" />' +
     '<div class="sync-replace-actions">' +
     '<button type="button" class="small-btn" data-action="cancel">Отмена</button> ' +
-    '<button type="button" class="action-btn" data-action="delete" style="background:var(--color-error, #c00);">Удалить</button>' +
+    '<button type="button" class="action-btn" data-action="confirm-delete" style="background:var(--color-error, #c00);">Удалить</button>' +
     '</div></div>';
 
-  function close() { overlay.remove(); document.body.style.overflow = ''; }
-  overlay.querySelector('[data-action="cancel"]').onclick = close;
-  overlay.querySelector('[data-action="delete"]').onclick = function () {
-    var deleteBtn = overlay.querySelector('[data-action="delete"]');
-    deleteBtn.disabled = true;
-    window.CattleTrackerApi.deleteObject(baseId).then(function () {
+  function close() {
+    overlay.remove();
+    document.body.style.overflow = '';
+  }
+
+  function doDelete() {
+    var pwdEl = overlay.querySelector('#syncDeleteBasePassword');
+    var password = (pwdEl && pwdEl.value) ? String(pwdEl.value) : '';
+    if (!password) {
+      if (typeof showToast === 'function') showToast('Введите пароль', 'error');
+      if (pwdEl) pwdEl.focus();
+      return;
+    }
+    var deleteBtn = overlay.querySelector('[data-action="confirm-delete"]');
+    if (deleteBtn) deleteBtn.disabled = true;
+    var apiDelete = typeof window.CattleTrackerApi.deleteObjectWithPassword === 'function'
+      ? window.CattleTrackerApi.deleteObjectWithPassword(baseId, password)
+      : window.CattleTrackerApi.deleteObject(baseId);
+    apiDelete.then(function () {
       close();
       if (typeof showToast === 'function') showToast('База удалена', 'success');
-      renderSyncServerBasesList();
-      if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
+      if (typeof window.removeApiEntriesCache === 'function') window.removeApiEntriesCache(baseId);
+      if (window.CattleTrackerObjectData && window.CattleTrackerObjectData.removeKeysForObject) {
+        window.CattleTrackerObjectData.removeKeysForObject(baseId);
+      }
+      var refresh = typeof window.afterLocalHideObject === 'function'
+        ? window.afterLocalHideObject(baseId)
+        : (typeof window.loadObjectsFromApi === 'function'
+          ? window.loadObjectsFromApi().then(function () {
+            if (typeof window.updateObjectSwitcher === 'function') window.updateObjectSwitcher();
+            if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
+          })
+          : Promise.resolve());
+      return Promise.resolve(refresh).then(function () {
+        renderSyncServerBasesList();
+        if (typeof window.renderAdminScreen === 'function') {
+          var adminScreen = document.getElementById('admin-screen');
+          if (adminScreen && adminScreen.classList.contains('active')) window.renderAdminScreen();
+        }
+      });
     }).catch(function (err) {
-      if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Ошибка удаления', 'error');
-      deleteBtn.disabled = false;
+      if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Ошибка удаления', 'error', 5000);
+      if (deleteBtn) deleteBtn.disabled = false;
     });
-  };
+  }
+
+  overlay.querySelector('[data-action="cancel"]').addEventListener('click', close);
+  overlay.querySelector('[data-action="confirm-delete"]').addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    doDelete();
+  });
+  var pwdInput = overlay.querySelector('#syncDeleteBasePassword');
+  if (pwdInput) {
+    pwdInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doDelete();
+      }
+    });
+  }
   overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
+  setTimeout(function () {
+    var el = overlay.querySelector('#syncDeleteBasePassword');
+    if (el) el.focus();
+  }, 50);
 }
 
 /**

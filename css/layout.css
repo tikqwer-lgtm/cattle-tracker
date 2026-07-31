@@ -303,6 +303,78 @@
   font-variant-numeric: tabular-nums;
 }
 
+.menu-calving-stat-value-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  min-width: 2.5rem;
+}
+
+.menu-calving-stat-star {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin: 0;
+  cursor: pointer;
+  line-height: 1.1;
+  border-radius: var(--radius-sm, 4px);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  -webkit-tap-highlight-color: rgba(61, 110, 181, 0.2);
+}
+
+.menu-calving-stat-star:hover,
+.menu-calving-stat-star:focus-visible {
+  background: var(--color-primary-light, #e8f4fd);
+  outline: none;
+}
+
+.menu-calving-stat-star--above {
+  margin-bottom: 1px;
+}
+
+.menu-calving-stat-star--below {
+  margin-top: 1px;
+}
+
+.menu-calving-star-modal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(40vh, 280px);
+  overflow-y: auto;
+  text-align: left;
+}
+
+.menu-calving-star-modal-list li {
+  padding: 0.45rem 0.25rem;
+  border-bottom: 1px solid var(--color-border, #ddd);
+  font-size: 0.95rem;
+}
+
+.menu-calving-star-modal-list li:last-child {
+  border-bottom: none;
+}
+
+.menu-calving-star-modal-empty {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-muted, #666);
+  font-size: 0.9rem;
+}
+
+.menu-calving-star-modal-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #666);
+  line-height: 1.4;
+}
+
 .menu-calving-warning {
   margin: 0;
   font-size: 0.85em;
@@ -369,4 +441,18 @@
 
 .calving-row-overdue td {
   background: #fff8e1;
+}
+
+.calving-row-exited td {
+  opacity: 0.85;
+}
+
+.calving-mark {
+  margin-left: 3px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.calving-mark-exited {
+  color: var(--color-text-muted);
 }

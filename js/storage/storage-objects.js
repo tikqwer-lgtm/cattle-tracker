@@ -160,7 +160,6 @@ function deleteObject(id) {
   if (idx === -1) return Promise.resolve(false);
   var currentId = getCurrentObjectId();
   list.splice(idx, 1);
-  if (list.length === 0) list = [{ id: 'default', name: 'Основная база' }];
   saveObjectsList(list);
   try {
     localStorage.removeItem('cattleEntries_' + id);
@@ -169,9 +168,13 @@ function deleteObject(id) {
     }
   } catch (e) {}
   if (currentId === id) {
-    var nextId = list[0] ? list[0].id : 'default';
-    setCurrentObjectId(nextId);
-    if (typeof window.loadLocally === 'function') window.loadLocally();
+    if (list[0]) {
+      setCurrentObjectId(list[0].id);
+      if (typeof window.loadLocally === 'function') window.loadLocally();
+    } else {
+      setCurrentObjectId('');
+      if (typeof window !== 'undefined') window.entries = [];
+    }
   }
   if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
   if (typeof window.updateViewList === 'function') window.updateViewList();

@@ -1,7 +1,8 @@
 /**
- * Objects (bases) routes: list (with meta), create, update, delete.
+ * Objects (bases) routes: list (with meta), create, update, delete (with password).
  */
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 const { requireAuth, requireRole, isAppAdminRole, requireObjectAccess } = require('../auth');
@@ -155,11 +156,19 @@ router.put('/:id', requireAuth, requireObjectAccess('id'), requireRole('admin'),
 router.delete('/:id', requireAuth, requireRole('admin'), (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
-  if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });
   const obj = db.getObjectById(id);
   if (!obj) return res.status(404).json({ error: 'Объект не найден' });
   if (!isAppAdminRole(req.user.role)) {
     return res.status(403).json({ error: 'Удалить базу на сервере может только администратор' });
+  }
+  const password = (req.body && req.body.password) != null ? String(req.body.password) : '';
+  if (!password) return res.status(400).json({ error: 'Введите пароль для подтверждения удаления' });
+  const userRow = db.findUserByIdWithPassword
+    ? db.findUserByIdWithPassword(req.user.id)
+    : null;
+  if (!userRow || !userRow.password_hash) return res.status(403).json({ error: 'Пользователь не найден' });
+  if (!bcrypt.compareSync(password, userRow.password_hash)) {
+    return res.status(403).json({ error: 'Неверный пароль' });
   }
   db.deleteObject(id);
   res.status(204).send();

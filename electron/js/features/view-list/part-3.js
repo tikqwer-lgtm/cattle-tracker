@@ -56,8 +56,10 @@ function _handleViewListClick(ev) {
   }
 
   var sortTh = target.closest('th[data-sort-key], .view-virtual-head-cell[data-sort-key]');
-  if (sortTh && tableContainer && tableContainer.contains(sortTh)) {
+  var viewScreenEl = document.getElementById('view-screen');
+  if (sortTh && viewScreenEl && viewScreenEl.contains(sortTh)) {
     ev.preventDefault();
+    ev.stopPropagation();
     var key = sortTh.getAttribute('data-sort-key');
     if (key) {
       if (globalThis['__viewList'].state.viewListSortKey === key) globalThis['__viewList'].state.viewListSortDir = globalThis['__viewList'].state.viewListSortDir === 'asc' ? 'desc' : 'asc';

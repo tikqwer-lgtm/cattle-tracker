@@ -1,13 +1,20 @@
 /**
  * calving-calc.js — план и факт отёлов по месяцам.
  * План: стельная текущей лактации, осеменение + GESTATION_DAYS, rollover displayMonth.
- * Факт: отёлы из lactationHistory (осеменение той же лактации, не текущее поле карточки).
+ * Факт: любая дата отёла (карточка и/или lactationHistory); выбывшие сохраняются.
+ * Звёздочки: добавлены после даты отёла (dateAdded > calvingDate); выбывшие с датой отёла.
  */
 var GESTATION_DAYS = 285;
 
 function parseCalvingDate(str) {
   if (!str) return null;
-  var d = new Date(str);
+  if (str instanceof Date) return isNaN(str.getTime()) ? null : str;
+  var s = String(str).trim();
+  var iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]);
+  var ru = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(s);
+  if (ru) return new Date(+ru[3], +ru[2] - 1, +ru[1]);
+  var d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -124,26 +131,26 @@ function findSnapshotForCalving(entry, calvingDateKey) {
 }
 
 /**
- * Фактические отёлы с осеменением той же лактации (снимок lactationHistory).
+ * Фактические отёлы: дата на карточке и/или в lactationHistory.
+ * Осеменение желательно, но не обязательно — достаточно самой даты отёла.
  */
 function collectFactLactationEvents(entry) {
   var seen = Object.create(null);
   var out = [];
 
   function pushEvent(calvingDateKey, insemDateStr) {
-    if (!calvingDateKey || !insemDateStr || seen[calvingDateKey]) return;
+    if (!calvingDateKey || seen[calvingDateKey]) return;
     seen[calvingDateKey] = true;
     var d = dateOnly(parseCalvingDate(calvingDateKey));
     if (!d) return;
-    out.push({ calvingDate: d, inseminationDate: insemDateStr });
+    out.push({ calvingDate: d, inseminationDate: insemDateStr || '' });
   }
 
   if (Array.isArray(entry.lactationHistory)) {
     entry.lactationHistory.forEach(function (snap) {
       if (!snap || !snap.calvingDate) return;
       var insem = getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate);
-      if (!insem) return;
-      pushEvent(formatDateKey(dateOnly(parseCalvingDate(snap.calvingDate))), insem);
+      pushEvent(formatDateKey(dateOnly(parseCalvingDate(snap.calvingDate))), insem || '');
     });
   }
 
@@ -152,13 +159,20 @@ function collectFactLactationEvents(entry) {
     var currentKey = formatDateKey(dateOnly(currentCd));
     if (!seen[currentKey]) {
       var snap = findSnapshotForCalving(entry, currentKey);
-      if (snap) {
-        var insem2 = getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate);
-        if (insem2) pushEvent(currentKey, insem2);
-      }
+      var insem2 = snap
+        ? getLastInseminationDateFromHistory(snap.inseminationHistory, snap.inseminationDate)
+        : getFertileInseminationDate(entry);
+      pushEvent(currentKey, insem2 || '');
     }
   }
   return out;
+}
+
+function isAddedAfterCalving(entry, calvingDate) {
+  var added = dateOnly(parseCalvingDate(entry && entry.dateAdded));
+  var cd = dateOnly(calvingDate instanceof Date ? calvingDate : parseCalvingDate(calvingDate));
+  if (!added || !cd) return false;
+  return added > cd;
 }
 
 function buildCalvingRow(entry, opts) {
@@ -173,6 +187,8 @@ function buildCalvingRow(entry, opts) {
     ? daysBetween(insem, actualKey || refKey)
     : null;
   var planFactDiffDays = (actualKey && expectedKey) ? daysBetween(expectedKey, actualKey) : null;
+  var exited = !!opts.exited;
+  var addedAfter = !!opts.addedAfterCalving;
 
   return {
     cattleId: entry.cattleId,
@@ -186,7 +202,9 @@ function buildCalvingRow(entry, opts) {
     planFactDiffDays: planFactDiffDays,
     overdue: !!opts.overdue,
     rowKind: opts.rowKind || 'plan',
-    dataError: actualDate ? isFutureDate(actualDate, refDate) : false
+    dataError: actualDate ? isFutureDate(actualDate, refDate) : false,
+    exited: exited,
+    addedAfterCalving: addedAfter
   };
 }
 
@@ -219,9 +237,10 @@ function getCalvingStatsForMonth(entries, year, month, refDate) {
 
   (entries || []).forEach(function (entry) {
     if (!entry || !entry.cattleId) return;
-    if (isExited(entry, refDate)) return;
+    var exited = isExited(entry, refDate);
 
-    if (isSterlyana(entry)) {
+    // План — только невыбывшие стельные
+    if (!exited && isSterlyana(entry)) {
       var insem = getFertileInseminationDate(entry);
       if (insem) {
         var expected = getExpectedCalvingDateFromInsem(insem);
@@ -235,7 +254,9 @@ function getCalvingStatsForMonth(entries, year, month, refDate) {
               actualCalvingDate: null,
               refDate: refDate,
               overdue: displayOrd > plannedOrd,
-              rowKind: 'plan'
+              rowKind: 'plan',
+              exited: false,
+              addedAfterCalving: false
             });
             planRows.push(row);
             mergedSeen[String(entry.cattleId) + '_plan'] = row;
@@ -244,14 +265,18 @@ function getCalvingStatsForMonth(entries, year, month, refDate) {
       }
     }
 
+    // Факт — по дате отёла, включая выбывших
     collectFactLactationEvents(entry).forEach(function (ev) {
       if (!isDateInMonth(ev.calvingDate, year, month)) return;
+      var addedAfter = isAddedAfterCalving(entry, ev.calvingDate);
       var factRow = buildCalvingRow(entry, {
         inseminationDate: ev.inseminationDate,
         actualCalvingDate: ev.calvingDate,
         refDate: refDate,
         overdue: false,
-        rowKind: 'fact'
+        rowKind: 'fact',
+        exited: exited,
+        addedAfterCalving: addedAfter
       });
       factRows.push(factRow);
       var factKey = String(entry.cattleId) + '_' + formatDateKey(ev.calvingDate);
@@ -271,10 +296,18 @@ function getCalvingStatsForMonth(entries, year, month, refDate) {
   });
 
   var factDataErrors = factRows.some(function (x) { return x.dataError; });
+  var addedAfterCalvingCount = factRows.filter(function (x) { return x.addedAfterCalving; }).length;
+  var exitedCount = factRows.filter(function (x) { return x.exited; }).length;
 
   return {
     plan: { count: planRows.length, items: planRows },
-    fact: { count: factRows.length, items: factRows, hasDataErrors: factDataErrors },
+    fact: {
+      count: factRows.length,
+      items: factRows,
+      hasDataErrors: factDataErrors,
+      addedAfterCalvingCount: addedAfterCalvingCount,
+      exitedCount: exitedCount
+    },
     rows: mergedRows
   };
 }

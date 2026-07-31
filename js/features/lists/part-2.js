@@ -103,9 +103,16 @@
       var tbody = rows.map(function (it) {
         var disp = mapCalvingRowForDisplay(it, formatDateFn);
         var cid = (it.cattleId || '').replace(/"/g, '&quot;');
-        var rowClass = it.overdue ? ' class="calving-row-overdue"' : '';
+        var rowClassParts = [];
+        if (it.overdue) rowClassParts.push('calving-row-overdue');
+        if (it.exited) rowClassParts.push('calving-row-exited');
+        if (it.addedAfterCalving) rowClassParts.push('calving-row-added-after');
+        var rowClass = rowClassParts.length ? ' class="' + rowClassParts.join(' ') + '"' : '';
+        var marks = '';
+        if (it.addedAfterCalving) marks += '<span class="calving-mark" title="Добавлена после даты отёла">*</span>';
+        if (it.exited) marks += '<span class="calving-mark calving-mark-exited" title="Выбывшая">†</span>';
         return '<tr data-cattle-id="' + cid + '"' + rowClass + '>' +
-          '<td>' + globalThis['__lists'].escapeHtml(disp.cattleId) + '</td>' +
+          '<td>' + globalThis['__lists'].escapeHtml(disp.cattleId) + marks + '</td>' +
           '<td>' + globalThis['__lists'].escapeHtml(disp.nickname) + '</td>' +
           '<td>' + globalThis['__lists'].escapeHtml(disp.inseminationDate) + '</td>' +
           '<td>' + globalThis['__lists'].escapeHtml(disp.daysPregnant) + '</td>' +

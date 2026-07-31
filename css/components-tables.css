@@ -162,6 +162,17 @@
   align-items: center;
   justify-content: center;
 }
+.view-virtual-head-cell.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+.view-virtual-head-cell.sortable-th:hover {
+  opacity: 0.92;
+}
+.view-virtual-head-cell .sort-indicator {
+  font-size: 0.75em;
+  margin-left: 2px;
+}
 .view-virtual-body {
   flex: 1;
   min-height: 400px;

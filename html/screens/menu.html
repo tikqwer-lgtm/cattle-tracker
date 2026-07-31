@@ -5,12 +5,12 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.6.46" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.54" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
 
     <div id="menu-no-object-state" class="menu-no-object-state" hidden>
       <p id="menu-no-object-message" class="menu-no-object-message">Ожидается подключение объекта администратором.</p>
-      <button type="button" class="action-btn" id="menuCreateObjectEmptyBtn" style="display: none;" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">Создать объект</button>
+      <button type="button" class="action-btn" id="menuCreateObjectEmptyBtn" style="display: none;" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">Создать базу</button>
     </div>
 
     <div id="menu-main-content">
@@ -72,7 +72,11 @@
         </div>
         <div class="menu-calving-stat">
           <span class="menu-calving-stat-label">Факт</span>
-          <span class="menu-calving-stat-value" id="menuCalvingFactCount">0</span>
+          <span class="menu-calving-stat-value-wrap">
+            <button type="button" class="menu-calving-stat-star menu-calving-stat-star--above" id="menuCalvingFactAddedStar" hidden aria-label="После отёла: животные, добавленные в базу после даты отёла">*0</button>
+            <span class="menu-calving-stat-value" id="menuCalvingFactCount">0</span>
+            <button type="button" class="menu-calving-stat-star menu-calving-stat-star--below" id="menuCalvingFactExitedStar" hidden aria-label="Выбывшие с датой отёла">*0</button>
+          </span>
         </div>
       </div>
       <p id="menuCalvingWarning" class="menu-calving-warning" hidden></p>

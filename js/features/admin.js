@@ -274,12 +274,28 @@
     });
   }
 
+  function bindAdminCreateObjectBtn() {
+    var btn = document.getElementById('adminCreateObjectBtn');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', function () {
+      if (typeof global.handleAddObjectClick === 'function') {
+        global.handleAddObjectClick();
+      } else if (typeof global.showAddObjectModal === 'function') {
+        global.showAddObjectModal();
+      } else if (typeof showToast === 'function') {
+        showToast('Создание объекта недоступно', 'error');
+      }
+    });
+  }
+
   function renderAdminScreen() {
     var usersEl = document.getElementById('admin-users-container');
     var reportsEl = document.getElementById('admin-reports-container');
     var assignEl = document.getElementById('admin-assign-container');
     if (!usersEl || !reportsEl) return;
     var api = global.CattleTrackerApi;
+    bindAdminCreateObjectBtn();
     if (!api || !api.getUsers || !api.getReports) {
       usersEl.innerHTML = '<p class="admin-message">API недоступен.</p>';
       reportsEl.innerHTML = '';

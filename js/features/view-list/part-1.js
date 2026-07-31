@@ -19,10 +19,23 @@ function _compareViewList(a, b, key, dir) {
     va = (a.protocol && a.protocol.startDate) || a.protocolStartDate;
     vb = (b.protocol && b.protocol.startDate) || b.protocolStartDate;
   }
-  if (key === 'inseminationDate' || key === 'calvingDate' || key === 'dryStartDate' || key === 'birthDate' || key === 'exitDate' || key === 'protocolStartDate') {
-    var da = va ? new Date(va).getTime() : 0;
-    var db = vb ? new Date(vb).getTime() : 0;
-    return mul * (da - db);
+  if (key === 'protocolName') {
+    va = (a.protocol && a.protocol.name) || a.protocolName;
+    vb = (b.protocol && b.protocol.name) || b.protocolName;
+  }
+  function parseSortDate(v) {
+    if (!v) return 0;
+    if (v instanceof Date) return isNaN(v.getTime()) ? 0 : v.getTime();
+    var s = String(v).trim();
+    var iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+    var ru = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(s);
+    if (ru) return new Date(+ru[3], +ru[2] - 1, +ru[1]).getTime();
+    var t = new Date(s).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  if (key === 'inseminationDate' || key === 'calvingDate' || key === 'dryStartDate' || key === 'birthDate' || key === 'exitDate' || key === 'protocolStartDate' || key === 'dateAdded') {
+    return mul * (parseSortDate(va) - parseSortDate(vb));
   }
   if (key === 'daysPregnant') {
     var na = typeof getDaysPregnant === 'function' ? getDaysPregnant(a) : null;
@@ -31,12 +44,19 @@ function _compareViewList(a, b, key, dir) {
     nb = (nb != null && nb !== '—') ? Number(nb) : 0;
     return mul * (na - nb);
   }
-  if (key === 'attemptNumber' || key === 'lactation') {
-    var na = parseInt(va, 10);
-    var nb = parseInt(vb, 10);
-    if (isNaN(na)) na = 0;
-    if (isNaN(nb)) nb = 0;
-    return mul * (na - nb);
+  if (key === 'attemptNumber' || key === 'lactation' || key === 'pdo') {
+    var na2 = parseInt(va, 10);
+    var nb2 = parseInt(vb, 10);
+    if (isNaN(na2)) na2 = 0;
+    if (isNaN(nb2)) nb2 = 0;
+    return mul * (na2 - nb2);
+  }
+  if (key === 'cattleId') {
+    var na3 = parseInt(va, 10);
+    var nb3 = parseInt(vb, 10);
+    if (!isNaN(na3) && !isNaN(nb3) && String(na3) === String(va).trim() && String(nb3) === String(vb).trim()) {
+      return mul * (na3 - nb3);
+    }
   }
   if (key === 'synced') {
     var ba = va === true || va === 'true';
@@ -127,10 +147,10 @@ function updateViewList() {
     _renderVirtualList(tableContainer, listToShow, fields, sortMark, sortClass, bulkContainer);
     var viewScreen = document.getElementById('view-screen');
     if (viewScreen) {
-      viewScreen.removeEventListener('click', _handleViewListClick);
-      viewScreen.addEventListener('click', _handleViewListClick);
-      viewScreen.removeEventListener('keydown', _handleViewListKeydown);
-      viewScreen.addEventListener('keydown', _handleViewListKeydown);
+      viewScreen.removeEventListener('click', globalThis['__viewList']._handleViewListClick);
+      viewScreen.addEventListener('click', globalThis['__viewList']._handleViewListClick);
+      viewScreen.removeEventListener('keydown', globalThis['__viewList']._handleViewListKeydown);
+      viewScreen.addEventListener('keydown', globalThis['__viewList']._handleViewListKeydown);
     }
     globalThis['__viewList'].initViewFieldsSettings();
     globalThis['__viewList'].initViewEditorModeButton();
@@ -150,8 +170,8 @@ function updateViewList() {
             <input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все">
           </th>
           ${fields.map(field => {
-            if (!field.sortable) return `<th>${field.label}</th>`;
-            return `<th class="sortable-th${sortClass(field.key)}" data-sort-key="${field.key}" role="button" tabindex="0">${field.label}${sortMark(field.key)}</th>`;
+            if (field.sortable === false) return `<th>${field.label}</th>`;
+            return `<th class="sortable-th${sortClass(field.key)}" data-sort-key="${field.key}" role="button" tabindex="0" title="Сортировать">${field.label}${sortMark(field.key)}</th>`;
           }).join('')}
         </tr>
       </thead>
@@ -180,10 +200,10 @@ function updateViewList() {
 
   var viewScreen = document.getElementById('view-screen');
   if (viewScreen) {
-    viewScreen.removeEventListener('click', _handleViewListClick);
-    viewScreen.addEventListener('click', _handleViewListClick);
-    viewScreen.removeEventListener('keydown', _handleViewListKeydown);
-    viewScreen.addEventListener('keydown', _handleViewListKeydown);
+    viewScreen.removeEventListener('click', globalThis['__viewList']._handleViewListClick);
+    viewScreen.addEventListener('click', globalThis['__viewList']._handleViewListClick);
+    viewScreen.removeEventListener('keydown', globalThis['__viewList']._handleViewListKeydown);
+    viewScreen.addEventListener('keydown', globalThis['__viewList']._handleViewListKeydown);
   }
 
   globalThis['__viewList'].initViewFieldsSettings();
@@ -243,8 +263,8 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   var headHtml = '<div class="view-virtual-head" style="grid-template-columns:' + gridCols + '">' +
     '<div class="view-virtual-head-cell view-virtual-checkbox"><input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все"></div>' +
     fields.map(function (f) {
-      if (!f.sortable) return '<div class="view-virtual-head-cell">' + (f.label || '').replace(/</g, '&lt;') + '</div>';
-      return '<div class="view-virtual-head-cell sortable-th' + sortClass(f.key) + '" data-sort-key="' + (f.key || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0">' + (f.label || '').replace(/</g, '&lt;') + sortMark(f.key) + '</div>';
+      if (f.sortable === false) return '<div class="view-virtual-head-cell">' + (f.label || '').replace(/</g, '&lt;') + '</div>';
+      return '<div class="view-virtual-head-cell sortable-th' + sortClass(f.key) + '" data-sort-key="' + (f.key || '').replace(/"/g, '&quot;') + '" role="button" tabindex="0" title="Сортировать">' + (f.label || '').replace(/</g, '&lt;') + sortMark(f.key) + '</div>';
     }).join('') +
     '</div>';
   if (container._pinchZoomDestroy) {

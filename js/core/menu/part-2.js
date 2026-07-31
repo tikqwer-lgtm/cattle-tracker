@@ -174,39 +174,45 @@ function handleEditObjectClick() {
 }
 
 /**
- * Обработчик кнопки «Удалить» — удаляет текущий объект с подтверждением
+ * Обработчик кнопки «Удалить» — удаляет текущий объект с подтверждением.
+ * В режиме API: модалка с паролем (как на экране «Базы на сервере»), а не локальное скрытие.
  */
 function handleDeleteObjectClick() {
   var select = document.getElementById('currentObjectSelect');
   var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
-  if (!select || !list || !list.length) return;
+  if (!select || !list || !list.length) {
+    if (typeof showToast === 'function') showToast('Нет базы для удаления', 'info', 3000);
+    return;
+  }
   var id = select.value;
-  if (id === 'default') {
-    if (typeof showToast === 'function') showToast('Нельзя удалить базовый объект default', 'error', 4000);
+  var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
+  if (pendingId && id === pendingId) {
+    if (typeof showToast === 'function') showToast('Сначала выберите базу', 'info', 3000);
     return;
   }
   var obj = list.filter(function (o) { return o.id === id; })[0];
   var name = (obj && obj.name) ? obj.name : id;
-  var apiLocalHide = window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.hideObjectLocal === 'function';
-  var msg = apiLocalHide
-    ? ('Скрыть базу «' + String(name).replace(/</g, '&lt;') + '» на этом устройстве? На сервере данные не удаляются.')
-    : ('Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.');
-  var doDelete = function () {
-    if (apiLocalHide) {
-      window.CattleTrackerApi.hideObjectLocal(id).then(function () {
-        if (typeof window.afterLocalHideObject === 'function') {
-          return window.afterLocalHideObject(id);
-        }
-      }).then(function () {
-        if (typeof updateObjectSwitcher === 'function') globalThis['__menu'].updateObjectSwitcher();
-        if (typeof showToast === 'function') showToast('База скрыта на этом устройстве', 'info', 4000);
-      }).catch(function (err) {
-        var m = err && err.message ? err.message : 'Ошибка';
-        if (typeof showToast === 'function') showToast(m, 'error', 5000);
-      });
+
+  if (window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi) {
+    var showDel = typeof window.showDeleteBaseModal === 'function'
+      ? window.showDeleteBaseModal
+      : (globalThis['__syncBases'] && typeof globalThis['__syncBases'].showDeleteBaseModal === 'function'
+        ? globalThis['__syncBases'].showDeleteBaseModal
+        : null);
+    if (showDel) {
+      showDel(id, name);
       return;
     }
-    if (typeof deleteObject !== 'function') return;
+    if (typeof showToast === 'function') showToast('Удаление базы недоступно', 'error', 4000);
+    return;
+  }
+
+  var msg = 'Удалить базу «' + String(name).replace(/</g, '&lt;') + '»? Все записи в ней будут удалены.';
+  var doDelete = function () {
+    if (typeof deleteObject !== 'function') {
+      if (typeof showToast === 'function') showToast('Удаление недоступно', 'error', 4000);
+      return;
+    }
     var p = deleteObject(id);
     if (p && typeof p.then === 'function') {
       p.then(function () {
@@ -293,6 +299,15 @@ function confirmAddObject() {
   if (result && typeof result.then === 'function') {
     result.then(function () {
       if (typeof updateObjectSwitcher === 'function') globalThis['__menu'].updateObjectSwitcher();
+      if (typeof showToast === 'function') showToast('Объект создан', 'success');
+      var adminScreen = document.getElementById('admin-screen');
+      if (adminScreen && adminScreen.classList.contains('active')) {
+        if (typeof window.renderAdminScreen === 'function') window.renderAdminScreen();
+        else if (typeof window.renderSyncServerBasesList === 'function') window.renderSyncServerBasesList();
+      } else if (typeof window.renderSyncServerBasesList === 'function') {
+        window.renderSyncServerBasesList();
+      }
+      if (typeof window.loadObjectsFromApi === 'function') window.loadObjectsFromApi();
     }).catch(function (err) {
       var msg = err && err.message ? err.message : 'Ошибка создания объекта';
       if (typeof showToast === 'function') showToast(msg, 'error', 5000);

@@ -15,7 +15,7 @@ function updateMenuEmptyObjectState(list, currentId, pendingId) {
   var realList = (list || []).filter(function (o) {
     return o && o.id && !(pendingId && o.id === pendingId);
   });
-  var noObjects = realList.length === 0 || (pendingId && currentId === pendingId && realList.length === 0);
+  var noObjects = realList.length === 0;
   if (emptyEl) emptyEl.hidden = !noObjects;
   if (mainEl) {
     if (noObjects) {
@@ -27,9 +27,13 @@ function updateMenuEmptyObjectState(list, currentId, pendingId) {
     }
   }
   if (msgEl) {
-    msgEl.textContent = isAdmin
-      ? 'Нет объектов. Создайте объект, чтобы начать работу.'
-      : 'Ожидается подключение объекта администратором.';
+    if (isAdmin) {
+      msgEl.hidden = true;
+      msgEl.textContent = '';
+    } else {
+      msgEl.hidden = false;
+      msgEl.textContent = 'Ожидается подключение объекта администратором.';
+    }
   }
   if (createBtn) createBtn.style.display = noObjects && isAdmin ? '' : 'none';
   var screen = document.getElementById('menu-screen');
@@ -45,52 +49,68 @@ function updateObjectSwitcher() {
   var editBtn = document.getElementById('editObjectBtn');
   var deleteBtn = document.getElementById('deleteObjectBtn');
   if (!select) return;
-  var list = typeof getObjectsList === 'function' ? getObjectsList() : null;
-  if (!list || list.length === 0) {
-    if (typeof ensureObjectsAndMigration === 'function') ensureObjectsAndMigration();
-    list = typeof getObjectsList === 'function' ? getObjectsList() : [{ id: 'default', name: 'Основная база' }];
-  }
-  var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
+  var list = typeof getObjectsList === 'function' ? getObjectsList() : [];
+  if (!list) list = [];
+  var currentId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
   var pendingId = typeof window !== 'undefined' && window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
-  if ((!list || list.length === 0) && pendingId && typeof setCurrentObjectId === 'function' && currentId !== pendingId) {
-    setCurrentObjectId(pendingId);
-    currentId = pendingId;
+  var realList = list.filter(function (o) {
+    return o && o.id && !(pendingId && o.id === pendingId);
+  });
+
+  if (realList.length === 0) {
+    if (pendingId && typeof setCurrentObjectId === 'function' && currentId !== pendingId) {
+      setCurrentObjectId(pendingId);
+      currentId = pendingId;
+    }
+    select.innerHTML = '';
+    if (typeof globalThis['__menu'].updateMenuEmptyObjectState === 'function') {
+      globalThis['__menu'].updateMenuEmptyObjectState([], currentId, pendingId);
+    }
+    return;
   }
-  var htmlOpts = '';
-  if (pendingId && currentId === pendingId) {
-    htmlOpts += '<option value="' + String(pendingId).replace(/"/g, '&quot;') + '" selected>— Выберите базу (Синхронизация) —</option>';
+
+  if (pendingId && currentId === pendingId && typeof setCurrentObjectId === 'function') {
+    setCurrentObjectId(realList[0].id);
+    currentId = realList[0].id;
   }
-  htmlOpts += list.map(function (obj) {
+
+  var htmlOpts = realList.map(function (obj) {
     var name = (obj.name || obj.id || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    var sel = obj.id === currentId && currentId !== pendingId ? ' selected' : '';
+    var sel = obj.id === currentId ? ' selected' : '';
     return '<option value="' + (obj.id || '').replace(/"/g, '&quot;') + '"' + sel + '>' + name + '</option>';
   }).join('');
   select.innerHTML = htmlOpts;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  var canCards = typeof hasCapability === 'function' ? hasCapability('cards', user) : true;
   var canCreateDelete = typeof hasCapability === 'function' ? hasCapability('createDeleteObjects', user) : false;
-  var canMultiBase = typeof hasCapability === 'function' ? hasCapability('multiBase', user) : false;
-  var canFarmSettings = typeof hasCapability === 'function' ? hasCapability('farmCardSettings', user) : false;
   var useApi = window.CATTLE_TRACKER_USE_API;
-  var showObjCrud = canCards && canCreateDelete;
   var mobileApi = useApi && typeof window.isMobile === 'function' && window.isMobile();
   if (addBtn) addBtn.style.display = canCreateDelete && !mobileApi ? '' : 'none';
   if (editBtn) editBtn.style.display = canCreateDelete ? '' : 'none';
   if (deleteBtn) {
     deleteBtn.style.display = canCreateDelete ? '' : 'none';
-    deleteBtn.disabled = (select.value === 'default' || (pendingId && select.value === pendingId));
+    deleteBtn.disabled = false;
+    if (!deleteBtn.dataset.deleteBound) {
+      deleteBtn.dataset.deleteBound = '1';
+      deleteBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        if (typeof globalThis['__menu'].handleDeleteObjectClick === 'function') {
+          globalThis['__menu'].handleDeleteObjectClick();
+        } else if (typeof window.handleDeleteObjectClick === 'function') {
+          window.handleDeleteObjectClick();
+        }
+      });
+    }
   }
   select.onchange = function () {
     var id = select.value;
     if (pendingId && id === pendingId) return;
-    if (deleteBtn) deleteBtn.disabled = (id === 'default');
     if (id && typeof switchToObject === 'function') switchToObject(id);
   };
   if (addBtn && !addBtn.getAttribute('onclick')) {
     addBtn.onclick = function () { globalThis['__menu'].handleAddObjectClick(); };
   }
   if (typeof globalThis['__menu'].updateMenuEmptyObjectState === 'function') {
-    globalThis['__menu'].updateMenuEmptyObjectState(list, currentId, pendingId);
+    globalThis['__menu'].updateMenuEmptyObjectState(realList, currentId, pendingId);
   }
 }
 
@@ -121,6 +141,8 @@ function updateMenuGroupVisibility() {
 }
 
 var _menuCalvingMonthOffset = 0;
+/** Последний факт месяца: для подсказки по звёздочкам */
+var _menuCalvingLastFactItems = [];
 
 function getMenuCalvingViewYearMonth() {
   var now = new Date();
@@ -144,6 +166,84 @@ function formatCalvingMonthLabel(year, month) {
   }
 }
 
+function escapeCalvingModalHtml(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Всплывающее окно по нажатию на *N (мобильные без hover).
+ * kind: 'addedAfter' | 'exited'
+ */
+function showMenuCalvingStarModal(kind) {
+  var isAdded = kind === 'addedAfter';
+  var title = isAdded ? 'После отёла' : 'Выбывшие';
+  var hint = isAdded
+    ? 'Животные, добавленные в базу после даты отёла (в факте за выбранный месяц):'
+    : 'Выбывшие животные с датой отёла в выбранном месяце:';
+  var items = (_menuCalvingLastFactItems || []).filter(function (row) {
+    return isAdded ? row.addedAfterCalving : row.exited;
+  });
+  var seen = Object.create(null);
+  var unique = [];
+  items.forEach(function (row) {
+    var id = String(row.cattleId || '');
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    unique.push(row);
+  });
+  unique.sort(function (a, b) {
+    return String(a.cattleId).localeCompare(String(b.cattleId), 'ru', { numeric: true });
+  });
+
+  var existing = document.getElementById('menuCalvingStarModal');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'menuCalvingStarModal';
+  overlay.className = 'confirm-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', title);
+
+  var listHtml;
+  if (!unique.length) {
+    listHtml = '<p class="menu-calving-star-modal-empty">Нет животных в этой категории</p>';
+  } else {
+    listHtml = '<ul class="menu-calving-star-modal-list">' + unique.map(function (row) {
+      var nick = row.nickname ? ' — ' + escapeCalvingModalHtml(row.nickname) : '';
+      var date = row.actualCalvingDate || row.calvingDate || '';
+      var datePart = date ? ' <span style="color:var(--color-text-muted);font-size:0.85em">(' + escapeCalvingModalHtml(date) + ')</span>' : '';
+      return '<li><strong>№' + escapeCalvingModalHtml(row.cattleId) + '</strong>' + nick + datePart + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  overlay.innerHTML =
+    '<div class="confirm-modal confirm-modal--wide">' +
+    '<p class="confirm-modal-text" style="font-weight:600;margin-bottom:0.35rem;">' + escapeCalvingModalHtml(title) + '</p>' +
+    '<p class="menu-calving-star-modal-hint">' + escapeCalvingModalHtml(hint) + '</p>' +
+    listHtml +
+    '<div class="confirm-modal-actions" style="margin-top:1rem;">' +
+    '<button type="button" class="small-btn" data-action="close">Закрыть</button>' +
+    '</div></div>';
+
+  function close() {
+    overlay.remove();
+    document.body.style.overflow = '';
+  }
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) close();
+  });
+  var closeBtn = overlay.querySelector('[data-action="close"]');
+  if (closeBtn) closeBtn.onclick = close;
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  if (closeBtn) closeBtn.focus();
+}
+
 function updateMenuCalvingForecast() {
   var block = document.getElementById('menuCalvingForecast');
   if (!block) return;
@@ -154,6 +254,8 @@ function updateMenuCalvingForecast() {
   var labelEl = document.getElementById('menuCalvingMonthLabel');
   var planEl = document.getElementById('menuCalvingPlanCount');
   var factEl = document.getElementById('menuCalvingFactCount');
+  var factAddedStar = document.getElementById('menuCalvingFactAddedStar');
+  var factExitedStar = document.getElementById('menuCalvingFactExitedStar');
   var warnEl = document.getElementById('menuCalvingWarning');
 
   if (labelEl) labelEl.textContent = formatCalvingMonthLabel(year, month);
@@ -161,10 +263,35 @@ function updateMenuCalvingForecast() {
   var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
   var stats = typeof getCalvingStatsForMonth === 'function'
     ? getCalvingStatsForMonth(list, year, month, now)
-    : { plan: { count: 0, items: [] }, fact: { count: 0, items: [], hasDataErrors: false } };
+    : { plan: { count: 0, items: [] }, fact: { count: 0, items: [], hasDataErrors: false, addedAfterCalvingCount: 0, exitedCount: 0 } };
+
+  _menuCalvingLastFactItems = (stats.fact && stats.fact.items) ? stats.fact.items.slice() : [];
 
   if (planEl) planEl.textContent = String(stats.plan.count);
   if (factEl) factEl.textContent = String(stats.fact.count);
+
+  var addedN = (stats.fact && stats.fact.addedAfterCalvingCount) || 0;
+  var exitedN = (stats.fact && stats.fact.exitedCount) || 0;
+  if (factAddedStar) {
+    if (addedN > 0) {
+      factAddedStar.hidden = false;
+      factAddedStar.textContent = '*' + addedN;
+      factAddedStar.setAttribute('aria-label', 'После отёла: ' + addedN + '. Нажмите для списка');
+    } else {
+      factAddedStar.hidden = true;
+      factAddedStar.textContent = '*0';
+    }
+  }
+  if (factExitedStar) {
+    if (exitedN > 0) {
+      factExitedStar.hidden = false;
+      factExitedStar.textContent = '*' + exitedN;
+      factExitedStar.setAttribute('aria-label', 'Выбывшие: ' + exitedN + '. Нажмите для списка');
+    } else {
+      factExitedStar.hidden = true;
+      factExitedStar.textContent = '*0';
+    }
+  }
 
   if (warnEl) {
     if (stats.fact.hasDataErrors) {
@@ -186,6 +313,8 @@ function initMenuCalvingForecast() {
   var next = document.getElementById('menuCalvingNext');
   var toggle = document.getElementById('menuCalvingToggle');
   var block = document.getElementById('menuCalvingForecast');
+  var factAddedStar = document.getElementById('menuCalvingFactAddedStar');
+  var factExitedStar = document.getElementById('menuCalvingFactExitedStar');
   if (block) block.dataset.inited = '1';
   if (prev) {
     prev.addEventListener('click', function () {
@@ -202,6 +331,20 @@ function initMenuCalvingForecast() {
   if (toggle) {
     toggle.addEventListener('click', function () {
       openCalvingListFromMenu();
+    });
+  }
+  if (factAddedStar) {
+    factAddedStar.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      showMenuCalvingStarModal('addedAfter');
+    });
+  }
+  if (factExitedStar) {
+    factExitedStar.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      showMenuCalvingStarModal('exited');
     });
   }
   if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {

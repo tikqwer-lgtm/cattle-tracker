@@ -32,8 +32,8 @@
   /** Скрыть базу в списке на этом устройстве; на сервере объект не трогается. */
   function hideObjectLocal(id) {
     var sid = String(id || '').trim();
-    if (!sid || sid === 'default') {
-      return Promise.reject(new Error('Эту базу нельзя скрыть'));
+    if (!sid) {
+      return Promise.reject(new Error('Не указана база'));
     }
     var map = {};
     getHiddenObjectIds().forEach(function (x) { map[x] = true; });

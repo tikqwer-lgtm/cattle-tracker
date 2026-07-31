@@ -192,10 +192,10 @@ function hideServerBaseLocalOnly(baseId, baseName) {
     });
   }
   if (typeof showConfirmModal === 'function') {
-    showConfirmModal(msg).then(function (ok) { if (ok) globalThis['__syncBases'].run(); });
+    showConfirmModal(msg).then(function (ok) { if (ok) run(); });
     return;
   }
-  if (confirm(msg)) globalThis['__syncBases'].run();
+  if (confirm(msg)) run();
 }
 
 function showReplaceBaseModal(sourceId) {

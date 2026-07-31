@@ -30,7 +30,9 @@ function buildCalvingSection(questionText, entries, refDate) {
   lines.push('Период: ' + monthLabel + '.');
   lines.push('План (ожидаемые отёлы у стельных): ' + stats.plan.count + '.');
   if (stats.plan.items.length) lines.push('Список план: ' + globalThis['__chatCtx'].joinLimited(stats.plan.items, formatPlanItem) + '.');
-  lines.push('Факт (отёлы по датам в месяце): ' + stats.fact.count + '.');
+  lines.push('Факт (отёлы по датам в месяце, включая выбывших): ' + stats.fact.count + '.');
+  if (stats.fact.addedAfterCalvingCount) lines.push('Из факта добавлены после даты отёла: ' + stats.fact.addedAfterCalvingCount + '.');
+  if (stats.fact.exitedCount) lines.push('Из факта выбывшие: ' + stats.fact.exitedCount + '.');
   if (stats.fact.items.length) lines.push('Список факт: ' + globalThis['__chatCtx'].joinLimited(stats.fact.items, formatFactItem) + '.');
   if (stats.fact.hasDataErrors) lines.push('В факте есть даты отёла в будущем — возможна ошибка ввода.');
   return lines.join('\n');
