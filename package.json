@@ -1,10 +1,11 @@
 {
   "name": "cattle-tracker",
-  "version": "0.6.45",
+  "version": "0.6.46",
   "description": "Учёт коров — веб, десктоп, мобильные",
   "scripts": {
     "prebuild": "node scripts/assemble-html.js",
     "build": "vite build",
+    "dev": "vite",
     "test": "vitest run tests/",
     "test:watch": "vitest",
     "e2e": "playwright test",
@@ -36,12 +37,14 @@
     "@capacitor/ios": "^6.0.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.49.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^10.0.0",
     "globals": "^17.3.0",
     "serve": "^14.2.4",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

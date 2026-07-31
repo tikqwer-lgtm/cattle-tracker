@@ -1,12 +1,11 @@
-/* components-forms.css — формы (сетка, поля ввода) */
+/* components-forms.css — формы (Tailwind @apply) */
 
 .form {
-  display: grid;
-  gap: 15px;
+  @apply grid gap-[15px];
 }
 
 .form label {
-  font-weight: bold;
+  @apply font-bold;
 }
 
 .form input[type="text"],
@@ -14,16 +13,8 @@
 .form input[type="number"],
 .form textarea,
 .form select {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: var(--field-min-height, 42px);
+  @apply box-border w-full min-h-[var(--field-min-height,42px)] border border-border bg-bg-elevated font-sans text-[1em] text-text rounded-md;
   padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 1em;
-  font-family: inherit;
-  background: var(--color-bg-elevated, #fff);
-  color: var(--color-text);
 }
 
 .form input:focus,
@@ -34,48 +25,36 @@
 }
 
 .form textarea {
-  min-height: 5rem;
-  resize: vertical;
+  @apply min-h-20 resize-y;
 }
 
 /* Экран протоколов синхронизации */
 .protocols-screen-inner {
-  display: grid;
-  gap: 1.5rem;
+  @apply grid gap-6;
 }
 .protocols-list-section h3,
 .protocols-form-section h3 {
-  margin-top: 0;
+  @apply mt-0;
 }
 .protocols-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem 0;
+  @apply mb-4 list-none p-0;
 }
 .protocols-list-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-border, #ddd);
+  @apply flex items-center gap-2 border-b border-border py-2;
 }
 .protocol-name {
-  flex: 1;
+  @apply flex-1;
 }
 .protocol-step-row {
-  display: grid;
+  @apply mb-2 grid items-center gap-2;
   grid-template-columns: auto 80px 1fr auto;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
 }
 .protocol-step-row .step-label {
-  font-weight: normal;
-  font-size: 0.9em;
+  @apply text-[0.9em] font-normal;
 }
 .protocol-step-row .step-day {
-  width: 80px;
+  @apply w-20;
 }
 .protocol-step-row .step-drug {
-  min-width: 0;
+  @apply min-w-0;
 }

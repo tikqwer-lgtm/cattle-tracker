@@ -1,12 +1,8 @@
-/* components-cards.css — карточки записей, список записей */
+/* components-cards.css — карточки записей (Tailwind @apply) */
 
 .entry {
-  background: var(--color-bg-elevated);
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: var(--radius-card);
+  @apply bg-bg-elevated mb-2.5 rounded-card pl-3 pr-[15px] py-[15px] shadow-card;
   border-left: 4px solid var(--color-primary);
-  box-shadow: var(--shadow-card);
 }
 
 .entry.unsynced {
@@ -14,30 +10,21 @@
 }
 
 .entry-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 5px;
+  @apply mt-2.5 flex gap-1;
 }
 
 .small-btn {
-  padding: 5px 10px;
-  font-size: 0.9em;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  @apply cursor-pointer border-0 px-2.5 py-1 text-[0.9em] rounded-sm;
 }
 
 .small-btn.view {
-  background: var(--color-success);
-  color: white;
+  @apply bg-success text-white;
 }
 
 .small-btn.edit {
-  background: var(--color-primary);
-  color: white;
+  @apply bg-primary text-white;
 }
 
 .small-btn.delete {
-  background: var(--color-error);
-  color: white;
+  @apply bg-error text-white;
 }

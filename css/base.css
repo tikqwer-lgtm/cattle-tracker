@@ -1,47 +1,16 @@
-/* base.css - Основные стили, палитра «Генетика» (синий + белый) */
+/* base.css — базовые стили (токены в css/style.css @theme) */
 
-:root {
-  --color-primary: #3d6eb5;
-  --color-primary-hover: #2c5aa0;
-  --color-primary-dark: #1e3a5f;
-  --color-primary-light: #e8f4fd;
-  --color-primary-border: #b3d9ff;
-  --color-bg: #f8f9fa;
-  --color-bg-elevated: #ffffff;
-  --color-text: #2c3e50;
-  --color-text-muted: #666;
-  --color-border: #ddd;
-  --color-border-focus: #3d6eb5;
-  --color-success: #4caf50;
-  --color-error: #f44336;
-  --color-warning: #ff9900;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-card: 10px;
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.2);
-  /* Единый вид полей ввода */
-  --field-min-height: 42px;
-  --field-padding-x: 0.65rem;
-  --field-padding-y: 0.5rem;
-}
-
-/* Пустой React-корень не должен перехватывать клики и фокус (поля ввода должны всегда принимать ввод) */
+/* Пустой React-корень не должен перехватывать клики и фокус */
 #root {
-  pointer-events: none;
+  @apply pointer-events-none;
 }
 #root > * {
-  pointer-events: auto;
+  @apply pointer-events-auto;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  @apply m-0 p-0 pt-10 font-sans text-text box-border;
   background: var(--color-bg);
-  margin: 0;
-  padding: 0;
-  padding-top: 40px;
-  color: var(--color-text);
-  box-sizing: border-box;
 }
 
 :focus-visible {
@@ -51,19 +20,7 @@ body {
 
 /* Верхняя шапка: версия и Сервер */
 .app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px 0 16px;
-  background: var(--color-bg-elevated);
-  border-bottom: 1px solid var(--color-border);
-  z-index: 9990;
-  box-sizing: border-box;
+  @apply fixed top-0 right-0 left-0 z-[9990] box-border flex h-10 items-center justify-between border-b border-border bg-bg-elevated py-0 pr-3 pl-4;
 }
 .app-version-header {
   font-size: 0.8rem;
@@ -150,55 +107,37 @@ body {
 }
 
 .container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+  @apply mx-auto max-w-[800px] p-5;
 }
 
 .screen {
-  display: none;
+  @apply hidden;
 }
 
-/* Строго скрывать неактивные экраны (иначе view-cow-screen и др. видны внизу меню/описи) */
+/* Строго скрывать неактивные экраны */
 .screen:not(.active) {
   display: none !important;
 }
 
 .screen.active {
-  display: block;
+  @apply block;
 }
 
 h1 {
-  text-align: center;
-  margin-bottom: 20px;
+  @apply mb-5 text-center;
 }
 
 /* Индикатор загрузки */
 .loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  @apply absolute inset-0 z-10 flex flex-col items-center justify-center;
   background: rgba(255, 255, 255, 0.85);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
 }
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-border);
+  @apply h-10 w-10 animate-spin rounded-full border-[3px] border-border;
   border-top-color: var(--color-success);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 .loading-text {
-  margin-top: 10px;
-  color: var(--color-text-muted);
-  font-size: 0.9em;
+  @apply mt-2.5 text-[0.9em] text-text-muted;
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -206,87 +145,50 @@ h1 {
 
 /* Модальное окно подтверждения (замена confirm) */
 .confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 12000;
+  @apply fixed inset-0 z-[12000] flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.4);
 }
 .confirm-modal {
-  background: var(--color-bg, #fff);
-  padding: 20px;
-  border-radius: var(--radius-card);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  max-width: 420px;
-  width: 90%;
+  @apply w-[90%] max-w-[420px] rounded-card bg-bg p-5;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 .confirm-modal p {
-  margin: 0 0 16px 0;
-  font-size: 1em;
-  line-height: 1.4;
-  white-space: pre-wrap;
+  @apply mb-4 mt-0 text-[1em] leading-snug whitespace-pre-wrap;
 }
 .confirm-modal-text {
-  white-space: pre-line;
+  @apply whitespace-pre-line;
 }
 .confirm-modal--wide {
-  max-width: 520px;
+  @apply max-w-[520px];
 }
 .confirm-modal-actions--triple {
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  @apply flex-wrap justify-end;
 }
 .confirm-modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+  @apply flex justify-end gap-2.5;
 }
 
 /* Контейнер тостов (стопка сверху) */
 .toast-container {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  max-height: min(320px, 50vh);
-  overflow-y: auto;
-  z-index: 9999;
-  pointer-events: none;
+  @apply pointer-events-none fixed top-6 left-1/2 z-[9999] flex max-h-[min(320px,50vh)] -translate-x-1/2 flex-col items-center gap-2 overflow-y-auto;
 }
 .toast-container .toast {
-  pointer-events: auto;
+  @apply pointer-events-auto;
 }
 
 /* Тосты */
 .toast {
-  position: relative;
-  top: 0;
-  left: 0;
+  @apply relative top-0 left-0 rounded-card px-6 py-3 text-sm text-white opacity-0;
   transform: translateY(-100px);
-  padding: 12px 24px;
-  border-radius: var(--radius-card);
-  color: #fff;
-  font-size: 14px;
   box-shadow: var(--shadow-card);
-  opacity: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 .toast.toast-visible {
-  transform: translateY(0);
-  opacity: 1;
+  @apply translate-y-0 opacity-100;
 }
-.toast-success { background: var(--color-success); }
-.toast-error { background: var(--color-error); }
-.toast-info { background: var(--color-primary); }
+.toast-success { @apply bg-success; }
+.toast-error { @apply bg-error; }
+.toast-info { @apply bg-primary; }
 
 /* Панель прогресса скачивания обновления — компактная и аккуратная */
 .update-progress-panel {

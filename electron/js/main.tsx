@@ -2,6 +2,7 @@
  * ESM entry: import all app modules in dependency order, then mount React root.
  * Each module attaches its API to window for HTML and legacy code.
  */
+import '../css/style.css';
 import './config.js';
 import { initPinchZoom } from './utils/pinch-zoom.js';
 
