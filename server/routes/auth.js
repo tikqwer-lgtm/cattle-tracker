@@ -81,7 +81,11 @@ router.post('/login', loginLimiter, (req, res) => {
   if (!row || !bcrypt.compareSync(p, row.password_hash)) {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
   }
-  const user = { id: row.id, username: row.username, role: row.role };
+  const user = {
+    id: row.id,
+    username: row.username,
+    role: db.normalizeAppRole ? db.normalizeAppRole(row.role) : row.role
+  };
   const token = signToken(user);
   res.json({ ok: true, user, token });
 });

@@ -4,50 +4,41 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole, isAppAdminRole } = require('../auth');
+const { requireAuth, requireRole, isAppAdminRole, requireObjectAccess } = require('../auth');
 
 router.get('/', requireAuth, (req, res) => {
-  const list = db.getObjectsWithMeta();
+  const list = db.getObjectsWithMetaForUser
+    ? db.getObjectsWithMetaForUser(req.user.id, req.user.role)
+    : db.getObjectsWithMeta();
   res.json(list);
 });
 
-router.get('/:id/profile', requireAuth, (req, res) => {
+router.get('/:id/profile', requireAuth, requireObjectAccess('id'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
-  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
-  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
   const profile = db.getObjectProfile(objectId);
   res.json(profile != null ? profile : {});
 });
 
-router.put('/:id/profile', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
+router.put('/:id/profile', requireAuth, requireObjectAccess('id'), requireRole('admin'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
-  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
-  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
   if (!db.putObjectProfile(objectId, req.body)) return res.status(500).json({ error: 'Ошибка сохранения' });
   res.json(db.getObjectProfile(objectId) || {});
 });
 
-router.get('/:id/farm-settings', requireAuth, (req, res) => {
+router.get('/:id/farm-settings', requireAuth, requireObjectAccess('id'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
-  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
-  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
   res.json(db.getFarmSettings(objectId));
 });
 
-router.put('/:id/farm-settings', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
+router.put('/:id/farm-settings', requireAuth, requireObjectAccess('id'), requireRole('admin'), (req, res) => {
   const objectId = String(req.params.id || '').trim();
-  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
-  if (!db.getObjectById(objectId)) return res.status(404).json({ error: 'Объект не найден' });
   if (!db.putFarmSettings(objectId, req.body)) return res.status(500).json({ error: 'Ошибка сохранения' });
   res.json(db.getFarmSettings(objectId));
 });
 
-// Export object with entries and protocols (for transfer to another PC / backup)
-router.get('/:id/export', requireAuth, (req, res) => {
+router.get('/:id/export', requireAuth, requireObjectAccess('id'), (req, res) => {
   const objectId = req.params.id || '';
-  if (!objectId) return res.status(400).json({ error: 'id обязателен' });
   const obj = db.getObjectById(objectId);
-  if (!obj) return res.status(404).json({ error: 'Объект не найден' });
   const entries = db.getEntries(objectId, req.user.id, req.user.role);
   const protocols = db.getProtocols(objectId);
   res.json({
@@ -61,8 +52,7 @@ router.get('/:id/export', requireAuth, (req, res) => {
   });
 });
 
-// Import object from export package (creates new object with entries and protocols)
-router.post('/import', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
+router.post('/import', requireAuth, requireRole('admin'), (req, res) => {
   const body = req.body || {};
   const name = (body.name || '').trim() || 'Импортированная база';
   const entries = Array.isArray(body.entries) ? body.entries : [];
@@ -114,7 +104,7 @@ router.post('/import', requireAuth, requireRole('admin', 'pro', 'manager'), (req
   res.status(201).json({ id, name });
 });
 
-router.post('/', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
+router.post('/', requireAuth, requireRole('admin'), (req, res) => {
   const name = (req.body && req.body.name || 'Новая база').trim() || 'Новая база';
   const copyFromId = (req.body && req.body.copyFromObjectId != null)
     ? String(req.body.copyFromObjectId).trim()
@@ -142,7 +132,7 @@ router.post('/', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res)
   res.status(201).json({ id, name, entriesCopied });
 });
 
-router.put('/:id', requireAuth, requireRole('admin', 'pro', 'manager'), (req, res) => {
+router.put('/:id', requireAuth, requireObjectAccess('id'), requireRole('admin'), (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   const name = (req.body && req.body.name != null) ? String(req.body.name).trim() : '';
@@ -162,8 +152,7 @@ router.put('/:id', requireAuth, requireRole('admin', 'pro', 'manager'), (req, re
   res.json({ id: obj.id, name: obj.name });
 });
 
-// Удаление базы: только администратор
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, requireRole('admin'), (req, res) => {
   const id = (req.params && req.params.id) || '';
   if (!id) return res.status(400).json({ error: 'id обязателен' });
   if (id === 'default') return res.status(400).json({ error: 'Нельзя удалить базовый объект default' });

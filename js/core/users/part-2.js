@@ -127,7 +127,15 @@
     var role = typeof globalThis['__users'].getEffectiveRole === 'function'
       ? globalThis['__users'].getEffectiveRole(user)
       : String(user.role || 'lite').trim().toLowerCase();
-    var labels = { lite: 'Lite', medium: 'Medium', pro: 'Pro', admin: 'Admin', viewer: 'Viewer' };
+    var labels = {
+      admin: 'Админ',
+      inseminator: 'Осеменатор',
+      service: 'Сервис-специалист',
+      lite: 'Осеменатор',
+      medium: 'Осеменатор',
+      pro: 'Осеменатор',
+      viewer: 'Сервис-специалист'
+    };
     return labels[role] || (role.charAt(0).toUpperCase() + role.slice(1));
   }
 

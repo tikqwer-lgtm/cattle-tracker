@@ -1,9 +1,6 @@
 // @ts-check
 /**
- * Role-based smoke/e2e: lite/medium/pro/admin в режиме API.
- * Проверяем:
- * - видимость групп меню по capability-модели;
- * - блокировку прямой навигации на запрещенные экраны.
+ * Role-based smoke/e2e: admin / inseminator / service в режиме API.
  */
 const http = require('http');
 const { test, expect } = require('@playwright/test');
@@ -42,7 +39,7 @@ test.beforeAll(async () => {
     if (pathname === '/api/auth/me' && req.method === 'GET') {
       const auth = String(req.headers.authorization || '');
       const m = auth.match(/Bearer\s+e2e-token-([a-z]+)/i);
-      const role = m ? String(m[1]).toLowerCase() : 'lite';
+      const role = m ? String(m[1]).toLowerCase() : 'inseminator';
       sendJson(res, 200, { user: { id: 'e2e-role', username: 'role-user', role } });
       return;
     }
@@ -50,10 +47,23 @@ test.beforeAll(async () => {
       sendJson(res, 200, { allowed: false });
       return;
     }
+    if (pathname === '/api/me/inbox' && req.method === 'GET') {
+      sendJson(res, 200, { ok: true, items: [] });
+      return;
+    }
     if (pathname === '/api/admin/users' && req.method === 'GET') {
       sendJson(res, 200, {
         ok: true,
-        users: [{ id: 'u1', username: 'farmer', role: 'lite', created_at: '2026-01-01', password_plain: 'pass1' }],
+        users: [
+          {
+            id: 'u1',
+            username: 'farmer',
+            role: 'inseminator',
+            created_at: '2026-01-01',
+            password_plain: 'pass1',
+            objectIds: ['obj-e2e'],
+          },
+        ],
       });
       return;
     }
@@ -104,12 +114,15 @@ test.afterAll(async () => {
 });
 
 async function openMenuAsRole(page, role) {
-  await page.addInitScript(({ port, roleName }) => {
-    localStorage.setItem('cattleTracker_useApiMode', '1');
-    localStorage.setItem('cattleTracker_apiBase', 'http://127.0.0.1:' + port);
-    localStorage.setItem('cattleTracker_apiToken', 'e2e-token-' + roleName);
-    localStorage.setItem('cattleTracker_currentObject', 'obj-e2e');
-  }, { port: mockPort, roleName: role });
+  await page.addInitScript(
+    ({ port, roleName }) => {
+      localStorage.setItem('cattleTracker_useApiMode', '1');
+      localStorage.setItem('cattleTracker_apiBase', 'http://127.0.0.1:' + port);
+      localStorage.setItem('cattleTracker_apiToken', 'e2e-token-' + roleName);
+      localStorage.setItem('cattleTracker_currentObject', 'obj-e2e');
+    },
+    { port: mockPort, roleName: role }
+  );
   await page.goto('/');
   await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 25000 });
 }
@@ -120,27 +133,19 @@ function menuGroup(page, title) {
 
 const CASES = [
   {
-    role: 'lite',
+    role: 'inseminator',
     visible: ['Работа с данными', 'Действия'],
     hidden: ['Аналитика'],
-    blockedScreens: ['analytics', 'notifications', 'farm-settings'],
+    blockedScreens: ['analytics', 'farm-settings', 'admin'],
     allowedScreen: 'sync',
     menuNotificationsVisible: true,
   },
   {
-    role: 'medium',
-    visible: ['Работа с данными', 'Действия', 'Аналитика'],
-    hidden: [],
-    blockedScreens: ['farm-settings'],
-    allowedScreen: 'sync',
-    menuNotificationsVisible: true,
-  },
-  {
-    role: 'pro',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Настройки'],
-    hidden: [],
-    blockedScreens: ['admin'],
-    allowedScreen: 'sync',
+    role: 'service',
+    visible: ['Работа с данными', 'Аналитика', 'Настройки'],
+    hidden: ['Действия'],
+    blockedScreens: ['insemination', 'farm-settings', 'admin'],
+    allowedScreen: 'analytics',
     menuNotificationsVisible: true,
   },
   {
@@ -184,7 +189,9 @@ for (const tcase of CASES) {
       await page.evaluate((sid) => {
         if (typeof window.navigate === 'function') window.navigate(sid);
       }, tcase.allowedScreen);
-      await expect(page.locator('#' + tcase.allowedScreen + '-screen.active')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#' + tcase.allowedScreen + '-screen.active')).toBeVisible({
+        timeout: 10000,
+      });
     });
 
     if (tcase.role === 'admin') {
@@ -195,7 +202,10 @@ for (const tcase of CASES) {
         await expect(page.locator('#admin-screen.active')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('#admin-users-container .admin-table')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('#admin-users-container .admin-password-input')).toBeVisible();
-        await expect(page.locator('#adminServerBasesList .admin-bases-user-group')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#admin-assign-container')).toBeVisible();
+        await expect(page.locator('#adminServerBasesList .admin-bases-user-group')).toBeVisible({
+          timeout: 10000,
+        });
         await expect(page.locator('#adminServerBasesList summary')).toContainText('farmer');
       });
     }

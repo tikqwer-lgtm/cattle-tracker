@@ -101,6 +101,10 @@ function updateObject(id, name) {
 function deleteObject(id) {
   const obj = getObjectById(id);
   if (!obj) return false;
+  try {
+    const userObjects = require('./user-objects');
+    userObjects.deleteUserObjectLinksForObject(id);
+  } catch (_) {}
   runSql('DELETE FROM entries WHERE object_id = ?', [id]);
   runSql('DELETE FROM protocols WHERE object_id = ?', [id]);
   runSql('DELETE FROM objects WHERE id = ?', [id]);

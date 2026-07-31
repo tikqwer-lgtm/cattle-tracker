@@ -85,7 +85,11 @@ function viewerForbiddenScreen(screenId) {
   if (groupId === 'admin') return !window.hasCapability('adminUsersRoles');
   if (groupId === 'analytics') return !window.hasCapability('analytics');
   if (groupId === 'notifications') return !window.hasCapability('notifications');
-  if (groupId === 'settings') return !window.hasCapability('farmCardSettings');
+  if (groupId === 'settings') {
+    if (screenId === 'farm-settings') return !window.hasCapability('farmCardSettings');
+    if (screenId === 'farm-card') return !window.hasCapability('farmCardView');
+    return false;
+  }
   if (groupId === 'actions') return !window.hasCapability('eventsInput');
   return !window.hasCapability('cards');
 }

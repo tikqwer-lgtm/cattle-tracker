@@ -134,7 +134,59 @@ function initSchema() {
   migrateObjectsStallLayout();
   migrateObjectsProfileFarmSettings();
   migrateUsersPasswordPlain();
+  migrateUserObjectsAndInbox();
+  try {
+    const userObjects = require('./user-objects');
+    userObjects.migrateUserRolesToCanonical();
+  } catch (e) {
+    console.error('migrate user roles:', e.message);
+  }
   saveDb();
+}
+
+function migrateUserObjectsAndInbox() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_objects (
+      user_id TEXT NOT NULL,
+      object_id TEXT NOT NULL,
+      assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+      assigned_by TEXT,
+      PRIMARY KEY (user_id, object_id),
+      FOREIGN KEY (object_id) REFERENCES objects(id)
+    );
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_objects_user ON user_objects(user_id);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_objects_object ON user_objects(object_id);`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_inbox (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      read_at TEXT
+    );
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_inbox_user ON user_inbox(user_id);`);
+
+  // Однократный seed: если привязок ещё нет — дать всем не-админам доступ ко всем объектам (старое поведение «все видят всё»).
+  try {
+    const linkCount = getSql('SELECT COUNT(*) as c FROM user_objects');
+    if (linkCount && Number(linkCount.c) === 0) {
+      const users = allSql("SELECT id, role FROM users WHERE LOWER(role) NOT IN ('admin', 'manager')") || [];
+      const objs = allSql('SELECT id FROM objects') || [];
+      for (let i = 0; i < users.length; i++) {
+        for (let j = 0; j < objs.length; j++) {
+          runSql(
+            "INSERT OR IGNORE INTO user_objects (user_id, object_id, assigned_at, assigned_by) VALUES (?, ?, datetime('now'), NULL)",
+            [String(users[i].id), String(objs[j].id)]
+          );
+        }
+      }
+    }
+  } catch (e) {
+    console.error('seed user_objects:', e.message);
+  }
 }
 
 function migrateUsersPasswordPlain() {

@@ -1,9 +1,11 @@
 const { runSql, getSql, allSql, saveDb } = require('./core');
 
 function createUser(id, username, passwordHash, role, passwordPlain) {
+  const { normalizeAppRole } = require('./user-objects');
+  const normalized = normalizeAppRole(role || 'inseminator');
   runSql(
     'INSERT INTO users (id, username, password_hash, role, password_plain) VALUES (?, ?, ?, ?, ?)',
-    [id, username, passwordHash, role || 'lite', passwordPlain != null ? String(passwordPlain) : null]
+    [id, username, passwordHash, normalized, passwordPlain != null ? String(passwordPlain) : null]
   );
   saveDb();
 }
@@ -19,17 +21,18 @@ function countAdmins() {
 }
 
 function updateUserRole(targetId, newRole) {
-  const allowed = ['admin', 'lite', 'medium', 'pro', 'manager', 'operator', 'viewer'];
-  if (!allowed.includes(newRole)) {
+  const { normalizeAppRole, CANONICAL_ROLES } = require('./user-objects');
+  const role = normalizeAppRole(newRole);
+  if (!CANONICAL_ROLES.includes(role)) {
     return { ok: false, error: 'Недопустимая роль' };
   }
   const target = findUserById(targetId);
   if (!target) return { ok: false, error: 'Пользователь не найден' };
-  if (target.role === newRole) return { ok: true };
-  if (target.role === 'admin' && newRole !== 'admin' && newRole !== 'manager' && countAdmins() <= 1) {
+  if (target.role === role) return { ok: true };
+  if (target.role === 'admin' && role !== 'admin' && countAdmins() <= 1) {
     return { ok: false, error: 'Нельзя снять последнего администратора' };
   }
-  runSql('UPDATE users SET role = ? WHERE id = ?', [newRole, targetId]);
+  runSql('UPDATE users SET role = ? WHERE id = ?', [role, targetId]);
   saveDb();
   return { ok: true };
 }
@@ -66,6 +69,10 @@ function getAllUsers() {
 function deleteUser(id) {
   const user = findUserById(id);
   if (!user) return false;
+  try {
+    const userObjects = require('./user-objects');
+    userObjects.deleteUserObjectLinksForUser(id);
+  } catch (_) {}
   runSql('DELETE FROM users WHERE id = ?', [id]);
   saveDb();
   return true;

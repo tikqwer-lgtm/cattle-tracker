@@ -98,6 +98,8 @@ function renderSubmenu() {
   var canEvents = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('eventsInput', user) : true;
   var canAnalytics = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('analytics', user) : true;
   var canSettings = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardSettings', user) : true;
+  var canFarmView = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardView', user) : true;
+  var canInventory = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('inventory', user) : true;
   if ((groupId === 'actions' && !canEvents) || (groupId === 'analytics' && !canAnalytics)) {
     containerEl.innerHTML = '<p class="farm-settings-hint">Раздел недоступен для вашей роли.</p>';
     return;
@@ -107,7 +109,10 @@ function renderSubmenu() {
     var btn = group.buttons[i];
     var onclick = String(btn.onclick || '');
     if (!canEvents && onclick.indexOf("navigate('add')") !== -1) continue;
-    if (!canSettings && (onclick.indexOf("navigate('farm-card')") !== -1 || onclick.indexOf("navigate('farm-settings')") !== -1 || onclick.indexOf("navigate('protocols')") !== -1)) continue;
+    if (!canInventory && onclick.indexOf("navigate('stall-inventory')") !== -1) continue;
+    if (!canSettings && onclick.indexOf("navigate('farm-settings')") !== -1) continue;
+    if (!canFarmView && onclick.indexOf("navigate('farm-card')") !== -1) continue;
+    if (!canSettings && !canFarmView && (onclick.indexOf("navigate('protocols')") !== -1)) continue;
     var styleAttr = btn.style ? ' style="' + String(btn.style).replace(/"/g, '&quot;') + '"' : '';
     html += '<button class="action-btn"' + styleAttr + ' onclick="' + String(btn.onclick).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">';
     html += '<span>' + (btn.icon || '') + '</span><span>' + (btn.text || '').replace(/</g, '&lt;') + '</span></button>';

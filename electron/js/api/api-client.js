@@ -370,8 +370,31 @@
     return request('POST', '/api/admin/users', {
       username: username,
       password: password,
-      role: role || 'lite'
+      role: role || 'inseminator'
     });
+  }
+
+  function getUserObjects(userId) {
+    return request('GET', '/api/admin/users/' + encodeURIComponent(userId) + '/objects').then(function (data) {
+      return (data && data.objectIds) || [];
+    });
+  }
+
+  function setUserObjects(userId, objectIds) {
+    return request('PUT', '/api/admin/users/' + encodeURIComponent(userId) + '/objects', {
+      objectIds: objectIds || []
+    });
+  }
+
+  function getInbox(unreadOnly) {
+    var q = unreadOnly ? '?unread=1' : '';
+    return request('GET', '/api/me/inbox' + q).then(function (data) {
+      return (data && data.items) || [];
+    });
+  }
+
+  function markInboxRead(id) {
+    return request('POST', '/api/me/inbox/' + encodeURIComponent(id) + '/read', {});
   }
 
   function getRegisterStatus() {
@@ -507,6 +530,10 @@
     updateUserRole: updateUserRole,
     updateUser: updateUser,
     createUser: createUser,
+    getUserObjects: getUserObjects,
+    setUserObjects: setUserObjects,
+    getInbox: getInbox,
+    markInboxRead: markInboxRead,
     getRegisterStatus: getRegisterStatus,
     submitReport: submitReport,
     getReports: getReports,

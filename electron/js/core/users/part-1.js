@@ -60,7 +60,7 @@
       return { ok: false, message: 'Пользователь с таким логином уже есть' };
     }
     var id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'lite' };
+    var newUser = { id: id, username: username, passwordHash: simpleHash(password), role: role || 'inseminator' };
     users.push(newUser);
     saveUsers(users);
     return { ok: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
@@ -178,18 +178,33 @@
   function isAppAdminRole(user) {
     var u = user || getCurrentUser() || {};
     var role = String(u.role || '').trim().toLowerCase();
-    return role === 'admin' || role === 'manager';
+    if (role === 'manager') return true;
+    return getEffectiveRole(u) === 'admin';
   }
 
+  /**
+   * Канонические роли: admin | inseminator | service.
+   * Старые коды мигрируются на лету (см. PERMISSIONS.md).
+   */
   function getEffectiveRole(user) {
     var u = user || getCurrentUser() || {};
     var role = String(u.role || '').trim().toLowerCase();
-    if (!role) return 'lite';
-    if (role === 'manager') return 'pro';
-    if (role === 'operator') return 'medium';
-    return role;
+    if (!role) return 'inseminator';
+    if (role === 'admin' || role === 'manager') return 'admin';
+    if (role === 'service' || role === 'viewer') return 'service';
+    if (
+      role === 'inseminator' ||
+      role === 'pro' ||
+      role === 'medium' ||
+      role === 'lite' ||
+      role === 'operator'
+    ) {
+      return 'inseminator';
+    }
+    return 'inseminator';
   }
 
+  /** Синхронизировано с PERMISSIONS.md в корне проекта. */
   var CAPABILITY_MATRIX = {
     admin: {
       cards: true,
@@ -200,61 +215,41 @@
       notifications: true,
       analytics: true,
       farmCardSettings: true,
+      farmCardView: true,
       multiBase: true,
       adminUsersRoles: true,
-      adminReleaseControls: true
+      adminReleaseControls: true,
+      createDeleteObjects: true
     },
-    pro: {
+    inseminator: {
       cards: true,
       eventsInput: true,
       workLists: true,
       stallMap: true,
       inventory: true,
       notifications: true,
-      analytics: true,
-      farmCardSettings: true,
-      multiBase: true,
-      adminUsersRoles: false,
-      adminReleaseControls: false
-    },
-    medium: {
-      cards: true,
-      eventsInput: true,
-      workLists: true,
-      stallMap: true,
-      inventory: true,
-      notifications: true,
-      analytics: true,
-      farmCardSettings: false,
-      multiBase: false,
-      adminUsersRoles: false,
-      adminReleaseControls: false
-    },
-    lite: {
-      cards: true,
-      eventsInput: true,
-      workLists: true,
-      stallMap: true,
-      inventory: true,
-      notifications: false,
       analytics: false,
       farmCardSettings: false,
-      multiBase: false,
+      farmCardView: true,
+      multiBase: true,
       adminUsersRoles: false,
-      adminReleaseControls: false
+      adminReleaseControls: false,
+      createDeleteObjects: false
     },
-    viewer: {
+    service: {
       cards: true,
       eventsInput: false,
       workLists: true,
       stallMap: true,
       inventory: false,
-      notifications: false,
-      analytics: false,
+      notifications: true,
+      analytics: true,
       farmCardSettings: false,
-      multiBase: false,
+      farmCardView: true,
+      multiBase: true,
       adminUsersRoles: false,
-      adminReleaseControls: false
+      adminReleaseControls: false,
+      createDeleteObjects: false
     }
   };
 
@@ -262,7 +257,7 @@
     var key = String(capability || '').trim();
     if (!key) return false;
     var role = getEffectiveRole(user);
-    var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.lite;
+    var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.inseminator;
     return !!roleCaps[key];
   }
 
@@ -279,45 +274,10 @@
   }
 
   /**
-   * Режим API: в главном меню админ видит все базы; оператор — одну «свою» (созданную им, иначе текущую/первую).
-   * Экран «Синхронизация» по-прежнему получает полный список через API отдельно.
+   * Список объектов уже отфильтрован сервером (ACL). Клиент возвращает как есть.
    */
   function filterObjectsListForRole(list) {
-    if (!useApi || !list || !list.length) return list || [];
-    var user = getCurrentUser();
-    if (!user || hasCapability('multiBase', user)) return list;
-    var effectiveRole = getEffectiveRole(user);
-    if (effectiveRole === 'viewer') return list;
-    var uid = String(user.id || '');
-    var pend = global.CattleTrackerApi && global.CattleTrackerApi.PENDING_OBJECT_ID;
-    var cur = typeof global.getCurrentObjectId === 'function' ? global.getCurrentObjectId() : '';
-    if (pend && cur === pend) {
-      var mineP = list.filter(function (o) {
-        return o && String(o.created_by || '') === uid;
-      });
-      if (mineP.length >= 1) {
-        mineP.sort(function (a, b) {
-          return String(b.last_updated_at || b.lastUpdatedAt || '').localeCompare(String(a.last_updated_at || a.lastUpdatedAt || ''));
-        });
-        return [mineP[0]];
-      }
-      return list.length ? [list[0]] : list;
-    }
-    if (cur) {
-      var curObj = list.find(function (o) { return o && o.id === cur; });
-      if (curObj) return [curObj];
-    }
-    var mine = list.filter(function (o) {
-      return o && String(o.created_by || '') === uid;
-    });
-    if (mine.length >= 1) {
-      mine.sort(function (a, b) {
-        return String(b.last_updated_at || b.lastUpdatedAt || '').localeCompare(String(a.last_updated_at || a.lastUpdatedAt || ''));
-      });
-      return [mine[0]];
-    }
-    var pick = list.find(function (o) { return o && o.id === cur; }) || list[0];
-    return pick ? [pick] : list;
+    return list || [];
   }
 
   var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;

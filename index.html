@@ -114,9 +114,15 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.6.44" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.45" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
 
+    <div id="menu-no-object-state" class="menu-no-object-state" hidden>
+      <p id="menu-no-object-message" class="menu-no-object-message">Ожидается подключение объекта администратором.</p>
+      <button type="button" class="action-btn" id="menuCreateObjectEmptyBtn" style="display: none;" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">Создать объект</button>
+    </div>
+
+    <div id="menu-main-content">
     <!-- Переключатель объектов (баз) -->
     <div id="object-switcher" class="object-switcher">
       <label for="currentObjectSelect">Объект:</label>
@@ -229,6 +235,7 @@
         </button>
       </div>
     </div>
+    </div><!-- #menu-main-content -->
   </div>
 
   <!-- ========== Подменю и формы действий (осеменение, отёл, УЗИ) ========== -->
@@ -296,6 +303,11 @@
     <section class="admin-section">
       <h2>Пользователи</h2>
       <div id="admin-users-container" class="admin-list-container"></div>
+    </section>
+    <section class="admin-section">
+      <h2>Подключение к объектам</h2>
+      <p class="farm-settings-hint">Выберите пользователя и отметьте объекты, к которым у него есть доступ. Администраторам назначать объекты не нужно.</p>
+      <div id="admin-assign-container" class="admin-assign-container"></div>
     </section>
     <section class="admin-section">
       <h2>Базы на сервере</h2>

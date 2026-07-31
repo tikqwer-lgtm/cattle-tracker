@@ -111,6 +111,11 @@
       if (typeof global.updateAuthBar === 'function') global.updateAuthBar();
       if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
       if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
+      if (_session.status === 'loggedIn' && typeof global.processServerInbox === 'function') {
+        try {
+          global.processServerInbox();
+        } catch (_) {}
+      }
       return _session;
     }).catch(function (err) {
       if (err && err.status === 401) {
@@ -174,6 +179,11 @@
     _restorePromise = Promise.resolve(_session);
     if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
     if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
+    if (typeof global.processServerInbox === 'function') {
+      try {
+        global.processServerInbox();
+      } catch (_) {}
+    }
   }
 
   global.restoreApiSession = restoreApiSession;

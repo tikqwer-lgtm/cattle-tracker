@@ -31,6 +31,46 @@
   letter-spacing: 0.02em;
 }
 
+.menu-no-object-state {
+  margin: 1.5rem 0 1rem;
+  text-align: center;
+  padding: 1rem 0.75rem;
+}
+
+.menu-no-object-message {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.menu-screen--no-object .menu-branding {
+  margin-top: 1.5rem;
+}
+
+.admin-assign-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-assign-objects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.admin-assign-obj-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
 .app-version {
   margin: 0 0 8px 0;
   font-size: 0.8rem;

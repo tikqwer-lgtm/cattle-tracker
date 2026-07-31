@@ -20,10 +20,9 @@
       '<label>Логин <input type="text" id="adminNewUsername" required autocomplete="off" /></label>' +
       '<label>Пароль <input type="text" id="adminNewPassword" required autocomplete="new-password" /></label>' +
       '<label>Роль <select id="adminNewRole">' +
-      '<option value="lite">lite</option>' +
-      '<option value="medium">medium</option>' +
-      '<option value="pro">pro</option>' +
-      '<option value="admin">admin</option>' +
+      '<option value="inseminator">Осеменатор</option>' +
+      '<option value="service">Сервис-специалист</option>' +
+      '<option value="admin">Админ</option>' +
       '</select></label>' +
       '<button type="submit" class="action-btn">Создать</button>' +
       '</form>'
@@ -41,7 +40,7 @@
       var roleEl = document.getElementById('adminNewRole');
       var username = usernameEl ? String(usernameEl.value || '').trim() : '';
       var password = passwordEl ? String(passwordEl.value || '') : '';
-      var role = roleEl ? roleEl.value : 'lite';
+      var role = roleEl ? roleEl.value : 'inseminator';
       if (!username || !password) {
         if (typeof showToast === 'function') showToast('Введите логин и пароль', 'error');
         return;
@@ -52,6 +51,129 @@
       }).catch(function (err) {
         if (typeof showToast === 'function') showToast(err.message || 'Ошибка создания', 'error', 5000);
       });
+    });
+  }
+
+  function roleOptionSelected(u, code) {
+    var r = String((u && u.role) || '').toLowerCase();
+    if (code === 'admin') return r === 'admin' || r === 'manager';
+    if (code === 'service') return r === 'service' || r === 'viewer';
+    return r === 'inseminator' || r === 'lite' || r === 'medium' || r === 'pro' || r === 'operator' || (!r);
+  }
+
+  function renderAdminAssignPanel(users, objects, api) {
+    var assignable = (users || []).filter(function (u) {
+      return u && u.role !== 'admin' && u.role !== 'manager';
+    });
+    if (!assignable.length) {
+      return '<p class="admin-message">Нет пользователей для назначения (кроме администраторов).</p>';
+    }
+    var html =
+      '<div class="admin-assign-layout">' +
+      '<label class="admin-assign-user-label">Пользователь ' +
+      '<select id="adminAssignUserSelect" aria-label="Пользователь для назначения объектов">';
+    for (var i = 0; i < assignable.length; i++) {
+      var u = assignable[i];
+      html +=
+        '<option value="' +
+        escapeHtml(u.id) +
+        '">' +
+        escapeHtml(u.username) +
+        '</option>';
+    }
+    html += '</select></label>';
+    html += '<div id="adminAssignObjectsList" class="admin-assign-objects"></div>';
+    html +=
+      '<button type="button" class="action-btn" id="adminAssignSaveBtn">Сохранить подключение</button>' +
+      '<p id="adminAssignStatus" class="admin-message" aria-live="polite"></p>' +
+      '</div>';
+    return html;
+  }
+
+  function fillAdminAssignObjects(container, objects, selectedIds) {
+    var set = {};
+    (selectedIds || []).forEach(function (id) {
+      set[String(id)] = true;
+    });
+    if (!objects || !objects.length) {
+      container.innerHTML = '<p class="admin-message">На сервере нет объектов.</p>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < objects.length; i++) {
+      var o = objects[i];
+      var id = String(o.id || '');
+      var checked = set[id] ? ' checked' : '';
+      html +=
+        '<label class="admin-assign-obj-row">' +
+        '<input type="checkbox" class="admin-assign-obj-cb" value="' +
+        escapeHtml(id) +
+        '"' +
+        checked +
+        ' /> ' +
+        escapeHtml(o.name || id) +
+        '</label>';
+    }
+    container.innerHTML = html;
+  }
+
+  function bindAdminAssignPanel(assignEl, users, objects, api) {
+    var select = document.getElementById('adminAssignUserSelect');
+    var listEl = document.getElementById('adminAssignObjectsList');
+    var saveBtn = document.getElementById('adminAssignSaveBtn');
+    var statusEl = document.getElementById('adminAssignStatus');
+    if (!select || !listEl || !saveBtn) return;
+
+    function loadForUser(userId) {
+      var u = (users || []).find(function (x) {
+        return x && String(x.id) === String(userId);
+      });
+      var ids = (u && Array.isArray(u.objectIds) ? u.objectIds : null) || [];
+      if (api.getUserObjects) {
+        listEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+        api
+          .getUserObjects(userId)
+          .then(function (objectIds) {
+            fillAdminAssignObjects(listEl, objects, objectIds);
+          })
+          .catch(function () {
+            fillAdminAssignObjects(listEl, objects, ids);
+          });
+      } else {
+        fillAdminAssignObjects(listEl, objects, ids);
+      }
+    }
+
+    select.addEventListener('change', function () {
+      loadForUser(select.value);
+    });
+    loadForUser(select.value);
+
+    saveBtn.addEventListener('click', function () {
+      var userId = select.value;
+      if (!userId || !api.setUserObjects) return;
+      var cbs = listEl.querySelectorAll('.admin-assign-obj-cb:checked');
+      var objectIds = [];
+      for (var i = 0; i < cbs.length; i++) objectIds.push(cbs[i].value);
+      saveBtn.disabled = true;
+      if (statusEl) statusEl.textContent = 'Сохранение…';
+      api
+        .setUserObjects(userId, objectIds)
+        .then(function () {
+          if (typeof showToast === 'function') showToast('Подключение сохранено', 'success');
+          if (statusEl) statusEl.textContent = 'Сохранено.';
+          var u = (users || []).find(function (x) {
+            return x && String(x.id) === String(userId);
+          });
+          if (u) u.objectIds = objectIds.slice();
+        })
+        .catch(function (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Ошибка сохранения', 'error', 5000);
+          if (statusEl) statusEl.textContent = err.message || 'Ошибка';
+        })
+        .then(function () {
+          saveBtn.disabled = false;
+        });
     });
   }
 
@@ -72,10 +194,9 @@
         : '<span class="admin-self-hint">(вы)</span>';
       var roleSelect =
         '<select class="admin-role-select" data-user-id="' + escapeHtml(u.id) + '" aria-label="Роль пользователя">' +
-        '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>admin</option>' +
-        '<option value="pro"' + (u.role === 'pro' ? ' selected' : '') + '>pro</option>' +
-        '<option value="medium"' + (u.role === 'medium' ? ' selected' : '') + '>medium</option>' +
-        '<option value="lite"' + (u.role === 'lite' ? ' selected' : '') + '>lite</option>' +
+        '<option value="admin"' + (roleOptionSelected(u, 'admin') ? ' selected' : '') + '>Админ</option>' +
+        '<option value="inseminator"' + (roleOptionSelected(u, 'inseminator') ? ' selected' : '') + '>Осеменатор</option>' +
+        '<option value="service"' + (roleOptionSelected(u, 'service') ? ' selected' : '') + '>Сервис-специалист</option>' +
         '</select>';
       var pwdVal = u.password_plain != null ? String(u.password_plain) : '';
       var pwdInput =
@@ -156,16 +277,19 @@
   function renderAdminScreen() {
     var usersEl = document.getElementById('admin-users-container');
     var reportsEl = document.getElementById('admin-reports-container');
+    var assignEl = document.getElementById('admin-assign-container');
     if (!usersEl || !reportsEl) return;
     var api = global.CattleTrackerApi;
     if (!api || !api.getUsers || !api.getReports) {
       usersEl.innerHTML = '<p class="admin-message">API недоступен.</p>';
       reportsEl.innerHTML = '';
+      if (assignEl) assignEl.innerHTML = '';
       return;
     }
 
     usersEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
     reportsEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+    if (assignEl) assignEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
 
     var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
     var currentUserId = currentUser ? currentUser.id : null;
@@ -174,14 +298,28 @@
       global.renderSyncServerBasesList();
     }
 
-    api.getUsers()
-      .then(function (users) {
+    var usersPromise = api.getUsers();
+    var objectsPromise =
+      api.getObjectsList && typeof api.getObjectsList === 'function'
+        ? api.getObjectsList()
+        : Promise.resolve([]);
+
+    Promise.all([usersPromise, objectsPromise])
+      .then(function (pair) {
+        var users = pair[0];
+        var objects = pair[1];
         if (!Array.isArray(users)) users = [];
+        if (!Array.isArray(objects)) objects = [];
         usersEl.innerHTML = renderAdminUsersTable(users, api, currentUserId);
         bindAdminUsersTable(usersEl, api, currentUserId);
+        if (assignEl) {
+          assignEl.innerHTML = renderAdminAssignPanel(users, objects, api);
+          bindAdminAssignPanel(assignEl, users, objects, api);
+        }
       })
       .catch(function (err) {
         usersEl.innerHTML = '<p class="admin-message admin-error">Ошибка: ' + escapeHtml(err.message || 'Не удалось загрузить список') + '</p>';
+        if (assignEl) assignEl.innerHTML = '';
       });
 
     api.getReports()

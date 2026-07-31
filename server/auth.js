@@ -46,7 +46,11 @@ function requireAuth(req, res, next) {
   if (!user) {
     return res.status(401).json({ error: 'Пользователь не найден' });
   }
-  req.user = { id: user.id, username: user.username, role: user.role };
+  req.user = {
+    id: user.id,
+    username: user.username,
+    role: db.normalizeAppRole ? db.normalizeAppRole(user.role) : user.role
+  };
   next();
 }
 
@@ -75,7 +79,9 @@ function optionalAuth(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
-    if (roles.length && !roles.includes(req.user.role)) {
+    const userRole = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+    const allowed = roles.map((r) => (db.normalizeAppRole ? db.normalizeAppRole(r) : r));
+    if (allowed.length && !allowed.includes(userRole)) {
       return res.status(403).json({ error: 'Недостаточно прав' });
     }
     next();
@@ -83,8 +89,29 @@ function requireRole(...roles) {
 }
 
 function isAppAdminRole(role) {
+  if (db.isAdminRole) return db.isAdminRole(role);
   const r = String(role || '').trim().toLowerCase();
-  return r === 'admin' || r === 'manager';
+  return r === 'admin';
+}
+
+/**
+ * Middleware: доступ к объекту по :objectId или :id.
+ * Админ — всегда; остальные — только через user_objects.
+ */
+function requireObjectAccess(paramName) {
+  const key = paramName || 'objectId';
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
+    const objectId = String((req.params && req.params[key]) || '').trim();
+    if (!objectId) return res.status(400).json({ error: 'id объекта обязателен' });
+    if (!db.getObjectById(objectId)) {
+      return res.status(404).json({ error: 'Объект не найден' });
+    }
+    if (!db.userHasObjectAccess(req.user.id, req.user.role, objectId)) {
+      return res.status(403).json({ error: 'Нет доступа к этому объекту' });
+    }
+    next();
+  };
 }
 
 module.exports = {
@@ -93,5 +120,6 @@ module.exports = {
   requireAuth,
   optionalAuth,
   requireRole,
-  isAppAdminRole
+  isAppAdminRole,
+  requireObjectAccess
 };

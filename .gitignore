@@ -7,6 +7,8 @@ dist/
 # Electron (dependencies and build output — too large for GitHub)
 electron/node_modules/
 electron/dist/
+electron/dist-rel/
+electron/dist-build-*/
 
 # OS
 .DS_Store

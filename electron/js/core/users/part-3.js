@@ -33,11 +33,11 @@
   function skipAuth() {
     var nav = (typeof global !== 'undefined' && global.navigate) || (typeof window !== 'undefined' && window.navigate);
     globalThis['__users'].getDefaultLocalUsername().then(function (username) {
-      globalThis['__users'].saveCurrentUser({ id: 'local_operator', username: username, role: 'lite' });
+      globalThis['__users'].saveCurrentUser({ id: 'local_operator', username: username, role: 'inseminator' });
       globalThis['__users'].updateAuthBar();
       if (typeof nav === 'function') nav('menu');
     }).catch(function () {
-      globalThis['__users'].saveCurrentUser({ id: 'local_operator', username: 'operator(local)', role: 'lite' });
+      globalThis['__users'].saveCurrentUser({ id: 'local_operator', username: 'operator(local)', role: 'inseminator' });
       globalThis['__users'].updateAuthBar();
       if (typeof nav === 'function') nav('menu');
     });

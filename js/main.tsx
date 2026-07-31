@@ -54,6 +54,7 @@ import './features/farm-card.js';
 import './features/stall-map.js';
 import './features/stall-inventory.js';
 import './features/admin.js';
+import './features/inbox-sync.js';
 import './features/report-error.js';
 import './features/lists.js';
 import './features/chat-data-context.js';
@@ -76,6 +77,7 @@ import('@capacitor/app')
       const w = window as any;
       if (typeof w.stallMapRedrawIfActive === 'function') w.stallMapRedrawIfActive();
       if (typeof w.softRepaintCattleTrackerView === 'function') w.softRepaintCattleTrackerView();
+      if (typeof w.processServerInbox === 'function') w.processServerInbox();
     });
   })
   .catch(() => {});
