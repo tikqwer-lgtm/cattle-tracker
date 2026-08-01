@@ -55,8 +55,11 @@ test.describe('Чек-лист: вход и выход', () => {
     await expect(
       page.locator('#auth-screen').getByRole('button', { name: 'Подключиться к серверу' })
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Запросить логин/пароль' })).toBeVisible();
+    await expect(page.locator('#authServerSelect')).toBeVisible();
     await expect(page.locator('#authLoginForm')).toHaveCount(1);
     await expect(page.locator('#auth-server-block button', { hasText: 'Регистрация' })).toHaveCount(1);
+    await expect(page.locator('#authForgotPasswordBtn')).toHaveCount(1);
   });
 
   test('вход без пароля открывает меню', async ({ page }) => {
@@ -72,7 +75,7 @@ test.describe('Чек-лист: вход и выход', () => {
     if (await serverAuth.isVisible()) {
       await expect(page.locator('#authPassword')).toBeFocused({ timeout: 5000 });
     } else {
-      await expect(page.locator('#authLocalConnectServerUrlInput')).toBeFocused({ timeout: 5000 });
+      await expect(page.locator('#auth-connect-server-btn')).toBeFocused({ timeout: 5000 });
     }
   });
 });

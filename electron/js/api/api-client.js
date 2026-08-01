@@ -405,6 +405,21 @@
     });
   }
 
+  function createAccessRequest(payload) {
+    return request('POST', '/api/auth/access-request', payload || {});
+  }
+
+  function getAccessRequests(status) {
+    var q = status ? ('?status=' + encodeURIComponent(status)) : '?status=pending';
+    return request('GET', '/api/admin/access-requests' + q).then(function (data) {
+      return (data && data.requests) || [];
+    });
+  }
+
+  function resolveAccessRequest(id, status) {
+    return request('PATCH', '/api/admin/access-requests/' + encodeURIComponent(id), { status: status || 'done' });
+  }
+
   function getCurrentUser() {
     return request('GET', '/api/auth/me').then(function (data) {
       return data.user || null;
@@ -535,6 +550,9 @@
     getInbox: getInbox,
     markInboxRead: markInboxRead,
     getRegisterStatus: getRegisterStatus,
+    createAccessRequest: createAccessRequest,
+    getAccessRequests: getAccessRequests,
+    resolveAccessRequest: resolveAccessRequest,
     submitReport: submitReport,
     getReports: getReports,
     deleteReport: deleteReport,

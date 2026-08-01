@@ -340,6 +340,31 @@
 
   var _activeTab = 'contacts';
   var _addrSuggestTimer = null;
+  /** Индекс адреса в форме (−1 — новый). */
+  var _addrEditIdx = -1;
+
+  function formatAddressLine(a) {
+    if (!a) return '';
+    if (a.address && String(a.address).trim()) return String(a.address).trim();
+    return [a.region, a.locality, a.street, a.house].filter(Boolean).join(', ');
+  }
+
+  function readAddrFormFields() {
+    return {
+      name: ((document.getElementById('farmCardAddrName') || {}).value || '').trim(),
+      region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+      locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+      address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim(),
+      navUrl: ((document.getElementById('farmCardAddrNav') || {}).value || '').trim()
+    };
+  }
+
+  function clearAddrFormFields() {
+    ['farmCardAddrName', 'farmCardAddrRegion', 'farmCardAddrLocality', 'farmCardAddrLine', 'farmCardAddrNav'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
 
   function renderFarmCardPanel() {
     if (typeof window._farmSuggestDocClose === 'function') {

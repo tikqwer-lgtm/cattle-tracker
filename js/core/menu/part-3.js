@@ -10,6 +10,8 @@ function updateMenuEmptyObjectState(list, currentId, pendingId) {
   var mainEl = document.getElementById('menu-main-content');
   var msgEl = document.getElementById('menu-no-object-message');
   var createBtn = document.getElementById('menuCreateObjectEmptyBtn');
+  var syncBtn = document.getElementById('menuSyncEmptyBtn');
+  var logoutBtn = document.getElementById('menuLogoutEmptyBtn');
   var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   var isAdmin = typeof hasCapability === 'function' && hasCapability('createDeleteObjects', user);
   var realList = (list || []).filter(function (o) {
@@ -32,10 +34,12 @@ function updateMenuEmptyObjectState(list, currentId, pendingId) {
       msgEl.textContent = '';
     } else {
       msgEl.hidden = false;
-      msgEl.textContent = 'Ожидается подключение объекта администратором.';
+      msgEl.textContent = 'Ожидается подключение объекта администратором. Можно выбрать базу в «Синхронизация» или выйти из аккаунта.';
     }
   }
   if (createBtn) createBtn.style.display = noObjects && isAdmin ? '' : 'none';
+  if (syncBtn) syncBtn.style.display = noObjects ? '' : 'none';
+  if (logoutBtn) logoutBtn.style.display = noObjects ? '' : 'none';
   var screen = document.getElementById('menu-screen');
   if (screen) {
     if (noObjects) screen.classList.add('menu-screen--no-object');

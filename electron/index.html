@@ -52,24 +52,28 @@
   <div id="auth-screen" class="screen active">
     <h1>Вход</h1>
     <div id="auth-form-container" class="auth-form-container">
-      <!-- Локальный режим (без сервера) -->
-      <div id="auth-local-block" class="auth-local-block">
-        <p class="sync-section-hint auth-local-server-hint">Адрес API, на котором у вас есть логин (http:// или https://). Используется при «Подключиться к серверу».</p>
-        <div class="sync-admin-server-url-row auth-local-server-url-row">
-          <input type="url" id="authLocalConnectServerUrlInput" class="sync-admin-server-url-input" placeholder="" autocomplete="off" inputmode="url" aria-label="Адрес API" />
-        </div>
-        <div class="form-actions auth-local-actions">
-          <button type="button" id="auth-skip-btn" class="action-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Войти без пароля</button>
-          <button type="button" id="auth-connect-server-btn" class="action-btn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
+      <div class="auth-server-picker">
+        <label for="authServerSelect">Выбрать сервер</label>
+        <select id="authServerSelect" class="auth-server-select" aria-label="Выбрать сервер"></select>
+        <p id="auth-server-display-name" class="auth-server-display-name">Генетика-НН</p>
+        <p class="auth-api-hint auth-api-hint--short">Логин/пароль выдает администратор сервера</p>
+        <div class="auth-centered-actions">
+          <button type="button" class="action-btn" id="authRequestCredentialsBtn">Запросить логин/пароль</button>
         </div>
       </div>
+
+      <!-- Локальный режим (без сервера): подключение по выбранному имени -->
+      <div id="auth-local-block" class="auth-local-block">
+        <div class="form-actions auth-local-actions auth-centered-actions">
+          <button type="button" id="auth-connect-server-btn" class="action-btn" onclick="typeof window.connectToServer === 'function' && window.connectToServer()">Подключиться к серверу</button>
+          <button type="button" id="auth-skip-btn" class="small-btn" onclick="typeof window.skipAuth === 'function' && window.skipAuth()">Войти без пароля</button>
+        </div>
+      </div>
+
       <!-- Серверный режим (API подключён) -->
       <div id="auth-server-block" style="display: none;">
         <p id="auth-session-status" class="auth-session-status auth-session-status--pending" hidden aria-live="polite"></p>
-        <p id="auth-api-hint" class="auth-api-hint">Для доступа к данным с сервера войдите по логину и паролю. Новые аккаунты создаёт администратор в разделе «Администрирование». Логин и пароль действуют только на том сервере, к которому вы подключились.</p>
-        <p class="auth-api-switch-server-wrap">
-          <button type="button" class="small-btn" onclick="typeof window.switchToPickAnotherApiServer === 'function' && window.switchToPickAnotherApiServer()">Указать другой адрес сервера</button>
-        </p>
+        <p id="auth-connected-server-label" class="auth-connected-server-label" hidden></p>
         <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
           <label for="authUsernameSelect">Выбрать пользователя</label>
           <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
@@ -79,8 +83,9 @@
           <input type="text" id="authUsername" required autocomplete="username" />
           <label for="authPassword">Пароль</label>
           <input type="password" id="authPassword" autocomplete="current-password" required />
-          <div class="form-actions">
+          <div class="form-actions auth-login-actions">
             <button type="submit">Войти</button>
+            <button type="button" id="authForgotPasswordBtn" class="small-btn">Забыл пароль</button>
             <button type="button" id="auth-register-switch-btn" onclick="typeof window.showAuthRegister === 'function' && window.showAuthRegister()">Регистрация</button>
           </div>
         </form>
@@ -113,12 +118,25 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.6.54" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.56" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
 
     <div id="menu-no-object-state" class="menu-no-object-state" hidden>
       <p id="menu-no-object-message" class="menu-no-object-message">Ожидается подключение объекта администратором.</p>
-      <button type="button" class="action-btn" id="menuCreateObjectEmptyBtn" style="display: none;" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">Создать базу</button>
+      <div class="menu-no-object-actions">
+        <button type="button" class="action-btn menu-group-btn" id="menuCreateObjectEmptyBtn" style="display: none;" onclick="typeof window.handleAddObjectClick === 'function' && window.handleAddObjectClick()">
+          <span>📁</span>
+          <span>Создать базу</span>
+        </button>
+        <button type="button" class="action-btn menu-group-btn" id="menuSyncEmptyBtn" onclick="typeof window.navigate === 'function' && window.navigate('sync')">
+          <span>🔄</span>
+          <span>Синхронизация</span>
+        </button>
+        <button type="button" class="action-btn menu-group-btn" id="menuLogoutEmptyBtn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">
+          <span>🚪</span>
+          <span>Выход</span>
+        </button>
+      </div>
     </div>
 
     <div id="menu-main-content">
@@ -306,6 +324,11 @@
     <section class="admin-section">
       <h2>Пользователи</h2>
       <div id="admin-users-container" class="admin-list-container"></div>
+    </section>
+    <section class="admin-section admin-access-requests">
+      <h2>Заявки на доступ</h2>
+      <p class="farm-settings-hint">Заявки «Забыл пароль» и «Запросить логин». Смените пароль пользователя выше, затем отметьте заявку выполненной.</p>
+      <div id="admin-access-requests-container" class="admin-list-container"></div>
     </section>
     <section class="admin-section">
       <h2>Подключение к объектам</h2>

@@ -30,6 +30,8 @@ if (typeof window !== 'undefined') {
   window.fillAuthUsernameList = SM.fillAuthUsernameList;
   window.bindAuthControls = SM.bindAuthControls;
   window.updateAuthSessionStatusUi = SM.updateAuthSessionStatusUi;
+  window.showAuthAccessRequestModal = SM.showAuthAccessRequestModal;
+  window.fillAuthServerSelect = SM.fillAuthServerSelect;
 }
 
 if (typeof window !== 'undefined' && window.document) {

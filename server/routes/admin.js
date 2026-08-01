@@ -136,4 +136,21 @@ router.delete('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {
   res.json({ ok: true });
 });
 
+router.get('/admin/access-requests', requireAuth, requireRole('admin'), (req, res) => {
+  const status = (req.query && req.query.status) || 'pending';
+  const list = status === 'all' ? db.listAccessRequests(null) : db.listAccessRequests(status);
+  res.json({ ok: true, requests: list || [] });
+});
+
+router.patch('/admin/access-requests/:id', requireAuth, requireRole('admin'), (req, res) => {
+  const id = req.params.id;
+  const status = (req.body && req.body.status) || 'done';
+  if (status !== 'done' && status !== 'rejected') {
+    return res.status(400).json({ error: 'status: done или rejected' });
+  }
+  const row = db.resolveAccessRequest(id, status, req.user && req.user.id);
+  if (!row) return res.status(404).json({ error: 'Заявка не найдена' });
+  res.json({ ok: true, request: row });
+});
+
 module.exports = router;

@@ -333,6 +333,120 @@
   padding: 8px 0;
   line-height: 1.4;
 }
+.auth-api-hint--short {
+  text-align: center;
+  padding: 0 0 8px;
+  margin: 0 0 12px;
+}
+.auth-server-picker {
+  margin-bottom: 16px;
+  text-align: center;
+}
+.auth-server-picker label {
+  display: block;
+  text-align: left;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.auth-server-select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: var(--field-min-height, 42px);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  background: var(--color-bg-elevated, #fff);
+}
+.auth-server-display-name {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+}
+.auth-connected-server-label {
+  text-align: center;
+  font-size: 0.95em;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+}
+.auth-centered-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+.auth-centered-actions .action-btn,
+.auth-centered-actions .small-btn {
+  width: 100%;
+  max-width: 280px;
+  justify-content: center;
+}
+.auth-login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.auth-login-actions button[type="submit"] {
+  flex: 1 1 auto;
+  min-width: 7rem;
+}
+.auth-access-request-overlay .confirm-modal,
+.auth-access-request-modal {
+  width: 90%;
+  max-width: 420px;
+}
+.auth-access-request-modal label {
+  display: block;
+  margin: 8px 0 4px;
+  font-weight: 600;
+  text-align: left;
+}
+.auth-access-request-modal input,
+.auth-access-request-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.auth-access-request-modal textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.admin-access-requests {
+  margin-top: 1.25rem;
+}
+.admin-access-requests h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+.admin-access-requests-empty {
+  color: var(--color-text-muted);
+  font-size: 0.95em;
+}
+.admin-access-request-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-bg-elevated, #fff);
+}
+.admin-access-request-card p {
+  margin: 0.2rem 0;
+  font-size: 0.92em;
+}
+.admin-access-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.5rem;
+}
 /* Окно авторизации: рамка и выравнивание */
 .auth-form-container {
   max-width: 420px;

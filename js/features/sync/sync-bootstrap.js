@@ -56,7 +56,6 @@ function initSyncServerBlock() {
       if (val) el.value = val;
     }
     prefillConnectUrlInput(document.getElementById('syncConnectServerUrlInput'));
-    prefillConnectUrlInput(document.getElementById('authLocalConnectServerUrlInput'));
   }
   if (typeof window.initSyncMobileApkSection === 'function') window.initSyncMobileApkSection();
   if (typeof window.initSyncDesktopApkAdmin === 'function') window.initSyncDesktopApkAdmin();

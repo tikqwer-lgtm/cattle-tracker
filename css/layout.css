@@ -32,15 +32,35 @@
 }
 
 .menu-no-object-state {
-  margin: 1.5rem 0 1rem;
+  margin: 1.5rem auto 1rem;
   text-align: center;
   padding: 1rem 0.75rem;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .menu-no-object-message {
   margin: 0 0 1rem;
   font-size: 1.05rem;
   line-height: 1.4;
+  width: 100%;
+}
+
+.menu-no-object-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.menu-no-object-actions .action-btn.menu-group-btn {
+  width: 100%;
+  justify-content: center;
+  margin: 0;
 }
 
 .menu-screen--no-object .menu-branding {

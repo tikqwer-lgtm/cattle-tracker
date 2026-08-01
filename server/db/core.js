@@ -123,6 +123,13 @@ function initSchema() {
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at);`);
 
+  try {
+    const accessRequests = require('./access-requests');
+    accessRequests.ensureAccessRequestsTable();
+  } catch (e) {
+    console.error('access_requests table:', e.message);
+  }
+
   const row = getSql("SELECT 1 FROM objects WHERE id = 'default'");
   if (!row) {
     runSql("INSERT INTO objects (id, name) VALUES ('default', 'Основная база')");

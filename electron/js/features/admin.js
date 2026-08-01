@@ -289,6 +289,75 @@
     });
   }
 
+  function kindLabel(kind) {
+    if (kind === 'forgot_password') return 'Забыл пароль';
+    if (kind === 'request_credentials') return 'Запросить логин/пароль';
+    return kind || 'Заявка';
+  }
+
+  function renderAccessRequests(list, api) {
+    var el = document.getElementById('admin-access-requests-container');
+    if (!el) return;
+    if (!Array.isArray(list) || list.length === 0) {
+      el.innerHTML = '<p class="admin-access-requests-empty admin-message">Нет ожидающих заявок.</p>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      html +=
+        '<div class="admin-access-request-card" data-request-id="' + escapeHtml(r.id) + '">' +
+        '<p><strong>' + escapeHtml(kindLabel(r.kind)) + '</strong> · ' + escapeHtml(r.created_at || '') + '</p>' +
+        '<p>Логин: ' + escapeHtml(r.username || '—') + '</p>' +
+        '<p>Контакт: ' + escapeHtml(r.contact || '—') + '</p>' +
+        '<p>Комментарий: ' + escapeHtml(r.comment || '—') + '</p>' +
+        '<div class="admin-access-request-actions">' +
+        '<button type="button" class="small-btn admin-access-done-btn" data-request-id="' + escapeHtml(r.id) + '">Отметить выполненным</button>' +
+        '<button type="button" class="small-btn admin-access-reject-btn" data-request-id="' + escapeHtml(r.id) + '">Отклонить</button>' +
+        '</div></div>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.admin-access-done-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-request-id');
+        if (!id || !api.resolveAccessRequest) return;
+        api.resolveAccessRequest(id, 'done').then(function () {
+          if (typeof showToast === 'function') showToast('Заявка отмечена выполненной', 'success');
+          loadAccessRequests(api);
+        }).catch(function (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Ошибка', 'error', 5000);
+        });
+      });
+    });
+    el.querySelectorAll('.admin-access-reject-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-request-id');
+        if (!id || !api.resolveAccessRequest) return;
+        api.resolveAccessRequest(id, 'rejected').then(function () {
+          if (typeof showToast === 'function') showToast('Заявка отклонена', 'info');
+          loadAccessRequests(api);
+        }).catch(function (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Ошибка', 'error', 5000);
+        });
+      });
+    });
+  }
+
+  function loadAccessRequests(api) {
+    var el = document.getElementById('admin-access-requests-container');
+    if (!el) return;
+    if (!api || typeof api.getAccessRequests !== 'function') {
+      el.innerHTML = '<p class="admin-message">API заявок недоступен.</p>';
+      return;
+    }
+    el.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+    api.getAccessRequests('pending').then(function (list) {
+      renderAccessRequests(list, api);
+    }).catch(function (err) {
+      el.innerHTML = '<p class="admin-message admin-error">Ошибка: ' + escapeHtml(err.message || 'Не удалось загрузить заявки') + '</p>';
+    });
+  }
+
   function renderAdminScreen() {
     var usersEl = document.getElementById('admin-users-container');
     var reportsEl = document.getElementById('admin-reports-container');
@@ -300,12 +369,15 @@
       usersEl.innerHTML = '<p class="admin-message">API недоступен.</p>';
       reportsEl.innerHTML = '';
       if (assignEl) assignEl.innerHTML = '';
+      var arEmpty = document.getElementById('admin-access-requests-container');
+      if (arEmpty) arEmpty.innerHTML = '';
       return;
     }
 
     usersEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
     reportsEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
     if (assignEl) assignEl.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+    loadAccessRequests(api);
 
     var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
     var currentUserId = currentUser ? currentUser.id : null;

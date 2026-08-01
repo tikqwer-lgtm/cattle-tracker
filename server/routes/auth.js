@@ -99,4 +99,35 @@ router.get('/me', requireAuth, (req, res) => {
   res.json({ ok: true, user: req.user });
 });
 
+const accessRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  handler: function (req, res) {
+    res.status(429).json({ error: 'Слишком много заявок. Попробуйте позже.' });
+  }
+});
+
+router.post('/access-request', accessRequestLimiter, (req, res) => {
+  const body = req.body || {};
+  const kindRaw = String(body.kind || '').trim();
+  const kind = kindRaw === 'forgot_password' ? 'forgot_password' : 'request_credentials';
+  const username = (body.username || '').trim();
+  const contact = (body.contact || '').trim();
+  const comment = (body.comment || '').trim();
+  if (kind === 'forgot_password' && !username) {
+    return res.status(400).json({ error: 'Укажите логин' });
+  }
+  if (!contact && !comment && !username) {
+    return res.status(400).json({ error: 'Укажите логин, контакт или комментарий' });
+  }
+  if (username && db.countPendingByUsername(username, kind, 60) >= 3) {
+    return res.status(429).json({ error: 'Уже есть недавние заявки по этому логину. Дождитесь ответа администратора.' });
+  }
+  const row = db.createAccessRequest({ kind, username, contact, comment });
+  res.status(201).json({ ok: true, request: row });
+});
+
 module.exports = router;

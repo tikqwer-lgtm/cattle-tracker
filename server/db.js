@@ -10,6 +10,7 @@ const protocols = require('./db/protocols');
 const stallLayout = require('./db/stall-layout');
 const farmCard = require('./db/farm-card');
 const userObjects = require('./db/user-objects');
+const accessRequests = require('./db/access-requests');
 
 module.exports = {
   ...core,
@@ -21,4 +22,5 @@ module.exports = {
   ...stallLayout,
   ...farmCard,
   ...userObjects,
+  ...accessRequests,
 };

@@ -90,13 +90,16 @@ function normalizeConnectServerUrl(u) {
 }
 
 /**
- * Адрес для первого подключения: поле на экране «Синхронизация» или на экране входа (локальный блок), иначе последний успешный URL, иначе из сборки.
+ * Адрес для первого подключения: select сервера на auth → поле синхронизации → последний URL → каталог/сборка.
  */
 function resolveConnectServerUrlForFirstConnect() {
+  var select = document.getElementById('authServerSelect');
+  if (select && select.value && typeof window.getCattleTrackerServerById === 'function') {
+    var fromSelect = window.getCattleTrackerServerById(select.value);
+    if (fromSelect && fromSelect.url) return normalizeConnectServerUrl(fromSelect.url);
+  }
   var input = document.getElementById('syncConnectServerUrlInput');
-  var authInput = document.getElementById('authLocalConnectServerUrlInput');
   var fromField = input && String(input.value || '').trim();
-  var fromAuth = authInput && String(authInput.value || '').trim();
   var def =
     typeof window !== 'undefined' && window.CATTLE_TRACKER_DEFAULT_SERVER_URL != null
       ? String(window.CATTLE_TRACKER_DEFAULT_SERVER_URL).trim()
@@ -105,7 +108,7 @@ function resolveConnectServerUrlForFirstConnect() {
   try {
     tryLast = (localStorage.getItem('cattleTracker_lastConnectUrl') || '').trim();
   } catch (e) {}
-  var raw = fromField || fromAuth || tryLast || def;
+  var raw = fromField || tryLast || def;
   return normalizeConnectServerUrl(raw);
 }
 
@@ -132,7 +135,7 @@ function connectToServer(opts) {
   var url = resolveConnectServerUrlForFirstConnect();
   if (!url) {
     if (typeof showToast === 'function') {
-      showToast('Укажите адрес API в поле ниже (http:// или https://) или задайте адрес по умолчанию в сборке.', 'error', 7000);
+      showToast('Выберите сервер в списке на экране входа или укажите адрес в «Синхронизация».', 'error', 7000);
     }
     return;
   }

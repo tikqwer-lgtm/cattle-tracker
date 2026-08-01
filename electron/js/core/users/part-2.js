@@ -6,6 +6,168 @@
   var global = typeof window !== 'undefined' ? window : this;
   var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
 
+  function getSelectedAuthServer() {
+    var select = document.getElementById('authServerSelect');
+    if (select && select.value && typeof global.getCattleTrackerServerById === 'function') {
+      return global.getCattleTrackerServerById(select.value);
+    }
+    var list = global.CATTLE_TRACKER_SERVERS;
+    return list && list[0] ? list[0] : null;
+  }
+
+  function formatServerLabel(urlOrBase) {
+    var byUrl = typeof global.getCattleTrackerServerByUrl === 'function'
+      ? global.getCattleTrackerServerByUrl(urlOrBase)
+      : null;
+    if (byUrl && byUrl.name) return byUrl.name;
+    var selected = getSelectedAuthServer();
+    if (selected && selected.name) return selected.name;
+    return urlOrBase ? String(urlOrBase) : '';
+  }
+
+  function fillAuthServerSelect() {
+    var select = document.getElementById('authServerSelect');
+    if (!select) return;
+    var servers = Array.isArray(global.CATTLE_TRACKER_SERVERS) ? global.CATTLE_TRACKER_SERVERS : [];
+    var prev = select.value;
+    select.innerHTML = '';
+    for (var i = 0; i < servers.length; i++) {
+      var s = servers[i];
+      if (!s || !s.id) continue;
+      var opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name || s.id;
+      select.appendChild(opt);
+    }
+    var base = globalThis['__users'].getSavedServerBase
+      ? globalThis['__users'].getSavedServerBase()
+      : '';
+    var matched = base && typeof global.getCattleTrackerServerByUrl === 'function'
+      ? global.getCattleTrackerServerByUrl(base)
+      : null;
+    if (matched && matched.id) select.value = matched.id;
+    else if (prev && select.querySelector('option[value="' + prev + '"]')) select.value = prev;
+    else if (servers[0]) select.value = servers[0].id;
+    updateAuthServerDisplay();
+  }
+
+  function updateAuthServerDisplay() {
+    var nameEl = document.getElementById('auth-server-display-name');
+    var connectedEl = document.getElementById('auth-connected-server-label');
+    var server = getSelectedAuthServer();
+    var name = server && server.name ? server.name : 'Сервер';
+    if (nameEl) nameEl.textContent = name;
+    if (connectedEl) {
+      if (useApi) {
+        connectedEl.hidden = false;
+        connectedEl.textContent = 'Подключён к «' + name + '»';
+      } else {
+        connectedEl.hidden = true;
+        connectedEl.textContent = '';
+      }
+    }
+  }
+
+  function ensureApiBaseFromAuthSelect() {
+    var server = getSelectedAuthServer();
+    var url = server && server.url ? String(server.url).trim().replace(/\/$/, '') : '';
+    if (!url) {
+      return Promise.reject(new Error('Выберите сервер'));
+    }
+    var api = global.CattleTrackerApi;
+    if (api && typeof api.setPersistedApiBase === 'function') {
+      if (!api.setPersistedApiBase(url)) {
+        return Promise.reject(new Error('Некорректный адрес сервера'));
+      }
+    } else {
+      global.CATTLE_TRACKER_API_BASE = url;
+    }
+    return fetch(url + '/api/health').then(function (res) {
+      if (!res.ok) throw new Error('Сервер недоступен (код ' + res.status + ')');
+      return url;
+    });
+  }
+
+  function showAuthAccessRequestModal(kind) {
+    var isForgot = kind === 'forgot_password';
+    var title = isForgot ? 'Забыл пароль' : 'Запросить логин/пароль';
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay auth-access-request-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML =
+      '<div class="confirm-modal confirm-modal--wide auth-access-request-modal">' +
+      '<p class="confirm-modal-text" style="font-weight:600;">' + title + '</p>' +
+      '<label for="authAccessUsername">Логин' + (isForgot ? ' *' : '') + '</label>' +
+      '<input type="text" id="authAccessUsername" autocomplete="username" />' +
+      '<label for="authAccessContact">Контакт (телефон / Telegram)</label>' +
+      '<input type="text" id="authAccessContact" autocomplete="tel" />' +
+      '<label for="authAccessComment">Комментарий</label>' +
+      '<textarea id="authAccessComment" rows="3"></textarea>' +
+      '<div class="confirm-modal-actions" style="margin-top:1rem;">' +
+      '<button type="button" class="small-btn auth-access-cancel">Отмена</button>' +
+      '<button type="button" class="btn primary auth-access-submit">Отправить</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    var usernameInput = overlay.querySelector('#authAccessUsername');
+    var loginField = document.getElementById('authUsername');
+    if (usernameInput && loginField && loginField.value) usernameInput.value = loginField.value;
+    if (usernameInput) setTimeout(function () { usernameInput.focus(); }, 50);
+
+    function close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+
+    overlay.querySelector('.auth-access-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) close();
+    });
+    overlay.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+    overlay.querySelector('.auth-access-submit').addEventListener('click', function () {
+      var username = (overlay.querySelector('#authAccessUsername').value || '').trim();
+      var contact = (overlay.querySelector('#authAccessContact').value || '').trim();
+      var comment = (overlay.querySelector('#authAccessComment').value || '').trim();
+      if (isForgot && !username) {
+        if (typeof showToast === 'function') showToast('Укажите логин', 'error');
+        else alert('Укажите логин');
+        return;
+      }
+      if (!username && !contact && !comment) {
+        if (typeof showToast === 'function') showToast('Укажите логин, контакт или комментарий', 'error');
+        else alert('Укажите логин, контакт или комментарий');
+        return;
+      }
+      var submitBtn = overlay.querySelector('.auth-access-submit');
+      if (submitBtn) submitBtn.disabled = true;
+      ensureApiBaseFromAuthSelect()
+        .then(function () {
+          if (!global.CattleTrackerApi || typeof global.CattleTrackerApi.createAccessRequest !== 'function') {
+            throw new Error('API недоступен');
+          }
+          return global.CattleTrackerApi.createAccessRequest({
+            kind: isForgot ? 'forgot_password' : 'request_credentials',
+            username: username,
+            contact: contact,
+            comment: comment
+          });
+        })
+        .then(function () {
+          close();
+          var okMsg = 'Заявка отправлена администратору сервера. Новый пароль (или логин) сообщат отдельно.';
+          if (typeof showToast === 'function') showToast(okMsg, 'success', 8000);
+          else alert(okMsg);
+        })
+        .catch(function (err) {
+          if (submitBtn) submitBtn.disabled = false;
+          var msg = (err && err.message) ? err.message : 'Не удалось отправить заявку';
+          if (typeof showToast === 'function') showToast(msg, 'error', 6000);
+          else alert(msg);
+        });
+    });
+  }
+
   function bindAuthControls() {
     var connectionBtn = document.getElementById('app-header-connection-btn');
     if (connectionBtn && !connectionBtn.dataset.authBound) {
@@ -22,6 +184,28 @@
       skipBtn.dataset.authBound = '1';
       skipBtn.addEventListener('click', function () {
         globalThis['__users'].skipAuth();
+      });
+    }
+    var serverSelect = document.getElementById('authServerSelect');
+    if (serverSelect && !serverSelect.dataset.authBound) {
+      serverSelect.dataset.authBound = '1';
+      serverSelect.addEventListener('change', function () {
+        updateAuthServerDisplay();
+        updateAuthSessionStatusUi();
+      });
+    }
+    var requestBtn = document.getElementById('authRequestCredentialsBtn');
+    if (requestBtn && !requestBtn.dataset.authBound) {
+      requestBtn.dataset.authBound = '1';
+      requestBtn.addEventListener('click', function () {
+        showAuthAccessRequestModal('request_credentials');
+      });
+    }
+    var forgotBtn = document.getElementById('authForgotPasswordBtn');
+    if (forgotBtn && !forgotBtn.dataset.authBound) {
+      forgotBtn.dataset.authBound = '1';
+      forgotBtn.addEventListener('click', function () {
+        showAuthAccessRequestModal('forgot_password');
       });
     }
   }
@@ -50,7 +234,8 @@
     var session = typeof global.getAuthSessionStatus === 'function' ? global.getAuthSessionStatus() : null;
     var status = session && session.status ? session.status : 'unknown';
     var base = globalThis['__users'].getSavedServerBase() || (global.CattleTrackerApi && global.CattleTrackerApi.getBaseUrl ? global.CattleTrackerApi.getBaseUrl() : '');
-    var baseLine = base ? 'Сервер: ' + base : 'Сервер не указан';
+    var label = formatServerLabel(base);
+    var baseLine = label ? 'Сервер: ' + label : 'Сервер не указан';
     var msg = baseLine;
     var cls = 'auth-session-status';
     if (status === 'loggedIn' && session.user) {
@@ -105,6 +290,7 @@
     var serverBlock = document.getElementById('auth-server-block');
     if (localBlock) localBlock.style.display = useApi ? 'none' : '';
     if (serverBlock) serverBlock.style.display = useApi ? '' : 'none';
+    fillAuthServerSelect();
     globalThis['__users'].initAuthUsernameSelect();
     bindAuthControls();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
@@ -252,9 +438,14 @@
       var serverBlock = document.getElementById('auth-server-block');
       var serverVisible = serverBlock && serverBlock.style.display !== 'none';
       if (!serverVisible) {
-        var localIn = document.getElementById('authLocalConnectServerUrlInput');
-        if (localIn) {
-          localIn.focus({ preventScroll: false });
+        var connectBtn = document.getElementById('auth-connect-server-btn');
+        if (connectBtn) {
+          connectBtn.focus({ preventScroll: false });
+          return;
+        }
+        var serverSelect = document.getElementById('authServerSelect');
+        if (serverSelect) {
+          serverSelect.focus({ preventScroll: false });
           return;
         }
       }
@@ -384,6 +575,9 @@
   NS.bindAuthControls = bindAuthControls;
   NS.getDefaultLocalUsername = getDefaultLocalUsername;
   NS.updateAuthSessionStatusUi = updateAuthSessionStatusUi;
+  NS.fillAuthServerSelect = fillAuthServerSelect;
+  NS.updateAuthServerDisplay = updateAuthServerDisplay;
+  NS.showAuthAccessRequestModal = showAuthAccessRequestModal;
   NS.initUsers = initUsers;
   NS.updateAuthBar = updateAuthBar;
   NS.formatRoleLabel = formatRoleLabel;
