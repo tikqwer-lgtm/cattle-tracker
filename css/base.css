@@ -121,6 +121,24 @@ body {
 
 .screen.active {
   @apply block;
+  animation: screen-enter 0.2s ease-out;
+}
+
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.active {
+    animation: none;
+  }
 }
 
 h1 {

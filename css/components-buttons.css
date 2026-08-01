@@ -116,6 +116,18 @@
   @apply mb-2 text-[1.5em];
 }
 
+.action-btn .ui-icon {
+  display: inline-flex;
+  margin-bottom: 0.5rem;
+  font-size: inherit;
+  line-height: 0;
+}
+
+.action-btn .ui-icon svg {
+  width: 1.65em;
+  height: 1.65em;
+}
+
 .menu-buttons {
   @apply mt-[30px] flex flex-col gap-[15px];
 }

@@ -189,13 +189,20 @@ var chartInstances = [];
     if (indicatorsEl) {
       indicatorsEl.innerHTML =
         '<div class="analytics-cards">' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + report.pr + '%</div><div class="analytics-card-label">PR (стельность)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + report.cr + '%</div><div class="analytics-card-label">CR (оплодотворение)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + report.hdr + '%</div><div class="analytics-card-label">HDR (охота)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + (report.servicePeriodDays != null ? report.servicePeriodDays : '—') + '</div><div class="analytics-card-label">Сервис-период (дн.)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + report.inseminatedCount + '</div><div class="analytics-card-label">Осеменено</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + report.pregnantCount + '</div><div class="analytics-card-label">Стельных</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + report.pr + '" data-suffix="%">0%</span></div><div class="analytics-card-label">PR (стельность)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + report.cr + '" data-suffix="%">0%</span></div><div class="analytics-card-label">CR (оплодотворение)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + report.hdr + '" data-suffix="%">0%</span></div><div class="analytics-card-label">HDR (охота)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value">' +
+            (report.servicePeriodDays != null
+              ? '<span data-animate-to="' + report.servicePeriodDays + '">0</span>'
+              : '—') +
+          '</div><div class="analytics-card-label">Сервис-период (дн.)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + report.inseminatedCount + '">0</span></div><div class="analytics-card-label">Осеменено</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + report.pregnantCount + '">0</span></div><div class="analytics-card-label">Стельных</div></div>' +
         '</div>';
+      if (typeof window.animateNumberTargets === 'function') {
+        window.animateNumberTargets(indicatorsEl);
+      }
     }
 
     var breakdownTableEl = document.getElementById('analyticsBreakdownTable');

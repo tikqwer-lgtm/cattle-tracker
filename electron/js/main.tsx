@@ -26,6 +26,7 @@ import './core/core.js';
 import './core/users.js';
 import './core/auth-session.js';
 import './ui/ui-helpers.js';
+import './ui/animate-number.js';
 import './features/action-input-guards.js';
 import './ui/cow-operations.js';
 import './utils/voice-handler.js';

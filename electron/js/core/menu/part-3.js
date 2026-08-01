@@ -271,8 +271,16 @@ function updateMenuCalvingForecast() {
 
   _menuCalvingLastFactItems = (stats.fact && stats.fact.items) ? stats.fact.items.slice() : [];
 
-  if (planEl) planEl.textContent = String(stats.plan.count);
-  if (factEl) factEl.textContent = String(stats.fact.count);
+  function setAnim(el, value) {
+    if (!el) return;
+    if (typeof window.animateNumber === 'function') {
+      window.animateNumber(el, value);
+    } else {
+      el.textContent = String(value);
+    }
+  }
+  setAnim(planEl, stats.plan.count);
+  setAnim(factEl, stats.fact.count);
 
   var addedN = (stats.fact && stats.fact.addedAfterCalvingCount) || 0;
   var exitedN = (stats.fact && stats.fact.exitedCount) || 0;
@@ -368,22 +376,27 @@ function updateHerdStats() {
     if (!total) return 0;
     return Math.round((n / total) * 100);
   };
-  function setText(id, text) {
+  function setNum(id, value, suffix) {
     var el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (!el) return;
+    if (typeof window.animateNumber === 'function') {
+      window.animateNumber(el, value, { suffix: suffix || '' });
+    } else {
+      el.textContent = String(value) + (suffix || '');
+    }
   }
   if (!list || list.length === 0) {
-    setText('totalCows', '0');
-    setText('pregnantCows', '0');
-    setText('dryCows', '0');
-    setText('inseminatedCows', '0');
-    setText('cullCows', '0');
-    setText('notInseminatedCows', '0');
-    setText('pregnantCowsPct', '0%');
-    setText('dryCowsPct', '0%');
-    setText('inseminatedCowsPct', '0%');
-    setText('cullCowsPct', '0%');
-    setText('notInseminatedCowsPct', '0%');
+    setNum('totalCows', 0);
+    setNum('pregnantCows', 0);
+    setNum('dryCows', 0);
+    setNum('inseminatedCows', 0);
+    setNum('cullCows', 0);
+    setNum('notInseminatedCows', 0);
+    setNum('pregnantCowsPct', 0, '%');
+    setNum('dryCowsPct', 0, '%');
+    setNum('inseminatedCowsPct', 0, '%');
+    setNum('cullCowsPct', 0, '%');
+    setNum('notInseminatedCowsPct', 0, '%');
     updateMenuCalvingForecast();
     return;
   }
@@ -395,18 +408,18 @@ function updateHerdStats() {
   const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
   const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
 
-  setText('totalCows', String(totalCows));
-  setText('pregnantCows', String(pregnantCows));
-  setText('dryCows', String(dryCows));
-  setText('inseminatedCows', String(inseminatedCows));
-  setText('cullCows', String(cullCows));
-  setText('notInseminatedCows', String(notInseminatedCows));
+  setNum('totalCows', totalCows);
+  setNum('pregnantCows', pregnantCows);
+  setNum('dryCows', dryCows);
+  setNum('inseminatedCows', inseminatedCows);
+  setNum('cullCows', cullCows);
+  setNum('notInseminatedCows', notInseminatedCows);
 
-  setText('pregnantCowsPct', pct(pregnantCows, totalCows) + '%');
-  setText('dryCowsPct', pct(dryCows, totalCows) + '%');
-  setText('inseminatedCowsPct', pct(inseminatedCows, totalCows) + '%');
-  setText('cullCowsPct', pct(cullCows, totalCows) + '%');
-  setText('notInseminatedCowsPct', pct(notInseminatedCows, totalCows) + '%');
+  setNum('pregnantCowsPct', pct(pregnantCows, totalCows), '%');
+  setNum('dryCowsPct', pct(dryCows, totalCows), '%');
+  setNum('inseminatedCowsPct', pct(inseminatedCows, totalCows), '%');
+  setNum('cullCowsPct', pct(cullCows, totalCows), '%');
+  setNum('notInseminatedCowsPct', pct(notInseminatedCows, totalCows), '%');
   updateMenuCalvingForecast();
 }
 

@@ -422,29 +422,93 @@
 
   function openExternalUrl(url) {
     var u = String(url || '').trim();
-    if (!u) return;
-    try {
-      var Cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
-      if (Cap && typeof Cap.open === 'function') {
-        Cap.open({ url: u });
-        return;
-      }
-    } catch (e) {}
+    if (!u) return Promise.resolve(false);
     try {
       if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
-        window.electronAPI.openExternal(u);
-        return;
+        return Promise.resolve(window.electronAPI.openExternal(u)).then(function () {
+          return true;
+        }).catch(function () {
+          return false;
+        });
       }
-    } catch (e2) {}
+    } catch (e) {}
+
+    var C = window.Capacitor;
+    var isAndroidCap =
+      C &&
+      typeof C.isNativePlatform === 'function' &&
+      C.isNativePlatform() &&
+      typeof C.getPlatform === 'function' &&
+      C.getPlatform() === 'android';
+
+    if (isAndroidCap) {
+      return import('@capacitor/core')
+        .then(function (core) {
+          var OpenExternalUrl = core.registerPlugin('OpenExternalUrl', {
+            web: {
+              openUrl: function () {
+                return Promise.resolve();
+              }
+            }
+          });
+          return OpenExternalUrl.openUrl({ url: u });
+        })
+        .then(function () {
+          return true;
+        })
+        .catch(function () {
+          return import('@capacitor/browser')
+            .then(function (mod) {
+              return mod.Browser.open({ url: u });
+            })
+            .then(function () {
+              return true;
+            })
+            .catch(function () {
+              try {
+                window.open(u, '_blank', 'noopener,noreferrer');
+                return true;
+              } catch (e2) {
+                return false;
+              }
+            });
+        });
+    }
+
     try {
       window.open(u, '_blank', 'noopener');
+      return Promise.resolve(true);
     } catch (e3) {
-      window.location.href = u;
+      try {
+        window.location.href = u;
+        return Promise.resolve(true);
+      } catch (e4) {
+        return Promise.resolve(false);
+      }
     }
   }
 
-  function buildMaxShareUrl(text) {
+  function buildMaxShareHttpsUrl(text) {
     return 'https://max.ru/:share?text=' + encodeURIComponent(String(text || ''));
+  }
+
+  /** Открыть шаринг в MAX; на Android — через системный Intent (плагин OpenExternalUrl). */
+  function openMaxShare(text) {
+    var body = String(text || '').trim();
+    if (!body) {
+      if (typeof showToast === 'function') showToast('Нет текста для отправки', 'error');
+      return;
+    }
+    var httpsUrl = buildMaxShareHttpsUrl(body);
+    openExternalUrl(httpsUrl).then(function (ok) {
+      if (!ok && typeof showToast === 'function') {
+        showToast('Не удалось открыть MAX. Установите приложение или откройте вручную.', 'error', 6000);
+      }
+    }).catch(function () {
+      if (typeof showToast === 'function') {
+        showToast('Не удалось открыть MAX', 'error');
+      }
+    });
   }
 
   function shareGeopositionToMax(geo, addressInfo) {
@@ -464,7 +528,28 @@
     if (name) lines.push(name);
     if (placeBits) lines.push(placeBits);
     if (nav) lines.push(nav);
-    openExternalUrl(buildMaxShareUrl(lines.join('\n')));
+    openMaxShare(lines.join('\n'));
+  }
+
+  function shareSpecialistToMax(spec) {
+    if (!spec) {
+      if (typeof showToast === 'function') showToast('Нет специалиста', 'error');
+      return;
+    }
+    var fio = (spec.name && String(spec.name).trim()) || '';
+    var phones = specialistPhones(spec);
+    if (!fio && !phones.length) {
+      if (typeof showToast === 'function') showToast('Укажите ФИО или телефон', 'error');
+      return;
+    }
+    var lines = [];
+    if (fio) lines.push(fio);
+    if (phones.length) lines.push(phones.join(', '));
+    openMaxShare(lines.join('\n'));
+  }
+
+  function buildMaxShareUrl(text) {
+    return buildMaxShareHttpsUrl(text);
   }
 
   function parsePhonesInput(raw) {
@@ -816,6 +901,8 @@
     var specRows = (b.specialists || [])
       .map(function (s, idx) {
         var geoLabel = geoLabelById(b.addresses, s.geoId);
+        var fio = (s.name && String(s.name).trim()) || '';
+        var phones = specialistPhones(s);
         var rowClass = idx === _specEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
           '<tr data-spec-idx="' +
@@ -827,15 +914,15 @@
           '</td><td>' +
           escapeHtml(s.name) +
           '</td><td>' +
-          phonesCallCellHtml(specialistPhones(s)) +
+          phonesCallCellHtml(phones) +
           '</td><td>' +
           escapeHtml(s.email) +
           '</td><td>' +
           escapeHtml(geoLabel || '—') +
-          (geoLabel
+          (fio || phones.length
             ? ' <button type="button" class="small-btn farm-card-spec-share-max" data-spec-idx="' +
               idx +
-              '" title="Поделиться геопозицией в MAX">MAX</button>'
+              '" title="Поделиться ФИО и телефоном в MAX">MAX</button>'
             : '') +
           '</td>' +
           (canEdit
@@ -1542,41 +1629,34 @@
       };
     });
     root.querySelectorAll('.farm-card-geo-share-max').forEach(function (btn) {
-      btn.onclick = function () {
-        var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
-        var geo = window.__farmCardBundle && window.__farmCardBundle.addresses
-          ? window.__farmCardBundle.addresses[i]
-          : null;
-        shareGeopositionToMax(geo, window.__farmCardBundle && window.__farmCardBundle.addressInfo);
+      btn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        try {
+          var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
+          var geo = window.__farmCardBundle && window.__farmCardBundle.addresses
+            ? window.__farmCardBundle.addresses[i]
+            : null;
+          shareGeopositionToMax(geo, window.__farmCardBundle && window.__farmCardBundle.addressInfo);
+        } catch (err) {
+          if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка отправки в MAX', 'error');
+        }
       };
     });
     root.querySelectorAll('.farm-card-spec-share-max').forEach(function (btn) {
-      btn.onclick = function () {
-        var i = parseInt(btn.getAttribute('data-spec-idx'), 10);
-        var spec =
-          window.__farmCardBundle && window.__farmCardBundle.specialists
-            ? window.__farmCardBundle.specialists[i]
-            : null;
-        if (!spec || !spec.geoId) {
-          if (typeof showToast === 'function') showToast('Нет закреплённой геопозиции', 'error');
-          return;
+      btn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        try {
+          var i = parseInt(btn.getAttribute('data-spec-idx'), 10);
+          var spec =
+            window.__farmCardBundle && window.__farmCardBundle.specialists
+              ? window.__farmCardBundle.specialists[i]
+              : null;
+          shareSpecialistToMax(spec);
+        } catch (err) {
+          if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка отправки в MAX', 'error');
         }
-        var list = (window.__farmCardBundle && window.__farmCardBundle.addresses) || [];
-        var geo = null;
-        for (var g = 0; g < list.length; g++) {
-          if (list[g] && String(list[g].id) === String(spec.geoId)) {
-            geo = list[g];
-            break;
-          }
-        }
-        if (!geo) {
-          if (typeof showToast === 'function') showToast('Геопозиция не найдена', 'error');
-          return;
-        }
-        var withSpec = Object.assign({}, geo, {
-          name: (geo.name || 'Геопозиция') + (spec.name ? ' — ' + spec.name : '')
-        });
-        shareGeopositionToMax(withSpec, window.__farmCardBundle && window.__farmCardBundle.addressInfo);
       };
     });
 

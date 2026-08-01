@@ -122,6 +122,12 @@
   cursor: pointer;
   font-size: 0.95em;
 }
+.menu-notifications-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
 .menu-notifications-badge {
   display: inline-flex;
   align-items: center;

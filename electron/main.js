@@ -3,7 +3,7 @@
  * Загружает index.html из родительской папки (cattle-tracker).
  * Для работы с API укажите адрес сервера в приложении (экран входа).
  */
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -566,6 +566,15 @@ ipcMain.handle('get-os-username', () => {
   } catch (e) {
     return Promise.resolve('local');
   }
+});
+
+ipcMain.handle('open-external-url', async (_evt, url) => {
+  const u = String(url || '').trim();
+  if (!u || !/^(https?:|max:|intent:|tel:|mailto:)/i.test(u)) {
+    throw new Error('Некорректный URL');
+  }
+  await shell.openExternal(u);
+  return true;
 });
 
 function sendApkUploadProgress(payload) {

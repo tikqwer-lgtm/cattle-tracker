@@ -14,6 +14,7 @@ ipcRenderer.on('apk-upload-progress', (_e, data) => {
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getOsUsername: () => ipcRenderer.invoke('get-os-username'),
+  openExternal: (url) => ipcRenderer.invoke('open-external-url', String(url || '')),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   onUpdateDownloadProgress: (cb) => {
     ipcRenderer.on('update-download-progress', (_e, data) => cb(data));

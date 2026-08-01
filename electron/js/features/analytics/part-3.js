@@ -113,10 +113,13 @@
       }
       indicatorsEl.innerHTML =
         '<div class="analytics-cards">' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + data.totalInseminations + '</div><div class="analytics-card-label">Осеменено в периоде (шт)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + data.pregnantCount + '</div><div class="analytics-card-label">Стельных из них (шт)</div></div>' +
-          '<div class="analytics-card"><div class="analytics-card-value">' + data.percent + '%' + starHtml + '</div><div class="analytics-card-label">Оплодотворяемость (%)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + data.totalInseminations + '">0</span></div><div class="analytics-card-label">Осеменено в периоде (шт)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + data.pregnantCount + '">0</span></div><div class="analytics-card-label">Стельных из них (шт)</div></div>' +
+          '<div class="analytics-card"><div class="analytics-card-value"><span data-animate-to="' + data.percent + '" data-suffix="%">0%</span>' + starHtml + '</div><div class="analytics-card-label">Оплодотворяемость (%)</div></div>' +
         '</div>';
+      if (typeof window.animateNumberTargets === 'function') {
+        window.animateNumberTargets(indicatorsEl);
+      }
     }
     var tableEl = document.getElementById('reproductionTable');
     if (tableEl) {
