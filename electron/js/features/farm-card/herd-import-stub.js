@@ -1,12 +1,13 @@
 /**
- * Импорт KPI карточки хозяйства из CSV/Excel-шаблона (DC305 → ручной перенос в шаблон).
- * Листы/файлы: kpi (месяц + CR/HDR/PR) и bulls (месяц + бык + CR).
+ * Импорт KPI карточки хозяйства:
+ * — шаблон kpi/bulls (CSV/XLSX);
+ * — сырые BREDSUM\\E (HDR/%PR по 21-дневкам → месяц) и BREDSUM BY SID (CR по быкам).
  */
 (function (global) {
   'use strict';
 
   var SUPPORTED_SOURCES = [
-    { id: 'dc305', label: 'DairyComp 305 (шаблон KPI)', status: 'ready' },
+    { id: 'dc305', label: 'DairyComp 305 (BREDSUM / шаблон)', status: 'ready' },
     { id: 'generic_csv', label: 'CSV/Excel шаблон KPI', status: 'ready' },
     { id: 'afifarm', label: 'AfiFarm', status: 'planned' },
     { id: 'uniform', label: 'Uniform-Agri', status: 'planned' }
@@ -184,36 +185,282 @@
     return XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
   }
 
-  function parseCsvString(csvString) {
-    if (typeof Papa === 'undefined') {
+  function decodeCsvBuffer(ab) {
+    var u8 = new Uint8Array(ab);
+    var utf8 = '';
+    try {
+      utf8 = new TextDecoder('utf-8').decode(u8);
+    } catch (e1) {
+      utf8 = String.fromCharCode.apply(null, u8);
+    }
+    var probe = utf8.slice(0, 200);
+    if (/Дата|HDR|SID|%PR|%Стел|месяц|cows_cr/i.test(probe) && probe.indexOf('\ufffd') === -1) {
+      return utf8;
+    }
+    try {
+      var cp1251 = new TextDecoder('windows-1251').decode(u8);
+      if (/Дата|HDR|SID|%PR|%Стел|Всего/i.test(cp1251.slice(0, 200))) return cp1251;
+      return cp1251;
+    } catch (e2) {
+      return utf8;
+    }
+  }
+
+  function parseCsvToRows(csvString) {
+    if (typeof Papa === 'undefined') return null;
+    var delim = csvString.indexOf(';') !== -1 ? ';' : ',';
+    var parsed = Papa.parse(csvString, { header: false, skipEmptyLines: true, delimiter: delim });
+    return parsed.data || [];
+  }
+
+  function parseDcDateToYm(raw) {
+    var s = String(raw || '').trim();
+    var m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+    if (!m) return '';
+    var dd = parseInt(m[1], 10);
+    var mm = parseInt(m[2], 10);
+    var yy = parseInt(m[3], 10);
+    if (m[3].length <= 2) yy = yy <= 70 ? 2000 + yy : 1900 + yy;
+    if (!mm || mm < 1 || mm > 12 || !dd) return '';
+    return yy + '-' + String(mm).padStart(2, '0');
+  }
+
+  function parseNumCell(raw) {
+    var s = String(raw == null ? '' : raw).trim().replace(/\s/g, '').replace(',', '.');
+    if (!s || s === '-' || s === '—') return null;
+    var n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  function roundPct(n) {
+    if (n == null || isNaN(n)) return '';
+    return String(Math.round(n));
+  }
+
+  function segmentFromFileName(fileName) {
+    var n = String(fileName || '').toLowerCase().replace(/ё/g, 'е');
+    if (/телк|heif|lact\s*0|lact=0|лакт\s*0/.test(n)) return 'heif';
+    return 'cows';
+  }
+
+  function findHeaderIndex(headers, predicates) {
+    for (var i = 0; i < headers.length; i++) {
+      var h = normHeader(headers[i]);
+      for (var p = 0; p < predicates.length; p++) {
+        if (predicates[p](h)) return i;
+      }
+    }
+    return -1;
+  }
+
+  function isBredsumE(rows) {
+    if (!rows || !rows[0]) return false;
+    var joined = (rows[0] || []).map(normHeader).join(' ');
+    var hasDate = /дата|date/.test(joined);
+    var hasHdr = /\bhdr\b/.test(joined);
+    var hasPr = /%pr|\bpr\b|стел/.test(joined);
+    return hasDate && hasHdr && hasPr;
+  }
+
+  function isBredsumBySid(rows) {
+    if (!rows || !rows[0]) return false;
+    var h0 = normHeader((rows[0] || [])[0]);
+    if (h0 === 'sid' || h0 === 'sire' || h0 === 'bull') return true;
+    var fileHint = false;
+    var c0 = cell(rows[1] || [], 0).replace(/\s/g, '');
+    if (/^\d*H\d+/i.test(c0) || /\.S$/i.test(c0)) fileHint = true;
+    var joined = (rows[0] || []).map(normHeader).join(' ');
+    if (/sid|sire/.test(joined) && (/%стел|%conc|стел|#стел/.test(joined) || fileHint)) return true;
+    return fileHint && rows.length > 5;
+  }
+
+  function isTotalRow(raw) {
+    var s = normHeader(raw).replace(/\s/g, '');
+    return s === 'всего' || s === 'total' || s.indexOf('всего') !== -1;
+  }
+
+  /**
+   * BREDSUM\E: Дата; …; HDR; …; %PR → HDR/PR по календарным месяцам (+ строка Всего → год).
+   * CR в этом отчёте нет — не заполняется.
+   */
+  function parseBredsumE(rows, errors, segment) {
+    var metricValues = [];
+    var headers = rows[0] || [];
+    var dateIdx = findHeaderIndex(headers, [
+      function (h) {
+        return h === 'дата' || h === 'date';
+      }
+    ]);
+    var hdrIdx = findHeaderIndex(headers, [
+      function (h) {
+        return h === 'hdr' || h === '%hdr';
+      }
+    ]);
+    var prIdx = findHeaderIndex(headers, [
+      function (h) {
+        return h === '%pr' || h === 'pr' || h === '%стел' || h === 'pct pr';
+      }
+    ]);
+    if (dateIdx < 0) dateIdx = 0;
+    if (hdrIdx < 0) {
+      errors.push('BREDSUM\\E: не найден столбец HDR');
+      return metricValues;
+    }
+    if (prIdx < 0) {
+      // типичный порядок: Дата;Ос Приг;Осем;HDR;Ст Приг;Стел;%PR
+      prIdx = headers.length > 6 ? 6 : -1;
+    }
+    if (prIdx < 0) {
+      errors.push('BREDSUM\\E: не найден столбец %PR');
+      return metricValues;
+    }
+
+    var byMonth = {};
+    var yearHdr = null;
+    var yearPr = null;
+    var hdrKey = segment === 'heif' ? 'heif_hdr' : 'cows_hdr';
+    var prKey = segment === 'heif' ? 'heif_pr' : 'cows_pr';
+
+    for (var r = 1; r < rows.length; r++) {
+      var row = rows[r];
+      if (!row || !row.length) continue;
+      var dateRaw = cell(row, dateIdx);
+      if (isTotalRow(dateRaw)) {
+        yearHdr = parseNumCell(cell(row, hdrIdx));
+        yearPr = parseNumCell(cell(row, prIdx));
+        continue;
+      }
+      var ym = parseDcDateToYm(dateRaw);
+      if (!ym) continue;
+      var hdr = parseNumCell(cell(row, hdrIdx));
+      var pr = parseNumCell(cell(row, prIdx));
+      // %PR=0 в незакрытых окнах (ещё нет диагнозов) — не усредняем в месяц
+      if (pr === 0) pr = null;
+      if (hdr == null && pr == null) continue;
+      if (!byMonth[ym]) byMonth[ym] = { hdrSum: 0, hdrN: 0, prSum: 0, prN: 0 };
+      if (hdr != null) {
+        byMonth[ym].hdrSum += hdr;
+        byMonth[ym].hdrN += 1;
+      }
+      if (pr != null) {
+        byMonth[ym].prSum += pr;
+        byMonth[ym].prN += 1;
+      }
+    }
+
+    Object.keys(byMonth)
+      .sort()
+      .forEach(function (ym) {
+        var g = byMonth[ym];
+        var valueDate = ym + '-01';
+        if (g.hdrN) pushMetric(metricValues, MONTH_IDS[hdrKey], valueDate, roundPct(g.hdrSum / g.hdrN));
+        if (g.prN) pushMetric(metricValues, MONTH_IDS[prKey], valueDate, roundPct(g.prSum / g.prN));
+      });
+
+    var today = new Date().toISOString().slice(0, 10);
+    if (yearHdr != null) pushMetric(metricValues, YEAR_IDS[hdrKey], today, roundPct(yearHdr));
+    if (yearPr != null) pushMetric(metricValues, YEAR_IDS[prKey], today, roundPct(yearPr));
+
+    if (!metricValues.length) errors.push('BREDSUM\\E: нет распознанных строк (' + (segment === 'heif' ? 'тёлки' : 'коровы') + ')');
+    return metricValues;
+  }
+
+  /**
+   * BREDSUM BY SID: SID; …; %Стел → CR по быкам за defaultMonth.
+   */
+  function parseBredsumBySid(rows, errors, defaultMonth) {
+    var bullFertility = [];
+    var ym = toYearMonth(defaultMonth) || new Date().toISOString().slice(0, 7);
+    if (ym === 'year') ym = new Date().toISOString().slice(0, 7);
+
+    var headers = rows[0] || [];
+    var sidIdx = findHeaderIndex(headers, [
+      function (h) {
+        return h === 'sid' || h === 'sire' || h === 'bull';
+      }
+    ]);
+    if (sidIdx < 0) sidIdx = 0;
+    var crIdx = findHeaderIndex(headers, [
+      function (h) {
+        return h === '%стел' || h === '%conc' || h === 'cr' || h === '%cr' || h.indexOf('%стел') !== -1;
+      }
+    ]);
+    // стандартный BREDSUM по быку: col0 SID, col2 %Стел
+    if (crIdx < 0) crIdx = 2;
+
+    for (var r = 1; r < rows.length; r++) {
+      var row = rows[r];
+      if (!row || !row.length) continue;
+      var bull = cell(row, sidIdx).replace(/\s+/g, ' ').trim();
+      if (!bull || isTotalRow(bull)) continue;
+      var cr = parseNumCell(cell(row, crIdx));
+      if (cr == null) continue;
+      bullFertility.push({
+        id: newId('bf_'),
+        bullName: bull,
+        periodMonth: ym,
+        crPct: roundPct(cr),
+        services: '',
+        pregnant: ''
+      });
+    }
+    if (!bullFertility.length) errors.push('BREDSUM BY SID: нет строк с CR по быкам');
+    return bullFertility;
+  }
+
+  function parseRowsAuto(rows, fileName, errors, opts) {
+    opts = opts || {};
+    var segment = opts.segment || segmentFromFileName(fileName);
+    var defaultMonth = opts.defaultMonth || '';
+    var metricValues = [];
+    var bullFertility = [];
+
+    if (isBredsumE(rows)) {
+      metricValues = parseBredsumE(rows, errors, segment);
+      return { metricValues: metricValues, bullFertility: bullFertility, kind: 'bredsum_e' };
+    }
+    if (isBredsumBySid(rows) || /bredsum|by\s*sid|sid/i.test(fileName || '')) {
+      if (!isBredsumBySid(rows) && mapHeaders(rows[0] || [], BULL_HEADER_ALIASES).bull != null) {
+        bullFertility = parseBullRows(rows, errors);
+      } else {
+        bullFertility = parseBredsumBySid(rows, errors, defaultMonth);
+      }
+      return { metricValues: metricValues, bullFertility: bullFertility, kind: 'bredsum_sid' };
+    }
+    if (mapHeaders(rows[0] || [], BULL_HEADER_ALIASES).bull != null && mapHeaders(rows[0] || [], BULL_HEADER_ALIASES).cr != null) {
+      bullFertility = parseBullRows(rows, errors);
+      return { metricValues: metricValues, bullFertility: bullFertility, kind: 'template_bulls' };
+    }
+    metricValues = parseKpiRows(rows, errors);
+    return { metricValues: metricValues, bullFertility: bullFertility, kind: 'template_kpi' };
+  }
+
+  function parseCsvString(csvString, fileName, opts) {
+    var rows = parseCsvToRows(csvString);
+    if (!rows) {
       return { ok: false, metricValues: [], bullFertility: [], errors: ['PapaParse не загружен'] };
     }
-    var delim = csvString.indexOf(';') !== -1 ? ';' : ',';
-    var parsed = Papa.parse(csvString, {
-      header: false,
-      skipEmptyLines: true,
-      delimiter: delim
-    });
-    var rows = parsed.data || [];
     var errors = [];
-    var metricValues = parseKpiRows(rows, errors);
+    var parsed = parseRowsAuto(rows, fileName || '', errors, opts || {});
+    var ok = parsed.metricValues.length > 0 || parsed.bullFertility.length > 0;
+    if (!ok && !errors.length) errors.push('Не удалось распознать CSV');
     return {
-      ok: metricValues.length > 0 || errors.length === 0,
-      metricValues: metricValues,
-      bullFertility: [],
+      ok: ok,
+      metricValues: parsed.metricValues,
+      bullFertility: parsed.bullFertility,
       errors: errors,
-      _hint: 'CSV без имени листа: распознан как kpi. Для быков используйте Excel с листом bulls или отдельный CSV bulls.'
+      kind: parsed.kind
     };
   }
 
   function detectSheetKind(name) {
     var n = normHeader(name);
-    if (/bull|бык|sire/.test(n)) return 'bulls';
+    if (/bull|бык|sire|sid/.test(n)) return 'bulls';
     if (/kpi|показател|repro|воспроиз|metric/.test(n)) return 'kpi';
     return '';
   }
 
-  function parseWorkbook(ab) {
+  function parseWorkbook(ab, fileName, opts) {
     var errors = [];
     if (typeof XLSX === 'undefined') {
       return { ok: false, metricValues: [], bullFertility: [], errors: ['SheetJS (XLSX) не загружен'] };
@@ -222,40 +469,12 @@
     var metricValues = [];
     var bullFertility = [];
     var names = wb.SheetNames || [];
-    var kpiDone = false;
-    var bullsDone = false;
     names.forEach(function (name) {
-      var kind = detectSheetKind(name);
       var rows = sheetToRows(wb.Sheets[name]);
-      if (kind === 'bulls' || (!bullsDone && !kind && names.length === 1 && mapHeaders(rows[0] || [], BULL_HEADER_ALIASES).bull != null)) {
-        var b = parseBullRows(rows, errors);
-        bullFertility = bullFertility.concat(b);
-        bullsDone = true;
-        return;
-      }
-      if (kind === 'kpi' || (!kpiDone && (kind === '' || kind === 'kpi'))) {
-        if (mapHeaders(rows[0] || [], KPI_HEADER_ALIASES).month != null && mapHeaders(rows[0] || [], KPI_HEADER_ALIASES).cows_cr != null) {
-          metricValues = metricValues.concat(parseKpiRows(rows, errors));
-          kpiDone = true;
-          return;
-        }
-        if (mapHeaders(rows[0] || [], BULL_HEADER_ALIASES).bull != null) {
-          bullFertility = bullFertility.concat(parseBullRows(rows, errors));
-          bullsDone = true;
-        } else if (!kpiDone) {
-          metricValues = metricValues.concat(parseKpiRows(rows, errors));
-          kpiDone = true;
-        }
-      }
+      var parsed = parseRowsAuto(rows, name + ' ' + (fileName || ''), errors, opts || {});
+      metricValues = metricValues.concat(parsed.metricValues);
+      bullFertility = bullFertility.concat(parsed.bullFertility);
     });
-    if (!kpiDone && !bullsDone && names.length) {
-      var rows0 = sheetToRows(wb.Sheets[names[0]]);
-      if (mapHeaders(rows0[0] || [], BULL_HEADER_ALIASES).bull != null) {
-        bullFertility = parseBullRows(rows0, errors);
-      } else {
-        metricValues = parseKpiRows(rows0, errors);
-      }
-    }
     var ok = metricValues.length > 0 || bullFertility.length > 0;
     if (!ok && !errors.length) errors.push('В файле не найдено строк KPI или быков');
     return { ok: ok, metricValues: metricValues, bullFertility: bullFertility, errors: errors };
@@ -263,7 +482,7 @@
 
   /**
    * @param {ArrayBuffer|string} payload
-   * @param {{ fileName?: string, sourceId?: string }} [opts]
+   * @param {{ fileName?: string, sourceId?: string, defaultMonth?: string, segment?: string }} [opts]
    */
   function parse(payload, opts) {
     opts = opts || {};
@@ -276,47 +495,113 @@
         errors: ['Источник «' + sourceId + '» ещё не подключён']
       };
     }
-    var fileName = String(opts.fileName || '').toLowerCase();
+    var fileName = String(opts.fileName || '');
     if (typeof payload === 'string') {
-      var csvRes = parseCsvString(payload);
-      if (/bull|бык/.test(fileName)) {
-        var errB = [];
-        var delim = payload.indexOf(';') !== -1 ? ';' : ',';
-        var parsedB = Papa.parse(payload, { header: false, skipEmptyLines: true, delimiter: delim });
-        return {
-          ok: true,
-          metricValues: [],
-          bullFertility: parseBullRows(parsedB.data || [], errB),
-          errors: errB
-        };
-      }
-      return csvRes;
+      return parseCsvString(payload, fileName, opts);
     }
-    if (payload && payload instanceof ArrayBuffer) {
-      if (fileName.indexOf('.csv') !== -1) {
-        var text = '';
-        try {
-          text = new TextDecoder('utf-8').decode(payload);
-        } catch (e) {
-          text = String.fromCharCode.apply(null, new Uint8Array(payload));
+    var ab = null;
+    if (payload && typeof ArrayBuffer !== 'undefined' && payload instanceof ArrayBuffer) {
+      ab = payload;
+    } else if (payload && Object.prototype.toString.call(payload) === '[object ArrayBuffer]') {
+      ab = payload;
+    } else if (payload && typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView && ArrayBuffer.isView(payload)) {
+      ab = payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength);
+    }
+    if (ab) {
+      var lower = fileName.toLowerCase();
+      if (lower.indexOf('.csv') !== -1 || lower.indexOf('.txt') !== -1 || !lower) {
+        var text = decodeCsvBuffer(ab);
+        // если это не csv (xlsx wrongly named) — fallback workbook
+        if (text.charCodeAt(0) === 0x50 && text.charCodeAt(1) === 0x4b) {
+          return parseWorkbook(ab, fileName, opts);
         }
-        if (/bull|бык/.test(fileName)) {
-          var errC = [];
-          var delimC = text.indexOf(';') !== -1 ? ';' : ',';
-          var parsedC = Papa.parse(text, { header: false, skipEmptyLines: true, delimiter: delimC });
-          var bulls = parseBullRows(parsedC.data || [], errC);
-          return {
-            ok: bulls.length > 0 || errC.length === 0,
-            metricValues: [],
-            bullFertility: bulls,
-            errors: errC
-          };
-        }
-        return parseCsvString(text);
+        return parseCsvString(text, fileName, opts);
       }
-      return parseWorkbook(payload);
+      return parseWorkbook(ab, fileName, opts);
     }
     return { ok: false, metricValues: [], bullFertility: [], errors: ['Неподдерживаемый тип файла'] };
+  }
+
+  function latestMonthFromMetrics(metricValues) {
+    var best = '';
+    (metricValues || []).forEach(function (v) {
+      if (!v || !v.valueDate) return;
+      var ym = toYearMonthKey(v.valueDate);
+      if (/^\d{4}-\d{2}$/.test(ym) && ym > best) best = ym;
+    });
+    return best;
+  }
+
+  function parseFile(file, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      if (!file) {
+        resolve({ ok: false, metricValues: [], bullFertility: [], errors: ['Файл не выбран'] });
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        resolve(
+          parse(reader.result, {
+            fileName: file.name || '',
+            sourceId: 'dc305',
+            defaultMonth: opts.defaultMonth || '',
+            segment: opts.segment || segmentFromFileName(file.name || '')
+          })
+        );
+      };
+      reader.onerror = function () {
+        resolve({ ok: false, metricValues: [], bullFertility: [], errors: ['Не удалось прочитать файл'] });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  /** Несколько файлов: сначала E/KPI, затем BY SID (месяц = последний из E или текущий). */
+  function parseFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []).filter(Boolean);
+    if (!files.length) {
+      return Promise.resolve({ ok: false, metricValues: [], bullFertility: [], errors: ['Файлы не выбраны'] });
+    }
+    var sidFiles = [];
+    var otherFiles = [];
+    files.forEach(function (f) {
+      var n = String(f.name || '').toLowerCase();
+      if (/sid|бык|bull|bredsum\s*by/i.test(n) && !/^e\.csv$/i.test(n)) sidFiles.push(f);
+      else otherFiles.push(f);
+    });
+    var chain = Promise.resolve({ ok: true, metricValues: [], bullFertility: [], errors: [] });
+    otherFiles.forEach(function (f) {
+      chain = chain.then(function (acc) {
+        return parseFile(f).then(function (res) {
+          acc.metricValues = acc.metricValues.concat(res.metricValues || []);
+          acc.bullFertility = acc.bullFertility.concat(res.bullFertility || []);
+          acc.errors = acc.errors.concat(res.errors || []);
+          if (res.ok) acc.ok = true;
+          return acc;
+        });
+      });
+    });
+    return chain.then(function (acc) {
+      var defaultMonth = latestMonthFromMetrics(acc.metricValues) || new Date().toISOString().slice(0, 7);
+      var sidChain = Promise.resolve(acc);
+      sidFiles.forEach(function (f) {
+        sidChain = sidChain.then(function (a) {
+          return parseFile(f, { defaultMonth: defaultMonth }).then(function (res) {
+            a.metricValues = a.metricValues.concat(res.metricValues || []);
+            a.bullFertility = a.bullFertility.concat(res.bullFertility || []);
+            a.errors = a.errors.concat(res.errors || []);
+            if (res.ok) a.ok = true;
+            return a;
+          });
+        });
+      });
+      return sidChain.then(function (finalAcc) {
+        finalAcc.ok = finalAcc.metricValues.length > 0 || finalAcc.bullFertility.length > 0;
+        if (!finalAcc.ok && !finalAcc.errors.length) finalAcc.errors.push('Нет данных для импорта');
+        return finalAcc;
+      });
+    });
   }
 
   function toYearMonthKey(dateOrMonth) {
@@ -432,32 +717,15 @@
 
   function showStub() {
     if (typeof global.showToast === 'function') {
-      global.showToast('Используйте «Скачать шаблон» и «Импорт KPI» на вкладке Показатели', 'info');
+      global.showToast('Импорт KPI: BREDSUM\\E, BREDSUM BY SID или шаблон — на вкладке Показатели', 'info');
     }
-  }
-
-  function parseFile(file) {
-    return new Promise(function (resolve) {
-      if (!file) {
-        resolve({ ok: false, metricValues: [], bullFertility: [], errors: ['Файл не выбран'] });
-        return;
-      }
-      var reader = new FileReader();
-      reader.onload = function () {
-        var ab = reader.result;
-        resolve(parse(ab, { fileName: file.name || '', sourceId: 'generic_csv' }));
-      };
-      reader.onerror = function () {
-        resolve({ ok: false, metricValues: [], bullFertility: [], errors: ['Не удалось прочитать файл'] });
-      };
-      reader.readAsArrayBuffer(file);
-    });
   }
 
   var api = {
     SUPPORTED_SOURCES: SUPPORTED_SOURCES,
     parse: parse,
     parseFile: parseFile,
+    parseFiles: parseFiles,
     applyParseResult: applyParseResult,
     downloadTemplate: downloadTemplate,
     buildTemplateWorkbook: buildTemplateWorkbook,

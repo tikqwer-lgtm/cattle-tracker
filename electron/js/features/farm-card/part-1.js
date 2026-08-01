@@ -1792,9 +1792,9 @@
         '<div class="farm-card-actions-row">' +
         '<button type="button" class="small-btn" id="farmCardKpiTemplateBtn">Скачать шаблон KPI</button>' +
         '<button type="button" class="small-btn" id="farmCardKpiImportBtn">Импорт KPI</button>' +
-        '<input type="file" id="farmCardKpiImportFile" accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" style="display:none" aria-label="Файл KPI" />' +
+        '<input type="file" id="farmCardKpiImportFile" accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" multiple style="display:none" aria-label="Файлы KPI" />' +
         '</div>' +
-        '<p class="farm-settings-hint">DC305: <code>BREDSUM\\E FOR LACT&gt;0</code>, <code>BREDSUM\\E FOR LACT=0</code>, <code>BREDSUM BY SID</code> → цифры в шаблон (листы kpi и bulls) → импорт.</p>' +
+        '<p class="farm-settings-hint">DC305: выберите сразу <code>E.CSV</code> (BREDSUM\\E; для тёлок — в имени файла «телк»/heif) и <code>BREDSUM BY SID.CSV</code>. CR коров/тёлок в \\E нет — только HDR/%PR; CR по быкам из BY SID. Либо заполните шаблон.</p>' +
         '</div>'
       : '';
 
@@ -2640,23 +2640,28 @@
           kpiImpFile.click();
         };
         kpiImpFile.onchange = function () {
-          var file = kpiImpFile.files && kpiImpFile.files[0];
+          var files = kpiImpFile.files ? Array.prototype.slice.call(kpiImpFile.files) : [];
           kpiImpFile.value = '';
-          if (!file) return;
-          if (!window.CattleTrackerHerdImport || typeof window.CattleTrackerHerdImport.parseFile !== 'function') {
+          if (!files.length) return;
+          var imp = window.CattleTrackerHerdImport;
+          if (!imp || (typeof imp.parseFiles !== 'function' && typeof imp.parseFile !== 'function')) {
             if (typeof showToast === 'function') showToast('Модуль импорта не загружен', 'error');
             return;
           }
           var status = document.getElementById('farmCardSaveStatus');
           if (status) status.textContent = 'Импорт…';
-          window.CattleTrackerHerdImport.parseFile(file).then(function (result) {
+          var parsePromise =
+            typeof imp.parseFiles === 'function'
+              ? imp.parseFiles(files)
+              : imp.parseFile(files[0]);
+          parsePromise.then(function (result) {
             if (!result || !result.ok) {
               var errMsg = (result && result.errors && result.errors.length ? result.errors.join('; ') : 'Нет данных');
               if (status) status.textContent = 'Ошибка';
               if (typeof showToast === 'function') showToast(errMsg, 'error');
               return;
             }
-            var applied = window.CattleTrackerHerdImport.applyParseResult(window.__farmCardBundle, result);
+            var applied = imp.applyParseResult(window.__farmCardBundle, result);
             window.__farmCardBundle = applied.bundle;
             markFarmCardDirty();
             var nM = (result.metricValues || []).length;
