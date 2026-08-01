@@ -21,6 +21,7 @@
     return {
       contacts: [],
       addresses: [],
+      addressInfo: { region: '', locality: '', address: '' },
       specialists: [],
       metricDefinitions: [],
       metricValues: [],
@@ -62,16 +63,7 @@
       if (!raw) return null;
       var p = JSON.parse(raw);
       if (!p || typeof p !== 'object') return null;
-      return {
-        contacts: Array.isArray(p.contacts) ? p.contacts : [],
-        addresses: Array.isArray(p.addresses) ? p.addresses : [],
-        specialists: Array.isArray(p.specialists) ? p.specialists : [],
-        metricDefinitions: Array.isArray(p.metricDefinitions) ? p.metricDefinitions : [],
-        metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
-        events: Array.isArray(p.events) ? p.events : [],
-        items: Array.isArray(p.items) ? p.items : [],
-        goals: Array.isArray(p.goals) ? p.goals : []
-      };
+      return p;
     } catch (e) {
       return null;
     }
@@ -178,12 +170,66 @@
     });
   }
 
+  function normalizeAddressInfo(raw) {
+    var info = raw && raw.addressInfo && typeof raw.addressInfo === 'object' ? raw.addressInfo : null;
+    var region = info && info.region != null ? String(info.region).trim() : '';
+    var locality = info && info.locality != null ? String(info.locality).trim() : '';
+    var address = info && info.address != null ? String(info.address).trim() : '';
+    if (!region && !locality && !address && Array.isArray(raw && raw.addresses)) {
+      for (var i = 0; i < raw.addresses.length; i++) {
+        var a = raw.addresses[i];
+        if (!a) continue;
+        var legacyLine =
+          (a.address && String(a.address).trim()) ||
+          [a.street, a.house].filter(Boolean).join(', ');
+        if (a.region || a.locality || legacyLine) {
+          region = region || (a.region ? String(a.region).trim() : '');
+          locality = locality || (a.locality ? String(a.locality).trim() : '');
+          address = address || legacyLine;
+          break;
+        }
+      }
+    }
+    return { region: region, locality: locality, address: address };
+  }
+
+  function normalizeGeopositions(raw) {
+    var list = Array.isArray(raw && raw.addresses) ? raw.addresses : [];
+    return list
+      .map(function (a, idx) {
+        if (!a || typeof a !== 'object') return null;
+        var name = a.name != null ? String(a.name).trim() : '';
+        var navUrl = a.navUrl != null ? String(a.navUrl).trim() : '';
+        if (!navUrl && a.lat != null && a.lng != null && !isNaN(Number(a.lat)) && !isNaN(Number(a.lng))) {
+          navUrl = 'https://yandex.ru/maps/?rtext=~' + a.lat + ',' + a.lng;
+        }
+        if (!name && !navUrl) return null;
+        return {
+          id: a.id || newId('geo_'),
+          name: name,
+          navUrl: navUrl,
+          sortOrder: a.sortOrder != null ? a.sortOrder : idx
+        };
+      })
+      .filter(Boolean);
+  }
+
   function normalizeBundle(raw) {
     var b = emptyBundle();
     if (!raw || typeof raw !== 'object') return mergeDefaultMetrics(b);
     b.contacts = Array.isArray(raw.contacts) ? raw.contacts : [];
-    b.addresses = Array.isArray(raw.addresses) ? raw.addresses : [];
-    b.specialists = Array.isArray(raw.specialists) ? raw.specialists : [];
+    b.addressInfo = normalizeAddressInfo(raw);
+    b.addresses = normalizeGeopositions(raw);
+    b.specialists = Array.isArray(raw.specialists)
+      ? raw.specialists.map(function (s) {
+          if (!s || typeof s !== 'object') return s;
+          var phones = specialistPhones(s);
+          return Object.assign({}, s, {
+            phones: phones,
+            phone: phones[0] || (s.phone != null ? String(s.phone) : '')
+          });
+        })
+      : [];
     if (!b.specialists.length) b.specialists = [];
     b.notes = raw.notes != null ? String(raw.notes) : '';
     b.name = raw.name != null ? String(raw.name) : '';
@@ -339,30 +385,195 @@
   }
 
   var _activeTab = 'contacts';
-  /** Индекс адреса в форме (−1 — новый). */
+  /** Индекс геопозиции в форме (−1 — новая). */
   var _addrEditIdx = -1;
+  /** Индекс специалиста в форме (−1 — новый). */
+  var _specEditIdx = -1;
 
-  function formatAddressLine(a) {
-    if (!a) return '';
-    if (a.address && String(a.address).trim()) return String(a.address).trim();
-    return [a.region, a.locality, a.street, a.house].filter(Boolean).join(', ');
+  function geoLabelById(addresses, geoId) {
+    var id = String(geoId || '').trim();
+    if (!id) return '';
+    var list = addresses || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && String(list[i].id) === id) {
+        return (list[i].name && String(list[i].name).trim()) || 'Без названия';
+      }
+    }
+    return '';
   }
 
-  function readAddrFormFields() {
+  function buildGeoSelectOptions(addresses, selectedId) {
+    var sel = String(selectedId || '');
+    var html = '<option value="">— Не выбрано —</option>';
+    (addresses || []).forEach(function (a) {
+      if (!a || !a.id) return;
+      var label = (a.name && String(a.name).trim()) || 'Без названия';
+      html +=
+        '<option value="' +
+        escapeHtml(a.id) +
+        '"' +
+        (String(a.id) === sel ? ' selected' : '') +
+        '>' +
+        escapeHtml(label) +
+        '</option>';
+    });
+    return html;
+  }
+
+  function openExternalUrl(url) {
+    var u = String(url || '').trim();
+    if (!u) return;
+    try {
+      var Cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+      if (Cap && typeof Cap.open === 'function') {
+        Cap.open({ url: u });
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+        window.electronAPI.openExternal(u);
+        return;
+      }
+    } catch (e2) {}
+    try {
+      window.open(u, '_blank', 'noopener');
+    } catch (e3) {
+      window.location.href = u;
+    }
+  }
+
+  function buildMaxShareUrl(text) {
+    return 'https://max.ru/:share?text=' + encodeURIComponent(String(text || ''));
+  }
+
+  function shareGeopositionToMax(geo, addressInfo) {
+    if (!geo) {
+      if (typeof showToast === 'function') showToast('Нет геопозиции', 'error');
+      return;
+    }
+    var name = (geo.name && String(geo.name).trim()) || '';
+    var nav = (geo.navUrl && String(geo.navUrl).trim()) || '';
+    var info = addressInfo || (window.__farmCardBundle && window.__farmCardBundle.addressInfo) || {};
+    var placeBits = [info.locality, info.region, info.address].filter(Boolean).join(', ');
+    if (!name && !nav && !placeBits) {
+      if (typeof showToast === 'function') showToast('Укажите название или ссылку на карты', 'error');
+      return;
+    }
+    var lines = [];
+    if (name) lines.push(name);
+    if (placeBits) lines.push(placeBits);
+    if (nav) lines.push(nav);
+    openExternalUrl(buildMaxShareUrl(lines.join('\n')));
+  }
+
+  function parsePhonesInput(raw) {
+    return String(raw || '')
+      .split(/[,;]/)
+      .map(function (p) {
+        return String(p || '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  function specialistPhones(s) {
+    if (!s) return [];
+    if (Array.isArray(s.phones) && s.phones.length) {
+      return s.phones
+        .map(function (p) {
+          return String(p || '').trim();
+        })
+        .filter(Boolean);
+    }
+    var single = s.phone != null ? String(s.phone).trim() : '';
+    return single ? [single] : [];
+  }
+
+  function phoneCallButtonHtml(phone) {
+    var p = String(phone || '').trim();
+    if (!p) return '—';
+    return (
+      '<button type="button" class="link-btn farm-card-phone-call" data-phone="' +
+      escapeHtml(p) +
+      '" title="Позвонить">' +
+      escapeHtml(p) +
+      '</button>'
+    );
+  }
+
+  function phonesCallCellHtml(phones) {
+    var list = Array.isArray(phones) ? phones : [];
+    if (!list.length) return '—';
+    return list
+      .map(function (p, i) {
+        return phoneCallButtonHtml(p) + (i < list.length - 1 ? '<span class="farm-card-phone-sep">, </span>' : '');
+      })
+      .join('');
+  }
+
+  function initiatePhoneCall(phone) {
+    var display = String(phone || '').trim();
+    if (!display) return;
+    var tel = display.replace(/[^\d+]/g, '');
+    if (!tel) return;
+    var ask =
+      typeof showConfirmModal === 'function'
+        ? showConfirmModal('Позвонить на ' + display + '?', {
+            confirmText: 'Позвонить',
+            cancelText: 'Отмена'
+          })
+        : Promise.resolve(window.confirm('Позвонить на ' + display + '?'));
+    ask.then(function (ok) {
+      if (!ok) return;
+      try {
+        window.location.href = 'tel:' + tel;
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Не удалось открыть набор номера', 'error');
+      }
+    });
+  }
+
+  function readSpecFormFields() {
+    var phones = parsePhonesInput((document.getElementById('farmCardNewSpecPhone') || {}).value || '');
     return {
-      name: ((document.getElementById('farmCardAddrName') || {}).value || '').trim(),
-      region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
-      locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
-      address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim(),
-      navUrl: ((document.getElementById('farmCardAddrNav') || {}).value || '').trim()
+      role: ((document.getElementById('farmCardNewSpecRole') || {}).value || '').trim(),
+      name: ((document.getElementById('farmCardNewSpecName') || {}).value || '').trim(),
+      phones: phones,
+      phone: phones[0] || '',
+      email: ((document.getElementById('farmCardNewSpecEmail') || {}).value || '').trim(),
+      geoId: ((document.getElementById('farmCardNewSpecGeo') || {}).value || '').trim()
     };
   }
 
-  function clearAddrFormFields() {
-    ['farmCardAddrName', 'farmCardAddrRegion', 'farmCardAddrLocality', 'farmCardAddrLine', 'farmCardAddrNav'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.value = '';
-    });
+  function syncAddressPaneToBundle() {
+    if (!window.__farmCardBundle) window.__farmCardBundle = emptyBundle();
+    var b = window.__farmCardBundle;
+    b.addressInfo = {
+      region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+      locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+      address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
+    };
+    var draftName = ((document.getElementById('farmCardGeoName') || {}).value || '').trim();
+    var draftNav = ((document.getElementById('farmCardGeoNav') || {}).value || '').trim();
+    if (!b.addresses) b.addresses = [];
+    if (draftName || draftNav) {
+      var geoPayload = { name: draftName, navUrl: draftNav };
+      if (_addrEditIdx >= 0 && b.addresses[_addrEditIdx]) {
+        b.addresses[_addrEditIdx] = Object.assign({}, b.addresses[_addrEditIdx], geoPayload);
+      } else {
+        b.addresses.push(
+          Object.assign({ id: newId('geo_'), sortOrder: b.addresses.length }, geoPayload)
+        );
+      }
+      _addrEditIdx = -1;
+    }
+  }
+
+  function readGeoFormFields() {
+    return {
+      name: ((document.getElementById('farmCardGeoName') || {}).value || '').trim(),
+      navUrl: ((document.getElementById('farmCardGeoNav') || {}).value || '').trim()
+    };
   }
 
   function renderFarmCardPanel() {
@@ -482,24 +693,23 @@
         : '') +
       '</div>';
 
-    var editingAddr =
+    var info = b.addressInfo || { region: '', locality: '', address: '' };
+    var editingGeo =
       _addrEditIdx >= 0 && b.addresses && b.addresses[_addrEditIdx] ? b.addresses[_addrEditIdx] : null;
 
-    var addrRows = (b.addresses || [])
+    var geoRows = (b.addresses || [])
       .map(function (a, idx) {
         var name = (a.name && String(a.name).trim()) || 'Без названия';
-        var line = formatAddressLine(a);
-        var placeBits = [a.region, a.locality].filter(Boolean).join(', ');
-        var nav =
-          a.navUrl ||
-          (a.lat != null && a.lng != null
-            ? 'https://yandex.ru/maps/?rtext=~' + a.lat + ',' + a.lng
-            : '');
+        var nav = a.navUrl || '';
         var navCell = nav
           ? '<a class="farm-card-nav-link" href="' +
             escapeHtml(nav) +
-            '" target="_blank" rel="noopener">Яндекс.Карты</a>'
+            '" target="_blank" rel="noopener">Открыть</a>'
           : '—';
+        var shareBtn =
+          '<button type="button" class="small-btn farm-card-geo-share-max" data-addr-idx="' +
+          idx +
+          '" title="Поделиться в MAX">В MAX</button>';
         var rowClass = idx === _addrEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
           '<tr data-addr-idx="' +
@@ -509,29 +719,26 @@
           '><td>' +
           escapeHtml(name) +
           '</td><td>' +
-          escapeHtml(placeBits || '—') +
-          '</td><td>' +
-          escapeHtml(line || '—') +
-          '</td><td>' +
           navCell +
-          '</td>' +
+          '</td><td class="farm-card-geo-actions">' +
+          shareBtn +
           (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-addr-edit" data-addr-idx="' +
+            ? ' <button type="button" class="small-btn farm-card-addr-edit" data-addr-idx="' +
               idx +
               '">Изм.</button> <button type="button" class="small-btn farm-card-addr-del" data-addr-idx="' +
               idx +
-              '">Удал.</button></td>'
+              '">Удал.</button>'
             : '') +
-          '</tr>'
+          '</td></tr>'
         );
       })
       .join('');
 
-    var addrPickOptions =
-      '<option value="">— Выберите локацию для правки —</option>' +
+    var geoPickOptions =
+      '<option value="">— Выберите по названию —</option>' +
       (b.addresses || [])
         .map(function (a, idx) {
-          var label = (a.name && String(a.name).trim()) || ('Локация ' + (idx + 1));
+          var label = (a.name && String(a.name).trim()) || ('Точка ' + (idx + 1));
           return (
             '<option value="' +
             idx +
@@ -548,65 +755,93 @@
       '<div class="farm-card-pane" id="farmCardPaneAddresses" style="' +
       (_activeTab === 'addresses' ? '' : 'display:none') +
       '">' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Название</th><th>Область / НП</th><th>Адрес</th><th>Яндекс.Карты</th>' +
-      (canEdit ? '<th></th>' : '') +
+      '<div class="farm-card-form farm-card-addr-general">' +
+      '<h4 class="farm-card-h4">Общая информация</h4>' +
+      '<p class="farm-settings-hint">Поля необязательны. Сохраняются при нажатии «Сохранить карточку».</p>' +
+      '<p class="farm-settings-hint farm-card-addr-suggest-hint" id="farmCardAddrSuggestHint" style="display:none;">Подсказки (Яндекс): введите населённый пункт или адрес и выберите из списка.</p>' +
+      '<div class="farm-card-addr-suggest-wrap">' +
+      '<div class="farm-card-grid2">' +
+      '<label>Область <input type="text" id="farmCardAddrRegion" class="farm-settings-inline-input" value="' +
+      escapeHtml(info.region || '') +
+      '" autocomplete="address-level1"' +
+      (canEdit ? '' : ' disabled') +
+      ' /></label>' +
+      '<label>Населённый пункт <input type="text" id="farmCardAddrLocality" class="farm-settings-inline-input" value="' +
+      escapeHtml(info.locality || '') +
+      '" autocomplete="address-level2"' +
+      (canEdit ? '' : ' disabled') +
+      ' /></label></div>' +
+      '<label>Адрес (полный) <input type="text" id="farmCardAddrLine" class="farm-settings-inline-input" value="' +
+      escapeHtml(info.address || '') +
+      '" autocomplete="street-address"' +
+      (canEdit ? '' : ' disabled') +
+      ' /></label>' +
+      '<ul id="farmCardAddrSuggestList" class="farm-card-addr-suggest-list" role="listbox" aria-label="Подсказки адреса" style="display:none;"></ul></div></div>' +
+      '<div class="farm-card-form farm-card-geo-block">' +
+      '<h4 class="farm-card-h4">Геопозиции</h4>' +
+      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Название</th><th>Ссылка</th><th></th>' +
       '</tr></thead><tbody>' +
-      (addrRows || '<tr><td colspan="5" class="farm-card-empty">Нет записей</td></tr>') +
+      (geoRows || '<tr><td colspan="3" class="farm-card-empty">Нет геопозиций</td></tr>') +
       '</tbody></table></div>' +
       (canEdit
-        ? '<div class="farm-card-form"><h4 class="farm-card-h4">' +
-          (editingAddr ? 'Редактирование локации' : 'Новая локация') +
-          '</h4>' +
-          '<p class="farm-settings-hint">Поля необязательны — сохраняется то, что заполнено. Можно выбрать локацию из списка по названию и изменить.</p>' +
-          ((b.addresses || []).length
+        ? ((b.addresses || []).length
             ? '<label>Выбрать по названию <select id="farmCardAddrPick" class="farm-settings-inline-input">' +
-              addrPickOptions +
+              geoPickOptions +
               '</select></label>'
             : '') +
-          '<p class="farm-settings-hint farm-card-addr-suggest-hint" id="farmCardAddrSuggestHint" style="display:none;">Подсказки (Яндекс): введите населённый пункт или адрес и выберите из списка.</p>' +
-          '<div class="farm-card-addr-suggest-wrap">' +
-          '<label>Название локации <input type="text" id="farmCardAddrName" class="farm-settings-inline-input" value="' +
-          escapeHtml(editingAddr && editingAddr.name ? editingAddr.name : '') +
+          '<h4 class="farm-card-h4">' +
+          (editingGeo ? 'Редактирование геопозиции' : 'Новая геопозиция') +
+          '</h4>' +
+          '<label>Название <input type="text" id="farmCardGeoName" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingGeo && editingGeo.name ? editingGeo.name : '') +
           '" autocomplete="off" /></label>' +
-          '<div class="farm-card-grid2">' +
-          '<label>Область <input type="text" id="farmCardAddrRegion" class="farm-settings-inline-input" value="' +
-          escapeHtml(editingAddr && editingAddr.region ? editingAddr.region : '') +
-          '" autocomplete="address-level1" /></label>' +
-          '<label>Населённый пункт <input type="text" id="farmCardAddrLocality" class="farm-settings-inline-input" value="' +
-          escapeHtml(editingAddr && editingAddr.locality ? editingAddr.locality : '') +
-          '" autocomplete="address-level2" /></label></div>' +
-          '<label>Адрес (целиком) <input type="text" id="farmCardAddrLine" class="farm-settings-inline-input" value="' +
-          escapeHtml(editingAddr ? formatAddressLine(editingAddr) : '') +
-          '" autocomplete="street-address" /></label>' +
-          '<ul id="farmCardAddrSuggestList" class="farm-card-addr-suggest-list" role="listbox" aria-label="Подсказки адреса" style="display:none;"></ul></div>' +
-          '<label>Ссылка на Яндекс.Карты <input type="url" id="farmCardAddrNav" class="farm-settings-inline-input" placeholder="https://yandex.ru/maps/..." value="' +
-          escapeHtml(editingAddr && editingAddr.navUrl ? editingAddr.navUrl : '') +
+          '<label>Ссылка на Яндекс.Карты <input type="url" id="farmCardGeoNav" class="farm-settings-inline-input" placeholder="https://yandex.ru/maps/..." value="' +
+          escapeHtml(editingGeo && editingGeo.navUrl ? editingGeo.navUrl : '') +
           '" /></label>' +
           '<div class="farm-card-actions-row">' +
           '<button type="button" class="small-btn" id="farmCardAddAddrBtn">' +
-          (editingAddr ? 'Сохранить' : 'Добавить') +
+          (editingGeo ? 'Сохранить в список' : 'Добавить в список') +
           '</button>' +
-          (editingAddr
+          (editingGeo
             ? '<button type="button" class="small-btn" id="farmCardAddrCancelBtn">Отмена</button>'
             : '') +
-          '</div></div>'
+          '</div>'
         : '') +
-      '</div>';
+      '</div></div>';
+
+    var editingSpec =
+      _specEditIdx >= 0 && b.specialists && b.specialists[_specEditIdx] ? b.specialists[_specEditIdx] : null;
+    var geoOptionsEmpty = !(b.addresses || []).length;
 
     var specRows = (b.specialists || [])
-      .map(function (s) {
+      .map(function (s, idx) {
+        var geoLabel = geoLabelById(b.addresses, s.geoId);
+        var rowClass = idx === _specEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
-          '<tr><td>' +
+          '<tr data-spec-idx="' +
+          idx +
+          '"' +
+          rowClass +
+          '><td>' +
           escapeHtml(s.role) +
           '</td><td>' +
           escapeHtml(s.name) +
           '</td><td>' +
-          escapeHtml(s.phone) +
+          phonesCallCellHtml(specialistPhones(s)) +
           '</td><td>' +
           escapeHtml(s.email) +
+          '</td><td>' +
+          escapeHtml(geoLabel || '—') +
+          (geoLabel
+            ? ' <button type="button" class="small-btn farm-card-spec-share-max" data-spec-idx="' +
+              idx +
+              '" title="Поделиться геопозицией в MAX">MAX</button>'
+            : '') +
           '</td>' +
           (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-spec-del" data-spec-id="' +
+            ? '<td><button type="button" class="small-btn farm-card-spec-edit" data-spec-idx="' +
+              idx +
+              '">Изм.</button> <button type="button" class="small-btn farm-card-spec-del" data-spec-id="' +
               escapeHtml(s.id) +
               '">Удал.</button></td>'
             : '') +
@@ -619,18 +854,41 @@
       '<div class="farm-card-pane" id="farmCardPaneSpecialists" style="' +
       (_activeTab === 'specialists' ? '' : 'display:none') +
       '">' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Роль</th><th>ФИО</th><th>Телефон</th><th>Email</th>' +
+      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Роль</th><th>ФИО</th><th>Телефоны</th><th>Email</th><th>Закрепление</th>' +
       (canEdit ? '<th></th>' : '') +
       '</tr></thead><tbody>' +
-      (specRows || '<tr><td colspan="5" class="farm-card-empty">Нет записей</td></tr>') +
+      (specRows || '<tr><td colspan="6" class="farm-card-empty">Нет записей</td></tr>') +
       '</tbody></table></div>' +
       (canEdit
-        ? '<div class="farm-card-form"><h4 class="farm-card-h4">Новый специалист</h4>' +
-          '<label>Роль <input type="text" id="farmCardNewSpecRole" class="farm-settings-inline-input" placeholder="Ветврач, зоотехник…" /></label>' +
-          '<label>ФИО <input type="text" id="farmCardNewSpecName" class="farm-settings-inline-input" /></label>' +
-          '<label>Телефон <input type="tel" id="farmCardNewSpecPhone" class="farm-settings-inline-input" /></label>' +
-          '<label>Email <input type="email" id="farmCardNewSpecEmail" class="farm-settings-inline-input" /></label>' +
-          '<button type="button" class="small-btn" id="farmCardAddSpecBtn">Добавить</button></div>'
+        ? '<div class="farm-card-form"><h4 class="farm-card-h4">' +
+          (editingSpec ? 'Редактирование специалиста' : 'Новый специалист') +
+          '</h4>' +
+          '<label>Роль <input type="text" id="farmCardNewSpecRole" class="farm-settings-inline-input" placeholder="Ветврач, зоотехник…" value="' +
+          escapeHtml(editingSpec && editingSpec.role ? editingSpec.role : '') +
+          '" /></label>' +
+          '<label>ФИО <input type="text" id="farmCardNewSpecName" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingSpec && editingSpec.name ? editingSpec.name : '') +
+          '" /></label>' +
+          '<label>Телефоны (через запятую) <input type="tel" id="farmCardNewSpecPhone" class="farm-settings-inline-input" placeholder="+7…, +7…" value="' +
+          escapeHtml(editingSpec ? specialistPhones(editingSpec).join(', ') : '') +
+          '" /></label>' +
+          '<label>Email <input type="email" id="farmCardNewSpecEmail" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingSpec && editingSpec.email ? editingSpec.email : '') +
+          '" /></label>' +
+          '<label>Закрепление <select id="farmCardNewSpecGeo" class="farm-settings-inline-input">' +
+          buildGeoSelectOptions(b.addresses, editingSpec && editingSpec.geoId) +
+          '</select></label>' +
+          (geoOptionsEmpty
+            ? '<p class="farm-settings-hint">Сначала добавьте геопозиции во вкладке «Адреса».</p>'
+            : '<p class="farm-settings-hint">Геопозиция на объекте, к которой привязан специалист.</p>') +
+          '<div class="farm-card-actions-row">' +
+          '<button type="button" class="small-btn" id="farmCardAddSpecBtn">' +
+          (editingSpec ? 'Сохранить' : 'Добавить') +
+          '</button>' +
+          (editingSpec
+            ? '<button type="button" class="small-btn" id="farmCardSpecCancelBtn">Отмена</button>'
+            : '') +
+          '</div></div>'
         : '') +
       '</div>';
 
@@ -836,6 +1094,13 @@
 
     root.querySelectorAll('.farm-card-tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        if (window.__farmCardBundle && document.getElementById('farmCardAddrRegion')) {
+          window.__farmCardBundle.addressInfo = {
+            region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+            locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+            address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
+          };
+        }
         _activeTab = btn.getAttribute('data-farm-tab') || 'contacts';
         renderFarmCardPanel();
       });
@@ -911,11 +1176,18 @@
         };
       });
 
-      function loadAddrIntoForm(idx) {
+      function loadGeoIntoForm(idx) {
         if (!window.__farmCardBundle.addresses || !window.__farmCardBundle.addresses[idx]) {
           _addrEditIdx = -1;
           renderFarmCardPanel();
           return;
+        }
+        if (window.__farmCardBundle) {
+          window.__farmCardBundle.addressInfo = {
+            region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+            locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+            address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
+          };
         }
         _addrEditIdx = idx;
         renderFarmCardPanel();
@@ -927,47 +1199,42 @@
           var v = addrPick.value;
           if (v === '') {
             _addrEditIdx = -1;
-            clearAddrFormFields();
             renderFarmCardPanel();
             return;
           }
-          loadAddrIntoForm(parseInt(v, 10));
+          loadGeoIntoForm(parseInt(v, 10));
         };
       }
 
       var addA = document.getElementById('farmCardAddAddrBtn');
       if (addA) {
         addA.onclick = function () {
-          var fields = readAddrFormFields();
-          if (!fields.name && !fields.region && !fields.locality && !fields.address && !fields.navUrl) {
-            if (typeof showToast === 'function') showToast('Заполните хотя бы одно поле', 'error');
+          // сохранить общую инфу из полей, не трогая черновик гео (ещё в форме)
+          if (!window.__farmCardBundle) window.__farmCardBundle = emptyBundle();
+          window.__farmCardBundle.addressInfo = {
+            region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+            locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+            address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
+          };
+          var fields = readGeoFormFields();
+          if (!fields.name && !fields.navUrl) {
+            if (typeof showToast === 'function') showToast('Укажите название или ссылку', 'error');
             return;
           }
           if (!window.__farmCardBundle.addresses) window.__farmCardBundle.addresses = [];
-          var payload = {
-            name: fields.name,
-            region: fields.region,
-            locality: fields.locality,
-            address: fields.address,
-            navUrl: fields.navUrl,
-            street: '',
-            house: ''
-          };
           if (_addrEditIdx >= 0 && window.__farmCardBundle.addresses[_addrEditIdx]) {
             var prev = window.__farmCardBundle.addresses[_addrEditIdx];
-            window.__farmCardBundle.addresses[_addrEditIdx] = Object.assign({}, prev, payload);
+            window.__farmCardBundle.addresses[_addrEditIdx] = Object.assign({}, prev, {
+              name: fields.name,
+              navUrl: fields.navUrl
+            });
           } else {
-            window.__farmCardBundle.addresses.push(
-              Object.assign(
-                {
-                  id: newId('a_'),
-                  lat: null,
-                  lng: null,
-                  sortOrder: window.__farmCardBundle.addresses.length
-                },
-                payload
-              )
-            );
+            window.__farmCardBundle.addresses.push({
+              id: newId('geo_'),
+              name: fields.name,
+              navUrl: fields.navUrl,
+              sortOrder: window.__farmCardBundle.addresses.length
+            });
           }
           _addrEditIdx = -1;
           renderFarmCardPanel();
@@ -995,22 +1262,67 @@
       if (addSpec) {
         addSpec.onclick = function () {
           if (!window.__farmCardBundle.specialists) window.__farmCardBundle.specialists = [];
-          window.__farmCardBundle.specialists.push({
-            id: newId('sp_'),
-            role: (document.getElementById('farmCardNewSpecRole') || {}).value || '',
-            name: (document.getElementById('farmCardNewSpecName') || {}).value || '',
-            phone: (document.getElementById('farmCardNewSpecPhone') || {}).value || '',
-            email: (document.getElementById('farmCardNewSpecEmail') || {}).value || ''
-          });
+          var fields = readSpecFormFields();
+          if (!fields.role && !fields.name && !fields.phones.length && !fields.email && !fields.geoId) {
+            if (typeof showToast === 'function') showToast('Заполните хотя бы одно поле', 'error');
+            return;
+          }
+          if (_specEditIdx >= 0 && window.__farmCardBundle.specialists[_specEditIdx]) {
+            var prev = window.__farmCardBundle.specialists[_specEditIdx];
+            window.__farmCardBundle.specialists[_specEditIdx] = Object.assign({}, prev, {
+              role: fields.role,
+              name: fields.name,
+              phones: fields.phones,
+              phone: fields.phone,
+              email: fields.email,
+              geoId: fields.geoId
+            });
+          } else {
+            window.__farmCardBundle.specialists.push({
+              id: newId('sp_'),
+              role: fields.role,
+              name: fields.name,
+              phones: fields.phones,
+              phone: fields.phone,
+              email: fields.email,
+              geoId: fields.geoId
+            });
+          }
+          _specEditIdx = -1;
           renderFarmCardPanel();
         };
       }
+      var cancelSpec = document.getElementById('farmCardSpecCancelBtn');
+      if (cancelSpec) {
+        cancelSpec.onclick = function () {
+          _specEditIdx = -1;
+          renderFarmCardPanel();
+        };
+      }
+      root.querySelectorAll('.farm-card-spec-edit').forEach(function (btn) {
+        btn.onclick = function () {
+          var i = parseInt(btn.getAttribute('data-spec-idx'), 10);
+          if (isNaN(i)) return;
+          _specEditIdx = i;
+          renderFarmCardPanel();
+        };
+      });
       root.querySelectorAll('.farm-card-spec-del').forEach(function (btn) {
         btn.onclick = function () {
           var sid = btn.getAttribute('data-spec-id');
-          window.__farmCardBundle.specialists = (window.__farmCardBundle.specialists || []).filter(function (s) {
+          var list = window.__farmCardBundle.specialists || [];
+          var delIdx = -1;
+          for (var i = 0; i < list.length; i++) {
+            if (list[i] && list[i].id === sid) {
+              delIdx = i;
+              break;
+            }
+          }
+          window.__farmCardBundle.specialists = list.filter(function (s) {
             return s && s.id !== sid;
           });
+          if (_specEditIdx === delIdx) _specEditIdx = -1;
+          else if (_specEditIdx > delIdx && delIdx >= 0) _specEditIdx -= 1;
           renderFarmCardPanel();
         };
       });
@@ -1018,7 +1330,16 @@
         btn.onclick = function () {
           var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
           if (isNaN(i)) return;
-          loadAddrIntoForm(i);
+          // сохранить общую инфу перед перерисовкой
+          if (window.__farmCardBundle) {
+            window.__farmCardBundle.addressInfo = {
+              region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+              locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+              address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
+            };
+          }
+          _addrEditIdx = i;
+          renderFarmCardPanel();
         };
       });
 
@@ -1197,10 +1518,14 @@
         saveAll.onclick = function () {
           var status = document.getElementById('farmCardSaveStatus');
           if (status) status.textContent = 'Сохранение…';
+          syncAddressPaneToBundle();
+          _addrEditIdx = -1;
+          _specEditIdx = -1;
           saveFarmCardBundle(window.__farmCardBundle)
             .then(function () {
               if (status) status.textContent = 'Сохранено';
               if (typeof showToast === 'function') showToast('Карточка хозяйства сохранена', 'success');
+              renderFarmCardPanel();
             })
             .catch(function (e) {
               if (status) status.textContent = 'Ошибка';
@@ -1209,6 +1534,51 @@
         };
       }
     }
+
+    root.querySelectorAll('.farm-card-phone-call').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        initiatePhoneCall(btn.getAttribute('data-phone'));
+      };
+    });
+    root.querySelectorAll('.farm-card-geo-share-max').forEach(function (btn) {
+      btn.onclick = function () {
+        var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
+        var geo = window.__farmCardBundle && window.__farmCardBundle.addresses
+          ? window.__farmCardBundle.addresses[i]
+          : null;
+        shareGeopositionToMax(geo, window.__farmCardBundle && window.__farmCardBundle.addressInfo);
+      };
+    });
+    root.querySelectorAll('.farm-card-spec-share-max').forEach(function (btn) {
+      btn.onclick = function () {
+        var i = parseInt(btn.getAttribute('data-spec-idx'), 10);
+        var spec =
+          window.__farmCardBundle && window.__farmCardBundle.specialists
+            ? window.__farmCardBundle.specialists[i]
+            : null;
+        if (!spec || !spec.geoId) {
+          if (typeof showToast === 'function') showToast('Нет закреплённой геопозиции', 'error');
+          return;
+        }
+        var list = (window.__farmCardBundle && window.__farmCardBundle.addresses) || [];
+        var geo = null;
+        for (var g = 0; g < list.length; g++) {
+          if (list[g] && String(list[g].id) === String(spec.geoId)) {
+            geo = list[g];
+            break;
+          }
+        }
+        if (!geo) {
+          if (typeof showToast === 'function') showToast('Геопозиция не найдена', 'error');
+          return;
+        }
+        var withSpec = Object.assign({}, geo, {
+          name: (geo.name || 'Геопозиция') + (spec.name ? ' — ' + spec.name : '')
+        });
+        shareGeopositionToMax(withSpec, window.__farmCardBundle && window.__farmCardBundle.addressInfo);
+      };
+    });
 
     var reloadB = document.getElementById('farmCardReloadBtn');
     if (reloadB) {

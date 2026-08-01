@@ -55,6 +55,7 @@ function getFarmCardBundle(objectId) {
     return {
       contacts: [],
       addresses: [],
+      addressInfo: { region: '', locality: '', address: '' },
       metricDefinitions: [],
       metricValues: [],
       events: [],
@@ -66,6 +67,14 @@ function getFarmCardBundle(objectId) {
   return {
     contacts: Array.isArray(p.contacts) ? p.contacts : [],
     addresses: Array.isArray(p.addresses) ? p.addresses : [],
+    addressInfo:
+      p.addressInfo && typeof p.addressInfo === 'object'
+        ? {
+            region: p.addressInfo.region != null ? String(p.addressInfo.region) : '',
+            locality: p.addressInfo.locality != null ? String(p.addressInfo.locality) : '',
+            address: p.addressInfo.address != null ? String(p.addressInfo.address) : ''
+          }
+        : { region: '', locality: '', address: '' },
     metricDefinitions: Array.isArray(p.metricDefinitions) ? p.metricDefinitions : [],
     metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
     events: Array.isArray(p.events) ? p.events : [],
@@ -87,6 +96,14 @@ function replaceFarmCardBundle(objectId, body) {
     notes: b.notes != null ? String(b.notes) : '',
     contacts: Array.isArray(b.contacts) ? b.contacts : [],
     addresses: Array.isArray(b.addresses) ? b.addresses : [],
+    addressInfo:
+      b.addressInfo && typeof b.addressInfo === 'object'
+        ? {
+            region: b.addressInfo.region != null ? String(b.addressInfo.region) : '',
+            locality: b.addressInfo.locality != null ? String(b.addressInfo.locality) : '',
+            address: b.addressInfo.address != null ? String(b.addressInfo.address) : ''
+          }
+        : { region: '', locality: '', address: '' },
     specialists: Array.isArray(b.specialists) ? b.specialists : [],
     metricDefinitions: Array.isArray(b.metricDefinitions) ? b.metricDefinitions : [],
     metricValues: Array.isArray(b.metricValues) ? b.metricValues : [],

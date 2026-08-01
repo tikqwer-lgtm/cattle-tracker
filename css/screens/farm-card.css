@@ -102,6 +102,18 @@
 .farm-card-addr-suggest-list li:focus {
   background: #f0f4ff;
 }
+.farm-card-addr-general {
+  margin-bottom: 1.25rem;
+}
+.farm-card-geo-actions {
+  white-space: nowrap;
+}
+.farm-card-phone-sep {
+  opacity: 0.55;
+}
+.farm-card-geo-block {
+  margin-top: 0.5rem;
+}
 .farm-card-addr-row--editing td {
   background: rgba(61, 110, 181, 0.08);
 }

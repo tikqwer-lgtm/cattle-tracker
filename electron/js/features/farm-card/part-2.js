@@ -88,11 +88,6 @@
         var streetPart = [s.street, s.house].filter(Boolean).join(', ');
         addressEl.value = (s.formatted || streetPart || '').trim();
       }
-      var navEl = document.getElementById('farmCardAddrNav');
-      if (navEl) {
-        var label = (s.formatted || s.title || '').trim();
-        navEl.value = label ? 'https://yandex.ru/maps/?text=' + encodeURIComponent(label) : '';
-      }
       hideList();
     };
 
