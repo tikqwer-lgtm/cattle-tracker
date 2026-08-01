@@ -114,11 +114,15 @@
   body.print-farm-card .farm-card-print-sheet-host * {
     visibility: visible;
   }
+  body.print-farm-card .print-doc-title,
+  body.print-farm-card .print-doc-date {
+    display: none !important;
+  }
   body.print-farm-card .farm-card-print-sheet-host {
     display: block !important;
     position: absolute;
     left: 0;
-    top: 140px;
+    top: 110px;
     width: 100%;
     padding: 16px 24px;
     color: #222;

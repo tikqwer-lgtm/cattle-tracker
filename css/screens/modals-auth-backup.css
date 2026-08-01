@@ -490,6 +490,22 @@
   background: var(--color-bg-elevated, #fff);
   color: var(--color-text);
 }
+.auth-remember-password-label {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -4px 0 14px;
+  font-weight: 500 !important;
+  cursor: pointer;
+  user-select: none;
+}
+.auth-remember-password-label input[type="checkbox"] {
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+}
 .auth-form-container .form input:focus,
 .auth-form-container .form select:focus {
   outline: none;

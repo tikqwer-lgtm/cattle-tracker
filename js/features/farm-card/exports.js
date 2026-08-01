@@ -11,12 +11,11 @@ if (typeof window !== 'undefined') {
   window.printFarmCard = SM.printFarmCard;
   if (window.CattleTrackerEvents && typeof window.CattleTrackerEvents.on === 'function') {
     window.CattleTrackerEvents.on('entries:updated', function () {
-      var metricsTab = document.querySelector('.farm-card-tab[data-farm-tab="metrics"]');
-      var dynamicsTab = document.querySelector('.farm-card-tab[data-farm-tab="dynamics"]');
+      var timelineTab = document.querySelector('.farm-card-tab[data-farm-tab="timeline"]');
       if (
         document.getElementById('farmCardRoot') &&
-        ((metricsTab && metricsTab.classList.contains('farm-card-tab--active')) ||
-          (dynamicsTab && dynamicsTab.classList.contains('farm-card-tab--active')))
+        timelineTab &&
+        timelineTab.classList.contains('farm-card-tab--active')
       ) {
         SM.renderFarmCardPanel();
       }

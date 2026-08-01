@@ -53,19 +53,9 @@
 
   function updateAuthServerDisplay() {
     var nameEl = document.getElementById('auth-server-display-name');
-    var connectedEl = document.getElementById('auth-connected-server-label');
     var server = getSelectedAuthServer();
     var name = server && server.name ? server.name : 'Сервер';
     if (nameEl) nameEl.textContent = name;
-    if (connectedEl) {
-      if (useApi) {
-        connectedEl.hidden = false;
-        connectedEl.textContent = 'Подключён к «' + name + '»';
-      } else {
-        connectedEl.hidden = true;
-        connectedEl.textContent = '';
-      }
-    }
   }
 
   function ensureApiBaseFromAuthSelect() {
@@ -168,7 +158,95 @@
     });
   }
 
+  function authRememberStorageKey() {
+    var server = getSelectedAuthServer();
+    var id = server && server.id ? String(server.id) : 'default';
+    return 'cattleTracker_authRemember_' + id;
+  }
+
+  function encodeAuthRememberPayload(obj) {
+    try {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function decodeAuthRememberPayload(raw) {
+    try {
+      return JSON.parse(decodeURIComponent(escape(atob(String(raw || '')))));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearSavedAuthCredentials() {
+    try {
+      localStorage.removeItem(authRememberStorageKey());
+    } catch (e) {}
+  }
+
+  function saveAuthCredentialsIfNeeded(username, password) {
+    var cb = document.getElementById('authRememberPassword');
+    if (!cb || !cb.checked) {
+      clearSavedAuthCredentials();
+      return;
+    }
+    var u = username != null ? String(username).trim() : '';
+    var p = password != null ? String(password) : '';
+    if (!u || !p) {
+      clearSavedAuthCredentials();
+      return;
+    }
+    var encoded = encodeAuthRememberPayload({ u: u, p: p });
+    if (!encoded) return;
+    try {
+      localStorage.setItem(authRememberStorageKey(), encoded);
+    } catch (e) {}
+  }
+
+  function applySavedAuthCredentials() {
+    var userEl = document.getElementById('authUsername');
+    var passEl = document.getElementById('authPassword');
+    var cb = document.getElementById('authRememberPassword');
+    if (!userEl || !passEl) return;
+    var raw = null;
+    try {
+      raw = localStorage.getItem(authRememberStorageKey());
+    } catch (e) {}
+    var data = raw ? decodeAuthRememberPayload(raw) : null;
+    if (data && data.u && data.p) {
+      userEl.value = String(data.u);
+      passEl.value = String(data.p);
+      if (cb) cb.checked = true;
+      var select = document.getElementById('authUsernameSelect');
+      if (select) {
+        var found = false;
+        for (var i = 0; i < select.options.length; i++) {
+          if (select.options[i].value === userEl.value) {
+            select.value = userEl.value;
+            found = true;
+            break;
+          }
+        }
+        if (!found) select.value = '';
+      }
+    } else if (cb) {
+      cb.checked = false;
+    }
+  }
+
+  function bindAuthRememberPasswordControl() {
+    var cb = document.getElementById('authRememberPassword');
+    if (!cb || cb.dataset.authBound) return;
+    cb.dataset.authBound = '1';
+    cb.addEventListener('change', function () {
+      if (!cb.checked) clearSavedAuthCredentials();
+    });
+  }
+
   function bindAuthControls() {
+    bindAuthRememberPasswordControl();
     var connectionBtn = document.getElementById('app-header-connection-btn');
     if (connectionBtn && !connectionBtn.dataset.authBound) {
       connectionBtn.dataset.authBound = '1';
@@ -192,6 +270,7 @@
       serverSelect.addEventListener('change', function () {
         updateAuthServerDisplay();
         updateAuthSessionStatusUi();
+        applySavedAuthCredentials();
       });
     }
     var requestBtn = document.getElementById('authRequestCredentialsBtn');
@@ -293,6 +372,7 @@
     fillAuthServerSelect();
     globalThis['__users'].initAuthUsernameSelect();
     bindAuthControls();
+    applySavedAuthCredentials();
     if (useApi && typeof initRegisterUsernameCheck === 'function') {
       initRegisterUsernameCheck();
     }
@@ -492,6 +572,7 @@
         NS.state.loginInProgress = false;
         if (submitBtn) submitBtn.disabled = false;
         if (data && data.user) {
+          saveAuthCredentialsIfNeeded(username, password);
           globalThis['__users'].saveCurrentUser(data.user);
           globalThis['__users'].addLastUsername(data.user.username || username);
           if (typeof global.setSessionLoggedIn === 'function') global.setSessionLoggedIn(data.user);
@@ -554,6 +635,7 @@
     }
     var result = globalThis['__users'].loginUser(username, password);
     if (result.ok) {
+      saveAuthCredentialsIfNeeded(username, password);
       if (typeof showToast === 'function') showToast('Вход выполнен', 'success'); else alert('Вход выполнен');
       updateAuthBar();
       if (typeof navigate === 'function') navigate('menu');

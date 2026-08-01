@@ -159,9 +159,10 @@
 
   function buildCrmTabsHtml(activeTab) {
     var tabs = [
-      ['items', 'Пункты'],
+      ['addresses', 'Адреса'],
+      ['specialists', 'Специалисты'],
       ['goals', 'Цели'],
-      ['dynamics', 'Динамика']
+      ['timeline', 'Лента событий']
     ];
     return tabs
       .map(function (t) {
@@ -488,29 +489,66 @@
     }
   }
 
+  function resolveFarmObjectName(b) {
+    var oid = typeof window.getCurrentObjectId === 'function' ? window.getCurrentObjectId() : '';
+    var list = typeof window.getObjectsList === 'function' ? window.getObjectsList() : null;
+    if (oid && Array.isArray(list)) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].id === oid) {
+          var fromList = list[i].name != null ? String(list[i].name).trim() : '';
+          if (fromList) return fromList;
+          break;
+        }
+      }
+    }
+    var sel = document.getElementById('currentObjectSelect');
+    if (sel && sel.options && sel.selectedIndex >= 0) {
+      var optText = String(sel.options[sel.selectedIndex].text || '').trim();
+      if (optText) return optText;
+    }
+    if (b && b.name != null && String(b.name).trim()) return String(b.name).trim();
+    return 'Хозяйство';
+  }
+
   function buildPrintOverviewHtml(b) {
-    var name =
-      (typeof window.getCurrentObjectName === 'function' && window.getCurrentObjectName()) ||
-      b.name ||
-      'Хозяйство';
-    var contacts = (b.contacts || [])
-      .slice(0, 8)
-      .map(function (c) {
+    var name = resolveFarmObjectName(b);
+    var info = b.addressInfo || {};
+    var addrParts = [info.region, info.locality, info.address]
+      .map(function (x) {
+        return x != null ? String(x).trim() : '';
+      })
+      .filter(Boolean);
+    var geos = (b.addresses || [])
+      .slice(0, 12)
+      .map(function (a) {
         return (
           '<li>' +
-          escapeHtml(c.title || '') +
-          ': ' +
-          escapeHtml(c.fullName || '') +
-          ' ' +
-          escapeHtml((c.phones || []).join(', ')) +
+          escapeHtml(a.name || 'Геопозиция') +
+          (a.navUrl ? ' — ' + escapeHtml(a.navUrl) : '') +
           '</li>'
         );
       })
       .join('');
-    var items = (b.items || [])
+    var specialists = (b.specialists || [])
       .slice(0, 12)
-      .map(function (it) {
-        return '<li><strong>' + escapeHtml(it.label) + ':</strong> ' + escapeHtml(formatItemValue(it)) + '</li>';
+      .map(function (s) {
+        var role = (s.role || s.title || '').trim();
+        var fio = (s.name || s.fullName || '').trim();
+        var phones = Array.isArray(s.phones)
+          ? s.phones
+              .map(function (p) {
+                return String(p || '').trim();
+              })
+              .filter(Boolean)
+              .join(', ')
+          : s.phone
+            ? String(s.phone).trim()
+            : '';
+        var parts = [];
+        if (role) parts.push(role);
+        if (fio) parts.push(fio);
+        if (phones) parts.push(phones);
+        return '<li>' + escapeHtml(parts.join(' — ') || '—') + '</li>';
       })
       .join('');
     var goals = (b.goals || [])
@@ -558,11 +596,13 @@
       '<p class="farm-card-print-date">Краткий обзор на ' +
       escapeHtml(today) +
       '</p>' +
-      '<h3>Контакты</h3><ul>' +
-      (contacts || '<li>—</li>') +
+      '<h3>Адреса</h3>' +
+      (addrParts.length ? '<p>' + escapeHtml(addrParts.join(', ')) + '</p>' : '') +
+      '<ul>' +
+      (geos || '<li>—</li>') +
       '</ul>' +
-      '<h3>Ключевые пункты</h3><ul>' +
-      (items || '<li>—</li>') +
+      '<h3>Специалисты</h3><ul>' +
+      (specialists || '<li>—</li>') +
       '</ul>' +
       '<h3>Открытые цели</h3><ul>' +
       (goals || '<li>—</li>') +
@@ -583,9 +623,17 @@
       document.body.appendChild(sheet);
     }
     sheet.innerHTML = buildPrintOverviewHtml(b);
+    var titleEl = document.getElementById('print-doc-title');
+    var dateEl = document.getElementById('print-doc-date');
+    var prevTitle = titleEl ? titleEl.textContent : '';
+    var prevDate = dateEl ? dateEl.textContent : '';
+    if (titleEl) titleEl.textContent = '';
+    if (dateEl) dateEl.textContent = '';
     document.body.classList.add('print-farm-card');
     var cleanup = function () {
       document.body.classList.remove('print-farm-card');
+      if (titleEl) titleEl.textContent = prevTitle || 'Опись стада';
+      if (dateEl) dateEl.textContent = prevDate || '';
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);

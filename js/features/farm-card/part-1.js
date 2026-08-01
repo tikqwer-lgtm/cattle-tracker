@@ -384,7 +384,8 @@
     return list.length ? list[list.length - 1] : null;
   }
 
-  var _activeTab = 'contacts';
+  var FARM_CARD_TABS = ['addresses', 'specialists', 'goals', 'timeline'];
+  var _activeTab = 'addresses';
   /** Индекс геопозиции в форме (−1 — новая). */
   var _addrEditIdx = -1;
   /** Индекс специалиста в форме (−1 — новый). */
@@ -675,11 +676,10 @@
     var b = window.__farmCardBundle || emptyBundle();
     var canEdit = farmCardCanEdit();
 
+    if (FARM_CARD_TABS.indexOf(_activeTab) === -1) _activeTab = 'addresses';
+
     var tabs =
       '<div class="farm-card-tabs" role="tablist">' +
-      '<button type="button" class="farm-card-tab' +
-      (_activeTab === 'contacts' ? ' farm-card-tab--active' : '') +
-      '" data-farm-tab="contacts">Контакты</button>' +
       '<button type="button" class="farm-card-tab' +
       (_activeTab === 'addresses' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="addresses">Адреса</button>' +
@@ -687,17 +687,8 @@
       (_activeTab === 'specialists' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="specialists">Специалисты</button>' +
       '<button type="button" class="farm-card-tab' +
-      (_activeTab === 'items' ? ' farm-card-tab--active' : '') +
-      '" data-farm-tab="items">Пункты</button>' +
-      '<button type="button" class="farm-card-tab' +
-      (_activeTab === 'metrics' ? ' farm-card-tab--active' : '') +
-      '" data-farm-tab="metrics">Показатели</button>' +
-      '<button type="button" class="farm-card-tab' +
       (_activeTab === 'goals' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="goals">Цели</button>' +
-      '<button type="button" class="farm-card-tab' +
-      (_activeTab === 'dynamics' ? ' farm-card-tab--active' : '') +
-      '" data-farm-tab="dynamics">Динамика</button>' +
       '<button type="button" class="farm-card-tab' +
       (_activeTab === 'timeline' ? ' farm-card-tab--active' : '') +
       '" data-farm-tab="timeline">Лента событий</button>' +
@@ -1143,30 +1134,18 @@
         : '') +
       '</div>';
 
-    var itemsHtml =
-      typeof globalThis['__farmCard'].buildItemsPaneHtml === 'function'
-        ? globalThis['__farmCard'].buildItemsPaneHtml(b, canEdit, _activeTab)
-        : '';
     var goalsHtml =
       typeof globalThis['__farmCard'].buildGoalsPaneHtml === 'function'
         ? globalThis['__farmCard'].buildGoalsPaneHtml(b, canEdit, _activeTab)
-        : '';
-    var dynamicsHtml =
-      typeof globalThis['__farmCard'].buildDynamicsPaneHtml === 'function'
-        ? globalThis['__farmCard'].buildDynamicsPaneHtml(b, canEdit, _activeTab)
         : '';
 
     root.innerHTML =
       '<div class="farm-card-inner">' +
       tabs +
       '<div class="farm-card-body">' +
-      contactsHtml +
       addressesHtml +
       specialistsHtml +
-      itemsHtml +
-      metricsHtml +
       goalsHtml +
-      dynamicsHtml +
       timelineHtml +
       '</div>' +
       '<div class="farm-card-footer">' +
@@ -1188,7 +1167,8 @@
             address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim()
           };
         }
-        _activeTab = btn.getAttribute('data-farm-tab') || 'contacts';
+        var nextTab = btn.getAttribute('data-farm-tab') || 'addresses';
+        _activeTab = FARM_CARD_TABS.indexOf(nextTab) !== -1 ? nextTab : 'addresses';
         renderFarmCardPanel();
       });
     });

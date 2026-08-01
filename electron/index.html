@@ -73,7 +73,6 @@
       <!-- Серверный режим (API подключён) -->
       <div id="auth-server-block" style="display: none;">
         <p id="auth-session-status" class="auth-session-status auth-session-status--pending" hidden aria-live="polite"></p>
-        <p id="auth-connected-server-label" class="auth-connected-server-label" hidden></p>
         <form id="authLoginForm" class="form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);} return false;">
           <label for="authUsernameSelect">Выбрать пользователя</label>
           <select id="authUsernameSelect" class="auth-username-select" aria-label="Выбрать пользователя из списка">
@@ -83,6 +82,10 @@
           <input type="text" id="authUsername" required autocomplete="username" />
           <label for="authPassword">Пароль</label>
           <input type="password" id="authPassword" autocomplete="current-password" required />
+          <label class="auth-remember-password-label" for="authRememberPassword">
+            <input type="checkbox" id="authRememberPassword" />
+            Запомнить пароль
+          </label>
           <div class="form-actions auth-login-actions">
             <button type="submit">Войти</button>
             <button type="button" id="authForgotPasswordBtn" class="small-btn">Забыл пароль</button>
@@ -118,7 +121,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.6.64" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.6.68" aria-label="Версия приложения"></p>
     <h1>Меню</h1>
 
     <div id="menu-no-object-state" class="menu-no-object-state" hidden>
