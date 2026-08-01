@@ -7,7 +7,7 @@
 
 var MENU_GROUPS = {
   data: {
-    title: 'Работа с данными',
+    title: 'Животные и списки',
     buttons: [
       { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')", viewerHide: true },
       { icon: '📋', text: 'Список всех животных', onclick: "navigate('view')" },
@@ -40,7 +40,6 @@ var MENU_GROUPS = {
   settings: {
     title: 'Настройки',
     buttons: [
-      { icon: '📇', text: 'Карточка хозяйства', onclick: "navigate('farm-card')" },
       { icon: '🏡', text: 'Настройки хозяйства', onclick: "navigate('farm-settings')" },
       { icon: '🔄', text: 'Синхронизация', onclick: "navigate('sync')" },
       { icon: '💬', text: 'Чат-консультант', onclick: "typeof openChatConsultant === 'function' && openChatConsultant()" }
@@ -115,7 +114,20 @@ var _currentScreenId = null;
  * @param {Object} [options] - опции (например { group: 'data' } для подменю)
  */
 function navigate(screenId, options) {
-  if (options && options.group !== undefined) {
+  options = options || {};
+  if (
+    !options.force &&
+    _currentScreenId === 'farm-card' &&
+    screenId !== 'farm-card' &&
+    typeof window.confirmLeaveFarmCardIfNeeded === 'function'
+  ) {
+    window.confirmLeaveFarmCardIfNeeded().then(function (ok) {
+      if (ok) navigate(screenId, Object.assign({}, options, { force: true }));
+    });
+    return;
+  }
+
+  if (options.group !== undefined) {
     window._submenuGroup = options.group;
   }
 
@@ -323,13 +335,16 @@ function navigate(screenId, options) {
   if (screenId === 'menu') {
     if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
     globalThis['__menu'].updateObjectSwitcher();
-    if (typeof initMenuCalvingForecast === 'function') globalThis['__menu'].initMenuCalvingForecast();
-    globalThis['__menu'].updateHerdStats();
     if (typeof updateAuthBar === 'function') updateAuthBar();
-    if (typeof initMenuNotificationsLink === 'function') globalThis['__menu'].initMenuNotificationsLink();
     if (typeof initFirstRunHints === 'function') globalThis['__menu'].initFirstRunHints();
     if (typeof maybeShowFirstRunHints === 'function') globalThis['__menu'].maybeShowFirstRunHints();
     if (typeof window.checkMobileApkUpdate === 'function') window.checkMobileApkUpdate(true);
+  }
+  if (screenId === 'herd-hub') {
+    if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
+    if (typeof initMenuCalvingForecast === 'function') globalThis['__menu'].initMenuCalvingForecast();
+    globalThis['__menu'].updateHerdStats();
+    if (typeof initMenuNotificationsLink === 'function') globalThis['__menu'].initMenuNotificationsLink();
   }
   if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
 

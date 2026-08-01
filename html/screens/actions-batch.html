@@ -2,7 +2,7 @@
   <div id="submenu-screen" class="screen">
     <h1 id="submenu-title">Подменю</h1>
     <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback('herd-hub')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Списки» -->
@@ -100,7 +100,7 @@
   <div id="farm-card-screen" class="screen">
     <h1>Карточка хозяйства</h1>
     <div id="farmCardRoot" class="farm-card-root" aria-live="polite"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback('menu')" class="back-button">Назад</button>
   </div>
 
   <!-- Экран ввода осеменения (пакетный) -->

@@ -14,7 +14,8 @@
       .replace(/"/g, '&quot;');
   }
 
-  function renderAdminCreateUserForm() {
+  function renderAdminCreateUserForm(actor) {
+    var canCreateAdmin = isPrimaryAdminUsername(actor && actor.username);
     return (
       '<form id="admin-create-user-form" class="admin-create-user-form">' +
       '<label>Логин <input type="text" id="adminNewUsername" required autocomplete="off" /></label>' +
@@ -22,7 +23,7 @@
       '<label>Роль <select id="adminNewRole">' +
       '<option value="inseminator">Осеменатор</option>' +
       '<option value="service">Сервис-специалист</option>' +
-      '<option value="admin">Админ</option>' +
+      (canCreateAdmin ? '<option value="admin">Админ</option>' : '') +
       '</select></label>' +
       '<button type="submit" class="action-btn">Создать</button>' +
       '</form>'
@@ -52,6 +53,23 @@
         if (typeof showToast === 'function') showToast(err.message || 'Ошибка создания', 'error', 5000);
       });
     });
+  }
+
+  function isPrimaryAdminUsername(username) {
+    return String(username || '').trim().toLowerCase() === 'panko';
+  }
+
+  function isAdminUserRole(role) {
+    var r = String(role || '').toLowerCase();
+    return r === 'admin' || r === 'manager';
+  }
+
+  function canDeleteAdminUser(actor, target) {
+    if (!actor || !target) return false;
+    if (String(actor.id) === String(target.id)) return false;
+    if (isPrimaryAdminUsername(target.username)) return false;
+    if (isAdminUserRole(target.role) && !isPrimaryAdminUsername(actor.username)) return false;
+    return true;
   }
 
   function roleOptionSelected(u, code) {
@@ -177,8 +195,10 @@
     });
   }
 
-  function renderAdminUsersTable(users, api, currentUserId) {
-    var html = renderAdminCreateUserForm();
+  function renderAdminUsersTable(users, api, currentUser) {
+    var currentUserId = currentUser ? currentUser.id : null;
+    var actorIsPrimary = isPrimaryAdminUsername(currentUser && currentUser.username);
+    var html = renderAdminCreateUserForm(currentUser);
     if (!Array.isArray(users) || users.length === 0) {
       html += '<p class="admin-message">Нет пользователей.</p>';
       return html;
@@ -188,16 +208,43 @@
       '</tr></thead><tbody>';
     for (var i = 0; i < users.length; i++) {
       var u = users[i];
-      var canDelete = u.id !== currentUserId;
+      var canDelete = canDeleteAdminUser(currentUser, u);
       var deleteBtn = canDelete
         ? '<button type="button" class="small-btn admin-delete-btn" data-user-id="' + escapeHtml(u.id) + '">Удалить</button>'
-        : '<span class="admin-self-hint">(вы)</span>';
-      var roleSelect =
-        '<select class="admin-role-select" data-user-id="' + escapeHtml(u.id) + '" aria-label="Роль пользователя">' +
-        '<option value="admin"' + (roleOptionSelected(u, 'admin') ? ' selected' : '') + '>Админ</option>' +
-        '<option value="inseminator"' + (roleOptionSelected(u, 'inseminator') ? ' selected' : '') + '>Осеменатор</option>' +
-        '<option value="service"' + (roleOptionSelected(u, 'service') ? ' selected' : '') + '>Сервис-специалист</option>' +
-        '</select>';
+        : String(u.id) === String(currentUserId)
+          ? '<span class="admin-self-hint">(вы)</span>'
+          : isPrimaryAdminUsername(u.username)
+            ? '<span class="admin-self-hint" title="Основной администратор">—</span>'
+            : isAdminUserRole(u.role) && !actorIsPrimary
+              ? '<span class="admin-self-hint" title="Удалять админов может только Panko">—</span>'
+              : '';
+      var roleLocked =
+        isPrimaryAdminUsername(u.username) || (!actorIsPrimary && isAdminUserRole(u.role));
+      var roleSelect;
+      if (roleLocked) {
+        roleSelect =
+          '<span>' +
+          (isAdminUserRole(u.role) ? 'Админ' : escapeHtml(String(u.role || ''))) +
+          '</span>';
+      } else {
+        roleSelect =
+          '<select class="admin-role-select" data-user-id="' +
+          escapeHtml(u.id) +
+          '" aria-label="Роль пользователя">';
+        if (actorIsPrimary) {
+          roleSelect +=
+            '<option value="admin"' +
+            (roleOptionSelected(u, 'admin') ? ' selected' : '') +
+            '>Админ</option>';
+        }
+        roleSelect +=
+          '<option value="inseminator"' +
+          (roleOptionSelected(u, 'inseminator') ? ' selected' : '') +
+          '>Осеменатор</option>' +
+          '<option value="service"' +
+          (roleOptionSelected(u, 'service') ? ' selected' : '') +
+          '>Сервис-специалист</option></select>';
+      }
       var pwdVal = u.password_plain != null ? String(u.password_plain) : '';
       var pwdInput =
         '<input type="text" class="admin-password-input" data-user-id="' + escapeHtml(u.id) + '" ' +
@@ -263,12 +310,23 @@
       btn.addEventListener('click', function () {
         var id = btn.getAttribute('data-user-id');
         if (!id) return;
-        if (!confirm('Удалить пользователя? Это действие нельзя отменить.')) return;
-        api.deleteUser(id).then(function () {
-          if (typeof showToast === 'function') showToast('Пользователь удалён', 'info');
-          renderAdminScreen();
-        }).catch(function (err) {
-          if (typeof showToast === 'function') showToast(err.message || 'Ошибка удаления', 'error', 5000);
+        var msg = 'Удалить пользователя? Это действие нельзя отменить.';
+        var confirmFn =
+          typeof showConfirmModal === 'function'
+            ? function () {
+                return showConfirmModal(msg, { confirmText: 'Удалить', cancelText: 'Отмена' });
+              }
+            : function () {
+                return Promise.resolve(window.confirm(msg));
+              };
+        confirmFn().then(function (ok) {
+          if (!ok) return;
+          api.deleteUser(id).then(function () {
+            if (typeof showToast === 'function') showToast('Пользователь удалён', 'info');
+            renderAdminScreen();
+          }).catch(function (err) {
+            if (typeof showToast === 'function') showToast(err.message || 'Ошибка удаления', 'error', 5000);
+          });
         });
       });
     });
@@ -398,7 +456,7 @@
         var objects = pair[1];
         if (!Array.isArray(users)) users = [];
         if (!Array.isArray(objects)) objects = [];
-        usersEl.innerHTML = renderAdminUsersTable(users, api, currentUserId);
+        usersEl.innerHTML = renderAdminUsersTable(users, api, currentUser);
         bindAdminUsersTable(usersEl, api, currentUserId);
         if (assignEl) {
           assignEl.innerHTML = renderAdminAssignPanel(users, objects, api);

@@ -9,6 +9,7 @@ const parts = [
   'html/shell-start.html',
   'html/screens/auth.html',
   'html/screens/menu.html',
+  'html/screens/herd-hub.html',
   'html/screens/actions-batch.html',
   'html/screens/add-cow.html',
   'html/screens/view-list.html',

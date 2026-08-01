@@ -131,27 +131,41 @@ function menuGroup(page, title) {
   return page.locator('#menu-screen .menu-group-btn').filter({ hasText: title });
 }
 
+function herdHubGroup(page, title) {
+  return page.locator('#herd-hub-screen .menu-group-btn').filter({ hasText: title });
+}
+
+async function openHerdHub(page) {
+  await page.evaluate(function () {
+    if (typeof window.navigate === 'function') window.navigate('herd-hub');
+  });
+  await expect(page.locator('#herd-hub-screen.active')).toBeVisible({ timeout: 10000 });
+}
+
 const CASES = [
   {
     role: 'inseminator',
-    visible: ['Работа с данными', 'Действия'],
-    hidden: ['Аналитика'],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
+    hubVisible: ['Животные и списки', 'Действия'],
+    hubHidden: ['Аналитика'],
     blockedScreens: ['analytics', 'farm-settings', 'admin'],
     allowedScreen: 'sync',
     menuNotificationsVisible: true,
   },
   {
     role: 'service',
-    visible: ['Работа с данными', 'Аналитика', 'Настройки'],
-    hidden: ['Действия'],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
+    hubVisible: ['Животные и списки', 'Аналитика', 'Настройки'],
+    hubHidden: ['Действия'],
     blockedScreens: ['insemination', 'farm-settings', 'admin'],
     allowedScreen: 'analytics',
     menuNotificationsVisible: true,
   },
   {
     role: 'admin',
-    visible: ['Работа с данными', 'Действия', 'Аналитика', 'Настройки', 'Администрирование'],
-    hidden: [],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
+    hubVisible: ['Животные и списки', 'Действия', 'Аналитика', 'Настройки', 'Администрирование'],
+    hubHidden: [],
     blockedScreens: [],
     allowedScreen: 'sync',
     menuNotificationsVisible: true,
@@ -165,11 +179,15 @@ for (const tcase of CASES) {
     });
 
     test('видимость групп меню соответствует роли', async ({ page }) => {
-      for (const title of tcase.visible) {
+      for (const title of tcase.mainVisible) {
         await expect(menuGroup(page, title)).toBeVisible();
       }
-      for (const title of tcase.hidden) {
-        await expect(menuGroup(page, title)).toBeHidden();
+      await openHerdHub(page);
+      for (const title of tcase.hubVisible) {
+        await expect(herdHubGroup(page, title)).toBeVisible();
+      }
+      for (const title of tcase.hubHidden) {
+        await expect(herdHubGroup(page, title)).toBeHidden();
       }
       if (tcase.menuNotificationsVisible) {
         await expect(page.locator('#menu-notifications')).toBeVisible();

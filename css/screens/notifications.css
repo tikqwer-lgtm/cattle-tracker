@@ -100,7 +100,8 @@
   padding: 0 16px;
 }
 
-#menu-screen .menu-notifications {
+#menu-screen .menu-notifications,
+#herd-hub-screen .menu-notifications {
   margin: 12px 16px 18px;
   max-width: 520px;
   margin-left: auto;

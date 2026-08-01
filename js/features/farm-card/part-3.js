@@ -770,6 +770,7 @@
             sortOrder: window.__farmCardBundle.items.length,
             objectId: oid || ''
           });
+          if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
           renderFn();
         }
 
@@ -829,6 +830,7 @@
         window.__farmCardBundle.items = (window.__farmCardBundle.items || []).filter(function (it) {
           return it && it.id !== id;
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         renderFn();
       };
     });
@@ -860,6 +862,7 @@
           linkedItemIds: [],
           notes: notes
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         emitGoalChanged(window.__farmCardBundle.goals);
         renderFn();
       };
@@ -871,6 +874,7 @@
         (window.__farmCardBundle.goals || []).forEach(function (g) {
           if (g && g.id === id) g.status = 'done';
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         emitGoalChanged(window.__farmCardBundle.goals);
         renderFn();
       };
@@ -883,6 +887,7 @@
             g.status = g.deadline && g.deadline < todayIso() ? 'overdue' : 'open';
           }
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         emitGoalChanged(window.__farmCardBundle.goals);
         renderFn();
       };
@@ -893,6 +898,7 @@
         window.__farmCardBundle.goals = (window.__farmCardBundle.goals || []).filter(function (g) {
           return g && g.id !== id;
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         emitGoalChanged(window.__farmCardBundle.goals);
         renderFn();
       };
@@ -915,6 +921,7 @@
         (window.__farmCardBundle.events || []).forEach(function (e) {
           if (e && e.id === id) e.completed = !e.completed;
         });
+        if (typeof NS.markFarmCardDirty === 'function') NS.markFarmCardDirty();
         renderFn();
       };
     });

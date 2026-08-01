@@ -46,6 +46,9 @@ if (typeof window !== 'undefined') {
 
 window.addEventListener('load', () => {
   if (document.getElementById('menu-screen').classList.contains('active')) {
+    SM.updateObjectSwitcher();
+  }
+  if (document.getElementById('herd-hub-screen') && document.getElementById('herd-hub-screen').classList.contains('active')) {
     SM.updateHerdStats();
   }
 });

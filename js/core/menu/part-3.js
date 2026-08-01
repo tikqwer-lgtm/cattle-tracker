@@ -135,6 +135,7 @@ function updateMenuGroupVisibility() {
     if (section) section.style.display = visible ? '' : 'none';
   }
 
+  setGroupVisible("navigate('farm-card')", canFarmView);
   setGroupVisible("navigateToSubmenu('actions')", canEvents);
   setGroupVisible("navigateToSubmenu('analytics')", canAnalytics);
   setGroupVisible("navigateToSubmenu('settings')", canSettings);

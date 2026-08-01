@@ -30,6 +30,11 @@ router.post('/admin/users', requireAuth, requireRole('admin'), (req, res) => {
   }
   let assignRole = db.normalizeAppRole(role || 'inseminator');
   if (!ALLOWED_ROLES.includes(assignRole)) assignRole = 'inseminator';
+  if (assignRole === 'admin' && !db.isPrimaryAdminUsername(req.user.username)) {
+    return res.status(403).json({
+      error: 'Только основной администратор (Panko) может создавать других администраторов'
+    });
+  }
   const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const passwordHash = bcrypt.hashSync(p, 10);
   db.createUser(id, u, passwordHash, assignRole, p);
@@ -43,6 +48,18 @@ router.delete('/admin/users/:id', requireAuth, requireRole('admin'), (req, res) 
   const targetId = req.params.id;
   if (req.user.id === targetId) {
     return res.status(400).json({ error: 'Нельзя удалить самого себя' });
+  }
+  const target = db.findUserById(targetId);
+  if (!target) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  if (db.isPrimaryAdminUsername(target.username)) {
+    return res.status(403).json({ error: 'Нельзя удалить основного администратора (Panko)' });
+  }
+  if (db.isAdminRole(target.role) && !db.isPrimaryAdminUsername(req.user.username)) {
+    return res.status(403).json({
+      error: 'Только основной администратор (Panko) может удалять других администраторов'
+    });
   }
   if (!db.deleteUser(targetId)) {
     return res.status(404).json({ error: 'Пользователь не найден' });
@@ -58,8 +75,20 @@ router.patch('/admin/users/:id', requireAuth, requireRole('admin'), (req, res) =
   if (!hasRole && !hasPassword) {
     return res.status(400).json({ error: 'Укажите role и/или password' });
   }
+  const target = db.findUserById(targetId);
+  if (!target) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
   if (hasRole) {
-    const newRole = String(body.role).trim();
+    const newRole = db.normalizeAppRole(String(body.role).trim());
+    const actorIsPrimary = db.isPrimaryAdminUsername(req.user.username);
+    if (!actorIsPrimary) {
+      if (db.isAdminRole(target.role) || newRole === 'admin') {
+        return res.status(403).json({
+          error: 'Только основной администратор (Panko) может менять роли администраторов'
+        });
+      }
+    }
     const result = db.updateUserRole(targetId, newRole);
     if (!result.ok) {
       return res.status(400).json({ error: result.error || 'Не удалось обновить роль' });

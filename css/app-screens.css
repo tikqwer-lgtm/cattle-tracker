@@ -35,31 +35,6 @@
 .admin-bases-user-group .sync-bases-table { margin-top: 0.35rem; }
 .sync-admin-current-base-hint { margin-top: 0.75rem; font-size: 0.9rem; }
 
-/* Кнопки «Сообщить об ошибке» и «Восстановить ввод» в шапке */
-.app-header-report-error-btn,
-.app-header-restore-input-btn { margin-right: 0.5rem; font-size: 0.85rem; padding: 0.25rem 0.5rem; }
-.report-error-checkbox-label { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.75rem; font-weight: normal; cursor: pointer; }
-.report-error-checkbox-label input { margin-top: 0.2rem; }
-#report-error-message {
-  width: 100%;
-  margin-top: 0.25rem;
-  resize: vertical;
-  box-sizing: border-box;
-  min-height: 5rem;
-  padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-family: inherit;
-  background: var(--color-bg-elevated, #fff);
-  color: var(--color-text);
-}
-#report-error-message:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 2px rgba(61, 110, 181, 0.18);
-}
-
 /* Экран «Списки» и списки событий */
 .lists-screen-container { margin: 1rem 0; }
 #lists-screen,

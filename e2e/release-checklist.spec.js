@@ -15,11 +15,18 @@ async function enterLocalMenu(page) {
 }
 
 var SUBMENU_GROUP_IDS = {
-  'Работа с данными': 'data',
+  'Животные и списки': 'data',
   'Действия': 'actions',
   'Аналитика': 'analytics',
   'Настройки': 'settings',
 };
+
+async function openHerdHub(page) {
+  await page.evaluate(function () {
+    if (typeof window.navigate === 'function') window.navigate('herd-hub');
+  });
+  await expect(page.locator('#herd-hub-screen.active')).toBeVisible({ timeout: 10000 });
+}
 
 async function openSubmenu(page, groupButtonName) {
   var groupId = SUBMENU_GROUP_IDS[groupButtonName];
@@ -28,7 +35,7 @@ async function openSubmenu(page, groupButtonName) {
       if (typeof window.navigateToSubmenu === 'function') window.navigateToSubmenu(id);
     }, groupId);
   } else {
-    await page.locator('#menu-screen .menu-group-btn').filter({ hasText: groupButtonName }).click();
+    await page.locator('#herd-hub-screen .menu-group-btn').filter({ hasText: groupButtonName }).click();
   }
   await expect(page.locator('#submenu-screen.active')).toBeVisible({ timeout: 10000 });
 }
@@ -64,12 +71,14 @@ test.describe('Чек-лист: вход и выход', () => {
 
   test('вход без пароля открывает меню', async ({ page }) => {
     await enterLocalMenu(page);
-    await expect(page.getByText('Всего коров')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Работа со стадом' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Карточка хозяйства' })).toBeVisible();
   });
 
   test('выход возвращает на вход и фокус в пароль', async ({ page }) => {
     await enterLocalMenu(page);
-    await page.getByRole('button', { name: 'Выйти' }).click();
+    await openHerdHub(page);
+    await page.getByRole('button', { name: 'Выход' }).click();
     await expect(page.locator('#auth-screen.active')).toBeVisible({ timeout: 10000 });
     const serverAuth = page.locator('#auth-server-block');
     if (await serverAuth.isVisible()) {
@@ -83,10 +92,11 @@ test.describe('Чек-лист: вход и выход', () => {
 test.describe('Чек-лист: меню и навигация', () => {
   test.beforeEach(async ({ page }) => {
     await enterLocalMenu(page);
+    await openHerdHub(page);
   });
 
   const groups = [
-    'Работа с данными',
+    'Животные и списки',
     'Действия',
   ];
 
@@ -101,7 +111,7 @@ test.describe('Чек-лист: меню и навигация', () => {
   }
 
   test('переход: список животных', async ({ page }) => {
-    await openSubmenu(page, 'Работа с данными');
+    await openSubmenu(page, 'Животные и списки');
     await openViewList(page);
     await backToMenuFromView(page);
   });
@@ -110,14 +120,15 @@ test.describe('Чек-лист: меню и навигация', () => {
 test.describe('Чек-лист: данные и XLSX', () => {
   test.beforeEach(async ({ page }) => {
     await enterLocalMenu(page);
+    await openHerdHub(page);
   });
 
-  test('список животных и табло на главном', async ({ page }) => {
+  test('список животных и табло на хабе стада', async ({ page }) => {
     const totalEl = page.locator('#totalCows');
     await expect(totalEl).toBeVisible();
     const totalText = await totalEl.textContent();
 
-    await openSubmenu(page, 'Работа с данными');
+    await openSubmenu(page, 'Животные и списки');
     await openViewList(page);
 
     const emptyMsg = page.locator('#viewEntriesList').getByText(/Нет записей/i);

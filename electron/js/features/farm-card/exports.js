@@ -9,6 +9,9 @@ if (typeof window !== 'undefined') {
   window.getFarmCardBundleForExport = SM.getFarmCardBundleForExport;
   window.initFarmCardPanel = SM.initFarmCardPanel;
   window.printFarmCard = SM.printFarmCard;
+  window.farmCardHasUnsavedChanges = SM.farmCardHasUnsavedChanges;
+  window.confirmLeaveFarmCardIfNeeded = SM.confirmLeaveFarmCardIfNeeded;
+  window.markFarmCardDirty = SM.markFarmCardDirty;
   if (window.CattleTrackerEvents && typeof window.CattleTrackerEvents.on === 'function') {
     window.CattleTrackerEvents.on('entries:updated', function () {
       var timelineTab = document.querySelector('.farm-card-tab[data-farm-tab="timeline"]');

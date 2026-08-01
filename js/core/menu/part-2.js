@@ -5,9 +5,9 @@
   var NS = root['__menu'] = root['__menu'] || {};
   var global = typeof window !== 'undefined' ? window : this;
 
-function navigateBackOrFallback() {
+function navigateBackOrFallback(fallbackScreenId) {
   if (globalThis['__menu'].navigateBack()) return;
-  globalThis['__menu'].navigate('submenu');
+  globalThis['__menu'].navigate(fallbackScreenId || 'submenu');
 }
 
 function syncRouteToScreen() {
@@ -33,7 +33,7 @@ function syncRouteToScreen() {
 
 function updateWindowModeForScreen(screenId) {
   if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.setWindowMode) return;
-  if (screenId === 'menu') window.electronAPI.setWindowMode('menu');
+  if (screenId === 'menu' || screenId === 'herd-hub') window.electronAPI.setWindowMode('menu');
   else window.electronAPI.setWindowMode('default');
 }
 

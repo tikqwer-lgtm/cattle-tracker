@@ -1,5 +1,12 @@
 const { runSql, getSql, allSql, saveDb } = require('./core');
 
+/** Основной администратор: может удалять других админов; его нельзя удалить. */
+const PRIMARY_ADMIN_USERNAME = 'Panko';
+
+function isPrimaryAdminUsername(username) {
+  return String(username || '').trim().toLowerCase() === PRIMARY_ADMIN_USERNAME.toLowerCase();
+}
+
 function createUser(id, username, passwordHash, role, passwordPlain) {
   const { normalizeAppRole } = require('./user-objects');
   const normalized = normalizeAppRole(role || 'inseminator');
@@ -29,6 +36,9 @@ function updateUserRole(targetId, newRole) {
   const target = findUserById(targetId);
   if (!target) return { ok: false, error: 'Пользователь не найден' };
   if (target.role === role) return { ok: true };
+  if (isPrimaryAdminUsername(target.username) && role !== 'admin') {
+    return { ok: false, error: 'Нельзя снять роль у основного администратора (Panko)' };
+  }
   if (target.role === 'admin' && role !== 'admin' && countAdmins() <= 1) {
     return { ok: false, error: 'Нельзя снять последнего администратора' };
   }
@@ -69,6 +79,7 @@ function getAllUsers() {
 function deleteUser(id) {
   const user = findUserById(id);
   if (!user) return false;
+  if (isPrimaryAdminUsername(user.username)) return false;
   try {
     const userObjects = require('./user-objects');
     userObjects.deleteUserObjectLinksForUser(id);
@@ -88,6 +99,8 @@ function setPasswordHashForUsername(username, passwordHash) {
 }
 
 module.exports = {
+  PRIMARY_ADMIN_USERNAME,
+  isPrimaryAdminUsername,
   createUser,
   findUserByUsername,
   findUserById,

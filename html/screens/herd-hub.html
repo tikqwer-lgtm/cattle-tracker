@@ -1,0 +1,116 @@
+  <!-- ========== Работа со стадом: показатели + разделы ========== -->
+  <div id="herd-hub-screen" class="screen">
+    <h1>Работа со стадом</h1>
+
+    <!-- Статистика стада: шапка + строки «подпись | кол-во | %» -->
+    <div class="herd-stats">
+      <div class="herd-stats-header">
+        <div class="stat-value" id="totalCows">0</div>
+        <div class="stat-label">Всего коров</div>
+      </div>
+      <div class="herd-stats-table" role="group" aria-label="Статистика по статусам">
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Стельные</span>
+          <span class="herd-stat-num" id="pregnantCows">0</span>
+          <span class="herd-stat-pct" id="pregnantCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Осеменённые</span>
+          <span class="herd-stat-num" id="inseminatedCows">0</span>
+          <span class="herd-stat-pct" id="inseminatedCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">На брак</span>
+          <span class="herd-stat-num" id="cullCows">0</span>
+          <span class="herd-stat-pct" id="cullCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">В сухостое</span>
+          <span class="herd-stat-num" id="dryCows">0</span>
+          <span class="herd-stat-pct" id="dryCowsPct">0%</span>
+        </div>
+        <div class="herd-stat-row">
+          <span class="herd-stat-label">Не осеменённые</span>
+          <span class="herd-stat-num" id="notInseminatedCows">0</span>
+          <span class="herd-stat-pct" id="notInseminatedCowsPct">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-calving-forecast" id="menuCalvingForecast" aria-label="Отёлы за месяц">
+      <p class="menu-calving-forecast-title">Отёлы за месяц</p>
+      <div class="menu-calving-header">
+        <button type="button" id="menuCalvingPrev" class="menu-calving-nav-btn" aria-label="Предыдущий месяц">‹</button>
+        <span id="menuCalvingMonthLabel" class="menu-calving-month-label">—</span>
+        <button type="button" id="menuCalvingNext" class="menu-calving-nav-btn" aria-label="Следующий месяц">›</button>
+      </div>
+      <div class="menu-calving-stats">
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">План</span>
+          <span class="menu-calving-stat-value" id="menuCalvingPlanCount">0</span>
+        </div>
+        <div class="menu-calving-stat">
+          <span class="menu-calving-stat-label">Факт</span>
+          <span class="menu-calving-stat-value-wrap">
+            <button type="button" class="menu-calving-stat-star menu-calving-stat-star--above" id="menuCalvingFactAddedStar" hidden aria-label="После отёла: животные, добавленные в базу после даты отёла">*0</button>
+            <span class="menu-calving-stat-value" id="menuCalvingFactCount">0</span>
+            <button type="button" class="menu-calving-stat-star menu-calving-stat-star--below" id="menuCalvingFactExitedStar" hidden aria-label="Выбывшие с датой отёла">*0</button>
+          </span>
+        </div>
+      </div>
+      <p id="menuCalvingWarning" class="menu-calving-warning" hidden></p>
+      <button type="button" class="menu-calving-toggle" id="menuCalvingToggle">Список</button>
+    </div>
+
+    <!-- Уведомления: переход на полный экран -->
+    <div id="menu-notifications" class="menu-notifications">
+      <button type="button" class="menu-notifications-toggle" id="menuNotificationsToggle" aria-label="Открыть уведомления">
+        <span class="menu-notifications-toggle-label">
+          <span class="ui-icon ui-icon--inline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+          <span>Уведомления</span>
+        </span>
+        <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
+      </button>
+    </div>
+
+    <div class="action-buttons">
+      <div class="menu-section">
+        <button type="button" onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('data')" class="action-btn menu-group-btn">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>
+          <span>Животные и списки</span>
+        </button>
+      </div>
+      <div class="menu-section" id="menu-section-actions">
+        <button type="button" onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('actions')" class="action-btn menu-group-btn">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="14" rx="7" ry="5"/><path d="M5 14c0-3 3-7 7-9 4 2 7 6 7 9"/><path d="M9 10.5c.5-1.5 1.5-2.5 3-2.5s2.5 1 3 2.5"/><circle cx="9.5" cy="14" r="0.8" fill="currentColor" stroke="none"/><circle cx="14.5" cy="14" r="0.8" fill="currentColor" stroke="none"/></svg></span>
+          <span>Действия</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button type="button" onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('analytics')" class="action-btn menu-group-btn">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/></svg></span>
+          <span>Аналитика</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button type="button" onclick="typeof window.navigateToSubmenu === 'function' && window.navigateToSubmenu('settings')" class="action-btn menu-group-btn">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+          <span>Настройки</span>
+        </button>
+      </div>
+      <div class="menu-section" id="admin-menu-section" style="display: none;">
+        <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('admin')" class="action-btn menu-group-btn">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9l-3.1 3.1z"/></svg></span>
+          <span>Администрирование</span>
+        </button>
+      </div>
+      <div class="menu-section">
+        <button type="button" class="action-btn menu-group-btn" onclick="typeof window.handleLogout === 'function' && window.handleLogout()">
+          <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+          <span>Выход</span>
+        </button>
+      </div>
+    </div>
+
+    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+  </div>

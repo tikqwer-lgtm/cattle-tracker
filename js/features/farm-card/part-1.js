@@ -337,6 +337,7 @@
     var oid = getObjectIdForFarm();
     if (!oid) {
       window.__farmCardBundle = emptyBundle();
+      clearFarmCardDirty();
       return Promise.resolve(window.__farmCardBundle);
     }
     if (window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.getFarmCard === 'function') {
@@ -345,6 +346,7 @@
         var b = normalizeBundle(data);
         window.__farmCardBundle = b;
         writeFarmCardCache(oid, b);
+        clearFarmCardDirty();
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('farm-card:updated', b);
         }
@@ -352,11 +354,13 @@
       }).catch(function () {
         var fallback = readFarmCardCache(oid);
         window.__farmCardBundle = normalizeBundle(fallback || emptyBundle());
+        clearFarmCardDirty();
         return window.__farmCardBundle;
       });
     }
     var local = readFarmCardCache(oid);
     window.__farmCardBundle = normalizeBundle(local || emptyBundle());
+    clearFarmCardDirty();
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('farm-card:updated', window.__farmCardBundle);
     }
@@ -382,6 +386,7 @@
       return window.CattleTrackerApi.putFarmCard(oid, b).then(function (data) {
         window.__farmCardBundle = normalizeBundle(data);
         writeFarmCardCache(oid, window.__farmCardBundle);
+        clearFarmCardDirty();
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('farm-card:updated', window.__farmCardBundle);
           window.CattleTrackerEvents.emit('farm-goal:changed', window.__farmCardBundle.goals || []);
@@ -389,6 +394,7 @@
         return window.__farmCardBundle;
       });
     }
+    clearFarmCardDirty();
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('farm-card:updated', b);
       window.CattleTrackerEvents.emit('farm-goal:changed', b.goals || []);
@@ -432,6 +438,143 @@
     partExtra: '',
     partLabels: []
   };
+  /** Раскрытые clamp-ячейки ленты: { [evId]: { desc: bool, part: bool } }. */
+  var _timelineExpanded = {};
+  /** Есть несохранённые правки карточки хозяйства. */
+  var _farmCardDirty = false;
+
+  function markFarmCardDirty() {
+    _farmCardDirty = true;
+  }
+
+  function clearFarmCardDirty() {
+    _farmCardDirty = false;
+  }
+
+  function farmCardHasUnsavedChanges() {
+    if (!farmCardCanEdit()) return false;
+    if (_farmCardDirty) return true;
+    if (_timelineFormOpen) {
+      captureTimelineDraftFields();
+      var f = _timelineDraftFields || {};
+      if (
+        (f.title && String(f.title).trim()) ||
+        (f.description && String(f.description).trim()) ||
+        (f.partExtra && String(f.partExtra).trim()) ||
+        (f.partLabels && f.partLabels.length) ||
+        (_timelineDraftAttachments && _timelineDraftAttachments.length)
+      ) {
+        return true;
+      }
+    }
+    var geo = readGeoFormFields();
+    if (_addrEditIdx >= 0) {
+      var addrs = (window.__farmCardBundle && window.__farmCardBundle.addresses) || [];
+      var a = addrs[_addrEditIdx];
+      if (a) {
+        if (
+          geo.name !== String(a.name || '').trim() ||
+          geo.navUrl !== String(a.navUrl || '').trim()
+        ) {
+          return true;
+        }
+      } else if (geo.name || geo.navUrl) {
+        return true;
+      }
+    } else if (geo.name || geo.navUrl) {
+      return true;
+    }
+    var role = ((document.getElementById('farmCardNewSpecRole') || {}).value || '').trim();
+    var specName = ((document.getElementById('farmCardNewSpecName') || {}).value || '').trim();
+    var phone = ((document.getElementById('farmCardNewSpecPhone') || {}).value || '').trim();
+    var email = ((document.getElementById('farmCardNewSpecEmail') || {}).value || '').trim();
+    var geoId = ((document.getElementById('farmCardNewSpecGeo') || {}).value || '').trim();
+    if (_specEditIdx >= 0) {
+      var specs = (window.__farmCardBundle && window.__farmCardBundle.specialists) || [];
+      var s = specs[_specEditIdx];
+      if (s) {
+        var phonesJoined = specialistPhones(s).join(', ');
+        if (
+          role !== String(s.role || '').trim() ||
+          specName !== String(s.name || '').trim() ||
+          phone !== phonesJoined ||
+          email !== String(s.email || '').trim() ||
+          geoId !== String(s.geoId || '').trim()
+        ) {
+          return true;
+        }
+      } else if (role || specName || phone || email) {
+        return true;
+      }
+    } else if (role || specName || phone || email) {
+      return true;
+    }
+    var regionEl = document.getElementById('farmCardAddrRegion');
+    if (regionEl) {
+      var info = (window.__farmCardBundle && window.__farmCardBundle.addressInfo) || {};
+      if (
+        (regionEl.value || '').trim() !== String(info.region || '').trim() ||
+        ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim() !==
+          String(info.locality || '').trim() ||
+        ((document.getElementById('farmCardAddrLine') || {}).value || '').trim() !==
+          String(info.address || '').trim()
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function confirmLeaveFarmCardIfNeeded() {
+    if (!farmCardHasUnsavedChanges()) return Promise.resolve(true);
+    var msg =
+      'В карточке хозяйства есть несохранённые изменения. Уйти без сохранения? Данные будут потеряны.';
+    function discardUnsavedFarmCard() {
+      _timelineFormOpen = false;
+      if (typeof clearTimelineDraft === 'function') clearTimelineDraft();
+      _timelineDraftAttachments = [];
+      _addrEditIdx = -1;
+      _specEditIdx = -1;
+      var oid = getObjectIdForFarm();
+      if (oid) {
+        window.__farmCardBundle = normalizeBundle(readFarmCardCache(oid) || emptyBundle());
+      }
+      clearFarmCardDirty();
+    }
+    if (typeof showConfirmModal === 'function') {
+      return showConfirmModal(msg, {
+        confirmText: 'Уйти',
+        cancelText: 'Остаться'
+      }).then(function (ok) {
+        if (ok) discardUnsavedFarmCard();
+        return !!ok;
+      });
+    }
+    var ok = !!window.confirm(msg);
+    if (ok) discardUnsavedFarmCard();
+    return Promise.resolve(ok);
+  }
+
+  function bindFarmCardDirtyTracking(root) {
+    if (!root || root._farmCardDirtyBound) return;
+    root._farmCardDirtyBound = true;
+    function onDirtyEvent(e) {
+      var t = e && e.target;
+      if (!t) return;
+      if (t.closest && t.closest('#farmCardEvAddForm')) return;
+      var id = t.id || '';
+      if (
+        id === 'farmCardGeoName' ||
+        id === 'farmCardGeoNav' ||
+        id.indexOf('farmCardNewSpec') === 0
+      ) {
+        return;
+      }
+      markFarmCardDirty();
+    }
+    root.addEventListener('input', onDirtyEvent, true);
+    root.addEventListener('change', onDirtyEvent, true);
+  }
 
   var EV_TYPE_LABELS = {
     shtab: 'Штаб',
@@ -607,6 +750,40 @@
         .join('') +
       '</ul>'
     );
+  }
+
+  function timelineTextNeedsClamp(text) {
+    var t = String(text || '').trim();
+    if (!t || t === '—') return false;
+    if (t.indexOf('\n') !== -1) return true;
+    return t.length > 120;
+  }
+
+  function timelineClampCellHtml(evId, kind, text) {
+    var raw = text && String(text).trim() ? String(text).trim() : '—';
+    var exp = _timelineExpanded[evId] || {};
+    var isOpen = !!exp[kind];
+    var needs = timelineTextNeedsClamp(raw);
+    var clampClass = 'farm-card-ev-clamp' + (isOpen ? ' farm-card-ev-clamp--open' : '');
+    var html =
+      '<div class="' +
+      clampClass +
+      '" data-ev-clamp="' +
+      escapeHtml(kind) +
+      '">' +
+      escapeHtml(raw) +
+      '</div>';
+    if (needs) {
+      html +=
+        '<button type="button" class="farm-card-ev-more" data-ev-id="' +
+        escapeHtml(evId) +
+        '" data-clamp="' +
+        escapeHtml(kind) +
+        '">' +
+        (isOpen ? 'Свернуть' : 'Ещё') +
+        '</button>';
+    }
+    return html;
   }
 
   function collectEventParticipantsFromForm() {
@@ -976,6 +1153,7 @@
     }
     var root = document.getElementById('farmCardRoot');
     if (!root) return;
+    bindFarmCardDirtyTracking(root);
     var b = window.__farmCardBundle || emptyBundle();
     var canEdit = farmCardCanEdit();
 
@@ -1346,10 +1524,12 @@
           (e.task && String(e.task).trim()) ||
           '—';
         var descText = e.description && String(e.description).trim() ? String(e.description).trim() : '—';
+        var partText = e.participants && String(e.participants).trim() ? String(e.participants).trim() : '—';
         var filesHtml = eventAttachmentsCellHtml(e.attachments);
+        var evId = e.id || '';
         return (
           '<tr data-ev-id="' +
-          escapeHtml(e.id) +
+          escapeHtml(evId) +
           '"><td>' +
           escapeHtml(e.eventDate || '—') +
           '</td><td>' +
@@ -1357,16 +1537,16 @@
           '</td><td>' +
           escapeHtml(title) +
           '</td><td class="farm-card-ev-desc-cell">' +
-          escapeHtml(descText) +
+          timelineClampCellHtml(evId, 'desc', descText) +
           (e.attachments && e.attachments.length
             ? '<div class="farm-card-ev-att-cell">' + filesHtml + '</div>'
             : '') +
-          '</td><td>' +
-          escapeHtml(e.participants || '—') +
+          '</td><td class="farm-card-ev-part-cell">' +
+          timelineClampCellHtml(evId, 'part', partText) +
           '</td>' +
           (canEdit
             ? '<td><button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
-              escapeHtml(e.id) +
+              escapeHtml(evId) +
               '">Удал.</button></td>'
             : '') +
           '</tr>'
@@ -1422,7 +1602,10 @@
         '<label>Название <input type="text" id="farmCardNewEvTitle" class="farm-settings-inline-input farm-card-input-lg" placeholder="Краткое название" /></label>' +
         '<label>Описание <textarea id="farmCardNewEvDesc" class="farm-settings-textarea farm-card-ev-desc" rows="2" placeholder="Описание события"></textarea></label>' +
         '<div class="farm-card-ev-files">' +
-        '<label class="farm-card-ev-files-label">Файлы к событию (таблица, картинка, Word, PDF)' +
+        '<div class="farm-card-ev-files-title">Файлы к событию</div>' +
+        '<p class="farm-settings-hint farm-card-ev-files-hint">Таблица, картинка, Word, PDF — до 8 файлов</p>' +
+        '<label class="farm-card-ev-files-btn" for="farmCardNewEvFiles">' +
+        '<span class="farm-card-ev-files-btn-text">Выбрать файл</span>' +
         '<input type="file" id="farmCardNewEvFiles" class="farm-card-ev-files-input" accept="' +
         EV_FILE_ACCEPT +
         '" multiple /></label>' +
@@ -1505,6 +1688,19 @@
         if (ev && ev.attachments && ev.attachments[attIdx]) {
           openEventAttachment(ev.attachments[attIdx]);
         }
+      });
+    });
+
+    root.querySelectorAll('.farm-card-ev-more').forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        var id = btn.getAttribute('data-ev-id') || '';
+        var kind = btn.getAttribute('data-clamp') || 'desc';
+        if (!id) return;
+        if (!_timelineExpanded[id]) _timelineExpanded[id] = {};
+        _timelineExpanded[id][kind] = !_timelineExpanded[id][kind];
+        renderFarmCardPanel();
       });
     });
 
@@ -1626,6 +1822,7 @@
             genetika: !!gen,
             sortOrder: window.__farmCardBundle.contacts.length
           });
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       }
@@ -1633,6 +1830,7 @@
         btn.onclick = function () {
           var i = parseInt(btn.getAttribute('data-contact-idx'), 10);
           if (!isNaN(i)) window.__farmCardBundle.contacts.splice(i, 1);
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -1660,6 +1858,7 @@
             .filter(Boolean);
           c.note = note;
           c.genetika = gen;
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -1725,6 +1924,7 @@
             });
           }
           _addrEditIdx = -1;
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       }
@@ -1743,6 +1943,7 @@
             if (_addrEditIdx === i) _addrEditIdx = -1;
             else if (_addrEditIdx > i) _addrEditIdx -= 1;
           }
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -1777,6 +1978,7 @@
             });
           }
           _specEditIdx = -1;
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       }
@@ -1811,6 +2013,7 @@
           });
           if (_specEditIdx === delIdx) _specEditIdx = -1;
           else if (_specEditIdx > delIdx && delIdx >= 0) _specEditIdx -= 1;
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -1966,6 +2169,7 @@
           _timelineDraftAttachments = [];
           _timelineFormOpen = false;
           clearTimelineDraft();
+          markFarmCardDirty();
           if (typeof showToast === 'function') showToast('Запись добавлена. Не забудьте «Сохранить карточку».', 'success');
           renderFarmCardPanel();
         };
@@ -1976,6 +2180,7 @@
           window.__farmCardBundle.events = (window.__farmCardBundle.events || []).filter(function (e) {
             return e.id !== id;
           });
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -1985,6 +2190,7 @@
           (window.__farmCardBundle.events || []).forEach(function (e) {
             if (e && e.id === id) e.completed = !e.completed;
           });
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
       });
@@ -2099,6 +2305,10 @@
   NS.getFarmCardBundleForExport = getFarmCardBundleForExport;
   NS.ensureFarmCardLoaded = ensureFarmCardLoaded;
   NS.saveFarmCardBundle = saveFarmCardBundle;
+  NS.markFarmCardDirty = markFarmCardDirty;
+  NS.clearFarmCardDirty = clearFarmCardDirty;
+  NS.farmCardHasUnsavedChanges = farmCardHasUnsavedChanges;
+  NS.confirmLeaveFarmCardIfNeeded = confirmLeaveFarmCardIfNeeded;
   NS.currentMetricSnapshot = currentMetricSnapshot;
   NS.renderFarmCardPanel = renderFarmCardPanel;
 })();
