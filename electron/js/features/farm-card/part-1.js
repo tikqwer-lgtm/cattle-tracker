@@ -142,17 +142,46 @@
 
   function normalizeEvent(raw, idx) {
     if (!raw || typeof raw !== 'object') return null;
+    var title =
+      raw.title != null
+        ? String(raw.title)
+        : raw.name != null
+          ? String(raw.name)
+          : '';
+    var attachments = Array.isArray(raw.attachments)
+      ? raw.attachments
+          .map(function (a, i) {
+            if (!a || typeof a !== 'object') return null;
+            var dataUrl = a.dataUrl != null ? String(a.dataUrl) : a.data != null ? String(a.data) : '';
+            var name = a.name != null ? String(a.name) : 'файл';
+            if (!dataUrl) return null;
+            return {
+              id: a.id != null ? String(a.id) : 'att_' + idx + '_' + i,
+              name: name,
+              mime: a.mime != null ? String(a.mime) : '',
+              size: a.size != null ? Number(a.size) || 0 : 0,
+              dataUrl: dataUrl
+            };
+          })
+          .filter(Boolean)
+      : [];
+    var type = raw.eventType != null ? String(raw.eventType) : 'shtab';
+    if (['shtab', 'audit', 'otbor_go'].indexOf(type) === -1) {
+      // старые типы оставляем для отображения
+    }
     return {
       id: raw.id != null ? String(raw.id) : 'ev_' + idx,
-      eventType: raw.eventType != null ? String(raw.eventType) : 'info',
+      eventType: type,
       eventDate: raw.eventDate != null ? String(raw.eventDate) : '',
+      title: title,
       participants: raw.participants != null ? String(raw.participants) : '',
       description: raw.description != null ? String(raw.description) : '',
       task: raw.task != null ? String(raw.task) : '',
       goal: raw.goal != null ? String(raw.goal) : '',
       reminderAt: raw.reminderAt != null ? String(raw.reminderAt) : '',
       completed: !!raw.completed,
-      notifyLocal: raw.notifyLocal !== false
+      notifyLocal: raw.notifyLocal !== false,
+      attachments: attachments
     };
   }
 
@@ -390,6 +419,279 @@
   var _addrEditIdx = -1;
   /** Индекс специалиста в форме (−1 — новый). */
   var _specEditIdx = -1;
+  /** Форма добавления события под таблицей открыта. */
+  var _timelineFormOpen = false;
+  /** Черновик вложений для новой записи ленты. */
+  var _timelineDraftAttachments = [];
+  /** Черновик полей формы ленты (чтобы не сбрасывать при перерисовке). */
+  var _timelineDraftFields = {
+    date: '',
+    type: 'shtab',
+    title: '',
+    description: '',
+    partExtra: '',
+    partLabels: []
+  };
+
+  var EV_TYPE_LABELS = {
+    shtab: 'Штаб',
+    audit: 'Аудит',
+    otbor_go: 'Отбор ГО',
+    visit: 'Посещение',
+    work: 'Работа',
+    plan: 'План развития',
+    info: 'Информация'
+  };
+
+  var EV_FILE_MAX_BYTES = 1.5 * 1024 * 1024;
+  var EV_FILE_MAX_COUNT = 8;
+  var EV_FILE_ACCEPT =
+    'image/*,.doc,.docx,.xls,.xlsx,.csv,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf';
+
+  function specialistParticipantLabel(s) {
+    if (!s || typeof s !== 'object') return '';
+    var role = s.role != null ? String(s.role).trim() : '';
+    var name = s.name != null ? String(s.name).trim() : '';
+    if (role && name) return role + ' — ' + name;
+    return name || role || '';
+  }
+
+  function formatFileSize(bytes) {
+    var n = Number(bytes) || 0;
+    if (n < 1024) return n + ' Б';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' КБ';
+    return (n / (1024 * 1024)).toFixed(1) + ' МБ';
+  }
+
+  function isAllowedEventFile(file) {
+    if (!file) return false;
+    var name = String(file.name || '').toLowerCase();
+    var mime = String(file.type || '').toLowerCase();
+    if (mime.indexOf('image/') === 0) return true;
+    if (/\.(doc|docx|xls|xlsx|csv|pdf)$/.test(name)) return true;
+    if (
+      mime === 'application/pdf' ||
+      mime === 'application/msword' ||
+      mime.indexOf('officedocument') !== -1 ||
+      mime.indexOf('excel') !== -1 ||
+      mime === 'text/csv'
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () {
+        reject(new Error('Не удалось прочитать файл'));
+      };
+      reader.onload = function () {
+        resolve(String(reader.result || ''));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadEventAttachmentFile(file) {
+    if (!isAllowedEventFile(file)) {
+      return Promise.reject(new Error('Допустимы: картинки, Word, Excel/CSV, PDF'));
+    }
+    if (file.type && file.type.indexOf('image/') === 0) {
+      var compress =
+        globalThis['__farmCard'] && typeof globalThis['__farmCard'].compressImageFile === 'function'
+          ? globalThis['__farmCard'].compressImageFile
+          : null;
+      if (compress) {
+        return compress(file).then(function (dataUrl) {
+          return {
+            id: newId('att_'),
+            name: file.name || 'изображение.jpg',
+            mime: 'image/jpeg',
+            size: Math.round((dataUrl.length * 3) / 4),
+            dataUrl: dataUrl
+          };
+        });
+      }
+    }
+    if (file.size > EV_FILE_MAX_BYTES) {
+      return Promise.reject(
+        new Error('Файл «' + (file.name || '') + '» больше ' + formatFileSize(EV_FILE_MAX_BYTES))
+      );
+    }
+    return readFileAsDataUrl(file).then(function (dataUrl) {
+      return {
+        id: newId('att_'),
+        name: file.name || 'файл',
+        mime: file.type || '',
+        size: file.size || 0,
+        dataUrl: dataUrl
+      };
+    });
+  }
+
+  function openEventAttachment(att) {
+    if (!att || !att.dataUrl) return;
+    var mime = String(att.mime || '');
+    var name = att.name || 'файл';
+    try {
+      if (mime.indexOf('image/') === 0) {
+        var w = window.open('', '_blank');
+        if (w) {
+          w.document.write(
+            '<!doctype html><title>' +
+              escapeHtml(name) +
+              '</title><body style="margin:0;background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh"><img src="' +
+              att.dataUrl.replace(/"/g, '&quot;') +
+              '" alt="' +
+              escapeHtml(name) +
+              '" style="max-width:100%;max-height:100vh;object-fit:contain"/></body>'
+          );
+          w.document.close();
+          return;
+        }
+      }
+      var a = document.createElement('a');
+      a.href = att.dataUrl;
+      a.download = name;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      if (typeof showToast === 'function') showToast('Не удалось открыть файл', 'error');
+    }
+  }
+
+  function eventAttachmentsCellHtml(attachments) {
+    var list = Array.isArray(attachments) ? attachments : [];
+    if (!list.length) return '—';
+    return list
+      .map(function (att, i) {
+        return (
+          '<button type="button" class="link-btn farm-card-ev-att-open" data-att-idx="' +
+          i +
+          '" title="' +
+          escapeHtml(att.name || 'файл') +
+          '">' +
+          escapeHtml(att.name || 'файл') +
+          '</button>'
+        );
+      })
+      .join('<br/>');
+  }
+
+  function draftAttachmentsListHtml() {
+    if (!_timelineDraftAttachments.length) {
+      return '<p class="farm-settings-hint farm-card-ev-att-empty">Файлы не выбраны</p>';
+    }
+    return (
+      '<ul class="farm-card-ev-att-list">' +
+      _timelineDraftAttachments
+        .map(function (att, idx) {
+          return (
+            '<li><button type="button" class="link-btn farm-card-ev-draft-att-open" data-draft-idx="' +
+            idx +
+            '">' +
+            escapeHtml(att.name || 'файл') +
+            '</button>' +
+            ' <span class="farm-settings-hint">(' +
+            escapeHtml(formatFileSize(att.size)) +
+            ')</span> ' +
+            '<button type="button" class="small-btn farm-card-ev-draft-att-del" data-draft-idx="' +
+            idx +
+            '">Убрать</button></li>'
+          );
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
+  function collectEventParticipantsFromForm() {
+    var parts = [];
+    document.querySelectorAll('.farm-card-ev-part-cb:checked').forEach(function (cb) {
+      var v = String(cb.value || '').trim();
+      if (v) parts.push(v);
+    });
+    var extra = ((document.getElementById('farmCardNewEvPartExtra') || {}).value || '').trim();
+    if (extra) {
+      extra.split(/[,;]/).forEach(function (s) {
+        s = String(s || '').trim();
+        if (s) parts.push(s);
+      });
+    }
+    return parts.join(', ');
+  }
+
+  function captureTimelineDraftFields() {
+    if (!_timelineFormOpen) return;
+    var form = document.getElementById('farmCardEvAddForm');
+    if (!form || form.style.display === 'none') return;
+    var dateEl = document.getElementById('farmCardNewEvDate');
+    var typeEl = document.getElementById('farmCardNewEvType');
+    var titleEl = document.getElementById('farmCardNewEvTitle');
+    var descEl = document.getElementById('farmCardNewEvDesc');
+    var extraEl = document.getElementById('farmCardNewEvPartExtra');
+    if (dateEl) _timelineDraftFields.date = dateEl.value || '';
+    if (typeEl) _timelineDraftFields.type = typeEl.value || 'shtab';
+    if (titleEl) _timelineDraftFields.title = titleEl.value || '';
+    if (descEl) _timelineDraftFields.description = descEl.value || '';
+    if (extraEl) _timelineDraftFields.partExtra = extraEl.value || '';
+    var labels = [];
+    document.querySelectorAll('.farm-card-ev-part-cb:checked').forEach(function (cb) {
+      var v = String(cb.value || '').trim();
+      if (v) labels.push(v);
+    });
+    _timelineDraftFields.partLabels = labels;
+  }
+
+  function applyTimelineDraftFields() {
+    if (!_timelineFormOpen) return;
+    var dateEl = document.getElementById('farmCardNewEvDate');
+    var typeEl = document.getElementById('farmCardNewEvType');
+    var titleEl = document.getElementById('farmCardNewEvTitle');
+    var descEl = document.getElementById('farmCardNewEvDesc');
+    var extraEl = document.getElementById('farmCardNewEvPartExtra');
+    var today = new Date().toISOString().slice(0, 10);
+    if (dateEl) dateEl.value = _timelineDraftFields.date || today;
+    if (typeEl) typeEl.value = _timelineDraftFields.type || 'shtab';
+    if (titleEl) titleEl.value = _timelineDraftFields.title || '';
+    if (descEl) descEl.value = _timelineDraftFields.description || '';
+    if (extraEl) extraEl.value = _timelineDraftFields.partExtra || '';
+    var set = {};
+    (_timelineDraftFields.partLabels || []).forEach(function (l) {
+      set[l] = true;
+    });
+    document.querySelectorAll('.farm-card-ev-part-cb').forEach(function (cb) {
+      cb.checked = !!set[String(cb.value || '').trim()];
+    });
+  }
+
+  function clearTimelineDraft() {
+    _timelineDraftAttachments = [];
+    _timelineDraftFields = {
+      date: '',
+      type: 'shtab',
+      title: '',
+      description: '',
+      partExtra: '',
+      partLabels: []
+    };
+  }
+
+  function bindEvDescAutosize() {
+    var ta = document.getElementById('farmCardNewEvDesc');
+    if (!ta || ta.dataset.autosizeBound === '1') return;
+    ta.dataset.autosizeBound = '1';
+    function fit() {
+      ta.style.height = 'auto';
+      ta.style.height = Math.max(56, ta.scrollHeight) + 'px';
+    }
+    ta.addEventListener('input', fit);
+    fit();
+  }
 
   function geoLabelById(addresses, geoId) {
     var id = String(geoId || '').trim();
@@ -663,6 +965,7 @@
   }
 
   function renderFarmCardPanel() {
+    captureTimelineDraftFields();
     if (typeof window._farmSuggestDocClose === 'function') {
       document.removeEventListener('click', window._farmSuggestDocClose, true);
       window._farmSuggestDocClose = null;
@@ -1028,54 +1331,41 @@
       '</tbody></table></div>' +
       '</div>';
 
-    var evTypeLabels = { visit: 'Посещение', work: 'Работа', plan: 'План развития', info: 'Информация' };
-    var sortState = window.__farmTimelineSort || { key: 'eventDate', dir: 'desc' };
+    var evTypeLabels = EV_TYPE_LABELS;
     var evList = (b.events || []).slice();
     evList.sort(function (x, y) {
-      var ax = String(x[sortState.key] || '');
-      var ay = String(y[sortState.key] || '');
-      var c = ax.localeCompare(ay);
-      return sortState.dir === 'asc' ? c : -c;
+      var c = String(x.eventDate || '').localeCompare(String(y.eventDate || ''));
+      if (c !== 0) return -c;
+      return String(y.id || '').localeCompare(String(x.id || ''));
     });
-    var filtType = window.__farmTimelineFilterType || '';
-    var filtText = window.__farmTimelineFilterText || '';
     var evRows = evList
-      .filter(function (e) {
-        if (filtType && String(e.eventType) !== filtType) return false;
-        if (filtText) {
-          var t = filtText.toLowerCase();
-          var blob = [e.participants, e.description, e.task, e.goal].join(' ').toLowerCase();
-          if (blob.indexOf(t) === -1) return false;
-        }
-        return true;
-      })
-      .map(function (e, idx) {
-        var doneMark = e.completed ? ' ✓' : '';
-        var rem = e.reminderAt ? String(e.reminderAt).slice(0, 16).replace('T', ' ') : '';
+      .map(function (e) {
+        var title =
+          (e.title && String(e.title).trim()) ||
+          (e.description && String(e.description).trim()) ||
+          (e.task && String(e.task).trim()) ||
+          '—';
+        var descText = e.description && String(e.description).trim() ? String(e.description).trim() : '—';
+        var filesHtml = eventAttachmentsCellHtml(e.attachments);
         return (
-          '<tr class="' +
-          (e.completed ? 'farm-card-ev--done' : '') +
+          '<tr data-ev-id="' +
+          escapeHtml(e.id) +
           '"><td>' +
-          escapeHtml(evTypeLabels[e.eventType] || e.eventType) +
-          doneMark +
+          escapeHtml(e.eventDate || '—') +
           '</td><td>' +
-          escapeHtml(e.eventDate) +
-          (rem ? '<br/><small>⏰ ' + escapeHtml(rem) + '</small>' : '') +
+          escapeHtml(evTypeLabels[e.eventType] || e.eventType || '—') +
           '</td><td>' +
-          escapeHtml(e.participants) +
+          escapeHtml(title) +
+          '</td><td class="farm-card-ev-desc-cell">' +
+          escapeHtml(descText) +
+          (e.attachments && e.attachments.length
+            ? '<div class="farm-card-ev-att-cell">' + filesHtml + '</div>'
+            : '') +
           '</td><td>' +
-          escapeHtml(e.description) +
-          '</td><td>' +
-          escapeHtml(e.task) +
-          '</td><td>' +
-          escapeHtml(e.goal) +
+          escapeHtml(e.participants || '—') +
           '</td>' +
           (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-ev-toggle" data-ev-id="' +
-              escapeHtml(e.id) +
-              '">' +
-              (e.completed ? 'Открыть' : 'Готово') +
-              '</button> <button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
+            ? '<td><button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
               escapeHtml(e.id) +
               '">Удал.</button></td>'
             : '') +
@@ -1084,54 +1374,79 @@
       })
       .join('');
 
+    var partChecks = (b.specialists || [])
+      .map(function (s, idx) {
+        var label = specialistParticipantLabel(s);
+        if (!label) return '';
+        return (
+          '<label class="farm-card-ev-part-check">' +
+          '<input type="checkbox" class="farm-card-ev-part-cb" value="' +
+          escapeHtml(label) +
+          '" data-spec-idx="' +
+          idx +
+          '" /> ' +
+          escapeHtml(label) +
+          '</label>'
+        );
+      })
+      .filter(Boolean)
+      .join('');
+
+    var timelineTableHtml =
+      '<div class="farm-card-table-scroll"><table class="farm-card-table farm-card-table--wide"><thead><tr>' +
+      '<th>Дата</th><th>Тип</th><th>Название</th><th>Описание / файлы</th><th>Участники</th>' +
+      (canEdit ? '<th></th>' : '') +
+      '</tr></thead><tbody>' +
+      (evRows ||
+        '<tr><td colspan="' +
+          (canEdit ? '6' : '5') +
+          '" class="farm-card-empty">Нет событий</td></tr>') +
+      '</tbody></table></div>';
+
+    var timelineFormHtml = canEdit
+      ? '<div class="farm-card-actions-row">' +
+        '<button type="button" class="action-btn" id="farmCardOpenEvFormBtn">' +
+        (_timelineFormOpen ? 'Скрыть форму' : 'Добавить запись') +
+        '</button></div>' +
+        timelineTableHtml +
+        '<div class="farm-card-form farm-card-ev-add-form" id="farmCardEvAddForm" style="' +
+        (_timelineFormOpen ? '' : 'display:none') +
+        '">' +
+        '<h4 class="farm-card-h4">Новая запись</h4>' +
+        '<label>Дата <input type="date" id="farmCardNewEvDate" /></label>' +
+        '<label>Тип <select id="farmCardNewEvType">' +
+        '<option value="shtab">Штаб</option>' +
+        '<option value="audit">Аудит</option>' +
+        '<option value="otbor_go">Отбор ГО</option>' +
+        '</select></label>' +
+        '<label>Название <input type="text" id="farmCardNewEvTitle" class="farm-settings-inline-input farm-card-input-lg" placeholder="Краткое название" /></label>' +
+        '<label>Описание <textarea id="farmCardNewEvDesc" class="farm-settings-textarea farm-card-ev-desc" rows="2" placeholder="Описание события"></textarea></label>' +
+        '<div class="farm-card-ev-files">' +
+        '<label class="farm-card-ev-files-label">Файлы к событию (таблица, картинка, Word, PDF)' +
+        '<input type="file" id="farmCardNewEvFiles" class="farm-card-ev-files-input" accept="' +
+        EV_FILE_ACCEPT +
+        '" multiple /></label>' +
+        '<div id="farmCardNewEvFilesList" class="farm-card-ev-files-list">' +
+        draftAttachmentsListHtml() +
+        '</div></div>' +
+        '<fieldset class="farm-card-ev-participants">' +
+        '<legend>Участники</legend>' +
+        (partChecks
+          ? '<div class="farm-card-ev-part-checks">' + partChecks + '</div>'
+          : '<p class="farm-settings-hint">Специалисты ещё не добавлены — укажите участников вручную.</p>') +
+        '<label>Дописать от руки <input type="text" id="farmCardNewEvPartExtra" class="farm-settings-inline-input farm-card-input-lg" placeholder="ФИО или роль через запятую" /></label>' +
+        '</fieldset>' +
+        '<div class="farm-card-actions-row">' +
+        '<button type="button" class="action-btn" id="farmCardAddEvBtn">Сохранить</button>' +
+        '<button type="button" class="small-btn" id="farmCardCancelEvFormBtn">Отмена</button>' +
+        '</div></div>'
+      : timelineTableHtml;
+
     var timelineHtml =
       '<div class="farm-card-pane" id="farmCardPaneTimeline" style="' +
       (_activeTab === 'timeline' ? '' : 'display:none') +
       '">' +
-      '<div class="farm-card-filters">' +
-      '<label>Тип <select id="farmCardEvFilterType"><option value="">Все</option>' +
-      '<option value="visit"' +
-      (filtType === 'visit' ? ' selected' : '') +
-      '>Посещение</option>' +
-      '<option value="work"' +
-      (filtType === 'work' ? ' selected' : '') +
-      '>Работа</option>' +
-      '<option value="plan"' +
-      (filtType === 'plan' ? ' selected' : '') +
-      '>План</option>' +
-      '<option value="info"' +
-      (filtType === 'info' ? ' selected' : '') +
-      '>Информация</option></select></label> ' +
-      '<label>Поиск <input type="text" id="farmCardEvFilterText" value="' +
-      escapeHtml(filtText) +
-      '" class="farm-settings-inline-input" /></label> ' +
-      '<button type="button" class="small-btn" id="farmCardEvFilterApply">Применить</button> ' +
-      '<label>Сортировка по дате <select id="farmCardEvSortDir"><option value="desc"' +
-      (sortState.dir === 'desc' ? ' selected' : '') +
-      '>Новые сверху</option><option value="asc"' +
-      (sortState.dir === 'asc' ? ' selected' : '') +
-      '>Старые сверху</option></select></label></div>' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table farm-card-table--wide"><thead><tr><th>Тип</th><th>Дата</th><th>Участники</th><th>Описание</th><th>Задача</th><th>Цель</th>' +
-      (canEdit ? '<th></th>' : '') +
-      '</tr></thead><tbody>' +
-      (evRows || '<tr><td colspan="7" class="farm-card-empty">Нет событий</td></tr>') +
-      '</tbody></table></div>' +
-      (canEdit
-        ? '<div class="farm-card-form"><h4 class="farm-card-h4">Новое событие</h4>' +
-          '<label>Тип <select id="farmCardNewEvType">' +
-          '<option value="visit">История посещений</option>' +
-          '<option value="work">Проделанная работа</option>' +
-          '<option value="plan">План развития</option>' +
-          '<option value="info">Информация</option></select></label>' +
-          '<label>Дата <input type="date" id="farmCardNewEvDate" /></label>' +
-          '<label>Участники <input type="text" id="farmCardNewEvPart" class="farm-settings-inline-input" /></label>' +
-          '<label>Описание <textarea id="farmCardNewEvDesc" class="farm-settings-textarea" rows="2"></textarea></label>' +
-          '<label>Задача <input type="text" id="farmCardNewEvTask" class="farm-settings-inline-input" /></label>' +
-          '<label>Цель <input type="text" id="farmCardNewEvGoal" class="farm-settings-inline-input" /></label>' +
-          '<label>Напоминание <input type="datetime-local" id="farmCardNewEvReminder" class="farm-card-input-lg" /></label>' +
-          '<label><input type="checkbox" id="farmCardNewEvNotify" checked /> Локальное уведомление</label>' +
-          '<button type="button" class="small-btn" id="farmCardAddEvBtn">Добавить</button></div>'
-        : '') +
+      timelineFormHtml +
       '</div>';
 
     var goalsHtml =
@@ -1174,8 +1489,114 @@
     });
 
     var today = new Date().toISOString().slice(0, 10);
+    applyTimelineDraftFields();
     var dateEl = document.getElementById('farmCardNewEvDate');
-    if (dateEl) dateEl.value = today;
+    if (dateEl && !dateEl.value) dateEl.value = today;
+    bindEvDescAutosize();
+
+    root.querySelectorAll('.farm-card-ev-att-open').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tr = btn.closest('tr');
+        var evId = tr && tr.getAttribute('data-ev-id');
+        var attIdx = parseInt(btn.getAttribute('data-att-idx'), 10);
+        var ev = (window.__farmCardBundle.events || []).find(function (e) {
+          return e && e.id === evId;
+        });
+        if (ev && ev.attachments && ev.attachments[attIdx]) {
+          openEventAttachment(ev.attachments[attIdx]);
+        }
+      });
+    });
+
+    if (canEdit) {
+      var openEvForm = document.getElementById('farmCardOpenEvFormBtn');
+      if (openEvForm) {
+        openEvForm.onclick = function () {
+          if (_timelineFormOpen) {
+            captureTimelineDraftFields();
+            _timelineFormOpen = false;
+            clearTimelineDraft();
+          } else {
+            _timelineFormOpen = true;
+            _timelineDraftFields.date = new Date().toISOString().slice(0, 10);
+            _timelineDraftFields.type = 'shtab';
+          }
+          renderFarmCardPanel();
+          if (_timelineFormOpen) {
+            setTimeout(function () {
+              var form = document.getElementById('farmCardEvAddForm');
+              if (form && form.scrollIntoView) {
+                form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+              var titleEl = document.getElementById('farmCardNewEvTitle');
+              if (titleEl) titleEl.focus();
+            }, 40);
+          }
+        };
+      }
+      var cancelEvForm = document.getElementById('farmCardCancelEvFormBtn');
+      if (cancelEvForm) {
+        cancelEvForm.onclick = function () {
+          _timelineFormOpen = false;
+          clearTimelineDraft();
+          renderFarmCardPanel();
+        };
+      }
+      var filesInput = document.getElementById('farmCardNewEvFiles');
+      if (filesInput) {
+        filesInput.onchange = function () {
+          captureTimelineDraftFields();
+          var files = filesInput.files ? Array.prototype.slice.call(filesInput.files) : [];
+          filesInput.value = '';
+          if (!files.length) return;
+          var room = EV_FILE_MAX_COUNT - _timelineDraftAttachments.length;
+          if (room <= 0) {
+            if (typeof showToast === 'function') {
+              showToast('Не больше ' + EV_FILE_MAX_COUNT + ' файлов на событие', 'error');
+            }
+            return;
+          }
+          var toLoad = files.slice(0, room);
+          Promise.all(
+            toLoad.map(function (f) {
+              return loadEventAttachmentFile(f).catch(function (err) {
+                if (typeof showToast === 'function') {
+                  showToast((err && err.message) || 'Ошибка файла', 'error');
+                }
+                return null;
+              });
+            })
+          ).then(function (atts) {
+            atts.forEach(function (a) {
+              if (a) _timelineDraftAttachments.push(a);
+            });
+            renderFarmCardPanel();
+            if (_timelineFormOpen) {
+              setTimeout(function () {
+                var form = document.getElementById('farmCardEvAddForm');
+                if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }, 40);
+            }
+          });
+        };
+      }
+      root.querySelectorAll('.farm-card-ev-draft-att-del').forEach(function (btn) {
+        btn.onclick = function () {
+          captureTimelineDraftFields();
+          var idx = parseInt(btn.getAttribute('data-draft-idx'), 10);
+          if (!isNaN(idx)) _timelineDraftAttachments.splice(idx, 1);
+          renderFarmCardPanel();
+        };
+      });
+      root.querySelectorAll('.farm-card-ev-draft-att-open').forEach(function (btn) {
+        btn.onclick = function () {
+          var idx = parseInt(btn.getAttribute('data-draft-idx'), 10);
+          if (!isNaN(idx) && _timelineDraftAttachments[idx]) {
+            openEventAttachment(_timelineDraftAttachments[idx]);
+          }
+        };
+      });
+    }
 
     if (canEdit) {
       var addC = document.getElementById('farmCardAddContactBtn');
@@ -1518,35 +1939,34 @@
       var addEv = document.getElementById('farmCardAddEvBtn');
       if (addEv) {
         addEv.onclick = function () {
-          var type = (document.getElementById('farmCardNewEvType') || {}).value || 'info';
+          var type = (document.getElementById('farmCardNewEvType') || {}).value || 'shtab';
           var eventDate = (document.getElementById('farmCardNewEvDate') || {}).value || today;
-          var participants = (document.getElementById('farmCardNewEvPart') || {}).value || '';
-          var description = (document.getElementById('farmCardNewEvDesc') || {}).value || '';
-          var task = (document.getElementById('farmCardNewEvTask') || {}).value || '';
-          var goal = (document.getElementById('farmCardNewEvGoal') || {}).value || '';
+          var title = ((document.getElementById('farmCardNewEvTitle') || {}).value || '').trim();
+          var description = ((document.getElementById('farmCardNewEvDesc') || {}).value || '').trim();
+          var participants = collectEventParticipantsFromForm();
+          if (!title && !description && !_timelineDraftAttachments.length) {
+            if (typeof showToast === 'function') showToast('Укажите название, описание или файл', 'error');
+            return;
+          }
+          if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
           window.__farmCardBundle.events.push({
             id: newId('ev_'),
             eventType: type,
             eventDate: eventDate,
+            title: title,
             participants: participants,
             description: description,
-            task: task,
-            goal: goal,
-            reminderAt: (function () {
-              var rem = (document.getElementById('farmCardNewEvReminder') || {}).value || '';
-              if (!rem) return '';
-              try {
-                return new Date(rem).toISOString();
-              } catch (e) {
-                return rem;
-              }
-            })(),
+            task: '',
+            goal: '',
+            reminderAt: '',
             completed: false,
-            notifyLocal: !(
-              document.getElementById('farmCardNewEvNotify') &&
-              !document.getElementById('farmCardNewEvNotify').checked
-            )
+            notifyLocal: true,
+            attachments: _timelineDraftAttachments.slice()
           });
+          _timelineDraftAttachments = [];
+          _timelineFormOpen = false;
+          clearTimelineDraft();
+          if (typeof showToast === 'function') showToast('Запись добавлена. Не забудьте «Сохранить карточку».', 'success');
           renderFarmCardPanel();
         };
       }

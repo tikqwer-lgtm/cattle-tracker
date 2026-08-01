@@ -578,11 +578,17 @@
       })
       .slice(0, 8)
       .map(function (e) {
+        var label =
+          (e.title && String(e.title).trim()) ||
+          e.description ||
+          e.task ||
+          e.goal ||
+          e.eventType;
         return (
           '<li>' +
           escapeHtml(e.eventDate) +
           ': ' +
-          escapeHtml(e.description || e.task || e.goal || e.eventType) +
+          escapeHtml(label) +
           '</li>'
         );
       })
@@ -915,49 +921,11 @@
   }
 
   function enhanceTimelineEventForm() {
-    var form = document.querySelector('#farmCardPaneTimeline .farm-card-form');
-    if (!form || form.querySelector('#farmCardNewEvReminder')) return;
-    var html =
-      '<label>Напоминание <input type="datetime-local" id="farmCardNewEvReminder" class="farm-card-input-lg" /></label>' +
-      '<label><input type="checkbox" id="farmCardNewEvNotify" checked /> Локальное уведомление</label>';
-    var addBtn = document.getElementById('farmCardAddEvBtn');
-    if (addBtn) {
-      addBtn.insertAdjacentHTML('beforebegin', html);
-    }
+    /* Напоминания убраны из новой формы ленты — no-op. */
   }
 
-  function patchAddEventHandler(originalRender) {
-    var addEv = document.getElementById('farmCardAddEvBtn');
-    if (!addEv || addEv._crmPatched) return;
-    addEv._crmPatched = true;
-    var prev = addEv.onclick;
-    addEv.onclick = function () {
-      var type = (document.getElementById('farmCardNewEvType') || {}).value || 'info';
-      var eventDate = (document.getElementById('farmCardNewEvDate') || {}).value || todayIso();
-      var participants = (document.getElementById('farmCardNewEvPart') || {}).value || '';
-      var description = (document.getElementById('farmCardNewEvDesc') || {}).value || '';
-      var task = (document.getElementById('farmCardNewEvTask') || {}).value || '';
-      var goal = (document.getElementById('farmCardNewEvGoal') || {}).value || '';
-      var reminderAt = (document.getElementById('farmCardNewEvReminder') || {}).value || '';
-      var notifyLocal = !(
-        document.getElementById('farmCardNewEvNotify') && !document.getElementById('farmCardNewEvNotify').checked
-      );
-      if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
-      window.__farmCardBundle.events.push({
-        id: newId('ev_'),
-        eventType: type,
-        eventDate: eventDate,
-        participants: participants,
-        description: description,
-        task: task,
-        goal: goal,
-        reminderAt: reminderAt ? new Date(reminderAt).toISOString() : '',
-        completed: false,
-        notifyLocal: notifyLocal
-      });
-      if (typeof originalRender === 'function') originalRender();
-      else if (typeof prev === 'function') prev();
-    };
+  function patchAddEventHandler() {
+    /* Сохранение события обрабатывается в part-1 — no-op. */
   }
 
   NS.ITEM_TYPE_LABELS = ITEM_TYPE_LABELS;
