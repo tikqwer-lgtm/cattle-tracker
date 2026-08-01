@@ -339,16 +339,40 @@
   }
 
   var _activeTab = 'contacts';
-  var _addrSuggestTimer = null;
+  /** Индекс адреса в форме (−1 — новый). */
+  var _addrEditIdx = -1;
+
+  function formatAddressLine(a) {
+    if (!a) return '';
+    if (a.address && String(a.address).trim()) return String(a.address).trim();
+    return [a.region, a.locality, a.street, a.house].filter(Boolean).join(', ');
+  }
+
+  function readAddrFormFields() {
+    return {
+      name: ((document.getElementById('farmCardAddrName') || {}).value || '').trim(),
+      region: ((document.getElementById('farmCardAddrRegion') || {}).value || '').trim(),
+      locality: ((document.getElementById('farmCardAddrLocality') || {}).value || '').trim(),
+      address: ((document.getElementById('farmCardAddrLine') || {}).value || '').trim(),
+      navUrl: ((document.getElementById('farmCardAddrNav') || {}).value || '').trim()
+    };
+  }
+
+  function clearAddrFormFields() {
+    ['farmCardAddrName', 'farmCardAddrRegion', 'farmCardAddrLocality', 'farmCardAddrLine', 'farmCardAddrNav'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
 
   function renderFarmCardPanel() {
     if (typeof window._farmSuggestDocClose === 'function') {
       document.removeEventListener('click', window._farmSuggestDocClose, true);
       window._farmSuggestDocClose = null;
     }
-    if (_addrSuggestTimer) {
-      clearTimeout(_addrSuggestTimer);
-      _addrSuggestTimer = null;
+    if (NS.state.addrSuggestTimer) {
+      clearTimeout(NS.state.addrSuggestTimer);
+      NS.state.addrSuggestTimer = null;
     }
     var root = document.getElementById('farmCardRoot');
     if (!root) return;
@@ -458,9 +482,14 @@
         : '') +
       '</div>';
 
+    var editingAddr =
+      _addrEditIdx >= 0 && b.addresses && b.addresses[_addrEditIdx] ? b.addresses[_addrEditIdx] : null;
+
     var addrRows = (b.addresses || [])
       .map(function (a, idx) {
-        var line = [a.region, a.locality, a.street, a.house].filter(Boolean).join(', ');
+        var name = (a.name && String(a.name).trim()) || 'Без названия';
+        var line = formatAddressLine(a);
+        var placeBits = [a.region, a.locality].filter(Boolean).join(', ');
         var nav =
           a.navUrl ||
           (a.lat != null && a.lng != null
@@ -469,13 +498,20 @@
         var navCell = nav
           ? '<a class="farm-card-nav-link" href="' +
             escapeHtml(nav) +
-            '" target="_blank" rel="noopener">Маршрут</a>'
+            '" target="_blank" rel="noopener">Яндекс.Карты</a>'
           : '—';
+        var rowClass = idx === _addrEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
           '<tr data-addr-idx="' +
           idx +
-          '"><td>' +
-          escapeHtml(line) +
+          '"' +
+          rowClass +
+          '><td>' +
+          escapeHtml(name) +
+          '</td><td>' +
+          escapeHtml(placeBits || '—') +
+          '</td><td>' +
+          escapeHtml(line || '—') +
           '</td><td>' +
           navCell +
           '</td>' +
@@ -491,29 +527,69 @@
       })
       .join('');
 
+    var addrPickOptions =
+      '<option value="">— Выберите локацию для правки —</option>' +
+      (b.addresses || [])
+        .map(function (a, idx) {
+          var label = (a.name && String(a.name).trim()) || ('Локация ' + (idx + 1));
+          return (
+            '<option value="' +
+            idx +
+            '"' +
+            (idx === _addrEditIdx ? ' selected' : '') +
+            '>' +
+            escapeHtml(label) +
+            '</option>'
+          );
+        })
+        .join('');
+
     var addressesHtml =
       '<div class="farm-card-pane" id="farmCardPaneAddresses" style="' +
       (_activeTab === 'addresses' ? '' : 'display:none') +
       '">' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Адрес (регион, населённый пункт, улица, дом)</th><th>Ссылка / навигация</th>' +
+      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Название</th><th>Область / НП</th><th>Адрес</th><th>Яндекс.Карты</th>' +
       (canEdit ? '<th></th>' : '') +
       '</tr></thead><tbody>' +
-      (addrRows || '<tr><td colspan="3" class="farm-card-empty">Нет записей</td></tr>') +
+      (addrRows || '<tr><td colspan="5" class="farm-card-empty">Нет записей</td></tr>') +
       '</tbody></table></div>' +
       (canEdit
-        ? '<div class="farm-card-form"><h4 class="farm-card-h4">Новый адрес</h4>' +
-          '<p class="farm-settings-hint farm-card-addr-suggest-hint" id="farmCardAddrSuggestHint" style="display:none;">Подсказки адреса (Яндекс): введите населённый пункт или адрес и выберите из списка.</p>' +
+        ? '<div class="farm-card-form"><h4 class="farm-card-h4">' +
+          (editingAddr ? 'Редактирование локации' : 'Новая локация') +
+          '</h4>' +
+          '<p class="farm-settings-hint">Поля необязательны — сохраняется то, что заполнено. Можно выбрать локацию из списка по названию и изменить.</p>' +
+          ((b.addresses || []).length
+            ? '<label>Выбрать по названию <select id="farmCardAddrPick" class="farm-settings-inline-input">' +
+              addrPickOptions +
+              '</select></label>'
+            : '') +
+          '<p class="farm-settings-hint farm-card-addr-suggest-hint" id="farmCardAddrSuggestHint" style="display:none;">Подсказки (Яндекс): введите населённый пункт или адрес и выберите из списка.</p>' +
           '<div class="farm-card-addr-suggest-wrap">' +
+          '<label>Название локации <input type="text" id="farmCardAddrName" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingAddr && editingAddr.name ? editingAddr.name : '') +
+          '" autocomplete="off" /></label>' +
           '<div class="farm-card-grid2">' +
-          '<label>Регион / область <input type="text" id="farmCardAddrRegion" class="farm-settings-inline-input" autocomplete="address-level1" /></label>' +
-          '<label>Населённый пункт <input type="text" id="farmCardAddrLocality" class="farm-settings-inline-input" autocomplete="address-level2" /></label>' +
-          '<label>Улица <input type="text" id="farmCardAddrStreet" class="farm-settings-inline-input" autocomplete="street-address" /></label>' +
-          '<label>Дом <input type="text" id="farmCardAddrHouse" class="farm-settings-inline-input" /></label></div>' +
+          '<label>Область <input type="text" id="farmCardAddrRegion" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingAddr && editingAddr.region ? editingAddr.region : '') +
+          '" autocomplete="address-level1" /></label>' +
+          '<label>Населённый пункт <input type="text" id="farmCardAddrLocality" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingAddr && editingAddr.locality ? editingAddr.locality : '') +
+          '" autocomplete="address-level2" /></label></div>' +
+          '<label>Адрес (целиком) <input type="text" id="farmCardAddrLine" class="farm-settings-inline-input" value="' +
+          escapeHtml(editingAddr ? formatAddressLine(editingAddr) : '') +
+          '" autocomplete="street-address" /></label>' +
           '<ul id="farmCardAddrSuggestList" class="farm-card-addr-suggest-list" role="listbox" aria-label="Подсказки адреса" style="display:none;"></ul></div>' +
-          '<label>Ссылка на карты (Яндекс и др.) <input type="url" id="farmCardAddrNav" class="farm-settings-inline-input" placeholder="https://..." /></label>' +
-          '<div class="farm-card-grid2"><label>Широта <input type="text" id="farmCardAddrLat" class="farm-settings-inline-input" /></label>' +
-          '<label>Долгота <input type="text" id="farmCardAddrLng" class="farm-settings-inline-input" /></label></div>' +
-          '<button type="button" class="small-btn" id="farmCardAddAddrBtn">Добавить адрес</button></div>'
+          '<label>Ссылка на Яндекс.Карты <input type="url" id="farmCardAddrNav" class="farm-settings-inline-input" placeholder="https://yandex.ru/maps/..." value="' +
+          escapeHtml(editingAddr && editingAddr.navUrl ? editingAddr.navUrl : '') +
+          '" /></label>' +
+          '<div class="farm-card-actions-row">' +
+          '<button type="button" class="small-btn" id="farmCardAddAddrBtn">' +
+          (editingAddr ? 'Сохранить' : 'Добавить') +
+          '</button>' +
+          (editingAddr
+            ? '<button type="button" class="small-btn" id="farmCardAddrCancelBtn">Отмена</button>'
+            : '') +
+          '</div></div>'
         : '') +
       '</div>';
 
@@ -835,40 +911,83 @@
         };
       });
 
+      function loadAddrIntoForm(idx) {
+        if (!window.__farmCardBundle.addresses || !window.__farmCardBundle.addresses[idx]) {
+          _addrEditIdx = -1;
+          renderFarmCardPanel();
+          return;
+        }
+        _addrEditIdx = idx;
+        renderFarmCardPanel();
+      }
+
+      var addrPick = document.getElementById('farmCardAddrPick');
+      if (addrPick) {
+        addrPick.onchange = function () {
+          var v = addrPick.value;
+          if (v === '') {
+            _addrEditIdx = -1;
+            clearAddrFormFields();
+            renderFarmCardPanel();
+            return;
+          }
+          loadAddrIntoForm(parseInt(v, 10));
+        };
+      }
+
       var addA = document.getElementById('farmCardAddAddrBtn');
       if (addA) {
         addA.onclick = function () {
-          var region = (document.getElementById('farmCardAddrRegion') || {}).value || '';
-          var locality = (document.getElementById('farmCardAddrLocality') || {}).value || '';
-          var street = (document.getElementById('farmCardAddrStreet') || {}).value || '';
-          var house = (document.getElementById('farmCardAddrHouse') || {}).value || '';
-          var navUrl = (document.getElementById('farmCardAddrNav') || {}).value || '';
-          var latS = (document.getElementById('farmCardAddrLat') || {}).value || '';
-          var lngS = (document.getElementById('farmCardAddrLng') || {}).value || '';
-          var lat = latS.trim() === '' ? null : parseFloat(latS);
-          var lng = lngS.trim() === '' ? null : parseFloat(lngS);
-          if (!region && !locality && !street && !house && !navUrl) {
-            if (typeof showToast === 'function') showToast('Заполните адрес или ссылку', 'error');
+          var fields = readAddrFormFields();
+          if (!fields.name && !fields.region && !fields.locality && !fields.address && !fields.navUrl) {
+            if (typeof showToast === 'function') showToast('Заполните хотя бы одно поле', 'error');
             return;
           }
-          window.__farmCardBundle.addresses.push({
-            id: newId('a_'),
-            region: region,
-            locality: locality,
-            street: street,
-            house: house,
-            navUrl: navUrl,
-            lat: lat != null && !isNaN(lat) ? lat : null,
-            lng: lng != null && !isNaN(lng) ? lng : null,
-            sortOrder: window.__farmCardBundle.addresses.length
-          });
+          if (!window.__farmCardBundle.addresses) window.__farmCardBundle.addresses = [];
+          var payload = {
+            name: fields.name,
+            region: fields.region,
+            locality: fields.locality,
+            address: fields.address,
+            navUrl: fields.navUrl,
+            street: '',
+            house: ''
+          };
+          if (_addrEditIdx >= 0 && window.__farmCardBundle.addresses[_addrEditIdx]) {
+            var prev = window.__farmCardBundle.addresses[_addrEditIdx];
+            window.__farmCardBundle.addresses[_addrEditIdx] = Object.assign({}, prev, payload);
+          } else {
+            window.__farmCardBundle.addresses.push(
+              Object.assign(
+                {
+                  id: newId('a_'),
+                  lat: null,
+                  lng: null,
+                  sortOrder: window.__farmCardBundle.addresses.length
+                },
+                payload
+              )
+            );
+          }
+          _addrEditIdx = -1;
+          renderFarmCardPanel();
+        };
+      }
+      var cancelAddr = document.getElementById('farmCardAddrCancelBtn');
+      if (cancelAddr) {
+        cancelAddr.onclick = function () {
+          _addrEditIdx = -1;
           renderFarmCardPanel();
         };
       }
       root.querySelectorAll('.farm-card-addr-del').forEach(function (btn) {
         btn.onclick = function () {
           var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
-          if (!isNaN(i)) window.__farmCardBundle.addresses.splice(i, 1);
+          if (!isNaN(i)) {
+            window.__farmCardBundle.addresses.splice(i, 1);
+            if (_addrEditIdx === i) _addrEditIdx = -1;
+            else if (_addrEditIdx > i) _addrEditIdx -= 1;
+          }
           renderFarmCardPanel();
         };
       });
@@ -898,14 +1017,8 @@
       root.querySelectorAll('.farm-card-addr-edit').forEach(function (btn) {
         btn.onclick = function () {
           var i = parseInt(btn.getAttribute('data-addr-idx'), 10);
-          var a = window.__farmCardBundle.addresses[i];
-          if (!a) return;
-          a.region = prompt('Регион', a.region || '') ?? a.region;
-          a.locality = prompt('Населённый пункт', a.locality || '') ?? a.locality;
-          a.street = prompt('Улица', a.street || '') ?? a.street;
-          a.house = prompt('Дом', a.house || '') ?? a.house;
-          a.navUrl = prompt('Ссылка на карты', a.navUrl || '') ?? a.navUrl;
-          renderFarmCardPanel();
+          if (isNaN(i)) return;
+          loadAddrIntoForm(i);
         };
       });
 
@@ -1114,9 +1227,6 @@
       globalThis['__farmCard'].bindCrmHandlers(root, canEdit, renderFarmCardPanel);
     }
   }
-
-  var _addrSuggestResults = [];
-
 
   // register functions
   NS.escapeHtml = escapeHtml;

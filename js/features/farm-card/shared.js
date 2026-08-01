@@ -6,8 +6,10 @@
   var global = root;
   if (!NS.state) {
     NS.state = {};
-    NS.state.CACHE_PREFIX = 'cattleTracker_farmProfile_';;
-    NS.state._farmGen = 0;;
+    NS.state.CACHE_PREFIX = 'cattleTracker_farmProfile_';
+    NS.state._farmGen = 0;
   }
+  if (NS.state.addrSuggestResults == null) NS.state.addrSuggestResults = [];
+  if (NS.state.addrSuggestTimer == null) NS.state.addrSuggestTimer = null;
 })();
 export {};

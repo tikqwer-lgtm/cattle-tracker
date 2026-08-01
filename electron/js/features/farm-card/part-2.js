@@ -8,10 +8,10 @@
   function bindFarmCardGeosuggest() {
     var regionEl = document.getElementById('farmCardAddrRegion');
     var localityEl = document.getElementById('farmCardAddrLocality');
-    var streetEl = document.getElementById('farmCardAddrStreet');
+    var addressEl = document.getElementById('farmCardAddrLine');
     var listEl = document.getElementById('farmCardAddrSuggestList');
     var hintEl = document.getElementById('farmCardAddrSuggestHint');
-    if (!localityEl || !listEl) return;
+    if (!listEl) return;
     if (hintEl) {
       hintEl.style.display = window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi ? '' : 'none';
     }
@@ -19,31 +19,32 @@
     function hideList() {
       listEl.style.display = 'none';
       listEl.innerHTML = '';
-      _addrSuggestResults = [];
+      NS.state.addrSuggestResults = [];
     }
+    NS.hideList = hideList;
 
     function runSuggest() {
       if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi || typeof window.CattleTrackerApi.geosuggest !== 'function') {
-        globalThis['__farmCard'].hideList();
+        hideList();
         return;
       }
-      var parts = [regionEl && regionEl.value, localityEl && localityEl.value, streetEl && streetEl.value]
+      var parts = [regionEl && regionEl.value, localityEl && localityEl.value, addressEl && addressEl.value]
         .map(function (s) {
           return (s || '').trim();
         })
         .filter(Boolean);
       var q = parts.join(', ');
       if (q.length < 3) {
-        globalThis['__farmCard'].hideList();
+        hideList();
         return;
       }
       window.CattleTrackerApi.geosuggest(q).then(function (data) {
-        _addrSuggestResults = (data && data.suggestions) || [];
-        if (!_addrSuggestResults.length) {
-          globalThis['__farmCard'].hideList();
+        NS.state.addrSuggestResults = (data && data.suggestions) || [];
+        if (!NS.state.addrSuggestResults.length) {
+          hideList();
           return;
         }
-        listEl.innerHTML = _addrSuggestResults
+        listEl.innerHTML = NS.state.addrSuggestResults
           .map(function (s, i) {
             var main = globalThis['__farmCard'].escapeHtml(s.formatted || s.title || '');
             var sub = globalThis['__farmCard'].escapeHtml(s.subtitle || '');
@@ -59,16 +60,16 @@
           .join('');
         listEl.style.display = 'block';
       }).catch(function () {
-        globalThis['__farmCard'].hideList();
+        hideList();
       });
     }
 
     function schedule() {
-      if (_addrSuggestTimer) clearTimeout(_addrSuggestTimer);
-      _addrSuggestTimer = setTimeout(runSuggest, 420);
+      if (NS.state.addrSuggestTimer) clearTimeout(NS.state.addrSuggestTimer);
+      NS.state.addrSuggestTimer = setTimeout(runSuggest, 420);
     }
 
-    [regionEl, localityEl, streetEl].forEach(function (el) {
+    [regionEl, localityEl, addressEl].forEach(function (el) {
       if (!el) return;
       el.removeEventListener('input', el._farmGeoInput);
       el._farmGeoInput = schedule;
@@ -79,26 +80,27 @@
       var li = e.target.closest ? e.target.closest('li[data-suggest-idx]') : null;
       if (!li) return;
       var idx = parseInt(li.getAttribute('data-suggest-idx'), 10);
-      var s = _addrSuggestResults[idx];
+      var s = (NS.state.addrSuggestResults || [])[idx];
       if (!s) return;
       if (regionEl) regionEl.value = s.region || '';
       if (localityEl) localityEl.value = s.locality || s.title || '';
-      if (streetEl) streetEl.value = s.street || '';
-      var houseEl = document.getElementById('farmCardAddrHouse');
-      if (houseEl) houseEl.value = s.house || '';
+      if (addressEl) {
+        var streetPart = [s.street, s.house].filter(Boolean).join(', ');
+        addressEl.value = (s.formatted || streetPart || '').trim();
+      }
       var navEl = document.getElementById('farmCardAddrNav');
       if (navEl) {
         var label = (s.formatted || s.title || '').trim();
         navEl.value = label ? 'https://yandex.ru/maps/?text=' + encodeURIComponent(label) : '';
       }
-      globalThis['__farmCard'].hideList();
+      hideList();
     };
 
     window._farmSuggestDocClose = function (e) {
       if (!listEl || listEl.style.display === 'none') return;
       var wrap = document.querySelector('.farm-card-addr-suggest-wrap');
       if (wrap && e.target && wrap.contains(e.target)) return;
-      globalThis['__farmCard'].hideList();
+      hideList();
     };
     document.addEventListener('click', window._farmSuggestDocClose, true);
   }

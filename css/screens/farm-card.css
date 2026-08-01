@@ -102,6 +102,9 @@
 .farm-card-addr-suggest-list li:focus {
   background: #f0f4ff;
 }
+.farm-card-addr-row--editing td {
+  background: rgba(61, 110, 181, 0.08);
+}
 .farm-card-suggest-sub {
   display: block;
   font-size: 0.8rem;
