@@ -3,6 +3,15 @@
   max-width: 100%;
   margin-bottom: 1rem;
 }
+.farm-card-object-switcher {
+  margin: 0;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+.farm-card-object-switcher .object-select {
+  flex: 1 1 200px;
+  max-width: 100%;
+}
 .farm-card-inner {
   display: flex;
   flex-direction: column;
@@ -349,6 +358,18 @@ button.link-btn {
   display: none;
 }
 
+.farm-card-bull-fertility {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color, #ddd);
+}
+.farm-card-bf-form {
+  margin-top: 0.75rem;
+}
+.farm-card-bf-form input[type="month"] {
+  max-width: 12rem;
+}
+
 @media (max-width: 640px) {
   .farm-card-tabs {
     flex-wrap: nowrap;
@@ -364,6 +385,9 @@ button.link-btn {
   }
   .farm-card-form--mobile label {
     margin: 0.5rem 0;
+  }
+  .farm-card-bf-form input[type="month"] {
+    max-width: 100%;
   }
 }
 

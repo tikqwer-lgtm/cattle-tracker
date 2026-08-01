@@ -74,6 +74,11 @@
       return false;
     }
     global.CATTLE_TRACKER_API_BASE = u;
+    if (typeof global.mirrorMobileTelemetryConfig === 'function') {
+      try {
+        global.mirrorMobileTelemetryConfig();
+      } catch (e2) {}
+    }
     return true;
   }
 
@@ -98,6 +103,11 @@
     var prevS = prev || '';
     if (next !== prevS && typeof global.clearAllApiEntriesCaches === 'function') {
       global.clearAllApiEntriesCaches();
+    }
+    if (typeof global.mirrorMobileTelemetryConfig === 'function') {
+      try {
+        global.mirrorMobileTelemetryConfig();
+      } catch (e2) {}
     }
   }
 

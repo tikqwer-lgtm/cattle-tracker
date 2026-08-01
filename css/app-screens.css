@@ -27,6 +27,20 @@
 .admin-report-meta { font-size: 0.85rem; color: var(--text-muted, #666); margin-bottom: 0.25rem; }
 .admin-report-message { white-space: pre-wrap; word-break: break-word; margin-bottom: 0.5rem; }
 .admin-report-payload { font-size: 0.75rem; max-height: 8rem; overflow: auto; background: #eee; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
+.admin-report-kind {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: #e8eef7;
+  color: #2a4a7a;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.admin-report-ring { margin: 0.35rem 0; font-size: 0.85rem; }
+.admin-report-ring summary { cursor: pointer; user-select: none; }
+.admin-report-ring-pre { max-height: 14rem; }
 .admin-create-user-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1rem; }
 .admin-create-user-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .admin-table .admin-password-input { min-width: 8rem; font-size: 0.9rem; }

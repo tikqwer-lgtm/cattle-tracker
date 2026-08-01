@@ -58,6 +58,7 @@ function getFarmCardBundle(objectId) {
       addressInfo: { region: '', locality: '', address: '' },
       metricDefinitions: [],
       metricValues: [],
+      bullFertility: [],
       events: [],
       specialists: [],
       items: [],
@@ -77,6 +78,7 @@ function getFarmCardBundle(objectId) {
         : { region: '', locality: '', address: '' },
     metricDefinitions: Array.isArray(p.metricDefinitions) ? p.metricDefinitions : [],
     metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
+    bullFertility: Array.isArray(p.bullFertility) ? p.bullFertility : [],
     events: Array.isArray(p.events) ? p.events : [],
     specialists: Array.isArray(p.specialists) ? p.specialists : [],
     items: Array.isArray(p.items) ? p.items : [],
@@ -107,6 +109,7 @@ function replaceFarmCardBundle(objectId, body) {
     specialists: Array.isArray(b.specialists) ? b.specialists : [],
     metricDefinitions: Array.isArray(b.metricDefinitions) ? b.metricDefinitions : [],
     metricValues: Array.isArray(b.metricValues) ? b.metricValues : [],
+    bullFertility: Array.isArray(b.bullFertility) ? b.bullFertility : [],
     events: Array.isArray(b.events) ? b.events : [],
     items: Array.isArray(b.items) ? b.items : [],
     goals: Array.isArray(b.goals) ? b.goals : []

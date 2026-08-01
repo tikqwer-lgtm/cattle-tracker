@@ -10,11 +10,7 @@
     var localityEl = document.getElementById('farmCardAddrLocality');
     var addressEl = document.getElementById('farmCardAddrLine');
     var listEl = document.getElementById('farmCardAddrSuggestList');
-    var hintEl = document.getElementById('farmCardAddrSuggestHint');
     if (!listEl) return;
-    if (hintEl) {
-      hintEl.style.display = window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi ? '' : 'none';
-    }
 
     function hideList() {
       listEl.style.display = 'none';

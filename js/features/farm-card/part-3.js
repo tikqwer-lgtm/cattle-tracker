@@ -371,7 +371,7 @@
       '<div class="farm-card-pane" id="farmCardPaneDynamics" style="' +
       (activeTab === 'dynamics' ? '' : 'display:none') +
       '">' +
-      '<p class="farm-settings-hint">Сравнение динамики числовых показателей и пунктов.</p>' +
+      '<p class="farm-settings-hint">Сравнение динамики числовых показателей. Для CR/HDR/PR по месяцам отметьте месячные показатели и нажмите «Показать».</p>' +
       (checks
         ? '<div class="farm-card-dyn-checks">' +
           checks +

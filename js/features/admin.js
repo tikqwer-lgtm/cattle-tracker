@@ -478,20 +478,58 @@
         var html = '<div class="admin-reports-list">';
         for (var j = 0; j < reports.length; j++) {
           var r = reports[j];
+          var kindBadge = '';
+          var ringBlock = '';
           var payloadPreview = '';
           if (r.payload) {
             try {
               var pl = typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload;
-              payloadPreview = '<pre class="admin-report-payload">' + escapeHtml(JSON.stringify(pl, null, 2)) + '</pre>';
+              if (pl && typeof pl === 'object') {
+                if (pl.kind) {
+                  kindBadge =
+                    '<span class="admin-report-kind">' + escapeHtml(String(pl.kind)) + '</span> ';
+                }
+                if (pl.ringLog) {
+                  var ringText = String(pl.ringLog);
+                  if (ringText.length > 8000) ringText = ringText.slice(-8000);
+                  ringBlock =
+                    '<details class="admin-report-ring"><summary>Лог (хвост)</summary>' +
+                    '<pre class="admin-report-payload admin-report-ring-pre">' +
+                    escapeHtml(ringText) +
+                    '</pre></details>';
+                }
+                var plCopy = Object.assign({}, pl);
+                delete plCopy.ringLog;
+                payloadPreview =
+                  '<pre class="admin-report-payload">' +
+                  escapeHtml(JSON.stringify(plCopy, null, 2)) +
+                  '</pre>';
+              } else {
+                payloadPreview =
+                  '<pre class="admin-report-payload">' + escapeHtml(JSON.stringify(pl, null, 2)) + '</pre>';
+              }
             } catch (_) {
               payloadPreview = '<pre class="admin-report-payload">' + escapeHtml(r.payload) + '</pre>';
             }
           }
-          html += '<div class="admin-report-item" data-report-id="' + escapeHtml(r.id) + '">' +
-            '<div class="admin-report-meta">' + escapeHtml(r.createdAt || '') + ' — ' + escapeHtml(r.username) + '</div>' +
-            '<div class="admin-report-message">' + escapeHtml(r.message) + '</div>' +
+          html +=
+            '<div class="admin-report-item" data-report-id="' +
+            escapeHtml(r.id) +
+            '">' +
+            '<div class="admin-report-meta">' +
+            kindBadge +
+            escapeHtml(r.createdAt || '') +
+            ' — ' +
+            escapeHtml(r.username) +
+            '</div>' +
+            '<div class="admin-report-message">' +
+            escapeHtml(r.message) +
+            '</div>' +
+            ringBlock +
             payloadPreview +
-            '<button type="button" class="small-btn admin-delete-report-btn" data-report-id="' + escapeHtml(r.id) + '">Удалить</button>' +
+            '<button type="button" class="small-btn admin-delete-report-btn" data-report-id="' +
+            escapeHtml(r.id) +
+            '">Удалить</button>' +
             '</div>';
         }
         html += '</div>';

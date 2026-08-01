@@ -57,6 +57,7 @@ import './features/stall-map.js';
 import './features/stall-inventory.js';
 import './features/admin.js';
 import './features/inbox-sync.js';
+import './features/mobile-telemetry.js';
 import './features/lists.js';
 import './features/chat-data-context.js';
 import './features/chat-plan-assistant.js';
