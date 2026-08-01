@@ -467,6 +467,150 @@
     return list.length ? list[list.length - 1] : null;
   }
 
+  var REPRO_MONTH_METRIC_IDS = {
+    cows_cr: 'm_cr_cows_m',
+    cows_hdr: 'm_hdr_cows_m',
+    cows_pr: 'm_pr_cows_m',
+    heif_cr: 'm_cr_heif_m',
+    heif_hdr: 'm_hdr_heif_m',
+    heif_pr: 'm_pr_heif_m'
+  };
+  var REPRO_YEAR_METRIC_IDS = {
+    cows_cr: 'm_cr_cows_y',
+    cows_hdr: 'm_hdr_cows_y',
+    cows_pr: 'm_pr_cows_y',
+    heif_cr: 'm_cr_heif_y',
+    heif_hdr: 'm_hdr_heif_y',
+    heif_pr: 'm_pr_heif_y'
+  };
+
+  function toYearMonth(dateOrMonth) {
+    var s = String(dateOrMonth || '').trim();
+    if (/^\d{4}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 7);
+    return '';
+  }
+
+  function formatYearMonthRu(ym) {
+    if (!ym || ym.length < 7) return ym || '—';
+    return ym.slice(5, 7) + '.' + ym.slice(0, 4);
+  }
+
+  function getMetricTextForMonth(values, metricId, ym) {
+    if (!ym || !metricId) return '';
+    var list = values || [];
+    var exact = ym + '-01';
+    var found = '';
+    for (var i = 0; i < list.length; i++) {
+      var v = list[i];
+      if (!v || v.metricId !== metricId) continue;
+      var vYm = toYearMonth(v.valueDate);
+      if (vYm === ym || String(v.valueDate) === exact) found = v.valueText != null ? String(v.valueText) : '';
+    }
+    return found;
+  }
+
+  function upsertMetricForMonth(values, metricId, ym, text) {
+    if (!Array.isArray(values) || !metricId || !ym) return;
+    var d = ym + '-01';
+    var t = text != null ? String(text).trim() : '';
+    for (var i = 0; i < values.length; i++) {
+      if (values[i].metricId === metricId && toYearMonth(values[i].valueDate) === ym) {
+        if (t === '') {
+          values.splice(i, 1);
+        } else {
+          values[i].valueText = t;
+          values[i].valueDate = d;
+          values[i].source = 'manual';
+        }
+        return;
+      }
+    }
+    if (t !== '') {
+      values.push({ id: null, metricId: metricId, valueDate: d, valueText: t, source: 'manual' });
+    }
+  }
+
+  function collectReproMonths(values) {
+    var set = {};
+    var ids = REPRO_MONTH_METRIC_IDS;
+    var idList = [ids.cows_cr, ids.cows_hdr, ids.cows_pr, ids.heif_cr, ids.heif_hdr, ids.heif_pr];
+    (values || []).forEach(function (v) {
+      if (!v || idList.indexOf(v.metricId) === -1) return;
+      var ym = toYearMonth(v.valueDate);
+      if (ym) set[ym] = true;
+    });
+    return Object.keys(set).sort().reverse();
+  }
+
+  function collectBullNames(bullFertility) {
+    var names = [];
+    var seen = {};
+    (bullFertility || []).forEach(function (r) {
+      var n = r && r.bullName != null ? String(r.bullName).trim() : '';
+      if (!n || seen[n]) return;
+      seen[n] = true;
+      names.push(n);
+    });
+    names.sort(function (a, c) {
+      return a.localeCompare(c, 'ru');
+    });
+    return names;
+  }
+
+  function collectBullMonths(bullFertility) {
+    var set = {};
+    (bullFertility || []).forEach(function (r) {
+      var ym = toYearMonth(r && r.periodMonth);
+      if (ym) set[ym] = true;
+    });
+    return Object.keys(set).sort().reverse();
+  }
+
+  function getBullCr(bullFertility, ym, bullName) {
+    var list = bullFertility || [];
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r) continue;
+      if (toYearMonth(r.periodMonth) === ym && String(r.bullName || '').trim() === bullName) {
+        return r.crPct != null && r.crPct !== '' ? String(r.crPct) : '';
+      }
+    }
+    return '';
+  }
+
+  function upsertBullCr(bullFertility, ym, bullName, crPct) {
+    if (!Array.isArray(bullFertility) || !ym || !bullName) return;
+    var name = String(bullName).trim();
+    var cr = crPct != null ? String(crPct).trim() : '';
+    for (var i = 0; i < bullFertility.length; i++) {
+      var r = bullFertility[i];
+      if (r && toYearMonth(r.periodMonth) === ym && String(r.bullName || '').trim() === name) {
+        if (cr === '') {
+          bullFertility.splice(i, 1);
+        } else {
+          r.crPct = cr;
+          r.periodMonth = ym;
+        }
+        return;
+      }
+    }
+    if (cr !== '') {
+      bullFertility.push({
+        id: newId('bf_'),
+        bullName: name,
+        periodMonth: ym,
+        crPct: cr,
+        services: '',
+        pregnant: ''
+      });
+    }
+  }
+
+  function cellDisplay(text) {
+    return text !== '' && text != null ? escapeHtml(String(text)) : '—';
+  }
+
   var FARM_CARD_TABS = ['addresses', 'specialists', 'goals', 'timeline', 'metrics', 'dynamics'];
   var _activeTab = 'addresses';
   /** Индекс геопозиции в форме (−1 — новая). */
@@ -1568,103 +1712,213 @@
       '</div>';
 
     var computed = computeFromEntries(typeof window.entries !== 'undefined' ? window.entries : []);
-    var metricsRows = (b.metricDefinitions || [])
-      .slice()
-      .sort(function (a, c) {
-        return (Number(a.sortOrder) || 0) - (Number(c.sortOrder) || 0);
-      })
-      .map(function (def) {
-        var snap = currentMetricSnapshot(b.metricValues, def.id);
-        var display = snap ? snap.valueText : '—';
-        var dateLine = snap ? snap.valueDate : '—';
-        var hint =
-          def.source === 'computed' && def.computedKey
-            ? '<span class="farm-settings-hint">Сейчас из описи: ' + escapeHtml(computed[def.computedKey] || '—') + '</span>'
-            : '';
-        return (
-          '<tr class="farm-card-metric-row" data-metric-id="' +
-          escapeHtml(def.id) +
-          '"><td>' +
-          escapeHtml(def.label) +
-          '<br/><small>' +
-          (def.source === 'computed' ? 'из описи' : 'вручную') +
-          '</small>' +
-          hint +
-          '</td><td>' +
-          escapeHtml(display) +
-          '</td><td>' +
-          escapeHtml(dateLine) +
-          '</td><td><button type="button" class="small-btn farm-card-metric-history" data-metric-id="' +
-          escapeHtml(def.id) +
-          '">История</button></td>' +
-          (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-metric-addval" data-metric-id="' +
-              escapeHtml(def.id) +
-              '">Значение</button></td>'
-            : '') +
-          '</tr>' +
-          '<tr class="farm-card-metric-history-row" id="farmCardHistRow_' +
-          escapeHtml(def.id) +
-          '" style="display:none"><td colspan="5"><div class="farm-card-history" id="farmCardHist_' +
-          escapeHtml(def.id) +
-          '"></div></td></tr>'
-        );
+    var herdSnapCows = currentMetricSnapshot(b.metricValues, 'm_herd_cows');
+    var herdSnapCalves = currentMetricSnapshot(b.metricValues, 'm_herd_calves');
+    var herdLine =
+      '<p class="farm-card-herd-line">Поголовье: коровы <strong>' +
+      escapeHtml((herdSnapCows && herdSnapCows.valueText) || computed.herd_cows || '—') +
+      '</strong>, телята <strong>' +
+      escapeHtml((herdSnapCalves && herdSnapCalves.valueText) || computed.herd_calves || '—') +
+      '</strong>' +
+      (canEdit
+        ? ' <button type="button" class="small-btn" id="farmCardFillComputedBtn">Обновить из описи</button>'
+        : '') +
+      '</p>';
+
+    var ids = REPRO_MONTH_METRIC_IDS;
+    var yIds = REPRO_YEAR_METRIC_IDS;
+    var reproMonths = collectReproMonths(b.metricValues);
+    var reproBodyRows = reproMonths
+      .map(function (ym) {
+        var cells =
+          '<td class="farm-card-matrix-month">' +
+          escapeHtml(formatYearMonthRu(ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.cows_cr, ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.cows_hdr, ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.cows_pr, ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.heif_cr, ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.heif_hdr, ym)) +
+          '</td>' +
+          '<td>' +
+          cellDisplay(getMetricTextForMonth(b.metricValues, ids.heif_pr, ym)) +
+          '</td>';
+        if (canEdit) {
+          cells +=
+            '<td><button type="button" class="small-btn farm-card-repro-edit" data-ym="' +
+            escapeHtml(ym) +
+            '">Изм.</button></td>';
+        }
+        return '<tr data-repro-ym="' + escapeHtml(ym) + '">' + cells + '</tr>';
       })
       .join('');
 
-    var bullList = (b.bullFertility || []).slice().sort(function (a, c) {
-      var cmp = String(c.periodMonth || '').localeCompare(String(a.periodMonth || ''));
-      if (cmp !== 0) return cmp;
-      return String(a.bullName || '').localeCompare(String(c.bullName || ''), 'ru');
-    });
-    var bullRows = bullList
-      .map(function (row) {
-        return (
-          '<tr data-bf-id="' +
-          escapeHtml(row.id) +
-          '"><td>' +
-          escapeHtml(row.bullName || '—') +
-          '</td><td>' +
-          escapeHtml(row.periodMonth || '—') +
-          '</td><td>' +
-          escapeHtml(row.crPct !== '' && row.crPct != null ? row.crPct : '—') +
-          '</td><td>' +
-          escapeHtml(row.services !== '' && row.services != null ? row.services : '—') +
-          '</td><td>' +
-          escapeHtml(row.pregnant !== '' && row.pregnant != null ? row.pregnant : '—') +
-          '</td>' +
-          (canEdit
-            ? '<td><button type="button" class="small-btn farm-card-bf-del" data-bf-id="' +
-              escapeHtml(row.id) +
-              '">Удал.</button></td>'
-            : '') +
-          '</tr>'
-        );
-      })
-      .join('');
+    var yearCowsCr = (currentMetricSnapshot(b.metricValues, yIds.cows_cr) || {}).valueText || '';
+    var yearCowsHdr = (currentMetricSnapshot(b.metricValues, yIds.cows_hdr) || {}).valueText || '';
+    var yearCowsPr = (currentMetricSnapshot(b.metricValues, yIds.cows_pr) || {}).valueText || '';
+    var yearHeifCr = (currentMetricSnapshot(b.metricValues, yIds.heif_cr) || {}).valueText || '';
+    var yearHeifHdr = (currentMetricSnapshot(b.metricValues, yIds.heif_hdr) || {}).valueText || '';
+    var yearHeifPr = (currentMetricSnapshot(b.metricValues, yIds.heif_pr) || {}).valueText || '';
+    var yearRow =
+      '<tr class="farm-card-matrix-year-row"><td class="farm-card-matrix-month">Год</td>' +
+      '<td>' +
+      cellDisplay(yearCowsCr) +
+      '</td><td>' +
+      cellDisplay(yearCowsHdr) +
+      '</td><td>' +
+      cellDisplay(yearCowsPr) +
+      '</td><td>' +
+      cellDisplay(yearHeifCr) +
+      '</td><td>' +
+      cellDisplay(yearHeifHdr) +
+      '</td><td>' +
+      cellDisplay(yearHeifPr) +
+      '</td>' +
+      (canEdit
+        ? '<td><button type="button" class="small-btn farm-card-repro-year-scroll">Изм.</button></td>'
+        : '') +
+      '</tr>';
+
+    var reproTableHtml =
+      '<div class="farm-card-table-scroll"><table class="farm-card-table farm-card-matrix-table">' +
+      '<thead>' +
+      '<tr>' +
+      '<th rowspan="2">Месяц</th>' +
+      '<th colspan="3" class="farm-card-matrix-group">Коровы</th>' +
+      '<th colspan="3" class="farm-card-matrix-group">Тёлки</th>' +
+      (canEdit ? '<th rowspan="2"></th>' : '') +
+      '</tr>' +
+      '<tr>' +
+      '<th>CR</th><th>HDR</th><th>PR</th>' +
+      '<th>CR</th><th>HDR</th><th>PR</th>' +
+      '</tr>' +
+      '</thead><tbody>' +
+      (reproBodyRows || '') +
+      yearRow +
+      (!reproBodyRows
+        ? '<tr><td colspan="' +
+          (canEdit ? '8' : '7') +
+          '" class="farm-card-empty">Нет месячных значений — добавьте ниже</td></tr>'
+        : '') +
+      '</tbody></table></div>';
+
+    var reproFormHtml = canEdit
+      ? '<div class="farm-card-form farm-card-form--mobile farm-card-repro-form">' +
+        '<h4 class="farm-card-h4">Месяц CR / HDR / PR</h4>' +
+        '<label>Месяц <input type="month" id="farmCardReproMonth" class="farm-card-input-lg" /></label>' +
+        '<div class="farm-card-repro-grid">' +
+        '<fieldset class="farm-card-repro-fs"><legend>Коровы</legend>' +
+        '<label>CR <input type="text" id="farmCardReproCowsCr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '<label>HDR <input type="text" id="farmCardReproCowsHdr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '<label>PR <input type="text" id="farmCardReproCowsPr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '</fieldset>' +
+        '<fieldset class="farm-card-repro-fs"><legend>Тёлки</legend>' +
+        '<label>CR <input type="text" id="farmCardReproHeifCr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '<label>HDR <input type="text" id="farmCardReproHeifHdr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '<label>PR <input type="text" id="farmCardReproHeifPr" inputmode="decimal" class="farm-settings-inline-input" /></label>' +
+        '</fieldset></div>' +
+        '<button type="button" class="action-btn" id="farmCardReproSaveBtn">Сохранить месяц</button>' +
+        '<h4 class="farm-card-h4">Год (накопительно)</h4>' +
+        '<div class="farm-card-repro-grid">' +
+        '<fieldset class="farm-card-repro-fs"><legend>Коровы</legend>' +
+        '<label>CR <input type="text" id="farmCardYearCowsCr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearCowsCr) +
+        '" /></label>' +
+        '<label>HDR <input type="text" id="farmCardYearCowsHdr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearCowsHdr) +
+        '" /></label>' +
+        '<label>PR <input type="text" id="farmCardYearCowsPr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearCowsPr) +
+        '" /></label>' +
+        '</fieldset>' +
+        '<fieldset class="farm-card-repro-fs"><legend>Тёлки</legend>' +
+        '<label>CR <input type="text" id="farmCardYearHeifCr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearHeifCr) +
+        '" /></label>' +
+        '<label>HDR <input type="text" id="farmCardYearHeifHdr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearHeifHdr) +
+        '" /></label>' +
+        '<label>PR <input type="text" id="farmCardYearHeifPr" inputmode="decimal" class="farm-settings-inline-input" value="' +
+        escapeHtml(yearHeifPr) +
+        '" /></label>' +
+        '</fieldset></div>' +
+        '<button type="button" class="action-btn" id="farmCardReproYearSaveBtn">Сохранить год</button></div>'
+      : '';
+
+    var bullNames = collectBullNames(b.bullFertility);
+    var bullMonths = collectBullMonths(b.bullFertility);
+    var bullHead =
+      '<tr><th>Месяц</th>' +
+      bullNames
+        .map(function (n) {
+          return '<th>' + escapeHtml(n) + '</th>';
+        })
+        .join('') +
+      (canEdit ? '<th></th>' : '') +
+      '</tr>';
+    var bullBody =
+      bullMonths.length && bullNames.length
+        ? bullMonths
+            .map(function (ym) {
+              var cells =
+                '<td class="farm-card-matrix-month">' +
+                escapeHtml(formatYearMonthRu(ym)) +
+                '</td>' +
+                bullNames
+                  .map(function (n) {
+                    return '<td>' + cellDisplay(getBullCr(b.bullFertility, ym, n)) + '</td>';
+                  })
+                  .join('');
+              if (canEdit) {
+                cells +=
+                  '<td><button type="button" class="small-btn farm-card-bf-month-edit" data-ym="' +
+                  escapeHtml(ym) +
+                  '">Изм.</button></td>';
+              }
+              return '<tr>' + cells + '</tr>';
+            })
+            .join('')
+        : '<tr><td colspan="' +
+          (bullNames.length + (canEdit ? 2 : 1) || (canEdit ? 2 : 1)) +
+          '" class="farm-card-empty">Нет данных по быкам</td></tr>';
 
     var bullSectionHtml =
       '<section class="farm-card-subsection farm-card-bull-fertility">' +
-      '<h3 class="farm-card-h3">Оплодотворяемость по быкам</h3>' +
-      '<p class="farm-settings-hint">Раз в месяц добавляйте строки: бык, месяц, CR %. История хранится по месяцам.</p>' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr>' +
-      '<th>Бык</th><th>Месяц</th><th>CR %</th><th>Осеменений</th><th>Стельных</th>' +
-      (canEdit ? '<th></th>' : '') +
-      '</tr></thead><tbody>' +
-      (bullRows ||
-        '<tr><td colspan="' +
-          (canEdit ? '6' : '5') +
-          '" class="farm-card-empty">Нет записей</td></tr>') +
+      '<h3 class="farm-card-h3">CR по быкам</h3>' +
+      '<div class="farm-card-table-scroll"><table class="farm-card-table farm-card-matrix-table farm-card-bull-matrix">' +
+      '<thead>' +
+      bullHead +
+      '</thead><tbody>' +
+      bullBody +
       '</tbody></table></div>' +
       (canEdit
         ? '<div class="farm-card-form farm-card-form--mobile farm-card-bf-form">' +
-          '<h4 class="farm-card-h4">Новая запись</h4>' +
-          '<label>Бык <input type="text" id="farmCardBfBull" class="farm-settings-inline-input farm-card-input-lg" placeholder="Кличка / код быка" /></label>' +
+          '<h4 class="farm-card-h4">CR быка за месяц</h4>' +
           '<label>Месяц <input type="month" id="farmCardBfMonth" class="farm-card-input-lg" /></label>' +
-          '<label>CR % <input type="text" id="farmCardBfCr" class="farm-settings-inline-input farm-card-input-lg" inputmode="decimal" placeholder="например 42" /></label>' +
-          '<label>Осеменений <input type="text" id="farmCardBfServices" class="farm-settings-inline-input farm-card-input-lg" inputmode="numeric" placeholder="необязательно" /></label>' +
-          '<label>Стельных <input type="text" id="farmCardBfPregnant" class="farm-settings-inline-input farm-card-input-lg" inputmode="numeric" placeholder="необязательно" /></label>' +
-          '<button type="button" class="action-btn" id="farmCardBfAddBtn">Добавить</button></div>'
+          '<label>Кличка быка <input type="text" id="farmCardBfBull" class="farm-settings-inline-input farm-card-input-lg" list="farmCardBfBullList" placeholder="Кличка" /></label>' +
+          (bullNames.length
+            ? '<datalist id="farmCardBfBullList">' +
+              bullNames
+                .map(function (n) {
+                  return '<option value="' + escapeHtml(n) + '"></option>';
+                })
+                .join('') +
+              '</datalist>'
+            : '') +
+          '<label>CR % <input type="text" id="farmCardBfCr" class="farm-settings-inline-input farm-card-input-lg" inputmode="decimal" /></label>' +
+          '<div class="farm-card-actions-row">' +
+          '<button type="button" class="action-btn" id="farmCardBfAddBtn">Сохранить</button>' +
+          '<button type="button" class="small-btn" id="farmCardBfClearBtn" title="Очистить CR быка за месяц">Удалить ячейку</button>' +
+          '</div></div>'
         : '') +
       '</section>';
 
@@ -1672,17 +1926,10 @@
       '<div class="farm-card-pane" id="farmCardPaneMetrics" style="' +
       (_activeTab === 'metrics' ? '' : 'display:none') +
       '">' +
-      '<p class="farm-settings-hint">Актуальное значение — последняя запись на дату не позже сегодня. Для месячных KPI указывайте дату начала месяца (YYYY-MM-01); годовые — отдельная строка показателя.</p>' +
-      (canEdit
-        ? '<div class="farm-card-actions-row">' +
-          '<button type="button" class="small-btn" id="farmCardFillComputedBtn">Заполнить из описи на сегодня</button>' +
-          '<button type="button" class="small-btn" id="farmCardAddMetricDefBtn">Новый показатель</button></div>'
-        : '') +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Показатель</th><th>Значение</th><th>Дата</th><th></th>' +
-      (canEdit ? '<th></th>' : '') +
-      '</tr></thead><tbody>' +
-      metricsRows +
-      '</tbody></table></div>' +
+      herdLine +
+      '<p class="farm-settings-hint">Строки — месяцы; колонки CR / HDR / PR для коров и тёлок. Строка «Год» — накопленные показатели за год.</p>' +
+      reproTableHtml +
+      reproFormHtml +
       bullSectionHtml +
       '</div>';
 
@@ -2237,6 +2484,7 @@
           var entries = typeof window.entries !== 'undefined' ? window.entries : [];
           var comp = computeFromEntries(entries);
           var d = new Date().toISOString().slice(0, 10);
+          if (!window.__farmCardBundle.metricValues) window.__farmCardBundle.metricValues = [];
           (window.__farmCardBundle.metricDefinitions || []).forEach(function (def) {
             if (def.source !== 'computed' || !def.computedKey) return;
             var v = comp[def.computedKey];
@@ -2255,97 +2503,115 @@
               vals.push({ id: null, metricId: def.id, valueDate: d, valueText: v, source: 'computed' });
             }
           });
-          if (typeof showToast === 'function') showToast('Показатели из описи добавлены на ' + d, 'success');
+          markFarmCardDirty();
+          if (typeof showToast === 'function') showToast('Поголовье из описи обновлено на ' + d, 'success');
           renderFarmCardPanel();
         };
       }
-      var addDef = document.getElementById('farmCardAddMetricDefBtn');
-      if (addDef) {
-        addDef.onclick = function () {
-          var label = prompt('Название показателя');
-          if (!label) return;
-          window.__farmCardBundle.metricDefinitions.push({
-            id: newId('m_'),
-            label: label,
-            valueType: 'number',
-            source: 'manual',
-            computedKey: null,
-            sortOrder: window.__farmCardBundle.metricDefinitions.length
-          });
-          renderFarmCardPanel();
+
+      function fillReproFormFromYm(ym) {
+        var monthEl = document.getElementById('farmCardReproMonth');
+        if (monthEl) monthEl.value = ym || '';
+        var vals = window.__farmCardBundle.metricValues || [];
+        var ids = REPRO_MONTH_METRIC_IDS;
+        var map = {
+          farmCardReproCowsCr: ids.cows_cr,
+          farmCardReproCowsHdr: ids.cows_hdr,
+          farmCardReproCowsPr: ids.cows_pr,
+          farmCardReproHeifCr: ids.heif_cr,
+          farmCardReproHeifHdr: ids.heif_hdr,
+          farmCardReproHeifPr: ids.heif_pr
         };
+        Object.keys(map).forEach(function (elId) {
+          var el = document.getElementById(elId);
+          if (el) el.value = getMetricTextForMonth(vals, map[elId], ym);
+        });
       }
-      root.querySelectorAll('.farm-card-metric-addval').forEach(function (btn) {
+
+      root.querySelectorAll('.farm-card-repro-edit').forEach(function (btn) {
         btn.onclick = function () {
-          var mid = btn.getAttribute('data-metric-id');
-          var val = prompt('Значение');
-          if (val === null) return;
-          var d = prompt('Дата (ГГГГ-ММ-ДД)', new Date().toISOString().slice(0, 10));
-          if (!d) return;
+          fillReproFormFromYm(btn.getAttribute('data-ym') || '');
+          var form = root.querySelector('.farm-card-repro-form');
+          if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+      });
+
+      var reproSave = document.getElementById('farmCardReproSaveBtn');
+      if (reproSave) {
+        reproSave.onclick = function () {
+          var ym = toYearMonth((document.getElementById('farmCardReproMonth') || {}).value || '');
+          if (!ym) {
+            if (typeof showToast === 'function') showToast('Укажите месяц', 'error');
+            return;
+          }
+          if (!window.__farmCardBundle.metricValues) window.__farmCardBundle.metricValues = [];
           var vals = window.__farmCardBundle.metricValues;
-          var replaced = false;
-          for (var i = 0; i < vals.length; i++) {
-            if (vals[i].metricId === mid && vals[i].valueDate === d) {
-              vals[i].valueText = val;
-              vals[i].source = 'manual';
-              replaced = true;
-              break;
+          var ids = REPRO_MONTH_METRIC_IDS;
+          upsertMetricForMonth(vals, ids.cows_cr, ym, (document.getElementById('farmCardReproCowsCr') || {}).value);
+          upsertMetricForMonth(vals, ids.cows_hdr, ym, (document.getElementById('farmCardReproCowsHdr') || {}).value);
+          upsertMetricForMonth(vals, ids.cows_pr, ym, (document.getElementById('farmCardReproCowsPr') || {}).value);
+          upsertMetricForMonth(vals, ids.heif_cr, ym, (document.getElementById('farmCardReproHeifCr') || {}).value);
+          upsertMetricForMonth(vals, ids.heif_hdr, ym, (document.getElementById('farmCardReproHeifHdr') || {}).value);
+          upsertMetricForMonth(vals, ids.heif_pr, ym, (document.getElementById('farmCardReproHeifPr') || {}).value);
+          markFarmCardDirty();
+          renderFarmCardPanel();
+        };
+      }
+
+      var yearEdit = document.querySelector('.farm-card-repro-year-scroll');
+      if (yearEdit) {
+        yearEdit.onclick = function () {
+          var form = root.querySelector('.farm-card-repro-form');
+          if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          var y = document.getElementById('farmCardYearCowsCr');
+          if (y) y.focus();
+        };
+      }
+      var yearSave = document.getElementById('farmCardReproYearSaveBtn');
+      if (yearSave) {
+        yearSave.onclick = function () {
+          var yIds = REPRO_YEAR_METRIC_IDS;
+          var d = new Date().toISOString().slice(0, 10);
+          if (!window.__farmCardBundle.metricValues) window.__farmCardBundle.metricValues = [];
+          var vals = window.__farmCardBundle.metricValues;
+          function putYear(metricId, elId) {
+            var t = ((document.getElementById(elId) || {}).value || '').trim();
+            var replaced = false;
+            for (var j = 0; j < vals.length; j++) {
+              if (vals[j].metricId === metricId && vals[j].valueDate === d) {
+                if (t === '') {
+                  vals.splice(j, 1);
+                } else {
+                  vals[j].valueText = t;
+                  vals[j].source = 'manual';
+                }
+                replaced = true;
+                break;
+              }
+            }
+            if (!replaced && t !== '') {
+              vals.push({ id: null, metricId: metricId, valueDate: d, valueText: t, source: 'manual' });
             }
           }
-          if (!replaced) vals.push({ id: null, metricId: mid, valueDate: d, valueText: val, source: 'manual' });
+          putYear(yIds.cows_cr, 'farmCardYearCowsCr');
+          putYear(yIds.cows_hdr, 'farmCardYearCowsHdr');
+          putYear(yIds.cows_pr, 'farmCardYearCowsPr');
+          putYear(yIds.heif_cr, 'farmCardYearHeifCr');
+          putYear(yIds.heif_hdr, 'farmCardYearHeifHdr');
+          putYear(yIds.heif_pr, 'farmCardYearHeifPr');
+          markFarmCardDirty();
           renderFarmCardPanel();
         };
-      });
-      root.querySelectorAll('.farm-card-metric-history').forEach(function (btn) {
-        btn.onclick = function () {
-          var mid = btn.getAttribute('data-metric-id');
-          var row = document.getElementById('farmCardHistRow_' + mid);
-          var box = document.getElementById('farmCardHist_' + mid);
-          if (!row || !box) return;
-          var open = row.style.display !== 'table-row';
-          root.querySelectorAll('.farm-card-metric-history-row').forEach(function (r) {
-            r.style.display = 'none';
-          });
-          if (!open) return;
-          row.style.display = 'table-row';
-          var hist = (window.__farmCardBundle.metricValues || [])
-            .filter(function (v) {
-              return v.metricId === mid;
-            })
-            .sort(function (a, b) {
-              return String(a.valueDate).localeCompare(String(b.valueDate));
-            });
-          box.innerHTML =
-            hist.length === 0
-              ? '<p class="farm-settings-hint">Нет истории</p>'
-              : '<ul class="farm-card-history-list">' +
-                hist
-                  .map(function (h) {
-                    return (
-                      '<li>' +
-                      escapeHtml(h.valueDate) +
-                      ': <strong>' +
-                      escapeHtml(h.valueText) +
-                      '</strong> (' +
-                      escapeHtml(h.source) +
-                      ')</li>'
-                    );
-                  })
-                  .join('') +
-                '</ul>';
-        };
-      });
+      }
 
       var bfAdd = document.getElementById('farmCardBfAddBtn');
       if (bfAdd) {
         bfAdd.onclick = function () {
           var bullName = ((document.getElementById('farmCardBfBull') || {}).value || '').trim();
-          var periodMonth = ((document.getElementById('farmCardBfMonth') || {}).value || '').trim();
+          var periodMonth = toYearMonth((document.getElementById('farmCardBfMonth') || {}).value || '');
           var crPct = ((document.getElementById('farmCardBfCr') || {}).value || '').trim();
-          var services = ((document.getElementById('farmCardBfServices') || {}).value || '').trim();
-          var pregnant = ((document.getElementById('farmCardBfPregnant') || {}).value || '').trim();
           if (!bullName) {
-            if (typeof showToast === 'function') showToast('Укажите быка', 'error');
+            if (typeof showToast === 'function') showToast('Укажите кличку быка', 'error');
             return;
           }
           if (!periodMonth) {
@@ -2357,26 +2623,33 @@
             return;
           }
           if (!window.__farmCardBundle.bullFertility) window.__farmCardBundle.bullFertility = [];
-          window.__farmCardBundle.bullFertility.push({
-            id: newId('bf_'),
-            bullName: bullName,
-            periodMonth: periodMonth.slice(0, 7),
-            crPct: crPct,
-            services: services,
-            pregnant: pregnant
-          });
+          upsertBullCr(window.__farmCardBundle.bullFertility, periodMonth, bullName, crPct);
           markFarmCardDirty();
           renderFarmCardPanel();
         };
       }
-      root.querySelectorAll('.farm-card-bf-del').forEach(function (btn) {
-        btn.onclick = function () {
-          var id = btn.getAttribute('data-bf-id');
-          window.__farmCardBundle.bullFertility = (window.__farmCardBundle.bullFertility || []).filter(function (r) {
-            return r && r.id !== id;
-          });
+      var bfClear = document.getElementById('farmCardBfClearBtn');
+      if (bfClear) {
+        bfClear.onclick = function () {
+          var bullName = ((document.getElementById('farmCardBfBull') || {}).value || '').trim();
+          var periodMonth = toYearMonth((document.getElementById('farmCardBfMonth') || {}).value || '');
+          if (!bullName || !periodMonth) {
+            if (typeof showToast === 'function') showToast('Укажите месяц и кличку', 'error');
+            return;
+          }
+          if (!window.__farmCardBundle.bullFertility) window.__farmCardBundle.bullFertility = [];
+          upsertBullCr(window.__farmCardBundle.bullFertility, periodMonth, bullName, '');
           markFarmCardDirty();
           renderFarmCardPanel();
+        };
+      }
+      root.querySelectorAll('.farm-card-bf-month-edit').forEach(function (btn) {
+        btn.onclick = function () {
+          var ym = btn.getAttribute('data-ym') || '';
+          var monthEl = document.getElementById('farmCardBfMonth');
+          if (monthEl) monthEl.value = ym;
+          var form = root.querySelector('.farm-card-bf-form');
+          if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };
       });
 

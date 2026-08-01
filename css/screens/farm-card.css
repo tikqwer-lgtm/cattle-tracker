@@ -363,11 +363,58 @@ button.link-btn {
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-color, #ddd);
 }
-.farm-card-bf-form {
+.farm-card-bf-form,
+.farm-card-repro-form {
   margin-top: 0.75rem;
 }
-.farm-card-bf-form input[type="month"] {
+.farm-card-bf-form input[type="month"],
+.farm-card-repro-form input[type="month"] {
   max-width: 12rem;
+}
+.farm-card-herd-line {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+.farm-card-matrix-table th.farm-card-matrix-group {
+  text-align: center;
+  background: var(--surface-2, #f3f4f6);
+}
+.farm-card-matrix-table .farm-card-matrix-month {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.farm-card-matrix-year-row td {
+  font-weight: 600;
+  background: var(--surface-2, #f8fafc);
+}
+.farm-card-repro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.farm-card-repro-fs {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+}
+.farm-card-repro-fs legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+.farm-card-repro-fs label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+}
+.farm-card-repro-fs input {
+  flex: 1;
+  min-width: 0;
+}
+.farm-card-bull-matrix th {
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -388,6 +435,9 @@ button.link-btn {
   }
   .farm-card-bf-form input[type="month"] {
     max-width: 100%;
+  }
+  .farm-card-repro-grid {
+    grid-template-columns: 1fr;
   }
 }
 

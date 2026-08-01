@@ -3,6 +3,15 @@
   max-width: 100%;
   margin-bottom: 1rem;
 }
+.farm-card-object-switcher {
+  margin: 0;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+.farm-card-object-switcher .object-select {
+  flex: 1 1 200px;
+  max-width: 100%;
+}
 .farm-card-inner {
   display: flex;
   flex-direction: column;
@@ -102,6 +111,21 @@
 .farm-card-addr-suggest-list li:focus {
   background: #f0f4ff;
 }
+.farm-card-addr-general {
+  margin-bottom: 1.25rem;
+}
+.farm-card-geo-actions {
+  white-space: nowrap;
+}
+.farm-card-phone-sep {
+  opacity: 0.55;
+}
+.farm-card-geo-block {
+  margin-top: 0.5rem;
+}
+.farm-card-addr-row--editing td {
+  background: rgba(61, 110, 181, 0.08);
+}
 .farm-card-suggest-sub {
   display: block;
   font-size: 0.8rem;
@@ -150,6 +174,164 @@ button.link-btn {
 .farm-card-ev--done {
   opacity: 0.65;
 }
+.farm-card-ev-desc {
+  min-height: 56px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+.farm-card-ev-desc-cell {
+  max-width: 280px;
+  min-width: 140px;
+  vertical-align: top;
+  word-break: break-word;
+}
+.farm-card-ev-part-cell {
+  max-width: 200px;
+  min-width: 100px;
+  vertical-align: top;
+  word-break: break-word;
+}
+.farm-card-ev-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 100%;
+  line-height: 1.35;
+}
+.farm-card-ev-clamp--open {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
+.farm-card-ev-more {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary, #1e3a5f);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9em;
+}
+.farm-card-ev-more:hover {
+  opacity: 0.85;
+}
+.farm-card-ev-att-cell {
+  margin-top: 0.35rem;
+}
+.farm-card-ev-participants {
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius-md, 6px);
+  padding: 0.65rem 0.75rem 0.75rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.farm-card-ev-participants legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+.farm-card-ev-part-checks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+.farm-card-ev-part-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 500 !important;
+  margin: 0 !important;
+  width: 100%;
+  cursor: pointer;
+}
+.farm-card-ev-part-check input {
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+.farm-card-ev-files {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border, #c5d4e8);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg-subtle, #f5f8fc);
+}
+.farm-card-ev-files-title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: var(--color-primary, #1e3a5f);
+  margin: 0 0 0.2rem;
+}
+.farm-card-ev-files-hint {
+  margin: 0 0 0.65rem !important;
+}
+.farm-card-ev-files-btn {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem !important;
+  padding: 0.5rem 1rem;
+  min-height: 40px;
+  box-sizing: border-box;
+  font-weight: 600 !important;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #fff !important;
+  background: var(--color-primary, #3d6eb5);
+  border: 1px solid var(--color-primary, #3d6eb5);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  user-select: none;
+  width: auto !important;
+  max-width: 100%;
+}
+.farm-card-ev-files-btn:hover {
+  filter: brightness(1.05);
+}
+.farm-card-ev-files-btn:active {
+  filter: brightness(0.96);
+}
+.farm-card-ev-files-btn-text {
+  pointer-events: none;
+}
+.farm-card-ev-files-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+  min-height: 0 !important;
+}
+.farm-card-ev-att-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+.farm-card-ev-att-list li {
+  margin: 0.25rem 0;
+}
+.farm-card-ev-att-empty {
+  margin: 0.25rem 0 0 !important;
+}
+.farm-card-ev-add-form {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border, #ddd);
+}
 .farm-card-dyn-checks {
   display: flex;
   flex-wrap: wrap;
@@ -181,11 +363,58 @@ button.link-btn {
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-color, #ddd);
 }
-.farm-card-bf-form {
+.farm-card-bf-form,
+.farm-card-repro-form {
   margin-top: 0.75rem;
 }
-.farm-card-bf-form input[type="month"] {
+.farm-card-bf-form input[type="month"],
+.farm-card-repro-form input[type="month"] {
   max-width: 12rem;
+}
+.farm-card-herd-line {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+.farm-card-matrix-table th.farm-card-matrix-group {
+  text-align: center;
+  background: var(--surface-2, #f3f4f6);
+}
+.farm-card-matrix-table .farm-card-matrix-month {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.farm-card-matrix-year-row td {
+  font-weight: 600;
+  background: var(--surface-2, #f8fafc);
+}
+.farm-card-repro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.farm-card-repro-fs {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+}
+.farm-card-repro-fs legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+.farm-card-repro-fs label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+}
+.farm-card-repro-fs input {
+  flex: 1;
+  min-width: 0;
+}
+.farm-card-bull-matrix th {
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -206,6 +435,9 @@ button.link-btn {
   }
   .farm-card-bf-form input[type="month"] {
     max-width: 100%;
+  }
+  .farm-card-repro-grid {
+    grid-template-columns: 1fr;
   }
 }
 
