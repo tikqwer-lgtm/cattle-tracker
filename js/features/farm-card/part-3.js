@@ -707,17 +707,19 @@
   }
 
   function showImportStub() {
-    var msg =
-      'Импорт показателей из DC305, Afifarm, Uniform и др. будет доступен после подключения образцов выгрузок.\n\n' +
-      'Сейчас можно добавлять пункты и показатели вручную.';
-    if (typeof showToast === 'function') {
-      showToast('Импорт из систем управления стадом — в разработке', 'info');
+    if (window.CattleTrackerHerdImport && typeof window.CattleTrackerHerdImport.downloadTemplate === 'function') {
+      if (typeof showToast === 'function') {
+        showToast('Скачайте шаблон KPI и загрузите его кнопкой «Импорт KPI» на вкладке Показатели', 'info');
+      }
+      return;
     }
     if (typeof window.CattleTrackerHerdImport !== 'undefined' && window.CattleTrackerHerdImport.showStub) {
       window.CattleTrackerHerdImport.showStub();
       return;
     }
-    alert(msg);
+    if (typeof showToast === 'function') {
+      showToast('Импорт KPI — на вкладке Показатели', 'info');
+    }
   }
 
   function bindCrmHandlers(rootEl, canEdit, renderFn) {

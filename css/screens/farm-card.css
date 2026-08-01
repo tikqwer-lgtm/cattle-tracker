@@ -371,9 +371,11 @@ button.link-btn {
 .farm-card-repro-form input[type="month"] {
   max-width: 12rem;
 }
-.farm-card-herd-line {
+.farm-card-kpi-import {
   margin: 0 0 0.75rem;
-  font-size: 0.95rem;
+}
+.farm-card-kpi-import code {
+  font-size: 0.85em;
 }
 .farm-card-matrix-table th.farm-card-matrix-group {
   text-align: center;
@@ -416,6 +418,40 @@ button.link-btn {
 .farm-card-bull-matrix th {
   white-space: nowrap;
 }
+.farm-card-bf-col-head {
+  vertical-align: bottom;
+}
+.farm-card-bf-col-name {
+  display: inline-block;
+  margin-right: 0.25rem;
+}
+.farm-card-bf-del-bull,
+.farm-card-bf-del-cell {
+  min-width: 1.5rem;
+  padding: 0.1rem 0.35rem;
+  line-height: 1.2;
+  color: #b42318;
+}
+.farm-card-bf-cell {
+  white-space: nowrap;
+}
+.farm-card-bf-cell-val {
+  margin-right: 0.25rem;
+}
+.farm-card-bf-cell-fill {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  opacity: 0.55;
+}
+.farm-card-bf-cell-fill:hover {
+  opacity: 1;
+}
+.farm-card-bf-row-actions {
+  white-space: nowrap;
+}
 
 @media (max-width: 640px) {
   .farm-card-tabs {
@@ -433,7 +469,7 @@ button.link-btn {
   .farm-card-form--mobile label {
     margin: 0.5rem 0;
   }
-  .farm-card-bf-form input[type="month"] {
+.farm-card-bf-form input[type="month"] {
     max-width: 100%;
   }
   .farm-card-repro-grid {

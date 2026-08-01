@@ -265,7 +265,18 @@
       var protocols = loadProtocolsLocal(oid);
       var entries = typeof global.entries !== 'undefined' && Array.isArray(global.entries) ? global.entries : [];
       if (profile && typeof profile === 'object') {
-        global.__farmCardBundle = profile;
+        if (typeof global.normalizeBundle === 'function') {
+          global.__farmCardBundle = global.normalizeBundle(profile);
+        } else if (
+          global.__farmCard &&
+          typeof global.__farmCard.normalizeBundle === 'function'
+        ) {
+          global.__farmCardBundle = global.__farmCard.normalizeBundle(profile);
+        } else {
+          if (!Array.isArray(profile.bullFertility)) profile.bullFertility = [];
+          if (!Array.isArray(profile.metricValues)) profile.metricValues = [];
+          global.__farmCardBundle = profile;
+        }
       }
       if (typeof global.ensureProtocolsLoaded === 'function') {
         try {
