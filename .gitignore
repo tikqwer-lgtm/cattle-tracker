@@ -49,3 +49,8 @@ playwright-report/
 playwright/.cache/
 # Р›РѕРєР°Р»СЊРЅС‹Р№ РїСѓС‚СЊ Рє exe РїСЂРёР»РѕР¶РµРЅРёСЏ РґР»СЏ e2e:electron (СЃРєРѕРїРёСЂСѓР№С‚Рµ РІ electron-exe-path.txt)
 e2e/electron-exe-path.txt
+# Локальные выгрузки СЕЛЭКС / временные инструменты агента
+tmp/
+*.fdb
+*.fbk
+

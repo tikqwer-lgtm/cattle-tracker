@@ -15,6 +15,7 @@ function openImportMappingModal(headers, rows) {
   var cattleSelect = document.getElementById('importMappingCattleColumn');
   var mappingList = document.getElementById('importMappingFieldsList');
   var importBtn = document.getElementById('importMappingImportBtn');
+  var autoBtn = document.getElementById('importMappingAutoBtn');
   var closeBtn = document.getElementById('importMappingCloseBtn');
   var closeBtn2 = document.getElementById('importMappingCloseBtn2');
   if (!cattleSelect || !mappingList || !importBtn) {
@@ -31,6 +32,93 @@ function openImportMappingModal(headers, rows) {
     modal.setAttribute('aria-hidden', 'true');
   }
 
+  function normalizeHeaderForMatch(raw) {
+    return String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/ё/g, 'е');
+  }
+
+  /** Алиасы заголовков файла → ключ поля импорта (cattleId — отдельно). */
+  var HEADER_ALIASES = {
+    'номер': 'cattleId',
+    'номер коровы': 'cattleId',
+    'номер животного': 'cattleId',
+    'корова': 'cattleId',
+    'id': 'cattleId',
+    'cattleid': 'cattleId',
+    'ninv': 'cattleId',
+    'кличка': 'nickname',
+    'имя': 'nickname',
+    'nickname': 'nickname',
+    'группа': 'group',
+    'group': 'group',
+    'ферма': 'group',
+    'дата рождения': 'birthDate',
+    'рождение': 'birthDate',
+    'birthdate': 'birthDate',
+    'лактация': 'lactation',
+    'lactation': 'lactation',
+    'дата отела': 'calvingDate',
+    'отел': 'calvingDate',
+    'calvingdate': 'calvingDate',
+    'дата осеменения': 'inseminationDate',
+    'осеменение': 'inseminationDate',
+    'inseminationdate': 'inseminationDate',
+    'номер попытки': 'attemptNumber',
+    'попытка': 'attemptNumber',
+    'attemptnumber': 'attemptNumber',
+    'бык': 'bull',
+    'bull': 'bull',
+    'техник ио': 'inseminator',
+    'техник': 'inseminator',
+    'осеменатор': 'inseminator',
+    'inseminator': 'inseminator',
+    'код': 'code',
+    'code': 'code',
+    'статус': 'status',
+    'status': 'status',
+    'протокол': 'protocolName',
+    'protocolname': 'protocolName',
+    'начало протокола': 'protocolStartDate',
+    'protocolstartdate': 'protocolStartDate',
+    'дата выбытия': 'exitDate',
+    'выбытие': 'exitDate',
+    'exitdate': 'exitDate',
+    'начало сухостоя': 'dryStartDate',
+    'сухостой': 'dryStartDate',
+    'drystartdate': 'dryStartDate',
+    'примечание': 'note',
+    'note': 'note',
+    'комментарий': 'note',
+    'результат проверки на стельность': 'pregnancyCheckResult',
+    'результат узи': 'pregnancyCheckResult',
+    'узи': 'pregnancyCheckResult',
+    'дата проверки на стельность': 'pregnancyCheckDate',
+    'дата узи': 'pregnancyCheckDate'
+  };
+
+  function resolveFieldKeyFromHeader(headerText, mappingFields) {
+    var norm = normalizeHeaderForMatch(headerText);
+    if (!norm) return null;
+    if (HEADER_ALIASES[norm]) return HEADER_ALIASES[norm];
+    // точное совпадение с подписью поля
+    for (var i = 0; i < mappingFields.length; i++) {
+      var lab = normalizeHeaderForMatch(mappingFields[i].label);
+      var key = normalizeHeaderForMatch(mappingFields[i].key);
+      if (norm === lab || norm === key) return mappingFields[i].key;
+    }
+    // частичное: заголовок содержит подпись или наоборот
+    for (var j = 0; j < mappingFields.length; j++) {
+      var lab2 = normalizeHeaderForMatch(mappingFields[j].label);
+      if (lab2.length >= 3 && (norm.indexOf(lab2) !== -1 || lab2.indexOf(norm) !== -1)) {
+        return mappingFields[j].key;
+      }
+    }
+    return null;
+  }
+
   cattleSelect.innerHTML = '';
   var opt0 = document.createElement('option');
   opt0.value = '';
@@ -44,7 +132,9 @@ function openImportMappingModal(headers, rows) {
   }
 
   mappingList.innerHTML = '';
-  var mappingFields = getImportMappingFields();
+  var mappingFields = (typeof getImportMappingFields === 'function')
+    ? getImportMappingFields()
+    : (typeof window.getImportMappingFields === 'function' ? window.getImportMappingFields() : []);
   for (var i = 0; i < headers.length; i++) {
     var row = document.createElement('div');
     row.className = 'import-mapping-row';
@@ -72,17 +162,12 @@ function openImportMappingModal(headers, rows) {
 
   function updateCattleColumnVisibility() {
     var cattleCol = cattleSelect.value;
-    var rows = mappingList.querySelectorAll('.import-mapping-row');
-    for (var r = 0; r < rows.length; r++) {
-      var rw = rows[r];
+    var mapRows = mappingList.querySelectorAll('.import-mapping-row');
+    for (var r = 0; r < mapRows.length; r++) {
+      var rw = mapRows[r];
       rw.style.display = (rw.dataset.columnIndex === cattleCol) ? 'none' : '';
     }
   }
-  if (!cattleSelect.dataset.visibilityBound) {
-    cattleSelect.dataset.visibilityBound = '1';
-    cattleSelect.addEventListener('change', updateCattleColumnVisibility);
-  }
-  globalThis['__exportImport'].updateCattleColumnVisibility();
 
   function buildColumnMapping() {
     var cattleCol = cattleSelect.value;
@@ -99,51 +184,125 @@ function openImportMappingModal(headers, rows) {
     return mapping;
   }
 
-  if (importBtn && !importBtn.dataset.bound) {
-    importBtn.dataset.bound = '1';
-    importBtn.addEventListener('click', function () {
-      var currentRows = modal._importRows;
-      var currentHeaders = modal._importHeaders;
-      if (!currentRows || !currentHeaders) {
-        alert('Нет данных для импорта. Выберите файл заново.');
-        return;
+  /** Распределить поля по названиям столбцов файла; номер животного — отдельно. */
+  function autoMapColumnsByHeaders() {
+    var usedKeys = {};
+    var cattleIdx = -1;
+    var hdrs = modal._importHeaders || headers;
+
+    for (var hi = 0; hi < hdrs.length; hi++) {
+      var key = resolveFieldKeyFromHeader(hdrs[hi], mappingFields);
+      if (key === 'cattleId' && cattleIdx < 0) cattleIdx = hi;
+    }
+    if (cattleIdx < 0) {
+      for (var hj = 0; hj < hdrs.length; hj++) {
+        var hn = normalizeHeaderForMatch(hdrs[hj]);
+        if (hn === 'номер' || hn.indexOf('номер') === 0) {
+          cattleIdx = hj;
+          break;
+        }
       }
-      var cattleCol = cattleSelect.value;
-      if (cattleCol === '' || cattleCol === null) {
-        alert('Сначала выберите столбец с номером животного.');
-        return;
+    }
+    if (cattleIdx >= 0) {
+      cattleSelect.value = String(cattleIdx);
+    }
+
+    var selects = mappingList.querySelectorAll('.import-mapping-field-select');
+    for (var s = 0; s < selects.length; s++) {
+      selects[s].value = '_skip';
+    }
+    for (var ci = 0; ci < selects.length; ci++) {
+      var sel = selects[ci];
+      var colIdx = parseInt(sel.dataset.columnIndex, 10);
+      if (colIdx === cattleIdx) continue;
+      var fieldKey = resolveFieldKeyFromHeader(hdrs[colIdx], mappingFields);
+      if (!fieldKey || fieldKey === 'cattleId') continue;
+      if (usedKeys[fieldKey]) continue;
+      // есть ли такой option
+      var hasOpt = false;
+      for (var oi = 0; oi < sel.options.length; oi++) {
+        if (sel.options[oi].value === fieldKey) {
+          hasOpt = true;
+          break;
+        }
       }
-      var mapping = globalThis['__exportImport'].buildColumnMapping();
-      if (!mapping) return;
-      importBtn.disabled = true;
-      var importPromise = globalThis['__exportImport'].runImportWithMapping(currentRows, mapping, currentHeaders);
-      Promise.resolve(importPromise).then(function () {
-        globalThis['__exportImport'].closeImportMappingModal();
-      }).catch(function (err) {
+      if (!hasOpt) continue;
+      sel.value = fieldKey;
+      usedKeys[fieldKey] = true;
+    }
+    updateCattleColumnVisibility();
+    var mappedCount = Object.keys(usedKeys).length + (cattleIdx >= 0 ? 1 : 0);
+    if (typeof showToast === 'function') {
+      showToast(
+        cattleIdx >= 0
+          ? 'Автораспределение: номер + ' + Object.keys(usedKeys).length + ' полей. Проверьте и при необходимости поправьте.'
+          : 'Автораспределение: ' + mappedCount + ' полей. Укажите столбец с номером животного.',
+        'info',
+        5000
+      );
+    }
+  }
+
+  cattleSelect.onchange = updateCattleColumnVisibility;
+
+  // автораспределение при каждом открытии
+  autoMapColumnsByHeaders();
+  updateCattleColumnVisibility();
+
+  importBtn.onclick = function () {
+    var currentRows = modal._importRows;
+    var currentHeaders = modal._importHeaders;
+    if (!currentRows || !currentHeaders) {
+      if (typeof showToast === 'function') showToast('Нет данных для импорта. Выберите файл заново.', 'error');
+      else alert('Нет данных для импорта. Выберите файл заново.');
+      return;
+    }
+    var cattleCol = cattleSelect.value;
+    if (cattleCol === '' || cattleCol === null) {
+      if (typeof showToast === 'function') showToast('Сначала выберите столбец с номером животного.', 'error');
+      else alert('Сначала выберите столбец с номером животного.');
+      return;
+    }
+    var mapping = buildColumnMapping();
+    if (!mapping) return;
+    var runFn = NS.runImportWithMapping || (typeof runImportWithMapping === 'function' ? runImportWithMapping : null);
+    if (!runFn) {
+      if (typeof showToast === 'function') showToast('Модуль импорта не загружен. Обновите приложение.', 'error');
+      else alert('Модуль импорта не загружен. Обновите приложение.');
+      return;
+    }
+    importBtn.disabled = true;
+    Promise.resolve()
+      .then(function () {
+        return runFn(currentRows, mapping, currentHeaders);
+      })
+      .then(function () {
+        closeImportMappingModal();
+      })
+      .catch(function (err) {
         if (typeof showToast === 'function') {
           showToast((err && err.message) ? err.message : 'Ошибка импорта', 'error');
         } else {
           alert((err && err.message) ? err.message : 'Ошибка импорта');
         }
-      }).then(function () {
+      })
+      .then(function () {
         importBtn.disabled = false;
       });
-    });
-  }
+  };
 
-  if (closeBtn && !closeBtn.dataset.bound) {
-    closeBtn.dataset.bound = '1';
-    closeBtn.addEventListener('click', closeImportMappingModal);
+  if (autoBtn) {
+    autoBtn.onclick = function () {
+      autoMapColumnsByHeaders();
+    };
   }
-  if (closeBtn2 && !closeBtn2.dataset.bound) {
-    closeBtn2.dataset.bound = '1';
-    closeBtn2.addEventListener('click', closeImportMappingModal);
-  }
+  if (closeBtn) closeBtn.onclick = closeImportMappingModal;
+  if (closeBtn2) closeBtn2.onclick = closeImportMappingModal;
 
   if (!modal.dataset.overlayBound) {
     modal.dataset.overlayBound = '1';
     modal.addEventListener('click', function (e) {
-      if (e.target === modal) globalThis['__exportImport'].closeImportMappingModal();
+      if (e.target === modal) closeImportMappingModal();
     });
   }
 

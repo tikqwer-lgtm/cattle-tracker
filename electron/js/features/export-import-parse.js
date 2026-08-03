@@ -292,6 +292,17 @@ function parseFileToHeadersAndRows(file) {
     reader.readAsArrayBuffer(file);
   });
 }
+// Legacy-код (part-1/part-2) вызывает эти функции как глобалы — вешаем на window.
+if (typeof window !== 'undefined') {
+  window.parseFileToHeadersAndRows = parseFileToHeadersAndRows;
+  window.getImportMappingFields = getImportMappingFields;
+  window.normalizeDateForStorage = normalizeDateForStorage;
+  window.addDaysToDate = addDaysToDate;
+  window.decodeCsvFileContent = decodeCsvFileContent;
+  window.normalizeStatusFromImport = normalizeStatusFromImport;
+  window.normalizePregnancyCheckResult = normalizePregnancyCheckResult;
+}
+
 export {
   parseFileToHeadersAndRows,
   getImportMappingFields,

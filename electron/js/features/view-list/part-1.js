@@ -259,8 +259,13 @@ function _setupScrollToTopForContainer(tableContainer) {
 
 function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, bulkContainer) {
   var totalHeight = listToShow.length * VIRTUAL_ROW_HEIGHT;
-  var gridCols = '40px ' + fields.map(function () { return 'minmax(70px,1fr)'; }).join(' ');
-  var headHtml = '<div class="view-virtual-head" style="grid-template-columns:' + gridCols + '">' +
+  var COL_MIN_PX = 110;
+  var CHECK_PX = 40;
+  var GAP_PX = 8;
+  var PAD_X = 20;
+  var gridCols = CHECK_PX + 'px ' + fields.map(function () { return 'minmax(' + COL_MIN_PX + 'px,' + COL_MIN_PX + 'px)'; }).join(' ');
+  var contentMinWidth = CHECK_PX + fields.length * COL_MIN_PX + Math.max(0, fields.length) * GAP_PX + PAD_X;
+  var headHtml = '<div class="view-virtual-head" style="grid-template-columns:' + gridCols + ';min-width:' + contentMinWidth + 'px">' +
     '<div class="view-virtual-head-cell view-virtual-checkbox"><input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все"></div>' +
     fields.map(function (f) {
       if (f.sortable === false) return '<div class="view-virtual-head-cell">' + (f.label || '').replace(/</g, '&lt;') + '</div>';
@@ -273,12 +278,13 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   }
   container.innerHTML =
     '<div class="view-virtual-wrap">' +
+    '<div class="view-virtual-x" id="viewVirtualX">' +
     headHtml +
     '<div class="view-virtual-body" id="viewVirtualBody">' +
-    '<div class="view-virtual-viewport" id="viewVirtualViewport" style="height:' + totalHeight + 'px"></div>' +
-    '<div class="view-virtual-rows" id="viewVirtualRows"></div>' +
-    '</div></div>';
-  container._virtualData = { list: listToShow, fields: fields, renderVisible: null };
+    '<div class="view-virtual-viewport" id="viewVirtualViewport" style="height:' + totalHeight + 'px;width:' + contentMinWidth + 'px"></div>' +
+    '<div class="view-virtual-rows" id="viewVirtualRows" style="width:' + contentMinWidth + 'px"></div>' +
+    '</div></div></div>';
+  container._virtualData = { list: listToShow, fields: fields, renderVisible: null, contentMinWidth: contentMinWidth, gridCols: gridCols };
   if (typeof window.initPinchZoom === 'function') {
     container._pinchZoomDestroy = window.initPinchZoom(container, { innerSelector: '.view-virtual-wrap', minScale: 0.7, maxScale: 1.5 });
   }
@@ -301,7 +307,7 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
         if (field.key === 'lactation' && (v === 0 || v === '0')) v = '0';
         return '<div class="view-virtual-cell">' + (v || '') + '</div>';
       }).join('');
-      html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (globalThis.viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + '" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
+      html += '<div class="view-virtual-row view-entry-row ' + (entry.synced ? '' : 'unsynced') + (globalThis.viewListSelectedIds.has(entry.cattleId) ? ' selected-row' : '') + '" style="top:' + (i * VIRTUAL_ROW_HEIGHT) + 'px;grid-template-columns:' + gridCols + ';width:' + contentMinWidth + 'px" data-row-index="' + i + '" data-cattle-id="' + safeCattleId + '" role="button" tabindex="0">' +
         '<div class="view-virtual-cell view-virtual-checkbox"><input type="checkbox" class="entry-checkbox" data-cattle-id="' + safeCattleId + '" aria-label="Выделить"' + checked + '></div>' +
         cells + '</div>';
     }
@@ -311,7 +317,11 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   renderVisible();
   var body = document.getElementById('viewVirtualBody');
   if (body) {
-    body.addEventListener('scroll', renderVisible);
+    body.addEventListener('scroll', renderVisible, { passive: true });
+  }
+  // внешний wrapper не должен скроллить по X отдельно от шапки
+  if (container.classList && container.classList.contains('view-entries-wrapper')) {
+    container.style.overflowX = 'hidden';
   }
   requestAnimationFrame(function () {
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
@@ -320,7 +330,6 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   }, 0);
 }
-
 
   // register functions
   NS._compareViewList = _compareViewList;

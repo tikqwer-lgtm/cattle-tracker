@@ -80,8 +80,11 @@
           <div class="sync-mobile-apk-meta-row"><span class="sync-mobile-apk-meta-label">Добавлено</span><span id="syncMobileApkMetaDate" class="sync-mobile-apk-meta-value">—</span></div>
         </div>
         <p id="syncMobileApkNoFileHint" class="sync-section-hint sync-mobile-apk-no-file-hint" style="display: none;" aria-live="polite"></p>
-        <p class="sync-section-hint">Скачайте APK с сервера — откроется загрузка во внешнем браузере.</p>
-        <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать и установить</button>
+        <p class="sync-section-hint">«Скачать и установить» — через приложение. «Скачать APK» — только файл (если установка не проходит).</p>
+        <div class="sync-mobile-apk-actions">
+          <button type="button" class="action-btn" id="syncDownloadApkBtn">Скачать и установить</button>
+          <button type="button" class="action-btn action-btn-secondary" id="syncDownloadApkOnlyBtn">Скачать APK</button>
+        </div>
       </div>
     </details>
     <div id="sync-backup-section" class="sync-section">

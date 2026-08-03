@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker-desktop",
-  "version": "0.6.85",
+  "version": "0.6.90",
   "description": "Desktop wrapper for Cattle Tracker",
   "main": "main.js",
   "scripts": {
@@ -21,6 +21,14 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!dist-*/**",
+      "!dist-build*/**",
+      "!dist-rel/**",
+      "!**/*.map"
+    ],
     "asarUnpack": [
       "**/node_modules/electron-updater/**"
     ],

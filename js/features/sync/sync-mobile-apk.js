@@ -357,11 +357,19 @@
 
   function bindDownloadButton() {
     var btn = document.getElementById('syncDownloadApkBtn');
-    if (!btn || btn.dataset.apkBound === '1') return;
-    btn.dataset.apkBound = '1';
-    btn.addEventListener('click', function () {
-      if (typeof global.downloadApkFromServer === 'function') global.downloadApkFromServer();
-    });
+    if (btn && btn.dataset.apkBound !== '1') {
+      btn.dataset.apkBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof global.downloadApkFromServer === 'function') global.downloadApkFromServer();
+      });
+    }
+    var onlyBtn = document.getElementById('syncDownloadApkOnlyBtn');
+    if (onlyBtn && onlyBtn.dataset.apkBound !== '1') {
+      onlyBtn.dataset.apkBound = '1';
+      onlyBtn.addEventListener('click', function () {
+        if (typeof global.downloadApkFileOnly === 'function') global.downloadApkFileOnly();
+      });
+    }
   }
 
   function bindDetailsToggle(section) {
@@ -479,31 +487,29 @@
       });
   }
 
-  function downloadApkFromServer() {
+  function resolveApkDownloadUrl() {
     var base = getApiBase();
     if (!base) {
-      if (typeof global.showToast === 'function') global.showToast('Нет адреса сервера', 'error');
-      return;
+      return Promise.reject(new Error('Нет адреса сервера'));
     }
     var infoUrl = base + '/api/mobile/info';
-    fetch(infoUrl, { cache: 'no-cache' })
-      .then(function (res) {
-        return res.json().then(function (data) {
-          if (!res.ok) {
-            var err = (data && (data.error || data.message)) || 'Ошибка ' + res.status;
-            throw new Error(err);
-          }
-          return data;
-        });
-      })
-      .then(function (data) {
-        if (!data || !data.available) {
-          if (typeof global.showToast === 'function') {
-            global.showToast('На сервере нет файла обновления', 'error');
-          }
-          return;
+    return fetch(infoUrl, { cache: 'no-cache' }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          var err = (data && (data.error || data.message)) || 'Ошибка ' + res.status;
+          throw new Error(err);
         }
-        var apkUrl = base + (data.downloadPath || '/api/mobile/app.apk');
+        if (!data || !data.available) {
+          throw new Error('На сервере нет файла обновления');
+        }
+        return base + (data.downloadPath || '/api/mobile/app.apk');
+      });
+    });
+  }
+
+  function downloadApkFromServer() {
+    resolveApkDownloadUrl()
+      .then(function (apkUrl) {
         return downloadApkViaNative(apkUrl);
       })
       .catch(function (err) {
@@ -515,8 +521,27 @@
       });
   }
 
+  /** Только скачать APK во внешний браузер / Downloads — без автоустановки. */
+  function downloadApkFileOnly() {
+    if (typeof global.showToast === 'function') {
+      global.showToast('Открываем загрузку APK…', 'info', 3000);
+    }
+    resolveApkDownloadUrl()
+      .then(function (apkUrl) {
+        return openApkDownloadUrl(apkUrl);
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : 'Не удалось скачать APK';
+        if (msg.indexOf('Failed to fetch') !== -1) {
+          msg = 'Сервер недоступен';
+        }
+        if (typeof global.showToast === 'function') global.showToast(msg, 'error', 5000);
+      });
+  }
+
   global.initSyncMobileApkSection = initSyncMobileApkSection;
   global.downloadApkFromServer = downloadApkFromServer;
+  global.downloadApkFileOnly = downloadApkFileOnly;
   global.refreshMobileApkServerUi = refreshMobileApkServerUi;
   global.checkMobileApkUpdate = checkMobileApkUpdate;
   global.initAppVersionUpdateUi = initAppVersionUpdateUi;

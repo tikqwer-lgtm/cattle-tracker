@@ -228,3 +228,25 @@
   margin-top: 0;
   margin-bottom: 10px;
 }
+
+.sync-mobile-apk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sync-mobile-apk-actions .action-btn {
+  flex: 1 1 auto;
+  min-width: 9.5rem;
+  margin: 0;
+}
+.sync-mobile-apk-actions .action-btn-secondary {
+  background: transparent;
+  color: var(--primary, #1a5f4a);
+  border: 1.5px solid var(--primary, #1a5f4a);
+  box-shadow: none;
+}
+.sync-mobile-apk-actions .action-btn-secondary:active,
+.sync-mobile-apk-actions .action-btn-secondary:hover {
+  background: rgba(26, 95, 74, 0.08);
+}

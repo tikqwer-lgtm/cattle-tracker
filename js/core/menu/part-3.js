@@ -362,17 +362,21 @@ function initMenuCalvingForecast() {
   }
   if (typeof window.CattleTrackerEvents !== 'undefined' && typeof window.CattleTrackerEvents.on === 'function') {
     window.CattleTrackerEvents.on('entries:updated', function () {
-      updateMenuCalvingForecast();
+      updateHerdStats();
     });
   }
   updateMenuCalvingForecast();
 }
 
 /**
- * Обновляет статистику стада на главном экране
+ * Обновляет статистику стада на экране «Работа со стадом»
  */
 function updateHerdStats() {
-  var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
+  var rawList = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
+  // активные: без даты выбытия
+  var list = (rawList || []).filter(function (e) {
+    return !(e && e.exitDate && String(e.exitDate).trim());
+  });
   var pct = function (n, total) {
     if (!total) return 0;
     return Math.round((n / total) * 100);
@@ -385,6 +389,12 @@ function updateHerdStats() {
     } else {
       el.textContent = String(value) + (suffix || '');
     }
+  }
+  function normStatus(e) {
+    return String((e && e.status) || '')
+      .trim()
+      .toLowerCase()
+      .replace(/ё/g, 'е');
   }
   if (!list || list.length === 0) {
     setNum('totalCows', 0);
@@ -402,12 +412,27 @@ function updateHerdStats() {
     return;
   }
 
-  const totalCows = list.length;
-  const pregnantCows = list.filter(e => e.status && e.status.includes('Стельная')).length;
-  const dryCows = list.filter(e => e.status && e.status.includes('Сухостой')).length;
-  const inseminatedCows = list.filter(e => e.status && (e.status.includes('Осеменен') || (e.status.toLowerCase && e.status.toLowerCase().includes('осеменен')))).length;
-  const cullCows = list.filter(e => e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('брак') : e.status.includes('Брак'))).length;
-  const notInseminatedCows = list.filter(e => !e.status || (e.status && (e.status.toLowerCase ? e.status.toLowerCase().includes('холостая') : e.status.includes('Холостая')))).length;
+  var totalCows = list.length;
+  var pregnantCows = 0;
+  var dryCows = 0;
+  var inseminatedCows = 0;
+  var cullCows = 0;
+  var notInseminatedCows = 0;
+  for (var i = 0; i < list.length; i++) {
+    var s = normStatus(list[i]);
+    if (s.indexOf('брак') !== -1) {
+      cullCows++;
+    } else if (s.indexOf('стельн') !== -1) {
+      pregnantCows++;
+    } else if (s.indexOf('сухостой') !== -1) {
+      dryCows++;
+    } else if (s.indexOf('осеменен') !== -1) {
+      inseminatedCows++;
+    } else {
+      // Холостая, Отёл, пустой статус и пр.
+      notInseminatedCows++;
+    }
+  }
 
   setNum('totalCows', totalCows);
   setNum('pregnantCows', pregnantCows);

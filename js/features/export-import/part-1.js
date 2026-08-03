@@ -36,7 +36,18 @@ function handleImportFile(event) {
       if (target) target.value = '';
       return;
     }
-    parseFileToHeadersAndRows(file).then(function (parsed) {
+    var parseFn = (typeof parseFileToHeadersAndRows === 'function')
+      ? parseFileToHeadersAndRows
+      : (typeof window !== 'undefined' && typeof window.parseFileToHeadersAndRows === 'function'
+        ? window.parseFileToHeadersAndRows
+        : null);
+    if (!parseFn) {
+      if (typeof showToast === 'function') showToast('Ошибка: модуль разбора файла не загружен. Обновите приложение.', 'error');
+      else alert('Ошибка: модуль разбора файла не загружен. Обновите приложение.');
+      if (target) target.value = '';
+      return;
+    }
+    parseFn(file).then(function (parsed) {
       if (!parsed.headers || parsed.headers.length === 0 || !parsed.rows) {
         if (typeof showToast === 'function') showToast('В файле нет заголовков или данных.', 'error'); else alert('В файле нет заголовков или данных.');
         if (target) target.value = '';
