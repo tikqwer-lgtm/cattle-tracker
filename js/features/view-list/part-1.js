@@ -276,6 +276,10 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     try { container._pinchZoomDestroy(); } catch (e) {}
     container._pinchZoomDestroy = null;
   }
+  if (container._virtualResizeObserver) {
+    try { container._virtualResizeObserver.disconnect(); } catch (e2) {}
+    container._virtualResizeObserver = null;
+  }
   container.innerHTML =
     '<div class="view-virtual-wrap">' +
     '<div class="view-virtual-x" id="viewVirtualX">' +
@@ -285,14 +289,44 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     '<div class="view-virtual-rows" id="viewVirtualRows" style="width:' + contentMinWidth + 'px"></div>' +
     '</div></div></div>';
   container._virtualData = { list: listToShow, fields: fields, renderVisible: null, contentMinWidth: contentMinWidth, gridCols: gridCols };
-  if (typeof window.initPinchZoom === 'function') {
-    container._pinchZoomDestroy = window.initPinchZoom(container, { innerSelector: '.view-virtual-wrap', minScale: 0.7, maxScale: 1.5 });
+  // Pinch-zoom ломает высоту/клип на Android — не включаем для виртуального списка
+
+  function ensureVirtualBodyHeight() {
+    var wrap = container.querySelector('.view-virtual-wrap');
+    var head = container.querySelector('.view-virtual-head');
+    var body = document.getElementById('viewVirtualBody');
+    var xEl = document.getElementById('viewVirtualX');
+    if (!body) return 0;
+    var avail = container.clientHeight || 0;
+    if (avail < 80) {
+      var screen = document.getElementById('view-screen');
+      var header = screen ? screen.querySelector('.view-screen-header') : null;
+      var bulk = document.getElementById('viewBulkActions');
+      var used = (header ? header.offsetHeight : 0) + (bulk ? bulk.offsetHeight : 0) + 24;
+      avail = Math.max((window.innerHeight || 600) - used, 280);
+    }
+    if (wrap) {
+      wrap.style.height = avail + 'px';
+      wrap.style.minHeight = avail + 'px';
+    }
+    if (xEl) {
+      xEl.style.height = avail + 'px';
+      xEl.style.minHeight = avail + 'px';
+    }
+    var headH = head ? head.offsetHeight : 40;
+    var bodyH = Math.max(avail - headH, 200);
+    body.style.height = bodyH + 'px';
+    body.style.minHeight = bodyH + 'px';
+    body.style.flex = 'none';
+    return bodyH;
   }
+
   function renderVisible() {
     var body = document.getElementById('viewVirtualBody');
     var viewport = document.getElementById('viewVirtualViewport');
     var rowsEl = document.getElementById('viewVirtualRows');
     if (!body || !viewport || !rowsEl) return;
+    if (body.clientHeight < 40) ensureVirtualBodyHeight();
     var scrollTop = body.scrollTop || 0;
     var height = body.clientHeight || 400;
     var start = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - 5);
@@ -314,21 +348,35 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     rowsEl.innerHTML = html;
   }
   container._virtualData.renderVisible = renderVisible;
+  ensureVirtualBodyHeight();
   renderVisible();
   var body = document.getElementById('viewVirtualBody');
   if (body) {
     body.addEventListener('scroll', renderVisible, { passive: true });
   }
-  // внешний wrapper не должен скроллить по X отдельно от шапки
   if (container.classList && container.classList.contains('view-entries-wrapper')) {
     container.style.overflowX = 'hidden';
+    container.style.overflowY = 'hidden';
+  }
+  if (typeof ResizeObserver === 'function') {
+    container._virtualResizeObserver = new ResizeObserver(function () {
+      ensureVirtualBodyHeight();
+      renderVisible();
+    });
+    try { container._virtualResizeObserver.observe(container); } catch (e3) {}
   }
   requestAnimationFrame(function () {
+    ensureVirtualBodyHeight();
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   });
   setTimeout(function () {
+    ensureVirtualBodyHeight();
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
-  }, 0);
+  }, 50);
+  setTimeout(function () {
+    ensureVirtualBodyHeight();
+    if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
+  }, 300);
 }
 
   // register functions

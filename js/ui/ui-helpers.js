@@ -51,6 +51,51 @@ function showLoading(container) {
 }
 
 /**
+ * Полноэкранный прогресс (импорт, массовое удаление).
+ * @param {{ title?: string }} opts
+ * @returns {{ update: function(number, number, string=): void, setTitle: function(string): void, close: function(): void }}
+ */
+function showProgressOverlay(opts) {
+  opts = opts || {};
+  var existing = document.getElementById('ctProgressOverlay');
+  if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+  var overlay = document.createElement('div');
+  overlay.id = 'ctProgressOverlay';
+  overlay.className = 'ct-progress-overlay';
+  overlay.setAttribute('role', 'alertdialog');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML =
+    '<div class="ct-progress-card">' +
+    '<div class="ct-progress-title"></div>' +
+    '<div class="ct-progress-bar-track"><div class="ct-progress-bar-fill"></div></div>' +
+    '<div class="ct-progress-detail"></div>' +
+    '</div>';
+  var titleEl = overlay.querySelector('.ct-progress-title');
+  var fillEl = overlay.querySelector('.ct-progress-bar-fill');
+  var detailEl = overlay.querySelector('.ct-progress-detail');
+  titleEl.textContent = opts.title || 'Подождите…';
+  detailEl.textContent = opts.detail || 'Подготовка…';
+  document.body.appendChild(overlay);
+  return {
+    update: function (done, total, text) {
+      var d = Number(done) || 0;
+      var t = Number(total) || 0;
+      var pct = t > 0 ? Math.min(100, Math.round((100 * d) / t)) : 0;
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (detailEl) {
+        detailEl.textContent = text || (t > 0 ? (d + ' из ' + t + ' (' + pct + '%)') : String(d));
+      }
+    },
+    setTitle: function (title) {
+      if (titleEl) titleEl.textContent = title || '';
+    },
+    close: function () {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+  };
+}
+
+/**
  * Показывает всплывающее сообщение (тост)
  * @param {string} text - Текст сообщения
  * @param {string} type - 'success' | 'error' | 'info'
@@ -448,6 +493,8 @@ function softRepaintCattleTrackerView() {
 
 if (typeof window !== 'undefined') {
   window.showToast = showToast;
+  window.showLoading = showLoading;
+  window.showProgressOverlay = showProgressOverlay;
   window.updateList = updateList;
   window.formatDate = formatDate;
   window.showConfirmModal = showConfirmModal;

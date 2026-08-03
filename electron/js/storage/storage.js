@@ -323,7 +323,7 @@ if (useApi) {
    * Сохраняет результаты Excel-импорта на сервер (создание + обновление), одна перезагрузка в конце.
    * @returns {Promise<string[]>} список ошибок по cattleId (пустой при полном успехе)
    */
-  function persistImportEntriesToApi(createdEntries, updatedEntries) {
+  function persistImportEntriesToApi(createdEntries, updatedEntries, onProgress) {
     var objectId = window.getCurrentObjectId();
     var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
     if (pendingId && objectId === pendingId) {
@@ -333,31 +333,48 @@ if (useApi) {
     if (!api || typeof api.createEntry !== 'function' || typeof api.updateEntry !== 'function') {
       return Promise.reject(new Error('API недоступен'));
     }
-    var chain = Promise.resolve();
+    var created = createdEntries || [];
+    var updated = updatedEntries || [];
+    var total = created.length + updated.length;
+    var done = 0;
     var apiErrors = [];
+    var report = function (label) {
+      if (typeof onProgress === 'function') {
+        onProgress(done, total, label || ('Сохранение на сервер: ' + done + ' из ' + total));
+      }
+    };
+    report('Сохранение на сервер: 0 из ' + total);
 
-    (createdEntries || []).forEach(function (entry) {
+    var chain = Promise.resolve();
+    created.forEach(function (entry) {
       chain = chain.then(function () {
-        return api.createEntry(objectId, entry).then(function (created) {
+        return api.createEntry(objectId, entry).then(function (createdRow) {
           if (typeof window.upsertEntryInStore === 'function') {
-            window.upsertEntryInStore(created && created.cattleId ? created : entry);
+            window.upsertEntryInStore(createdRow && createdRow.cattleId ? createdRow : entry);
           }
         }).catch(function (err) {
           apiErrors.push(String(entry.cattleId || '?') + ': ' + (err && err.message ? err.message : String(err)));
+        }).then(function () {
+          done++;
+          report();
         });
       });
     });
 
-    (updatedEntries || []).forEach(function (entry) {
+    updated.forEach(function (entry) {
       if (!entry || !entry.cattleId) return;
       chain = chain.then(function () {
         return api.updateEntry(objectId, entry.cattleId, entry).catch(function (err) {
           apiErrors.push(String(entry.cattleId) + ': ' + (err && err.message ? err.message : String(err)));
+        }).then(function () {
+          done++;
+          report();
         });
       });
     });
 
     return chain.then(function () {
+      if (typeof onProgress === 'function') onProgress(total, total, 'Обновление списка…');
       return window.loadLocally({ forceFromServer: true }).then(function () {
         refreshEntriesUiAfterMutation();
         return apiErrors;

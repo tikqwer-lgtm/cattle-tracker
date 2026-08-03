@@ -85,41 +85,91 @@ function deleteSelectedEntries() {
   var count = selectedCattleIds.length;
   var confirmMessage = 'Вы уверены, что хотите удалить ' + count + (count === 1 ? ' запись' : count < 5 ? ' записи' : ' записей') + '?';
   var doDeleteSelected = function () {
+    var progress = typeof showProgressOverlay === 'function'
+      ? showProgressOverlay({ title: 'Удаление записей…', detail: 'Подготовка…' })
+      : null;
+    var tick = function (done, total, text) {
+      if (progress) progress.update(done, total, text);
+    };
+    var finishOk = function (deletedCount) {
+      if (progress) progress.close();
+      if (typeof updateList === 'function') updateList();
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof updateHerdStats === 'function') updateHerdStats();
+      if (typeof showToast === 'function') showToast('Удалено записей: ' + deletedCount, 'success');
+      else alert('Удалено записей: ' + deletedCount);
+    };
+    var finishErr = function (err) {
+      if (progress) progress.close();
+      if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка удаления', 'error');
+      else alert(err && err.message ? err.message : 'Ошибка удаления');
+    };
     var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.loadLocally === 'function';
     if (useApi) {
       var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : 'default';
-      var promises = selectedCattleIds.map(function (id) {
-        return window.CattleTrackerApi.deleteEntry(objectId, id);
-      });
-      Promise.all(promises).then(function () {
-        return window.loadLocally();
-      }).then(function () {
-        updateList();
-        if (typeof updateViewList === 'function') updateViewList();
-        if (typeof updateHerdStats === 'function') updateHerdStats();
-        if (typeof showToast === 'function') showToast('Удалено записей: ' + count, 'success'); else alert('Удалено записей: ' + count);
-      }).catch(function (err) {
-        if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка удаления', 'error'); else alert(err && err.message ? err.message : 'Ошибка удаления');
-      });
+      var BATCH = 4;
+      var i = 0;
+      var deletedOk = 0;
+      var apiErrors = [];
+      tick(0, count, 'Удаление на сервере: 0 из ' + count);
+      var runBatch = function () {
+        if (i >= count) {
+          tick(count, count, 'Обновление списка…');
+          return window.loadLocally({ forceFromServer: true }).then(function () {
+            finishOk(deletedOk);
+            if (apiErrors.length && typeof showToast === 'function') {
+              showToast('Часть записей не удалилась: ' + apiErrors.length, 'error', 6000);
+            }
+          });
+        }
+        var chunk = selectedCattleIds.slice(i, i + BATCH);
+        i += chunk.length;
+        return Promise.all(chunk.map(function (id) {
+          return window.CattleTrackerApi.deleteEntry(objectId, id).then(function () {
+            deletedOk++;
+          }).catch(function (err) {
+            apiErrors.push(String(id) + ': ' + (err && err.message ? err.message : String(err)));
+          });
+        })).then(function () {
+          tick(Math.min(i, count), count, 'Удаление на сервере: ' + Math.min(i, count) + ' из ' + count);
+          return new Promise(function (resolve) {
+            setTimeout(function () { resolve(runBatch()); }, 0);
+          });
+        });
+      };
+      runBatch().catch(finishErr);
       return;
     }
     var deletedCount = 0;
-    selectedCattleIds.forEach(function (cattleId) {
-      var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
-      if (index !== -1) {
-        entries.splice(index, 1);
-        deletedCount++;
+    var LOCAL_BATCH = 80;
+    var li = 0;
+    tick(0, count, 'Удаление локально: 0 из ' + count);
+    var runLocal = function () {
+      var end = Math.min(li + LOCAL_BATCH, count);
+      for (; li < end; li++) {
+        var cattleId = selectedCattleIds[li];
+        var index = entries.findIndex(function (e) { return e.cattleId === cattleId; });
+        if (index !== -1) {
+          entries.splice(index, 1);
+          deletedCount++;
+        }
       }
-    });
-    if (deletedCount > 0) {
-      saveLocally();
-      updateList();
-      if (typeof updateViewList === 'function') updateViewList();
-      if (typeof updateHerdStats === 'function') updateHerdStats();
-      if (typeof showToast === 'function') showToast('Удалено записей: ' + deletedCount, 'success'); else alert('Удалено записей: ' + deletedCount);
-    } else {
-      if (typeof showToast === 'function') showToast('Не удалось найти записи для удаления', 'info'); else alert('Не удалось найти записи для удаления');
-    }
+      tick(li, count, 'Удаление локально: ' + li + ' из ' + count);
+      if (li < count) {
+        setTimeout(runLocal, 0);
+        return;
+      }
+      if (deletedCount > 0) {
+        tick(count, count, 'Сохранение…');
+        saveLocally();
+        finishOk(deletedCount);
+      } else {
+        if (progress) progress.close();
+        if (typeof showToast === 'function') showToast('Не удалось найти записи для удаления', 'info');
+        else alert('Не удалось найти записи для удаления');
+      }
+    };
+    runLocal();
   };
   if (typeof showConfirmModal === 'function') {
     showConfirmModal(confirmMessage).then(function (ok) { if (ok) doDeleteSelected(); });

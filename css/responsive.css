@@ -9,6 +9,12 @@
   body {
     touch-action: pan-y;
   }
+  /* Таблицаца описи: разрешить горизонтальный pan без срыва на системный «назад» */
+  .view-virtual-x,
+  .view-virtual-body,
+  .view-entries-wrapper {
+    touch-action: pan-x pan-y;
+  }
   .screen.active {
     overflow-x: hidden;
     overflow-y: visible;

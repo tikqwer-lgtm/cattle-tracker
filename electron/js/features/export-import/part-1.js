@@ -72,7 +72,7 @@ function handleImportFile(event) {
  * @param {Object} columnMapping — ключ: индекс столбца (число), значение: ключ поля (cattleId, nickname, inseminationDate, pregnancyCheckResult, ...)
  * @param {string[]} headers — заголовки (для количества столбцов)
  */
-function runImportWithMapping(rows, columnMapping, headers) {
+function runImportWithMapping(rows, columnMapping, headers, progress) {
   var cleanStr = function (str) {
     if (!str || typeof str !== 'string') return '';
     return str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
@@ -157,12 +157,18 @@ function runImportWithMapping(rows, columnMapping, headers) {
     byCattleId[id].push(o);
   }
 
+  var cattleIds = Object.keys(byCattleId);
+  if (progress && typeof progress.update === 'function') {
+    if (typeof progress.setTitle === 'function') progress.setTitle('Импорт данных…');
+    progress.update(0, Math.max(cattleIds.length, 1), 'Обработка записей…');
+  }
+
   var newCount = 0, updateCount = 0, errors = [];
   var createdEntries = [];
   var updatedEntries = [];
   var profileKeys = ['nickname', 'group', 'birthDate', 'lactation', 'calvingDate', 'status', 'exitDate', 'dryStartDate', 'note', 'protocolName', 'protocolStartDate', 'inseminator', 'code'];
 
-  for (var cattleId in byCattleId) {
+  function processOneCattle(cattleId) {
     var group = byCattleId[cattleId];
     try {
       var entry = typeof getDefaultCowEntry === 'function' ? getDefaultCowEntry() : {
@@ -333,38 +339,60 @@ function runImportWithMapping(rows, columnMapping, headers) {
     if (apiErrors.length > 0) console.warn('Ошибки сохранения импорта на API:', apiErrors);
   }
 
-  if (newCount > 0 || updateCount > 0) {
-    var useApi = typeof global.CATTLE_TRACKER_USE_API !== 'undefined' && global.CATTLE_TRACKER_USE_API &&
-      global.CattleTrackerApi && typeof global.persistImportEntriesToApi === 'function';
+  function finishAfterMerge() {
+    if (newCount > 0 || updateCount > 0) {
+      var useApi = typeof global.CATTLE_TRACKER_USE_API !== 'undefined' && global.CATTLE_TRACKER_USE_API &&
+        global.CattleTrackerApi && typeof global.persistImportEntriesToApi === 'function';
 
-    if (useApi) {
-      if (typeof showToast === 'function') {
-        showToast('Импорт: сохранение ' + (newCount + updateCount) + ' записей на сервер…', 'info', 4000);
+      if (useApi) {
+        if (progress && typeof progress.setTitle === 'function') progress.setTitle('Сохранение на сервер…');
+        var onProg = progress && typeof progress.update === 'function'
+          ? function (done, total, text) { progress.update(done, total, text); }
+          : null;
+        return global.persistImportEntriesToApi(createdEntries, updatedEntries, onProg).then(function (apiErrors) {
+          refreshUiAfterImport();
+          showImportResultMsg(apiErrors);
+        }).catch(function (err) {
+          refreshUiAfterImport();
+          var failMsg = 'Импорт выполнен локально, но сохранение на сервер не удалось: ' +
+            (err && err.message ? err.message : String(err)) +
+            '. Выгрузите базу вручную или повторите импорт после выбора базы.';
+          if (typeof showToast === 'function') showToast(failMsg, 'error', 10000);
+          else alert(failMsg);
+        });
       }
-      return global.persistImportEntriesToApi(createdEntries, updatedEntries).then(function (apiErrors) {
-        refreshUiAfterImport();
-        showImportResultMsg(apiErrors);
-      }).catch(function (err) {
-        refreshUiAfterImport();
-        var failMsg = 'Импорт выполнен локально, но сохранение на сервер не удалось: ' +
-          (err && err.message ? err.message : String(err)) +
-          '. Выгрузите базу вручную или повторите импорт после выбора базы.';
-        if (typeof showToast === 'function') showToast(failMsg, 'error', 10000);
-        else alert(failMsg);
-      });
+
+      if (progress) progress.update(1, 1, 'Сохранение…');
+      saveLocally();
+      refreshUiAfterImport();
+      showImportResultMsg([]);
+      return Promise.resolve();
     }
 
-    saveLocally();
-    refreshUiAfterImport();
-    showImportResultMsg([]);
+    var msgErr = 'Нет данных для импорта или все строки пропущены.';
+    if (errors.length > 0) msgErr += ' Ошибки: ' + errors.slice(0, 3).join('; ');
+    if (typeof showToast === 'function') showToast(msgErr, 'error');
+    else alert(msgErr);
     return Promise.resolve();
   }
 
-  var msgErr = 'Нет данных для импорта или все строки пропущены.';
-  if (errors.length > 0) msgErr += ' Ошибки: ' + errors.slice(0, 3).join('; ');
-  if (typeof showToast === 'function') showToast(msgErr, 'error');
-  else alert(msgErr);
-  return Promise.resolve();
+  var MERGE_CHUNK = 50;
+  var ci = 0;
+  function mergeChunk() {
+    var end = Math.min(ci + MERGE_CHUNK, cattleIds.length);
+    for (; ci < end; ci++) processOneCattle(cattleIds[ci]);
+    if (progress && typeof progress.update === 'function') {
+      progress.update(ci, Math.max(cattleIds.length, 1), 'Обработка: ' + ci + ' из ' + cattleIds.length);
+    }
+    if (ci < cattleIds.length) {
+      return new Promise(function (resolve) {
+        setTimeout(function () { resolve(mergeChunk()); }, 0);
+      });
+    }
+    return finishAfterMerge();
+  }
+
+  return mergeChunk();
 }
 
 /**

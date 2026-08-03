@@ -272,9 +272,15 @@ function openImportMappingModal(headers, rows) {
       return;
     }
     importBtn.disabled = true;
+    var progress = typeof showProgressOverlay === 'function'
+      ? showProgressOverlay({ title: 'Импорт данных…', detail: 'Подготовка…' })
+      : null;
     Promise.resolve()
       .then(function () {
-        return runFn(currentRows, mapping, currentHeaders);
+        return new Promise(function (resolve) { setTimeout(resolve, 40); });
+      })
+      .then(function () {
+        return runFn(currentRows, mapping, currentHeaders, progress);
       })
       .then(function () {
         closeImportMappingModal();
@@ -287,6 +293,7 @@ function openImportMappingModal(headers, rows) {
         }
       })
       .then(function () {
+        if (progress) progress.close();
         importBtn.disabled = false;
       });
   };
