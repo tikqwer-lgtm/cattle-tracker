@@ -264,8 +264,20 @@ if (useApi) {
       }).catch(function (err) {
         console.error('Ошибка загрузки записей с API:', err);
         if (myGen === _loadLocallyGeneration && window.getCurrentObjectId() === objectId) {
-          if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith([]); else { window.entries.length = 0; if (typeof window !== 'undefined') window.entries = window.entries; }
-          if (typeof window.updateList === 'function') window.updateList();
+          // Не затираем entries в [] при сбое сети — оставляем кэш или текущий список
+          var cached = typeof readApiEntriesCache === 'function' ? readApiEntriesCache(objectId) : null;
+          if (cached != null) {
+            if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(cached);
+            else {
+              window.entries.length = 0;
+              cached.forEach(function (e) { window.entries.push(e); });
+              if (typeof window !== 'undefined') window.entries = window.entries;
+            }
+            if (typeof window.CattleTrackerEvents !== 'undefined') {
+              window.CattleTrackerEvents.emit('entries:updated', window.entries);
+            }
+            if (typeof window.updateList === 'function') window.updateList();
+          }
         }
         throw err;
       });

@@ -50,8 +50,26 @@ function _handleViewListClick(ev) {
 
   if (bulkBtn && bulkBtn.getAttribute('data-bulk-action') === 'toggle-all') {
     ev.preventDefault();
-    var cb = document.getElementById('selectAllCheckbox');
-    if (cb) toggleSelectAll(cb.checked);
+    var container = document.getElementById('viewEntriesList');
+    var wantOn = true;
+    if (container && container._virtualData && container._virtualData.list) {
+      var list = container._virtualData.list;
+      var allOn = list.length > 0 && list.every(function (e) {
+        return globalThis.viewListSelectedIds.has(e.cattleId);
+      });
+      wantOn = !allOn;
+    } else {
+      var allCbs = document.querySelectorAll('.entry-checkbox');
+      var checkedCbs = document.querySelectorAll('.entry-checkbox:checked');
+      wantOn = !(allCbs.length > 0 && checkedCbs.length === allCbs.length);
+    }
+    toggleSelectAll(wantOn);
+    var applyHeaderCheck = function () {
+      var cb = document.getElementById('selectAllCheckbox');
+      if (cb) cb.checked = wantOn;
+    };
+    applyHeaderCheck();
+    setTimeout(applyHeaderCheck, 0);
     return;
   }
 
@@ -152,6 +170,8 @@ function toggleSelectAll(checked) {
     var checkboxes = document.querySelectorAll('.entry-checkbox');
     checkboxes.forEach(function (checkbox) { checkbox.checked = checked; });
   }
+  var selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  if (selectAllCheckbox) selectAllCheckbox.checked = !!checked;
   updateSelectedCount();
 }
 

@@ -84,6 +84,13 @@ function deleteSelectedEntries() {
   }
   var count = selectedCattleIds.length;
   var confirmMessage = 'Вы уверены, что хотите удалить ' + count + (count === 1 ? ' запись' : count < 5 ? ' записи' : ' записей') + '?';
+  var isNetworkDeleteError = function (err) {
+    var msg = (err && err.message) ? String(err.message) : String(err || '');
+    return msg.indexOf('Failed to fetch') !== -1 ||
+      msg.indexOf('Сервер недоступен') !== -1 ||
+      msg.indexOf('NetworkError') !== -1 ||
+      msg.indexOf('Load failed') !== -1;
+  };
   var doDeleteSelected = function () {
     var progress = typeof showProgressOverlay === 'function'
       ? showProgressOverlay({ title: 'Удаление записей…', detail: 'Подготовка…' })
@@ -91,13 +98,40 @@ function deleteSelectedEntries() {
     var tick = function (done, total, text) {
       if (progress) progress.update(done, total, text);
     };
-    var finishOk = function (deletedCount) {
+    var restoreFailedSelection = function (failedIds) {
+      if (!failedIds || !failedIds.length) return;
+      if (typeof globalThis.viewListSelectedIds !== 'undefined' && globalThis.viewListSelectedIds) {
+        globalThis.viewListSelectedIds.clear();
+        failedIds.forEach(function (id) {
+          if (id) globalThis.viewListSelectedIds.add(id);
+        });
+      }
+    };
+    var finishResult = function (deletedCount, failedIds, stoppedNetwork) {
       if (progress) progress.close();
+      restoreFailedSelection(failedIds);
       if (typeof updateList === 'function') updateList();
       if (typeof updateViewList === 'function') updateViewList();
       if (typeof updateHerdStats === 'function') updateHerdStats();
-      if (typeof showToast === 'function') showToast('Удалено записей: ' + deletedCount, 'success');
-      else alert('Удалено записей: ' + deletedCount);
+      if (typeof updateSelectedCount === 'function') updateSelectedCount();
+      var failedN = failedIds ? failedIds.length : 0;
+      var msg;
+      var toastType;
+      if (failedN === 0) {
+        msg = 'Удалено записей: ' + deletedCount;
+        toastType = 'success';
+      } else if (deletedCount === 0) {
+        msg = stoppedNetwork
+          ? 'Сеть недоступна. Записи не удалены. Проверьте соединение и повторите.'
+          : ('Не удалось удалить записи: ' + failedN);
+        toastType = 'error';
+      } else {
+        msg = 'Удалено: ' + deletedCount + ', не удалось: ' + failedN +
+          (stoppedNetwork ? '. Удаление остановлено из‑за сети. Неудавшиеся снова выделены — можно повторить.' : '. Неудавшиеся снова выделены — можно повторить.');
+        toastType = 'error';
+      }
+      if (typeof showToast === 'function') showToast(msg, toastType, failedN ? 10000 : 5000);
+      else alert(msg);
     };
     var finishErr = function (err) {
       if (progress) progress.close();
@@ -110,17 +144,26 @@ function deleteSelectedEntries() {
       var BATCH = 4;
       var i = 0;
       var deletedOk = 0;
-      var apiErrors = [];
+      var failedIds = [];
+      var stoppedNetwork = false;
       tick(0, count, 'Удаление на сервере: 0 из ' + count);
+      var afterAttempts = function () {
+        if (stoppedNetwork && i < count) {
+          for (var r = i; r < count; r++) {
+            failedIds.push(selectedCattleIds[r]);
+          }
+          i = count;
+        }
+        tick(Math.min(deletedOk + failedIds.length, count), count, 'Обновление списка…');
+        return window.loadLocally({ forceFromServer: true }).catch(function (err) {
+          console.error('Не удалось обновить список после удаления:', err);
+        }).then(function () {
+          finishResult(deletedOk, failedIds, stoppedNetwork);
+        });
+      };
       var runBatch = function () {
-        if (i >= count) {
-          tick(count, count, 'Обновление списка…');
-          return window.loadLocally({ forceFromServer: true }).then(function () {
-            finishOk(deletedOk);
-            if (apiErrors.length && typeof showToast === 'function') {
-              showToast('Часть записей не удалилась: ' + apiErrors.length, 'error', 6000);
-            }
-          });
+        if (stoppedNetwork || i >= count) {
+          return afterAttempts();
         }
         var chunk = selectedCattleIds.slice(i, i + BATCH);
         i += chunk.length;
@@ -128,10 +171,12 @@ function deleteSelectedEntries() {
           return window.CattleTrackerApi.deleteEntry(objectId, id).then(function () {
             deletedOk++;
           }).catch(function (err) {
-            apiErrors.push(String(id) + ': ' + (err && err.message ? err.message : String(err)));
+            failedIds.push(id);
+            if (isNetworkDeleteError(err)) stoppedNetwork = true;
           });
         })).then(function () {
           tick(Math.min(i, count), count, 'Удаление на сервере: ' + Math.min(i, count) + ' из ' + count);
+          if (stoppedNetwork) return afterAttempts();
           return new Promise(function (resolve) {
             setTimeout(function () { resolve(runBatch()); }, 0);
           });
@@ -162,7 +207,7 @@ function deleteSelectedEntries() {
       if (deletedCount > 0) {
         tick(count, count, 'Сохранение…');
         saveLocally();
-        finishOk(deletedCount);
+        finishResult(deletedCount, [], false);
       } else {
         if (progress) progress.close();
         if (typeof showToast === 'function') showToast('Не удалось найти записи для удаления', 'info');

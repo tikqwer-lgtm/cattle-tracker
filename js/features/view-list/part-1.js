@@ -265,6 +265,10 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   var PAD_X = 20;
   var gridCols = CHECK_PX + 'px ' + fields.map(function () { return 'minmax(' + COL_MIN_PX + 'px,' + COL_MIN_PX + 'px)'; }).join(' ');
   var contentMinWidth = CHECK_PX + fields.length * COL_MIN_PX + Math.max(0, fields.length) * GAP_PX + PAD_X;
+  var prevX = document.getElementById('viewVirtualX');
+  var prevBody = document.getElementById('viewVirtualBody');
+  var restoreLeft = prevX ? prevX.scrollLeft : 0;
+  var restoreTop = prevBody ? prevBody.scrollTop : 0;
   var headHtml = '<div class="view-virtual-head" style="grid-template-columns:' + gridCols + ';min-width:' + contentMinWidth + 'px">' +
     '<div class="view-virtual-head-cell view-virtual-checkbox"><input type="checkbox" id="selectAllCheckbox" data-bulk-action="toggle-all" aria-label="Выделить все"></div>' +
     fields.map(function (f) {
@@ -284,7 +288,7 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     '<div class="view-virtual-wrap">' +
     '<div class="view-virtual-x" id="viewVirtualX">' +
     headHtml +
-    '<div class="view-virtual-body" id="viewVirtualBody">' +
+    '<div class="view-virtual-body" id="viewVirtualBody" style="min-width:' + contentMinWidth + 'px;width:' + contentMinWidth + 'px">' +
     '<div class="view-virtual-viewport" id="viewVirtualViewport" style="height:' + totalHeight + 'px;width:' + contentMinWidth + 'px"></div>' +
     '<div class="view-virtual-rows" id="viewVirtualRows" style="width:' + contentMinWidth + 'px"></div>' +
     '</div></div></div>';
@@ -318,7 +322,16 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
     body.style.height = bodyH + 'px';
     body.style.minHeight = bodyH + 'px';
     body.style.flex = 'none';
+    body.style.minWidth = contentMinWidth + 'px';
+    body.style.width = contentMinWidth + 'px';
     return bodyH;
+  }
+
+  function restoreScrollPosition() {
+    var xEl = document.getElementById('viewVirtualX');
+    var body = document.getElementById('viewVirtualBody');
+    if (xEl) xEl.scrollLeft = restoreLeft;
+    if (body) body.scrollTop = restoreTop;
   }
 
   function renderVisible() {
@@ -349,6 +362,7 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   }
   container._virtualData.renderVisible = renderVisible;
   ensureVirtualBodyHeight();
+  restoreScrollPosition();
   renderVisible();
   var body = document.getElementById('viewVirtualBody');
   if (body) {
@@ -367,14 +381,17 @@ function _renderVirtualList(container, listToShow, fields, sortMark, sortClass, 
   }
   requestAnimationFrame(function () {
     ensureVirtualBodyHeight();
+    restoreScrollPosition();
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   });
   setTimeout(function () {
     ensureVirtualBodyHeight();
+    restoreScrollPosition();
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   }, 50);
   setTimeout(function () {
     ensureVirtualBodyHeight();
+    restoreScrollPosition();
     if (container._virtualData && container._virtualData.renderVisible) container._virtualData.renderVisible();
   }, 300);
 }
