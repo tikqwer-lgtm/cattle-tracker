@@ -27,6 +27,7 @@ Thumbs.db
 # Env / secrets (optional)
 .env
 .env.local
+server/.env
 # Секреты для npm run mobile:installer (логин admin или JWT)
 mobile-installer.env
 client_secret*.json

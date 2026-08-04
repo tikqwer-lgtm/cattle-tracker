@@ -62,7 +62,9 @@ function getFarmCardBundle(objectId) {
       events: [],
       specialists: [],
       items: [],
-      goals: []
+      goals: [],
+      bitrixCompanyId: '',
+      bitrixSyncedAt: ''
     };
   }
   return {
@@ -85,16 +87,20 @@ function getFarmCardBundle(objectId) {
     goals: Array.isArray(p.goals) ? p.goals : [],
     name: p.name != null ? String(p.name) : '',
     legalName: p.legalName != null ? String(p.legalName) : '',
-    notes: p.notes != null ? String(p.notes) : ''
+    notes: p.notes != null ? String(p.notes) : '',
+    bitrixCompanyId: p.bitrixCompanyId != null ? String(p.bitrixCompanyId) : '',
+    bitrixSyncedAt: p.bitrixSyncedAt != null ? String(p.bitrixSyncedAt) : ''
   };
 }
 
-function replaceFarmCardBundle(objectId, body) {
+function replaceFarmCardBundle(objectId, body, opts) {
   if (!getObjectById(objectId)) return { ok: false, error: 'Объект не найден' };
+  opts = opts || {};
+  const prev = getObjectProfile(objectId) || {};
   const b = body && typeof body === 'object' ? body : {};
   const profile = {
-    name: b.name != null ? String(b.name) : '',
-    legalName: b.legalName != null ? String(b.legalName) : '',
+    name: b.name != null ? String(b.name) : prev.name != null ? String(prev.name) : '',
+    legalName: b.legalName != null ? String(b.legalName) : prev.legalName != null ? String(prev.legalName) : '',
     notes: b.notes != null ? String(b.notes) : '',
     contacts: Array.isArray(b.contacts) ? b.contacts : [],
     addresses: Array.isArray(b.addresses) ? b.addresses : [],
@@ -112,10 +118,35 @@ function replaceFarmCardBundle(objectId, body) {
     bullFertility: Array.isArray(b.bullFertility) ? b.bullFertility : [],
     events: Array.isArray(b.events) ? b.events : [],
     items: Array.isArray(b.items) ? b.items : [],
-    goals: Array.isArray(b.goals) ? b.goals : []
+    goals: Array.isArray(b.goals) ? b.goals : [],
+    // Метаданные Битрикс сохраняем (не затираем с клиента без нужды)
+    bitrixCompanyId:
+      b.bitrixCompanyId != null && String(b.bitrixCompanyId).trim()
+        ? String(b.bitrixCompanyId).trim()
+        : prev.bitrixCompanyId != null
+          ? String(prev.bitrixCompanyId)
+          : '',
+    bitrixSyncedAt: prev.bitrixSyncedAt != null ? String(prev.bitrixSyncedAt) : '',
+    bitrixSnapshot: prev.bitrixSnapshot && typeof prev.bitrixSnapshot === 'object' ? prev.bitrixSnapshot : null
   };
+
+  let pendingCreated = [];
+  if (opts.enqueueBitrix !== false) {
+    try {
+      const queueDiff = require('../bitrix/queue-diff');
+      pendingCreated = queueDiff.enqueueFarmCardDiff(
+        objectId,
+        prev,
+        profile,
+        opts.userId || null
+      );
+    } catch (e) {
+      console.warn('bitrix queue diff:', e.message);
+    }
+  }
+
   putObjectProfile(objectId, profile);
-  return { ok: true };
+  return { ok: true, pendingCreated: pendingCreated };
 }
 
 function cloneObjectLayers(sourceObjectId, targetObjectId) {

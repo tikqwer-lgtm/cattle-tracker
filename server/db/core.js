@@ -129,6 +129,12 @@ function initSchema() {
   } catch (e) {
     console.error('access_requests table:', e.message);
   }
+  try {
+    const bitrix = require('./bitrix');
+    bitrix.ensureBitrixTables();
+  } catch (e) {
+    console.error('bitrix tables:', e.message);
+  }
 
   const row = getSql("SELECT 1 FROM objects WHERE id = 'default'");
   if (!row) {

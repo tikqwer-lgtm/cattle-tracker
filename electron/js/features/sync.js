@@ -7,6 +7,7 @@ import './sync/sync-connect.js';
 import './sync/sync-bases.js';
 import './sync/sync-mobile-apk.js';
 import './sync/sync-desktop-apk-admin.js';
+import './sync/sync-bitrix.js';
 import './sync/sync-bootstrap.js';
 
 export {};

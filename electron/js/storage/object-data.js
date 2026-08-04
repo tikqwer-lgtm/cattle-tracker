@@ -260,6 +260,10 @@
     }
 
     return chain.then(function () {
+      // Отбросить устаревший ответ после быстрой смены хозяйства
+      if (getObjectId() !== oid) {
+        return { objectId: oid, stale: true };
+      }
       var profile = loadFarmProfileLocal(oid);
       var settings = loadFarmSettingsLocal(oid);
       var protocols = loadProtocolsLocal(oid);

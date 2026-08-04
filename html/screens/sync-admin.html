@@ -70,6 +70,34 @@
       <p id="syncApkUploadStatus" class="sync-apk-upload-status" aria-live="polite"></p>
       <div id="syncApkServerList" class="sync-apk-server-list" aria-live="polite"></div>
     </div>
+    <div id="sync-bitrix-section" class="sync-section" style="display: none;">
+      <h3>Битрикс24</h3>
+      <p class="sync-section-hint">Контакты и адреса подтягиваются из компании Битрикс в карточку хозяйства и остаются в локальном кэше офлайн. Правки из приложения не пишутся в Битрикс сами — попадают в очередь ниже.</p>
+      <p id="syncBitrixWebhookMasked" class="sync-section-hint" aria-live="polite">Не настроен</p>
+      <label class="sync-bitrix-label" for="syncBitrixWebhookInput">Входящий webhook (URL)</label>
+      <div class="sync-admin-server-url-row">
+        <input type="url" id="syncBitrixWebhookInput" class="sync-admin-server-url-input" placeholder="https://portal.bitrix24.ru/rest/…/…/" autocomplete="off" aria-label="Webhook Битрикс" />
+        <button type="button" class="action-btn" id="syncBitrixWebhookSaveBtn">Сохранить</button>
+        <button type="button" class="small-btn" id="syncBitrixTestBtn">Проверить</button>
+      </div>
+      <label class="sync-bitrix-label" for="syncBitrixCompanySearch">Найти компанию</label>
+      <div class="sync-admin-server-url-row">
+        <input type="text" id="syncBitrixCompanySearch" class="sync-admin-server-url-input" placeholder="Название компании" autocomplete="off" />
+        <button type="button" class="small-btn" id="syncBitrixCompanySearchBtn">Найти</button>
+      </div>
+      <div id="syncBitrixCompanyResults" class="sync-bitrix-company-results" aria-live="polite"></div>
+      <label class="sync-bitrix-label" for="syncBitrixCompanyId">ID компании Битрикс для текущего хозяйства</label>
+      <div class="sync-admin-server-url-row">
+        <input type="text" id="syncBitrixCompanyId" class="sync-admin-server-url-input" placeholder="Например 123" autocomplete="off" inputmode="numeric" />
+        <button type="button" class="action-btn" id="syncBitrixPullBtn">Обновить из Битрикс</button>
+      </div>
+      <p id="syncBitrixSyncedAt" class="sync-section-hint" aria-live="polite"></p>
+      <p id="syncBitrixStatus" class="sync-section-hint sync-bitrix-status" aria-live="polite"></p>
+      <h4 class="sync-bitrix-h4">Изменения для переноса в Битрикс</h4>
+      <p class="sync-section-hint">После правок в карточке хозяйства — занесите вручную в Битрикс и нажмите «Уже занесено», либо «Не нужно».</p>
+      <button type="button" class="small-btn" id="syncBitrixPendingRefreshBtn">Обновить список</button>
+      <div id="syncBitrixPendingList" class="sync-bitrix-pending-list" aria-live="polite"></div>
+    </div>
     <details id="sync-mobile-apk-section" class="sync-section sync-mobile-apk-details" style="display: none;">
       <summary class="sync-mobile-apk-summary">Установка обновления (APK)</summary>
       <div class="sync-mobile-apk-details-body">

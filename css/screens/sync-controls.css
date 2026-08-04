@@ -74,6 +74,51 @@
   color: var(--color-text-muted);
   margin: 0 0 12px 0;
 }
+
+.sync-bitrix-label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 0.9em;
+}
+.sync-bitrix-h4 {
+  margin: 16px 0 8px;
+  font-size: 1rem;
+}
+.sync-bitrix-status--ok {
+  color: var(--color-success, #2e7d32);
+}
+.sync-bitrix-status--error {
+  color: var(--color-danger, #c62828);
+}
+.sync-bitrix-pending-ul,
+.sync-bitrix-company-ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.sync-bitrix-pending-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.sync-bitrix-pending-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.sync-bitrix-pending-actions {
+  flex: 0 0 auto;
+}
+.sync-bitrix-company-results {
+  margin: 4px 0 8px;
+}
+
 .sync-backup-actions-row {
   margin-bottom: 12px;
 }

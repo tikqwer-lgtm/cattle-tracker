@@ -26,6 +26,7 @@ const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
 const adminMobileApkRoutes = require('./routes/admin-mobile-apk');
 const mobileRoutes = require('./routes/mobile');
+const bitrixRoutes = require('./routes/bitrix');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,7 @@ app.use('/api/objects', farmCardRoutes);
 app.use('/api', geosuggestRoutes);
 app.use('/api', chatRoutes);
 app.use('/api/admin', adminMobileApkRoutes);
+app.use('/api', bitrixRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', mobileRoutes);
 

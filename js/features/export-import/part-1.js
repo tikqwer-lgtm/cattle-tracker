@@ -396,6 +396,233 @@ function runImportWithMapping(rows, columnMapping, headers, progress) {
 }
 
 /**
+ * Импорт файла событий Selex (Тип события = Осеменение | Отёл).
+ * Не ломает текущую карточку: достраивает lactationHistory и actionHistory.
+ * Порядок: сначала файл текущего стада, затем этот.
+ */
+function runImportHistoryEvents(rows, columnMapping, headers, progress) {
+  var cleanStr = function (str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  };
+  var getCell = function (row, col) {
+    if (col < 0 || col >= row.length) return '';
+    var v = row[col];
+    return (v === null || v === undefined) ? '' : String(v).trim();
+  };
+  var findCol = function (key) {
+    for (var col in columnMapping) {
+      if (col === 'cattleIdColumnIndex') continue;
+      if (columnMapping[col] === key) return parseInt(col, 10);
+    }
+    return -1;
+  };
+
+  var cattleIdCol = columnMapping.cattleIdColumnIndex;
+  var typeCol = findCol('eventType');
+  var dateCol = findCol('inseminationDate');
+  if (dateCol < 0) dateCol = findCol('calvingDate');
+  var bullCol = findCol('bull');
+  var texnCol = findCol('inseminator');
+  var noteCol = findCol('note');
+
+  if (cattleIdCol === undefined || cattleIdCol === null || typeCol < 0 || dateCol < 0) {
+    var msgMap = 'Для файла событий нужны столбцы: Номер, Тип события, Дата (осеменения или отёла).';
+    if (typeof showToast === 'function') showToast(msgMap, 'error');
+    else alert(msgMap);
+    return Promise.resolve();
+  }
+
+  if (progress && typeof progress.setTitle === 'function') progress.setTitle('Импорт истории событий…');
+
+  /** @type {Record<string, Array<{type:string,date:string,bull:string,texn:string,note:string}>>} */
+  var byCow = {};
+  for (var r = 0; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || !Array.isArray(row)) continue;
+    var cattleId = cleanStr(getCell(row, cattleIdCol));
+    if (!cattleId) continue;
+    var typeRaw = cleanStr(getCell(row, typeCol)).toLowerCase();
+    var type = '';
+    if (typeRaw.indexOf('отёл') !== -1 || typeRaw.indexOf('отел') !== -1 || typeRaw === 'calving') type = 'Отёл';
+    else if (typeRaw.indexOf('осемен') !== -1 || typeRaw === 'ai' || typeRaw === 'insemination') type = 'Осеменение';
+    else continue;
+    var dateVal = typeof normalizeDateForStorage === 'function'
+      ? normalizeDateForStorage(getCell(row, dateCol))
+      : cleanStr(getCell(row, dateCol));
+    if (!dateVal) continue;
+    if (!byCow[cattleId]) byCow[cattleId] = [];
+    byCow[cattleId].push({
+      type: type,
+      date: dateVal,
+      bull: bullCol >= 0 ? cleanStr(getCell(row, bullCol)) : '',
+      texn: texnCol >= 0 ? cleanStr(getCell(row, texnCol)) : '',
+      note: noteCol >= 0 ? cleanStr(getCell(row, noteCol)) : ''
+    });
+  }
+
+  var cattleIds = Object.keys(byCow);
+  var updated = 0;
+  var skipped = 0;
+  var histAdded = 0;
+  var actionAdded = 0;
+  var errors = [];
+
+  function cmpD(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+
+  function processOne(cattleId) {
+    var events = byCow[cattleId];
+    events.sort(function (a, b) {
+      var d = cmpD(a.date, b.date);
+      if (d) return d;
+      if (a.type === b.type) return 0;
+      return a.type === 'Осеменение' ? -1 : 1;
+    });
+
+    var entry = typeof entries !== 'undefined' && entries.find(function (e) { return e.cattleId === cattleId; });
+    if (!entry) {
+      skipped++;
+      return;
+    }
+
+    var calvings = events.filter(function (e) { return e.type === 'Отёл'; }).map(function (e) { return e.date; });
+    // unique calving dates
+    calvings = calvings.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(cmpD);
+    var osems = events.filter(function (e) { return e.type === 'Осеменение'; });
+
+    if (!entry.lactationHistory) entry.lactationHistory = [];
+    if (!entry.actionHistory) entry.actionHistory = [];
+
+    var prevCalv = '';
+    for (var ci = 0; ci < calvings.length; ci++) {
+      var C = calvings[ci];
+      var cycleOsems = osems.filter(function (o) {
+        if (prevCalv && o.date <= prevCalv) return false;
+        return o.date < C;
+      });
+      var already = entry.lactationHistory.some(function (s) {
+        return s && String(s.calvingDate || '') === String(C);
+      });
+      if (!already) {
+        var snapInsem = cycleOsems.map(function (o, idx) {
+          return {
+            date: o.date,
+            attemptNumber: idx + 1,
+            bull: o.bull || '',
+            inseminator: o.texn || '',
+            code: ''
+          };
+        });
+        var lastO = snapInsem.length ? snapInsem[snapInsem.length - 1] : null;
+        entry.lactationHistory.push({
+          number: ci + 1,
+          calvingDate: C,
+          dryStartDate: '',
+          dryDuration: null,
+          inseminationDate: lastO ? lastO.date : '',
+          attemptNumber: lastO ? lastO.attemptNumber : 1,
+          bull: lastO ? lastO.bull : '',
+          inseminator: lastO ? lastO.inseminator : '',
+          code: '',
+          inseminationHistory: snapInsem,
+          uziHistory: [],
+          status: 'Отёл',
+          protocol: { name: '', startDate: '' },
+          source: 'selex'
+        });
+        histAdded++;
+      }
+      prevCalv = C;
+    }
+
+    // Журнал действий (без дублей по типу+дата)
+    events.forEach(function (ev) {
+      var exists = entry.actionHistory.some(function (h) {
+        var hd = String(h.dateTime || '').slice(0, 10);
+        return hd === ev.date && (h.eventType === ev.type || h.action === ev.type);
+      });
+      if (exists) return;
+      var details = ev.type === 'Отёл'
+        ? ('Дата отёла: ' + ev.date + (ev.note ? '; ' + ev.note : ''))
+        : ('Дата: ' + ev.date + (ev.bull ? '; бык: ' + ev.bull : '') + (ev.texn ? '; техник: ' + ev.texn : ''));
+      entry.actionHistory.push({
+        dateTime: ev.date + ' 12:00',
+        userName: 'Selex',
+        action: ev.type,
+        details: details,
+        eventType: ev.type,
+        bull: ev.bull || '',
+        inseminator: ev.texn || '',
+        attemptNumber: ''
+      });
+      actionAdded++;
+    });
+
+    entry.lactationHistory.sort(function (a, b) {
+      return cmpD(String(a.calvingDate || ''), String(b.calvingDate || ''));
+    });
+    entry.synced = false;
+    updated++;
+  }
+
+  var i = 0;
+  var CHUNK = 40;
+  function chunk() {
+    var end = Math.min(i + CHUNK, cattleIds.length);
+    for (; i < end; i++) {
+      try { processOne(cattleIds[i]); }
+      catch (err) { errors.push(cattleIds[i] + ': ' + (err && err.message ? err.message : String(err))); }
+    }
+    if (progress) progress.update(i, Math.max(cattleIds.length, 1), 'История: ' + i + ' из ' + cattleIds.length);
+    if (i < cattleIds.length) {
+      return new Promise(function (resolve) { setTimeout(function () { resolve(chunk()); }, 0); });
+    }
+    var useApi = typeof global !== 'undefined' && global.CATTLE_TRACKER_USE_API && global.CattleTrackerApi;
+    // window global
+    useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi;
+
+    function finishMsg() {
+      if (typeof updateList === 'function') updateList();
+      if (typeof updateViewList === 'function') updateViewList();
+      if (typeof updateHerdStats === 'function') updateHerdStats();
+      var msg = 'История Selex: обновлено животных ' + updated +
+        ', лактаций добавлено ' + histAdded +
+        ', записей в журнал ' + actionAdded;
+      if (skipped) msg += ', нет в базе (пропущено): ' + skipped;
+      if (errors.length) msg += ', ошибок: ' + errors.length;
+      if (typeof showToast === 'function') showToast(msg, errors.length ? 'error' : 'success', 8000);
+      else alert(msg);
+    }
+
+    if (updated > 0) {
+      if (useApi && typeof window.persistImportEntriesToApi === 'function') {
+        var toSave = cattleIds.map(function (id) {
+          return entries.find(function (e) { return e.cattleId === id; });
+        }).filter(Boolean);
+        if (progress && progress.setTitle) progress.setTitle('Сохранение истории на сервер…');
+        return window.persistImportEntriesToApi([], toSave, progress && progress.update ? function (d, t, tx) { progress.update(d, t, tx); } : null)
+          .then(function () { finishMsg(); })
+          .catch(function (err) {
+            if (typeof saveLocally === 'function') saveLocally();
+            finishMsg();
+            if (typeof showToast === 'function') {
+              showToast('История сохранена локально; на сервер не удалось: ' + (err && err.message ? err.message : String(err)), 'error', 8000);
+            }
+          });
+      }
+      if (typeof saveLocally === 'function') saveLocally();
+    }
+    finishMsg();
+    return Promise.resolve();
+  }
+
+  if (progress) progress.update(0, Math.max(cattleIds.length, 1), 'Разбор событий…');
+  return chunk();
+}
+
+/**
  * Открывает модальное окно маппинга столбцов импорта и по кнопке «Импортировать» запускает runImportWithMapping.
  */
 
@@ -403,5 +630,6 @@ function runImportWithMapping(rows, columnMapping, headers, progress) {
   NS.importData = importData;
   NS.handleImportFile = handleImportFile;
   NS.runImportWithMapping = runImportWithMapping;
+  NS.runImportHistoryEvents = runImportHistoryEvents;
 })();
 export {};

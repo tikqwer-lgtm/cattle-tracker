@@ -96,7 +96,13 @@ function openImportMappingModal(headers, rows) {
     'результат узи': 'pregnancyCheckResult',
     'узи': 'pregnancyCheckResult',
     'дата проверки на стельность': 'pregnancyCheckDate',
-    'дата узи': 'pregnancyCheckDate'
+    'дата узи': 'pregnancyCheckDate',
+    'дата события': 'inseminationDate',
+    'дата ио': 'inseminationDate',
+    'тип события': 'eventType',
+    'событие': 'eventType',
+    'eventtype': 'eventType',
+    'тип': 'eventType'
   };
 
   function resolveFieldKeyFromHeader(headerText, mappingFields) {
@@ -266,6 +272,14 @@ function openImportMappingModal(headers, rows) {
     var mapping = buildColumnMapping();
     if (!mapping) return;
     var runFn = NS.runImportWithMapping || (typeof runImportWithMapping === 'function' ? runImportWithMapping : null);
+    var hasEventType = false;
+    for (var mk in mapping) {
+      if (mk === 'cattleIdColumnIndex') continue;
+      if (mapping[mk] === 'eventType') { hasEventType = true; break; }
+    }
+    if (hasEventType) {
+      runFn = NS.runImportHistoryEvents || (typeof runImportHistoryEvents === 'function' ? runImportHistoryEvents : runFn);
+    }
     if (!runFn) {
       if (typeof showToast === 'function') showToast('Модуль импорта не загружен. Обновите приложение.', 'error');
       else alert('Модуль импорта не загружен. Обновите приложение.');

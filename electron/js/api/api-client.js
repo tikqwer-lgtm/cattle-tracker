@@ -325,6 +325,50 @@
     return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/farm-card', bundle || {});
   }
 
+  function getBitrixSettings() {
+    return request('GET', '/api/admin/bitrix/settings');
+  }
+
+  function putBitrixSettings(body) {
+    return request('PUT', '/api/admin/bitrix/settings', body || {});
+  }
+
+  function testBitrix(body) {
+    return request('POST', '/api/admin/bitrix/test', body || {});
+  }
+
+  function searchBitrixCompanies(q) {
+    var qs = q != null && String(q).trim() ? '?q=' + encodeURIComponent(String(q).trim()) : '';
+    return request('GET', '/api/admin/bitrix/companies' + qs);
+  }
+
+  function getObjectBitrix(objectId) {
+    return request('GET', '/api/objects/' + encodeURIComponent(objectId) + '/bitrix');
+  }
+
+  function putObjectBitrix(objectId, body) {
+    return request('PUT', '/api/objects/' + encodeURIComponent(objectId) + '/bitrix', body || {});
+  }
+
+  function pullBitrixFarmCard(objectId, body) {
+    return request('POST', '/api/admin/bitrix/pull/' + encodeURIComponent(objectId), body || {});
+  }
+
+  function listBitrixPending(opts) {
+    opts = opts || {};
+    var parts = [];
+    if (opts.status != null) parts.push('status=' + encodeURIComponent(opts.status));
+    if (opts.objectId) parts.push('objectId=' + encodeURIComponent(opts.objectId));
+    var qs = parts.length ? '?' + parts.join('&') : '';
+    return request('GET', '/api/admin/bitrix/pending' + qs);
+  }
+
+  function resolveBitrixPending(id, action) {
+    return request('PATCH', '/api/admin/bitrix/pending/' + encodeURIComponent(id), {
+      action: action || 'done'
+    });
+  }
+
   function geosuggest(text) {
     return request('GET', '/api/geosuggest?text=' + encodeURIComponent(String(text || '').trim()));
   }
@@ -535,6 +579,15 @@
     putFarmSettings: putFarmSettings,
     getFarmCard: getFarmCard,
     putFarmCard: putFarmCard,
+    getBitrixSettings: getBitrixSettings,
+    putBitrixSettings: putBitrixSettings,
+    testBitrix: testBitrix,
+    searchBitrixCompanies: searchBitrixCompanies,
+    getObjectBitrix: getObjectBitrix,
+    putObjectBitrix: putObjectBitrix,
+    pullBitrixFarmCard: pullBitrixFarmCard,
+    listBitrixPending: listBitrixPending,
+    resolveBitrixPending: resolveBitrixPending,
     geosuggest: geosuggest,
     exportObject: exportObject,
     getObjectsList: getObjectsList,

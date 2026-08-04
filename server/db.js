@@ -11,6 +11,7 @@ const stallLayout = require('./db/stall-layout');
 const farmCard = require('./db/farm-card');
 const userObjects = require('./db/user-objects');
 const accessRequests = require('./db/access-requests');
+const bitrix = require('./db/bitrix');
 
 module.exports = {
   ...core,
@@ -23,4 +24,5 @@ module.exports = {
   ...farmCard,
   ...userObjects,
   ...accessRequests,
+  ...bitrix,
 };

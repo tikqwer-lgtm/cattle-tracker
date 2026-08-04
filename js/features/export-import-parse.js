@@ -104,6 +104,7 @@ function getImportMappingFields() {
   }
   list.push({ key: 'pregnancyCheckResult', label: 'Результат проверки на стельность' });
   list.push({ key: 'pregnancyCheckDate', label: 'Дата проверки на стельность' });
+  list.push({ key: 'eventType', label: 'Тип события' });
   return list;
 }
 

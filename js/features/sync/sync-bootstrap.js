@@ -59,6 +59,7 @@ function initSyncServerBlock() {
   }
   if (typeof window.initSyncMobileApkSection === 'function') window.initSyncMobileApkSection();
   if (typeof window.initSyncDesktopApkAdmin === 'function') window.initSyncDesktopApkAdmin();
+  if (typeof window.initSyncBitrixSection === 'function') window.initSyncBitrixSection();
   if (useApi) {
     var inp = document.getElementById('syncAdminServerUrlInput');
     if (inp && window.CattleTrackerApi && typeof window.CattleTrackerApi.getBaseUrl === 'function') {

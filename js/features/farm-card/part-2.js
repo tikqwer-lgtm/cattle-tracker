@@ -97,9 +97,22 @@
   }
 
   function initFarmCardPanel() {
-    globalThis['__farmCard'].ensureFarmCardLoaded().then(function () {
-      globalThis['__farmCard'].renderFarmCardPanel();
-    });
+    var root = document.getElementById('farmCardRoot');
+    var hideLoading =
+      typeof showLoading === 'function' && root ? showLoading(root) : function () {};
+    var oid =
+      typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+    var beforeGen = globalThis['__farmCard'].state._farmGen;
+    globalThis['__farmCard']
+      .ensureFarmCardLoaded()
+      .then(function () {
+        if (globalThis['__farmCard'].state._farmGen !== beforeGen + 1) return;
+        if (typeof getCurrentObjectId === 'function' && getCurrentObjectId() !== oid) return;
+        globalThis['__farmCard'].renderFarmCardPanel();
+      })
+      .finally(function () {
+        hideLoading();
+      });
   }
 
 

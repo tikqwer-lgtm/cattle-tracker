@@ -29,7 +29,9 @@
       events: [],
       items: [],
       goals: [],
-      notes: ''
+      notes: '',
+      bitrixCompanyId: '',
+      bitrixSyncedAt: ''
     };
   }
 
@@ -322,6 +324,8 @@
     b.goals = refreshGoalStatuses(
       (Array.isArray(raw.goals) ? raw.goals : []).map(normalizeGoal).filter(Boolean)
     );
+    b.bitrixCompanyId = raw.bitrixCompanyId != null ? String(raw.bitrixCompanyId) : '';
+    b.bitrixSyncedAt = raw.bitrixSyncedAt != null ? String(raw.bitrixSyncedAt) : '';
     return mergeDefaultMetrics(b);
   }
 
@@ -380,6 +384,12 @@
     return normalizeBundle(readFarmCardCache(oid));
   }
 
+  function isFarmCardLoadCurrent(myGen, oid) {
+    if (myGen !== globalThis['__farmCard'].state._farmGen) return false;
+    var cur = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : oid;
+    return !oid || cur === oid;
+  }
+
   function ensureFarmCardLoaded() {
     var myGen = ++globalThis['__farmCard'].state._farmGen;
     var oid = getObjectIdForFarm();
@@ -390,7 +400,7 @@
     }
     if (window.CATTLE_TRACKER_USE_API && window.CattleTrackerApi && typeof window.CattleTrackerApi.getFarmCard === 'function') {
       return window.CattleTrackerApi.getFarmCard(oid).then(function (data) {
-        if (myGen !== globalThis['__farmCard'].state._farmGen) return window.__farmCardBundle || emptyBundle();
+        if (!isFarmCardLoadCurrent(myGen, oid)) return window.__farmCardBundle || emptyBundle();
         var localBefore = readFarmCardCache(oid);
         var b = normalizeBundle(data);
         // Пока сервер без bullFertility — не затираем локально сохранённые CR по быкам
@@ -410,6 +420,7 @@
         }
         return b;
       }).catch(function () {
+        if (!isFarmCardLoadCurrent(myGen, oid)) return window.__farmCardBundle || emptyBundle();
         var fallback = readFarmCardCache(oid);
         window.__farmCardBundle = normalizeBundle(fallback || emptyBundle());
         clearFarmCardDirty();
@@ -455,6 +466,9 @@
             (Array.isArray(data && data.metricValues) ? data.metricValues.length : 0)
         ) {
           merged.metricValues = sentMetricValues;
+        }
+        if (data && data._bitrixPendingCreated) {
+          merged._bitrixPendingCreated = data._bitrixPendingCreated;
         }
         window.__farmCardBundle = merged;
         writeFarmCardCache(oid, window.__farmCardBundle);
@@ -1446,15 +1460,40 @@
     return confirmLeaveFarmCardIfNeeded().then(function (ok) {
       if (!ok) return false;
       resetFarmCardUiForObjectSwitch();
+      var root = document.getElementById('farmCardRoot');
+      var hideLoading =
+        typeof showLoading === 'function' && root ? showLoading(root) : function () {};
+      var sel = document.getElementById('farmCardObjectSelect');
+      if (sel) sel.disabled = true;
       var p =
         typeof switchToObject === 'function' ? switchToObject(nextId) : Promise.resolve();
-      return Promise.resolve(p).then(function () {
-        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
-        return ensureFarmCardLoaded();
-      }).then(function () {
-        renderFarmCardPanel();
-        return true;
-      });
+      return Promise.resolve(p)
+        .then(function () {
+          if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+          return ensureFarmCardLoaded();
+        })
+        .then(function () {
+          var stillCurrent =
+            typeof getCurrentObjectId === 'function' ? getCurrentObjectId() === nextId : true;
+          if (!stillCurrent) return false;
+          renderFarmCardPanel();
+          return true;
+        })
+        .finally(function () {
+          hideLoading();
+          var s = document.getElementById('farmCardObjectSelect');
+          if (s && typeof getCurrentObjectId === 'function' && getCurrentObjectId() !== nextId) {
+            var list = typeof getObjectsList === 'function' ? getObjectsList() : [];
+            var pendingId =
+              typeof window !== 'undefined' &&
+              window.CattleTrackerApi &&
+              window.CattleTrackerApi.PENDING_OBJECT_ID;
+            var realList = (list || []).filter(function (o) {
+              return o && o.id && !(pendingId && o.id === pendingId);
+            });
+            s.disabled = realList.length < 2;
+          }
+        });
     });
   }
 
@@ -1477,6 +1516,16 @@
     if (FARM_CARD_TABS.indexOf(_activeTab) === -1) _activeTab = 'addresses';
 
     var objectSwitcher = buildFarmCardObjectSwitcherHtml();
+    var bitrixHint = '';
+    if (b.bitrixCompanyId) {
+      bitrixHint =
+        '<p class="farm-settings-hint farm-card-bx-hint">Битрикс компания #' +
+        escapeHtml(b.bitrixCompanyId) +
+        (b.bitrixSyncedAt
+          ? ' · обновлено ' + escapeHtml(String(b.bitrixSyncedAt).replace('T', ' ').slice(0, 19))
+          : '') +
+        '. Контакты доступны офлайн из кэша. Правки — в очередь на экране «Синхронизация».</p>';
+    }
 
     var tabs =
       '<div class="farm-card-tabs" role="tablist">' +
@@ -1697,6 +1746,7 @@
         var geoLabel = geoLabelById(b.addresses, s.geoId);
         var fio = (s.name && String(s.name).trim()) || '';
         var phones = specialistPhones(s);
+        var fromBx = !!(s.bitrixContactId || s.source === 'bitrix');
         var rowClass = idx === _specEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
           '<tr data-spec-idx="' +
@@ -1707,6 +1757,7 @@
           escapeHtml(s.role) +
           '</td><td>' +
           escapeHtml(s.name) +
+          (fromBx ? ' <span class="farm-card-bx-badge" title="Из Битрикс">B24</span>' : '') +
           '</td><td>' +
           phonesCallCellHtml(phones) +
           '</td><td>' +
@@ -2182,6 +2233,7 @@
     root.innerHTML =
       '<div class="farm-card-inner">' +
       objectSwitcher +
+      bitrixHint +
       tabs +
       '<div class="farm-card-body">' +
       addressesHtml +
@@ -2961,9 +3013,17 @@
           _addrEditIdx = -1;
           _specEditIdx = -1;
           saveFarmCardBundle(window.__farmCardBundle)
-            .then(function () {
+            .then(function (saved) {
               if (status) status.textContent = 'Сохранено';
-              if (typeof showToast === 'function') showToast('Карточка хозяйства сохранена', 'success');
+              var pendingN = saved && saved._bitrixPendingCreated;
+              if (typeof showToast === 'function') {
+                showToast(
+                  pendingN
+                    ? 'Сохранено. В очередь Битрикс: ' + pendingN
+                    : 'Карточка хозяйства сохранена',
+                  'success'
+                );
+              }
               renderFarmCardPanel();
             })
             .catch(function (e) {

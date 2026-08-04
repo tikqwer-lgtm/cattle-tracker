@@ -12,6 +12,21 @@
   flex: 1 1 200px;
   max-width: 100%;
 }
+.farm-card-bx-badge {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted, #666);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.farm-card-bx-hint {
+  margin: 0.25rem 0 0.5rem;
+}
 .farm-card-inner {
   display: flex;
   flex-direction: column;
