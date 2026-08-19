@@ -144,6 +144,15 @@
     return u.role === 'admin';
   }
 
+  function farmCardCanWriteEvents() {
+    var u = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
+    if (!u) return false;
+    if (typeof window.hasCapability === 'function') {
+      return window.hasCapability('farmCardEventsWrite', u) || window.hasCapability('farmCardSettings', u);
+    }
+    return farmCardCanEdit();
+  }
+
   function normalizeItem(raw, idx) {
     if (!raw || typeof raw !== 'object') return null;
     var type = String(raw.type || 'text');
@@ -437,6 +446,9 @@
   }
 
   function saveFarmCardBundle(bundle) {
+    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
+      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+    }
     var oid = getObjectIdForFarm();
     if (!oid) return Promise.reject(new Error('База не выбрана'));
     var b = normalizeBundle(bundle);
@@ -720,7 +732,7 @@
   }
 
   function farmCardHasUnsavedChanges() {
-    if (!farmCardCanEdit()) return false;
+    if (!farmCardCanEdit() && !farmCardCanWriteEvents()) return false;
     if (_farmCardDirty) return true;
     if (_timelineFormOpen) {
       captureTimelineDraftFields();
@@ -1512,6 +1524,7 @@
     bindFarmCardDirtyTracking(root);
     var b = window.__farmCardBundle || emptyBundle();
     var canEdit = farmCardCanEdit();
+    var canWriteEvents = farmCardCanWriteEvents();
 
     if (FARM_CARD_TABS.indexOf(_activeTab) === -1) _activeTab = 'addresses';
 
@@ -2137,7 +2150,7 @@
           '</td><td class="farm-card-ev-part-cell">' +
           timelineClampCellHtml(evId, 'part', partText) +
           '</td>' +
-          (canEdit
+          (canWriteEvents
             ? '<td><button type="button" class="small-btn farm-card-ev-del" data-ev-id="' +
               escapeHtml(evId) +
               '">Удал.</button></td>'
@@ -2168,15 +2181,15 @@
     var timelineTableHtml =
       '<div class="farm-card-table-scroll"><table class="farm-card-table farm-card-table--wide"><thead><tr>' +
       '<th>Дата</th><th>Тип</th><th>Название</th><th>Описание / файлы</th><th>Участники</th>' +
-      (canEdit ? '<th></th>' : '') +
+      (canWriteEvents ? '<th></th>' : '') +
       '</tr></thead><tbody>' +
       (evRows ||
         '<tr><td colspan="' +
-          (canEdit ? '6' : '5') +
+          (canWriteEvents ? '6' : '5') +
           '" class="farm-card-empty">Нет событий</td></tr>') +
       '</tbody></table></div>';
 
-    var timelineFormHtml = canEdit
+    var timelineFormHtml = canWriteEvents
       ? '<div class="farm-card-actions-row">' +
         '<button type="button" class="action-btn" id="farmCardOpenEvFormBtn">' +
         (_timelineFormOpen ? 'Скрыть форму' : 'Добавить запись') +
@@ -2248,7 +2261,7 @@
       (window.CATTLE_TRACKER_USE_API
         ? '<button type="button" class="small-btn" id="farmCardReloadBtn">Обновить с сервера</button> '
         : '') +
-      (canEdit
+      (canEdit || canWriteEvents
         ? '<button type="button" class="action-btn" id="farmCardSaveAllBtn">Сохранить карточку</button>'
         : '<p class="farm-settings-hint">Только просмотр</p>') +
       '<span id="farmCardSaveStatus" class="farm-card-save-status" aria-live="polite"></span></div></div>';
@@ -2313,7 +2326,7 @@
       });
     });
 
-    if (canEdit) {
+    if (canWriteEvents) {
       var openEvForm = document.getElementById('farmCardOpenEvFormBtn');
       if (openEvForm) {
         openEvForm.onclick = function () {
@@ -2936,7 +2949,9 @@
           if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };
       });
+    }
 
+    if (canWriteEvents) {
       var addEv = document.getElementById('farmCardAddEvBtn');
       if (addEv) {
         addEv.onclick = function () {
@@ -3100,6 +3115,7 @@
   NS.writeFarmCardCache = writeFarmCardCache;
   NS.getObjectIdForFarm = getObjectIdForFarm;
   NS.farmCardCanEdit = farmCardCanEdit;
+  NS.farmCardCanWriteEvents = farmCardCanWriteEvents;
   NS.normalizeBundle = normalizeBundle;
   NS.normalizeItem = normalizeItem;
   NS.normalizeGoal = normalizeGoal;

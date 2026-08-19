@@ -273,20 +273,20 @@ function replaceServerBaseInObject(sourceId, targetId, sourceName) {
                   if (statusEl) { statusEl.textContent = 'Ошибка переименования: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
                 });
               }
-              return globalThis['__syncBases'].afterRename();
+              return afterRename();
             }
-            window.CattleTrackerApi.createEntry(targetId, sourceEntries[i]).then(function () { globalThis['__syncBases'].addNext(i + 1); }).catch(function (err) {
+            window.CattleTrackerApi.createEntry(targetId, sourceEntries[i]).then(function () { addNext(i + 1); }).catch(function (err) {
               if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
             });
           };
-          globalThis['__syncBases'].addNext(0);
+          addNext(0);
           return;
         };
-        window.CattleTrackerApi.deleteEntry(targetId, targetEntries[idx].cattleId).then(function () { globalThis['__syncBases'].deleteNext(idx + 1); }).catch(function (err) {
+        window.CattleTrackerApi.deleteEntry(targetId, targetEntries[idx].cattleId).then(function () { deleteNext(idx + 1); }).catch(function (err) {
           if (statusEl) { statusEl.textContent = 'Ошибка удаления: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }
         });
       };
-      globalThis['__syncBases'].deleteNext(0);
+      deleteNext(0);
     });
   }).catch(function (err) {
     if (statusEl) { statusEl.textContent = 'Ошибка: ' + (err && err.message ? err.message : ''); statusEl.className = 'sync-server-status sync-server-status-error'; }

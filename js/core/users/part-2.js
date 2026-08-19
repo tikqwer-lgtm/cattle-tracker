@@ -390,9 +390,11 @@
 
   function formatRoleLabel(user) {
     if (!user) return '';
-    var role = typeof globalThis['__users'].getEffectiveRole === 'function'
-      ? globalThis['__users'].getEffectiveRole(user)
-      : String(user.role || 'lite').trim().toLowerCase();
+    var role = typeof globalThis['__users'].getRealRole === 'function'
+      ? globalThis['__users'].getRealRole(user)
+      : (typeof globalThis['__users'].getEffectiveRole === 'function'
+        ? globalThis['__users'].getEffectiveRole(user)
+        : String(user.role || 'lite').trim().toLowerCase());
     var labels = {
       admin: 'Админ',
       inseminator: 'Осеменатор',
@@ -456,8 +458,13 @@
     }
     var actionsSection = document.getElementById('menu-section-actions');
     if (actionsSection) {
-      var showActions = !user || globalThis['__users'].hasCapability('eventsInput', user);
+      var showActions = !user || (typeof globalThis['__users'].canInputServiceWorks === 'function'
+        ? globalThis['__users'].canInputServiceWorks(user)
+        : globalThis['__users'].hasCapability('eventsInput', user));
       actionsSection.style.display = showActions ? '' : 'none';
+    }
+    if (typeof globalThis['__menu'] !== 'undefined' && typeof globalThis['__menu'].updateVersionSwitcher === 'function') {
+      globalThis['__menu'].updateVersionSwitcher();
     }
   }
 

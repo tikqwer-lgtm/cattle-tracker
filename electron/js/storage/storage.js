@@ -293,6 +293,9 @@ if (useApi) {
   }
 
   function createEntryViaApi(entry) {
+    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
+      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+    }
     var objectId = window.getCurrentObjectId();
     var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
     if (pendingId && objectId === pendingId) {
@@ -314,6 +317,9 @@ if (useApi) {
     });
   }
   function updateEntryViaApi(cattleId, entry, opts) {
+    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
+      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+    }
     var skipReload = opts && opts.skipReload === true;
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.updateEntry(objectId, cattleId, entry).then(function () {
@@ -322,6 +328,9 @@ if (useApi) {
     });
   }
   function deleteEntryViaApi(cattleId) {
+    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
+      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+    }
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteEntry(objectId, cattleId).then(function () {
       return window.loadLocally({ forceFromServer: true });

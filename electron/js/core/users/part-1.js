@@ -140,6 +140,7 @@
   }
 
   function logoutUser() {
+    clearPreviewRole();
     saveCurrentUser(null);
   }
 
@@ -175,18 +176,21 @@
     return list;
   }
 
-  function isAppAdminRole(user) {
-    var u = user || getCurrentUser() || {};
-    var role = String(u.role || '').trim().toLowerCase();
-    if (role === 'manager') return true;
-    return getEffectiveRole(u) === 'admin';
+  var PREVIEW_ROLE_KEY = 'cattleTracker_previewRole';
+  var PREVIEW_ROLES = { admin: true, inseminator: true, service: true };
+
+  function getPreviewStorage() {
+    try {
+      if (typeof sessionStorage !== 'undefined') return sessionStorage;
+    } catch (e) {}
+    return null;
   }
 
   /**
    * Канонические роли: admin | inseminator | service.
    * Старые коды мигрируются на лету (см. PERMISSIONS.md).
    */
-  function getEffectiveRole(user) {
+  function getRealRole(user) {
     var u = user || getCurrentUser() || {};
     var role = String(u.role || '').trim().toLowerCase();
     if (!role) return 'inseminator';
@@ -204,11 +208,80 @@
     return 'inseminator';
   }
 
+  function getStoredPreviewRole() {
+    var store = getPreviewStorage();
+    if (!store) return '';
+    try {
+      var v = String(store.getItem(PREVIEW_ROLE_KEY) || '').trim().toLowerCase();
+      return PREVIEW_ROLES[v] ? v : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setPreviewRole(role) {
+    var store = getPreviewStorage();
+    var next = String(role || '').trim().toLowerCase();
+    if (!PREVIEW_ROLES[next] || next === 'admin') {
+      try {
+        if (store) store.removeItem(PREVIEW_ROLE_KEY);
+      } catch (e) {}
+      return getUiRole();
+    }
+    if (getRealRole() !== 'admin') return getUiRole();
+    try {
+      if (store) store.setItem(PREVIEW_ROLE_KEY, next);
+    } catch (e) {}
+    return next;
+  }
+
+  function clearPreviewRole() {
+    try {
+      var store = getPreviewStorage();
+      if (store) store.removeItem(PREVIEW_ROLE_KEY);
+    } catch (e) {}
+  }
+
+  /** UI-роль: у admin может быть предпросмотр осеменатора / сервиса. */
+  function getUiRole(user) {
+    var real = getRealRole(user);
+    if (real !== 'admin') return real;
+    var preview = getStoredPreviewRole();
+    if (preview && PREVIEW_ROLES[preview]) return preview;
+    return 'admin';
+  }
+
+  function isRolePreviewMode(user) {
+    return getRealRole(user) === 'admin' && getUiRole(user) !== 'admin';
+  }
+
+  function rejectIfPreviewMutation() {
+    if (!isRolePreviewMode()) return false;
+    if (typeof showToast === 'function') {
+      showToast('Режим просмотра: изменения отключены', 'info');
+    }
+    return true;
+  }
+
+  function isAppAdminRole(user) {
+    var u = user || getCurrentUser() || {};
+    var role = String(u.role || '').trim().toLowerCase();
+    if (role === 'manager') return true;
+    return getRealRole(u) === 'admin';
+  }
+
+  /** Совместимость: эффективная роль для меню и прав = UI-роль. */
+  function getEffectiveRole(user) {
+    return getUiRole(user);
+  }
+
   /** Синхронизировано с PERMISSIONS.md в корне проекта. */
   var CAPABILITY_MATRIX = {
     admin: {
       cards: true,
       eventsInput: true,
+      serviceWorksInput: true,
+      farmCardEventsWrite: true,
       workLists: true,
       stallMap: true,
       inventory: true,
@@ -224,6 +297,8 @@
     inseminator: {
       cards: true,
       eventsInput: true,
+      serviceWorksInput: true,
+      farmCardEventsWrite: false,
       workLists: true,
       stallMap: true,
       inventory: true,
@@ -239,6 +314,8 @@
     service: {
       cards: true,
       eventsInput: false,
+      serviceWorksInput: true,
+      farmCardEventsWrite: true,
       workLists: true,
       stallMap: true,
       inventory: false,
@@ -256,9 +333,13 @@
   function hasCapability(capability, user) {
     var key = String(capability || '').trim();
     if (!key) return false;
-    var role = getEffectiveRole(user);
+    var role = getUiRole(user);
     var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.inseminator;
     return !!roleCaps[key];
+  }
+
+  function canInputServiceWorks(user) {
+    return hasCapability('eventsInput', user) || hasCapability('serviceWorksInput', user);
   }
 
   function canAdd() {
@@ -321,9 +402,16 @@
   NS.logoutUser = logoutUser;
   NS.getCurrentUser = getCurrentUser;
   NS.getVisibleEntries = getVisibleEntries;
+  NS.getRealRole = getRealRole;
+  NS.getUiRole = getUiRole;
   NS.getEffectiveRole = getEffectiveRole;
+  NS.setPreviewRole = setPreviewRole;
+  NS.clearPreviewRole = clearPreviewRole;
+  NS.isRolePreviewMode = isRolePreviewMode;
+  NS.rejectIfPreviewMutation = rejectIfPreviewMutation;
   NS.isAppAdminRole = isAppAdminRole;
   NS.hasCapability = hasCapability;
+  NS.canInputServiceWorks = canInputServiceWorks;
   NS.canAdd = canAdd;
   NS.canEdit = canEdit;
   NS.canDelete = canDelete;

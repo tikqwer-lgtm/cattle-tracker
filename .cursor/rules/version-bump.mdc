@@ -21,4 +21,6 @@ alwaysApply: true
    - `electron/package.json` (поле `version`);
    - `android/app/build.gradle` (`versionName`).
 
+6. **Описание версии:** сразу после bump добавить секцию в `CHANGELOG.md` (см. `.cursor/rules/changelog-per-version.mdc`). Версия без пользовательского текста в приложении **недопустима**.
+
 Не увеличивать версию, если запрос был только информационным (вопрос, объяснение) и код не менялся.

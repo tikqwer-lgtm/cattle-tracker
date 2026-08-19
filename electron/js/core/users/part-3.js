@@ -47,6 +47,9 @@
       global.CattleTrackerApi.logout();
       if (typeof global.clearAuthSession === 'function') global.clearAuthSession();
     }
+    if (typeof globalThis['__users'].clearPreviewRole === 'function') {
+      globalThis['__users'].clearPreviewRole();
+    }
     globalThis['__users'].saveCurrentUser(null);
     globalThis['__users'].updateAuthBar();
     globalThis['__users'].updateAuthSessionStatusUi();

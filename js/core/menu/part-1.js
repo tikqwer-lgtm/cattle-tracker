@@ -9,24 +9,24 @@ var MENU_GROUPS = {
   data: {
     title: 'Животные и списки',
     buttons: [
-      { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')", viewerHide: true },
+      { icon: '➕', text: 'Добавить животное', onclick: "navigate('add')", anyCaps: ['eventsInput'] },
       { icon: '📋', text: 'Список всех животных', onclick: "navigate('view')" },
       { icon: '📑', text: 'Все осеменения', onclick: "navigate('all-inseminations')" },
       { icon: '📋', text: 'Списки', onclick: "navigate('lists')" },
       { icon: '📜', text: 'Список событий', onclick: "navigate('events')" },
       { icon: '▦', text: 'Схема стойломест', onclick: "navigate('stall-map')" },
-      { icon: '☑', text: 'Инвентаризация', onclick: "navigate('stall-inventory')" }
+      { icon: '☑', text: 'Инвентаризация', onclick: "navigate('stall-inventory')", anyCaps: ['inventory'] }
     ]
   },
   actions: {
     title: 'Действия',
     buttons: [
-      { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')" },
-      { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')" },
-      { icon: '🐄', text: 'Отел', onclick: "navigate('calving')" },
-      { icon: '⚠️', text: 'Аборт', onclick: "navigate('abort')" },
-      { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')" },
-      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')" }
+      { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
+      { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')", anyCaps: ['eventsInput'] },
+      { icon: '🐄', text: 'Отел', onclick: "navigate('calving')", anyCaps: ['eventsInput'] },
+      { icon: '⚠️', text: 'Аборт', onclick: "navigate('abort')", anyCaps: ['eventsInput'] },
+      { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
+      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')", anyCaps: ['eventsInput', 'serviceWorksInput'] }
     ]
   },
   analytics: {
@@ -88,7 +88,19 @@ function viewerForbiddenScreen(screenId) {
     if (screenId === 'farm-card') return !window.hasCapability('farmCardView');
     return false;
   }
-  if (groupId === 'actions') return !window.hasCapability('eventsInput');
+  if (screenId === 'list-calving') {
+    return typeof window.getUiRole === 'function' && window.getUiRole() === 'service';
+  }
+  if (screenId === 'add') return !window.hasCapability('eventsInput');
+  if (screenId === 'stall-inventory') return !window.hasCapability('inventory');
+  if (groupId === 'actions') {
+    var serviceOk = screenId === 'insemination' || screenId === 'uzi' || screenId === 'protocol-assign';
+    if (serviceOk) {
+      if (typeof window.canInputServiceWorks === 'function') return !window.canInputServiceWorks();
+      return !window.hasCapability('eventsInput') && !window.hasCapability('serviceWorksInput');
+    }
+    return !window.hasCapability('eventsInput');
+  }
   return !window.hasCapability('cards');
 }
 
@@ -97,7 +109,12 @@ function viewerForbiddenScreen(screenId) {
  */
 function navigateToSubmenu(groupId) {
   if (typeof window !== 'undefined' && typeof window.hasCapability === 'function') {
-    if (groupId === 'actions' && !window.hasCapability('eventsInput')) return;
+    if (groupId === 'actions') {
+      var canActions = typeof window.canInputServiceWorks === 'function'
+        ? window.canInputServiceWorks()
+        : window.hasCapability('eventsInput');
+      if (!canActions) return;
+    }
     if (groupId === 'analytics' && !window.hasCapability('analytics')) return;
   }
   window._submenuGroup = groupId;
@@ -334,6 +351,7 @@ function navigate(screenId, options) {
 
   if (screenId === 'menu') {
     if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
+    if (typeof globalThis['__menu'].updateVersionSwitcher === 'function') globalThis['__menu'].updateVersionSwitcher();
     globalThis['__menu'].updateObjectSwitcher();
     if (typeof updateAuthBar === 'function') updateAuthBar();
     if (typeof initFirstRunHints === 'function') globalThis['__menu'].initFirstRunHints();

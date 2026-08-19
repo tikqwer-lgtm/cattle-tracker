@@ -40,6 +40,9 @@ function cleanEntry(entry) {
  * Сохраняет записи в localStorage
  */
 function saveLocally() {
+  if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
+    return;
+  }
   try {
     const cleanedEntries = window.entries.map(entry => cleanEntry(entry));
     const jsonData = JSON.stringify(cleanedEntries);

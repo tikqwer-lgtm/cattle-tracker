@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { requireAuth, requireRole, requireObjectAccess } = require('../auth');
+const { applyServiceEntryUpdate } = require('../lib/service-work-acl');
 
 function getObjectId(req) {
   return req.params.objectId || '';
@@ -54,14 +55,20 @@ router.put(
   '/:objectId/entries/:cattleId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireRole('admin', 'inseminator', 'service'),
   (req, res) => {
     const objectId = getObjectId(req);
     const cattleId = getCattleId(req);
     if (!cattleId) return res.status(400).json({ error: 'cattleId обязателен' });
     const existing = db.getEntry(objectId, cattleId, req.user.id, req.user.role);
     if (!existing) return res.status(404).json({ error: 'Запись не найдена' });
-    const entry = req.body || {};
+    let entry = req.body || {};
+    const role = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+    if (role === 'service') {
+      const patched = applyServiceEntryUpdate(existing, entry);
+      if (!patched.ok) return res.status(403).json({ error: patched.error || 'Недостаточно прав' });
+      entry = patched.entry;
+    }
     entry.cattleId = cattleId;
     entry.userId = entry.userId || req.user.id;
     entry.lastModifiedBy = entry.lastModifiedBy || req.user.username;

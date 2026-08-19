@@ -9,9 +9,16 @@ if (typeof window !== 'undefined') {
   window.getCurrentUser = SM.getCurrentUser;
   window.saveCurrentUser = SM.saveCurrentUser;
   window.getVisibleEntries = SM.getVisibleEntries;
+  window.getRealRole = SM.getRealRole;
+  window.getUiRole = SM.getUiRole;
   window.getEffectiveRole = SM.getEffectiveRole;
+  window.setPreviewRole = SM.setPreviewRole;
+  window.clearPreviewRole = SM.clearPreviewRole;
+  window.isRolePreviewMode = SM.isRolePreviewMode;
+  window.rejectIfPreviewMutation = SM.rejectIfPreviewMutation;
   window.isAppAdminRole = SM.isAppAdminRole;
   window.hasCapability = SM.hasCapability;
+  window.canInputServiceWorks = SM.canInputServiceWorks;
   window.canAdd = SM.canAdd;
   window.canEdit = SM.canEdit;
   window.canDelete = SM.canDelete;

@@ -96,11 +96,14 @@ function renderSubmenu() {
   titleEl.textContent = group.title;
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   var canEvents = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('eventsInput', user) : true;
+  var canServiceWorks = typeof window !== 'undefined' && typeof window.canInputServiceWorks === 'function'
+    ? window.canInputServiceWorks(user)
+    : canEvents;
   var canAnalytics = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('analytics', user) : true;
   var canSettings = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardSettings', user) : true;
   var canFarmView = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('farmCardView', user) : true;
   var canInventory = typeof window !== 'undefined' && typeof window.hasCapability === 'function' ? window.hasCapability('inventory', user) : true;
-  if ((groupId === 'actions' && !canEvents) || (groupId === 'analytics' && !canAnalytics)) {
+  if ((groupId === 'actions' && !canServiceWorks) || (groupId === 'analytics' && !canAnalytics)) {
     containerEl.innerHTML = '<p class="farm-settings-hint">Раздел недоступен для вашей роли.</p>';
     return;
   }
@@ -108,6 +111,14 @@ function renderSubmenu() {
   for (var i = 0; i < group.buttons.length; i++) {
     var btn = group.buttons[i];
     var onclick = String(btn.onclick || '');
+    var anyCaps = btn.anyCaps;
+    if (anyCaps && anyCaps.length && typeof window.hasCapability === 'function') {
+      var allowed = false;
+      for (var c = 0; c < anyCaps.length; c++) {
+        if (window.hasCapability(anyCaps[c], user)) { allowed = true; break; }
+      }
+      if (!allowed) continue;
+    }
     if (!canEvents && onclick.indexOf("navigate('add')") !== -1) continue;
     if (!canInventory && onclick.indexOf("navigate('stall-inventory')") !== -1) continue;
     if (!canSettings && onclick.indexOf("navigate('farm-settings')") !== -1) continue;

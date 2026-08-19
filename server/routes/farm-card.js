@@ -16,11 +16,17 @@ router.put(
   '/:objectId/farm-card',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin'),
+  requireRole('admin', 'service'),
   (req, res) => {
     const objectId = String(req.params.objectId || '').trim();
     const userId = req.user && req.user.id != null ? String(req.user.id) : null;
-    const result = db.replaceFarmCardBundle(objectId, req.body, { userId: userId });
+    const role = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+    const eventsOnly = role === 'service';
+    const result = db.replaceFarmCardBundle(objectId, req.body, {
+      userId: userId,
+      eventsOnly: eventsOnly,
+      enqueueBitrix: !eventsOnly
+    });
     if (!result.ok) {
       return res.status(400).json({ error: result.error || 'Ошибка сохранения' });
     }

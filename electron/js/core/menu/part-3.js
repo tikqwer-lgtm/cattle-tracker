@@ -120,13 +120,16 @@ function updateObjectSwitcher() {
 
 function updateMenuGroupVisibility() {
   var user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  var canEvents = typeof hasCapability === 'function' ? hasCapability('eventsInput', user) : true;
+  var canEvents = typeof hasCapability === 'function'
+    ? (typeof canInputServiceWorks === 'function' ? canInputServiceWorks(user) : hasCapability('eventsInput', user))
+    : true;
   var canNotifications = typeof hasCapability === 'function' ? hasCapability('notifications', user) : true;
   var canAnalytics = typeof hasCapability === 'function' ? hasCapability('analytics', user) : true;
   var canFarmSettings = typeof hasCapability === 'function' ? hasCapability('farmCardSettings', user) : true;
   var canFarmView = typeof hasCapability === 'function' ? hasCapability('farmCardView', user) : true;
   var canAdmin = typeof hasCapability === 'function' ? hasCapability('adminUsersRoles', user) : false;
   var canSettings = canFarmSettings || canFarmView || canAdmin;
+  var uiService = typeof getUiRole === 'function' && getUiRole(user) === 'service';
 
   function setGroupVisible(fragment, visible) {
     var btn = document.querySelector("button.menu-group-btn[onclick*=\"" + fragment + "\"]");
@@ -143,6 +146,62 @@ function updateMenuGroupVisibility() {
 
   var notifBlock = document.getElementById('menu-notifications');
   if (notifBlock) notifBlock.style.display = canNotifications ? '' : 'none';
+  var calvingBlock = document.getElementById('menuCalvingForecast');
+  if (calvingBlock) calvingBlock.style.display = uiService ? 'none' : '';
+  if (typeof globalThis['__menu'].updateVersionSwitcher === 'function') {
+    globalThis['__menu'].updateVersionSwitcher();
+  }
+}
+
+function uiRoleLabel(role) {
+  if (role === 'inseminator') return 'Осеменатор';
+  if (role === 'service') return 'Сервис-специалист';
+  return 'Админ';
+}
+
+function updateVersionSwitcher() {
+  var wrap = document.getElementById('menu-version-switcher');
+  var banner = document.getElementById('menu-preview-banner');
+  if (!wrap) return;
+  var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  var isAdmin = typeof isAppAdminRole === 'function' && isAppAdminRole(user);
+  wrap.hidden = !isAdmin;
+  if (!isAdmin) {
+    if (banner) {
+      banner.hidden = true;
+      banner.textContent = '';
+    }
+    return;
+  }
+  var uiRole = typeof getUiRole === 'function' ? getUiRole(user) : 'admin';
+  var preview = typeof isRolePreviewMode === 'function' && isRolePreviewMode(user);
+  wrap.querySelectorAll('.menu-version-btn').forEach(function (btn) {
+    var role = btn.getAttribute('data-preview-role') || '';
+    if (role === uiRole) btn.classList.add('is-active');
+    else btn.classList.remove('is-active');
+    if (!btn.dataset.versionBound) {
+      btn.dataset.versionBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof setPreviewRole === 'function') setPreviewRole(role);
+        if (typeof updateAuthBar === 'function') updateAuthBar();
+        updateMenuGroupVisibility();
+        updateVersionSwitcher();
+        if (typeof updateObjectSwitcher === 'function') updateObjectSwitcher();
+        else if (typeof globalThis['__menu'].updateObjectSwitcher === 'function') {
+          globalThis['__menu'].updateObjectSwitcher();
+        }
+      });
+    }
+  });
+  if (banner) {
+    if (preview) {
+      banner.hidden = false;
+      banner.textContent = 'Просмотр как: ' + uiRoleLabel(uiRole) + '. Изменения отключены.';
+    } else {
+      banner.hidden = true;
+      banner.textContent = '';
+    }
+  }
 }
 
 var _menuCalvingMonthOffset = 0;
@@ -506,6 +565,7 @@ document.addEventListener('DOMContentLoaded', function () {
   NS.updateObjectSwitcher = updateObjectSwitcher;
   NS.updateMenuEmptyObjectState = updateMenuEmptyObjectState;
   NS.updateMenuGroupVisibility = updateMenuGroupVisibility;
+  NS.updateVersionSwitcher = updateVersionSwitcher;
   NS.formatCalvingMonthLabel = formatCalvingMonthLabel;
   NS.getMenuCalvingViewYearMonth = getMenuCalvingViewYearMonth;
   NS.openCalvingListFromMenu = openCalvingListFromMenu;

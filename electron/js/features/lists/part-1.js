@@ -183,11 +183,12 @@ function dateOnly(d) {
   function renderListsScreen() {
     var container = document.getElementById('lists-screen-container');
     if (!container) return;
+    var hideCalving = typeof getUiRole === 'function' && getUiRole() === 'service';
     container.innerHTML =
       '<div class="lists-buttons">' +
       '<button type="button" class="action-btn" data-list="uzi">🩺 УЗИ</button>' +
       '<button type="button" class="action-btn" data-list="insemination">🐄 Осеменение</button>' +
-      '<button type="button" class="action-btn" data-list="calving">🐄 Отёлы</button>' +
+      (hideCalving ? '' : '<button type="button" class="action-btn" data-list="calving">🐄 Отёлы</button>') +
       '<button type="button" class="action-btn" data-list="tasks">📋 Список задач на дату</button>' +
       '</div>';
     container.querySelectorAll('.lists-buttons button').forEach(function (btn) {

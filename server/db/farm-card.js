@@ -2,6 +2,7 @@ const { runSql, getSql, saveDb, parseJsonColumn, normalizeVwpDays } = require('.
 const { getObjectById } = require('./objects');
 const { getProtocols, createProtocol } = require('./protocols');
 const { getStallLayout, putStallLayout } = require('./stall-layout');
+const { applyFarmCardEventsOnly } = require('../lib/service-work-acl');
 
 const EMPTY_FARM_SETTINGS = { technicians: [], bulls: [], drugs: [], vwpDays: 60 };
 
@@ -98,7 +99,8 @@ function replaceFarmCardBundle(objectId, body, opts) {
   opts = opts || {};
   const prev = getObjectProfile(objectId) || {};
   const b = body && typeof body === 'object' ? body : {};
-  const profile = {
+  const eventsOnlyProfile = opts.eventsOnly ? applyFarmCardEventsOnly(prev, b) : null;
+  const profile = eventsOnlyProfile || {
     name: b.name != null ? String(b.name) : prev.name != null ? String(prev.name) : '',
     legalName: b.legalName != null ? String(b.legalName) : prev.legalName != null ? String(prev.legalName) : '',
     notes: b.notes != null ? String(b.notes) : '',

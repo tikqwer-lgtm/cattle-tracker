@@ -77,7 +77,10 @@ var _overwriteServerBusy = false;
  */
 function overwriteCurrentServerBaseWithLocal() {
   if (!window.CATTLE_TRACKER_USE_API || !window.CattleTrackerApi) return Promise.resolve();
-  if (_overwriteServerBusy) return Promise.resolve();
+  if (_overwriteServerBusy) {
+    if (typeof showToast === 'function') showToast('Выгрузка уже выполняется', 'info', 3000);
+    return Promise.resolve();
+  }
   var objectId = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
   var pend = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
   if (!objectId || (pend && objectId === pend)) {
@@ -108,22 +111,23 @@ function overwriteCurrentServerBaseWithLocal() {
       if (progressLabel && label !== undefined) progressLabel.textContent = label;
       if (progressText) progressText.textContent = total ? (done + ' / ' + total) : '—';
     }
-    globalThis['__syncBases'].setBtns(true);
-    globalThis['__syncBases'].showProg(true);
-    globalThis['__syncBases'].setProg(0, 0, 'Чтение сервера…');
+    setBtns(true);
+    showProg(true);
+    setProg(0, 0, 'Чтение сервера…');
     if (statusEl) { statusEl.textContent = 'Подготовка выгрузки…'; statusEl.className = 'sync-server-status'; }
     function finishOk() {
       _overwriteServerBusy = false;
-      globalThis['__syncBases'].setBtns(false);
-      globalThis['__syncBases'].showProg(false);
+      setBtns(false);
+      showProg(false);
     }
     function finishErr(text) {
-      globalThis['__syncBases'].finishOk();
+      finishOk();
       if (statusEl) { statusEl.textContent = text || 'Ошибка'; statusEl.className = 'sync-server-status sync-server-status-error'; }
       if (typeof showToast === 'function') showToast(text || 'Ошибка', 'error', 5000);
     }
     return window.CattleTrackerApi.loadEntries(objectId).then(function (rawServer) {
-      var serverEntries = globalThis['__syncBases'].normalizeEntriesList(rawServer);
+      var normalize = globalThis['__syncBases'].normalizeEntriesList;
+      var serverEntries = typeof normalize === 'function' ? normalize(rawServer) : (Array.isArray(rawServer) ? rawServer : []);
       var totalSteps = serverEntries.length + localEntries.length;
       var step = 0;
       function deleteNext(idx) {
@@ -131,7 +135,7 @@ function overwriteCurrentServerBaseWithLocal() {
           var i = 0;
           function addNext() {
             if (i >= localEntries.length) {
-              globalThis['__syncBases'].finishOk();
+              finishOk();
               if (statusEl) statusEl.textContent = 'Выгрузка на сервер завершена.';
               return (typeof window.loadLocally === 'function' ? window.loadLocally({ forceFromServer: true }) : Promise.resolve()).then(function () {
                 if (typeof updateList === 'function') updateList();
@@ -144,48 +148,46 @@ function overwriteCurrentServerBaseWithLocal() {
             var cattleId = (entry && entry.cattleId) ? String(entry.cattleId).trim() : '';
             if (!cattleId) {
               i++;
-              return globalThis['__syncBases'].addNext();
+              return addNext();
             }
-            window.CattleTrackerApi.createEntry(objectId, entry).then(function () {
+            return window.CattleTrackerApi.createEntry(objectId, entry).then(function () {
               if (entry) entry.synced = true;
               i++;
               step++;
-              globalThis['__syncBases'].setProg(step, Math.max(1, totalSteps), 'Выгрузка на сервер…');
-              return globalThis['__syncBases'].addNext();
+              setProg(step, Math.max(1, totalSteps), 'Выгрузка на сервер…');
+              return addNext();
             }).catch(function (err) {
-              globalThis['__syncBases'].finishErr(err && err.message ? err.message : 'Ошибка выгрузки');
+              finishErr(err && err.message ? err.message : 'Ошибка выгрузки');
             });
           }
-          return globalThis['__syncBases'].addNext();
+          return addNext();
         }
         var row = serverEntries[idx];
         var cid = row && row.cattleId ? String(row.cattleId).trim() : '';
         if (!cid) {
-          globalThis['__syncBases'].deleteNext(idx + 1);
-          return;
+          return deleteNext(idx + 1);
         }
-        window.CattleTrackerApi.deleteEntry(objectId, cid).then(function () {
-          idx++;
+        return window.CattleTrackerApi.deleteEntry(objectId, cid).then(function () {
           step++;
-          globalThis['__syncBases'].setProg(step, Math.max(1, totalSteps), 'Очистка старых записей на сервере…');
-          globalThis['__syncBases'].deleteNext(idx);
+          setProg(step, Math.max(1, totalSteps), 'Очистка старых записей на сервере…');
+          return deleteNext(idx + 1);
         }).catch(function (err) {
-          globalThis['__syncBases'].finishErr(err && err.message ? err.message : 'Ошибка удаления на сервере');
+          finishErr(err && err.message ? err.message : 'Ошибка удаления на сервере');
         });
       }
-      globalThis['__syncBases'].deleteNext(0);
+      return deleteNext(0);
     }).catch(function (err) {
-      globalThis['__syncBases'].finishErr(err && err.message ? err.message : 'Ошибка чтения с сервера');
+      finishErr(err && err.message ? err.message : 'Ошибка чтения с сервера');
     });
   }
   if (typeof showConfirmModal === 'function') {
     return showConfirmModal(msg).then(function (ok) {
       if (!ok) return Promise.resolve();
-      return globalThis['__syncBases'].runOverwrite();
+      return runOverwrite();
     });
   }
   if (!confirm(msg)) return Promise.resolve();
-  return globalThis['__syncBases'].runOverwrite();
+  return runOverwrite();
 }
 
 /**
