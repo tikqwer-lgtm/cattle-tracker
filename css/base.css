@@ -46,6 +46,75 @@ body {
   color: var(--color-primary);
   font-weight: 600;
 }
+
+.confirm-modal-actions--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.confirm-modal-actions--stack .btn,
+.confirm-modal-actions--stack .small-btn {
+  width: 100%;
+  margin: 0;
+}
+.confirm-modal-actions--stack .btn:disabled,
+.confirm-modal-actions--stack .btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app-version-actions-title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.changelog-viewer-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.changelog-viewer-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.changelog-version-block {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.changelog-version-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.changelog-version-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+.changelog-version-date {
+  margin: 0 0 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.changelog-section-title {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.changelog-list {
+  margin: 0 0 0.5rem 1.1rem;
+  padding: 0;
+}
+.changelog-empty,
+.changelog-loading {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
 .app-header-connection-btn {
   display: inline-flex;
   align-items: center;

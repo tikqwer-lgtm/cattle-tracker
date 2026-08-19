@@ -9,6 +9,38 @@ const apk = require('../lib/mobile-apk-storage');
 
 const router = express.Router();
 
+const CHANGELOG_CANDIDATES = [
+  path.join(__dirname, '..', 'CHANGELOG.md'),
+  path.join(__dirname, '..', '..', 'CHANGELOG.md'),
+];
+
+function readChangelogFile() {
+  for (const p of CHANGELOG_CANDIDATES) {
+    try {
+      if (fs.existsSync(p)) {
+        return fs.readFileSync(p, 'utf8');
+      }
+    } catch (e) {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+router.get('/mobile/changelog', (req, res) => {
+  try {
+    const text = readChangelogFile();
+    if (!text || !String(text).trim()) {
+      return res.status(404).json({ error: 'CHANGELOG не найден на сервере' });
+    }
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.send(text);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Не удалось прочитать CHANGELOG' });
+  }
+});
+
 router.get('/mobile/info', (req, res) => {
   apk.migrateLegacyLatestIfNeeded();
   const apkPath = apk.getApkPath();

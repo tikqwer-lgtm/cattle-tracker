@@ -149,6 +149,10 @@ async function main() {
 
   console.log('Copying files (no node_modules, data)...');
   copyDeployTree(tempDir);
+  const rootChangelog = path.join(projectRoot, 'CHANGELOG.md');
+  if (fs.existsSync(rootChangelog)) {
+    fs.copyFileSync(rootChangelog, path.join(tempDir, 'CHANGELOG.md'));
+  }
 
   const conn = new Client();
   try {

@@ -157,12 +157,12 @@
     if (versionHeaderEl) {
       versionHeaderEl.textContent = text;
       versionHeaderEl.classList.toggle('app-version-header--update', _mobileUpdateState.hasUpdate);
-      var canUpdate = isAndroidCapacitor() && !!getApiBase();
-      versionHeaderEl.disabled = !canUpdate;
-      versionHeaderEl.title = canUpdate
+      var canOpenActions = isAndroidCapacitor() && !!getApiBase();
+      versionHeaderEl.disabled = !canOpenActions;
+      versionHeaderEl.title = canOpenActions
         ? (_mobileUpdateState.hasUpdate
-          ? 'Доступно обновление — нажмите для загрузки'
-          : 'Нажмите для проверки обновления')
+          ? 'Доступно обновление — нажмите для действий'
+          : 'Нажмите для списка изменений или проверки обновления')
         : '';
     }
   }
@@ -218,6 +218,27 @@
       return;
     }
     checkMobileApkUpdate(true).then(function (state) {
+      if (typeof global.showAppVersionActionsModal === 'function') {
+        global.showAppVersionActionsModal(state, {
+          canUpdate: true,
+          onUpdate: function () {
+            if (state.hasUpdate) {
+              downloadApkFromServer();
+              return;
+            }
+            if (state.available) {
+              if (typeof global.showToast === 'function') {
+                global.showToast('У вас установлена актуальная версия', 'info', 4000);
+              }
+              return;
+            }
+            if (typeof global.showToast === 'function') {
+              global.showToast('На сервере нет файла обновления', 'info', 4000);
+            }
+          }
+        });
+        return;
+      }
       if (state.hasUpdate) {
         downloadApkFromServer();
         return;
