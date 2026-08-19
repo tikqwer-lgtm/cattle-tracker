@@ -312,7 +312,7 @@ function cancelEdit() {
     delete window.currentEditingId;
     const titleElement = document.getElementById('addScreenTitle');
     if (titleElement) {
-      titleElement.textContent = '➕ Добавить корову';
+      titleElement.textContent = 'Добавить животное';
     }
   }
   clearForm();

@@ -1,3 +1,4 @@
+import { resolveScreenParent } from '../screen-parent.js';
 /** __menu part 1 */
 (function () {
   'use strict';
@@ -121,9 +122,49 @@ function navigateToSubmenu(groupId) {
   navigate('submenu');
 }
 
-var _navStack = [];
-var _isNavigatingBack = false;
 var _currentScreenId = null;
+
+function applyScreenHash(screenId, options) {
+  var newHash = '#' + (screenId || 'menu');
+  if (screenId === 'view-cow' && options && options.cattleId) newHash += '/' + String(options.cattleId).replace(/[#/]/g, '');
+  if (typeof location === 'undefined') return;
+  if (typeof history !== 'undefined' && typeof history.replaceState === 'function') {
+    try {
+      history.replaceState(null, '', location.pathname + location.search + newHash);
+      return;
+    } catch (eHash) {}
+  }
+  if (location.hash !== newHash) location.hash = newHash;
+}
+
+function navigateToParent() {
+  if (typeof window !== 'undefined' && window._navReturnTo) {
+    var ret = window._navReturnTo;
+    window._navReturnTo = null;
+    if (typeof ret === 'string') {
+      navigate(ret);
+      return true;
+    }
+    if (ret && ret.screen) {
+      if (ret.group) window._submenuGroup = ret.group;
+      navigate(ret.screen);
+      return true;
+    }
+  }
+  var parent = resolveScreenParent(_currentScreenId);
+  if (!parent) return false;
+  if (parent.type === 'viewCowBack') {
+    if (typeof window.viewCowBack === 'function') {
+      window.viewCowBack();
+      return true;
+    }
+    navigate('view');
+    return true;
+  }
+  if (parent.group) window._submenuGroup = parent.group;
+  navigate(parent.screen);
+  return true;
+}
 
 /**
  * Навигация между экранами
@@ -158,11 +199,6 @@ function navigate(screenId, options) {
     screenId = 'menu';
   }
 
-  if (!_isNavigatingBack && _currentScreenId && _currentScreenId !== screenId) {
-    _navStack.push(_currentScreenId);
-    if (_navStack.length > 50) _navStack.splice(0, _navStack.length - 50);
-  }
-  _isNavigatingBack = false;
   _currentScreenId = screenId;
 
   try {
@@ -335,7 +371,7 @@ function navigate(screenId, options) {
     if (clearBtn) clearBtn.style.display = window.currentEditingId ? 'none' : 'inline-block';
     if (!window.currentEditingId) {
       var titleEl = document.getElementById('addScreenTitle');
-      if (titleEl) titleEl.textContent = '➕ Добавить корову';
+      if (titleEl) titleEl.textContent = 'Добавить животное';
       if (typeof clearForm === 'function') clearForm();
     }
     if (typeof window.fillAllInseminationCodeSelects === 'function') {
@@ -366,31 +402,19 @@ function navigate(screenId, options) {
   }
   if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
 
-  var newHash = '#' + (screenId || 'menu');
-  if (screenId === 'view-cow' && options && options.cattleId) newHash += '/' + String(options.cattleId).replace(/[#/]/g, '');
-  if (typeof location !== 'undefined' && location.hash !== newHash) location.hash = newHash;
+  applyScreenHash(screenId, options);
 }
 
 /**
- * Возврат на предыдущий экран (из навигационного стека)
+ * Возврат на родителя в иерархии экранов.
  */
 function navigateBack() {
-  if (_navStack.length > 0) {
-    _isNavigatingBack = true;
-    var prevScreen = _navStack.pop();
-    navigate(prevScreen);
-    return true;
-  }
-  return false;
+  return navigateToParent();
 }
 
 function getCurrentScreenId() {
   return _currentScreenId;
 }
-
-/**
- * Назад: предыдущий экран из стека; если стек пуст — подменю (не главное меню).
- */
 
   // register functions
   NS.MENU_GROUPS = MENU_GROUPS;
@@ -398,6 +422,7 @@ function getCurrentScreenId() {
   NS.navigateToSubmenu = navigateToSubmenu;
   NS.navigate = navigate;
   NS.navigateBack = navigateBack;
+  NS.navigateToParent = navigateToParent;
   NS.getCurrentScreenId = getCurrentScreenId;
 })();
 export {};

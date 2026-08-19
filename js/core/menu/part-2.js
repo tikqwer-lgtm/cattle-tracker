@@ -6,7 +6,7 @@
   var global = typeof window !== 'undefined' ? window : this;
 
 function navigateBackOrFallback(fallbackScreenId) {
-  if (globalThis['__menu'].navigateBack()) return;
+  if (globalThis['__menu'].navigateToParent && globalThis['__menu'].navigateToParent()) return;
   globalThis['__menu'].navigate(fallbackScreenId || 'submenu');
 }
 
@@ -18,15 +18,20 @@ function syncRouteToScreen() {
   var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   if (isElectron && !currentUser && (screenId === 'menu' || screenId === '')) {
     screenId = 'auth';
-    if (typeof location !== 'undefined') location.hash = 'auth';
+    if (typeof history !== 'undefined' && history.replaceState) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#auth'); } catch (e1) { location.hash = 'auth'; }
+    } else if (typeof location !== 'undefined') location.hash = 'auth';
   }
   if (currentUser && globalThis['__menu'].viewerForbiddenScreen(screenId)) {
     screenId = 'menu';
-    if (typeof location !== 'undefined') location.hash = 'menu';
+    if (typeof history !== 'undefined' && history.replaceState) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#menu'); } catch (e2) { location.hash = 'menu'; }
+    } else if (typeof location !== 'undefined') location.hash = 'menu';
   }
+  var current = globalThis['__menu'].getCurrentScreenId && globalThis['__menu'].getCurrentScreenId();
   if (screenId === 'view-cow' && parts[1]) {
     if (typeof viewCow === 'function') viewCow(parts[1]);
-  } else {
+  } else if (current !== screenId) {
     globalThis['__menu'].navigate(screenId);
   }
 }

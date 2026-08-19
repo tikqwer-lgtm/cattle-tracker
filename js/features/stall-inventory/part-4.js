@@ -20,7 +20,7 @@ function invRenderActiveTab() {
 }
 
 function initStallInventoryScreen() {
-  _inventoryLayout = globalThis['__stallInv'].invReadLayout();
+  NS.state._inventoryLayout = globalThis['__stallInv'].invReadLayout();
   if (!globalThis['__stallInv'].state._inventorySession) {
     var saved = globalThis['__stallInv'].invLoadSession();
     if (saved && saved.objectId === globalThis['__stallInv'].invGetObjectId()) {

@@ -119,7 +119,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.6.98" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.0" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -216,6 +216,19 @@
       </div>
     </div>
 
+    <div class="herd-stats service-herd-stats" id="serviceHerdStats" hidden>
+      <label class="service-dash-mode-wrap" for="serviceDashMode">
+        <span class="service-dash-mode-label">Срез показателей</span>
+        <select id="serviceDashMode" class="service-dash-mode" aria-label="Срез показателей дашборда">
+          <option value="me_object">Я на этом хозяйстве</option>
+          <option value="me_all">Я по всем объектам</option>
+          <option value="compare_object_vs_all">Сравнение: хозяйство / все мои объекты</option>
+          <option value="compare_me_vs_farm">Сравнение: я / все на хозяйстве</option>
+        </select>
+      </label>
+      <div id="serviceDashColumns" class="service-dash-columns" aria-live="polite"></div>
+    </div>
+
     <div class="menu-calving-forecast" id="menuCalvingForecast" aria-label="Отёлы за месяц">
       <p class="menu-calving-forecast-title">Отёлы за месяц</p>
       <div class="menu-calving-header">
@@ -250,6 +263,10 @@
         </span>
         <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
       </button>
+    </div>
+
+    <div id="serviceReportHubWrap" class="menu-notifications" hidden>
+      <button type="button" class="menu-notifications-toggle" id="serviceReportHubBtn">Сформировать отчёт</button>
     </div>
 
     <div class="action-buttons">
@@ -291,48 +308,48 @@
       </div>
     </div>
 
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- ========== Подменю и формы действий (осеменение, отёл, УЗИ) ========== -->
   <div id="submenu-screen" class="screen">
     <h1 id="submenu-title">Подменю</h1>
     <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback('herd-hub')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Списки» -->
   <div id="lists-screen" class="screen">
-    <h1>📋 Списки</h1>
+    <h1>Списки</h1>
     <div id="lists-screen-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <div id="list-uzi-screen" class="screen">
-    <h1>🩺 Список на УЗИ</h1>
+    <h1>Список на УЗИ</h1>
     <div id="list-uzi-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <div id="list-insemination-screen" class="screen">
-    <h1>📑 Журнал осеменений</h1>
+    <h1>Журнал осеменений</h1>
     <div id="list-insemination-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <div id="list-calving-screen" class="screen">
-    <h1>🐄 Список отёлов</h1>
+    <h1>Список отёлов</h1>
     <div id="list-calving-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Список событий» -->
   <div id="events-screen" class="screen">
-    <h1>📜 Список событий</h1>
+    <h1>Список событий</h1>
     <div id="events-screen-filters" class="events-filters"></div>
     <div id="events-screen-container" class="events-screen-container"></div>
     <div id="events-screen-actions" class="events-actions"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран администрирования (только для admin в режиме API) -->
@@ -383,21 +400,21 @@
       <h2>Отчёты пользователей</h2>
       <div id="admin-reports-container" class="admin-list-container"></div>
     </section>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
   <div id="farm-settings-screen" class="screen">
     <h1>Настройки хозяйства</h1>
     <div id="farm-settings-react-root"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Карточка хозяйства -->
   <div id="farm-card-screen" class="screen">
     <h1>Карточка хозяйства</h1>
     <div id="farmCardRoot" class="farm-card-root" aria-live="polite"></div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран ввода осеменения (пакетный) -->
@@ -429,7 +446,7 @@
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="inseminationBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Запуск (начало сухостоя), пакетный -->
@@ -450,7 +467,7 @@
       <div id="dryBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="dryBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Отёл, пакетный -->
@@ -472,7 +489,7 @@
       <div id="calvingBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="calvingBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Аборт (пакетный) -->
@@ -496,7 +513,7 @@
       <div id="abortBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="abortBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: На протокол, пакетный -->
@@ -521,7 +538,7 @@
       <div id="protocolBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="protocolBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: УЗИ (пакетный) -->
@@ -545,12 +562,12 @@
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
       <button type="button" id="uziBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- ========== Форма добавления/редактирования животного ========== -->
   <div id="add-screen" class="screen">
-    <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
+    <h1 id="addScreenTitle" aria-live="polite">Добавить животное</h1>
     <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
       <fieldset class="form-cow-section">
         <legend>Основные данные</legend>
@@ -638,12 +655,12 @@
       </div>
     </form>
 
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button" aria-label="Назад">Назад</button>
   </div>
 
   <!-- Экран: схема стойломест -->
   <div id="stall-map-screen" class="screen stall-map-screen">
-    <h1>▦ Схема стойломест</h1>
+    <h1>Схема стойломест</h1>
     <div id="stallMapYardSummary" class="stall-map-yard-summary">
       <span id="stallMapUnassignedCount" class="stall-map-unassigned-count">Не на стойломестах: —</span>
       <button type="button" id="stallMapCreateYardBtn" class="small-btn stall-map-create-yard-btn">Создать двор</button>
@@ -663,19 +680,19 @@
     <div class="stall-map-extra-actions">
       <button type="button" class="small-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">Инвентаризация</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: инвентаризация стойломест -->
   <div id="stall-inventory-screen" class="screen stall-inventory-screen">
-    <h1>☑ Инвентаризация стойломест</h1>
+    <h1>Инвентаризация стойломест</h1>
     <div class="stall-inventory-tabs" role="tablist">
       <button type="button" class="stall-inventory-tab active" data-tab="print" role="tab">Опись</button>
       <button type="button" class="stall-inventory-tab" data-tab="check" role="tab">Сверка</button>
       <button type="button" class="stall-inventory-tab" data-tab="result" role="tab">Результат</button>
     </div>
     <div id="stallInventoryContent" class="stall-inventory-content"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <div id="stallMapCreateYardModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
@@ -728,8 +745,7 @@
   <div id="view-screen" class="screen view-screen">
     <!-- Верхний блок: закреплён при прокрутке списка -->
     <div class="view-screen-header">
-      <button onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button view-screen-back">Назад в меню</button>
-      <h1>📋 Список всех животных</h1>
+      <h1>Список всех животных</h1>
       <button type="button" class="small-btn" id="viewEditorModeBtn" title="Включить редактирование полей прямо в списке">✎ Режим редактора</button>
       <button type="button" class="small-btn" id="viewFieldsSettingsBtn">Настройка полей</button>
       <div id="search-filter-container" class="search-filter-container"></div>
@@ -737,38 +753,39 @@
     </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
     <button type="button" id="viewScrollToTopBtn" class="scroll-to-top-btn" aria-label="Вверх" style="display: none;">↑ Вверх</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран просмотра карточки животного -->
   <div id="view-cow-screen" class="screen view-cow-screen">
     <div class="view-cow-header">
-      <button onclick="typeof window.viewCowBack === 'function' && window.viewCowBack()" class="back-button view-cow-back">← Назад</button>
-      <h1>🔍 Просмотр животного</h1>
+      <h1>Просмотр животного</h1>
     </div>
     <div id="viewCowCard" class="view-cow-body"></div>
+    <button type="button" onclick="typeof window.viewCowBack === 'function' && window.viewCowBack()" class="back-button view-cow-back">Назад</button>
   </div>
 
   <!-- Экран «Все осеменения» -->
   <div id="all-inseminations-screen" class="screen">
     <div class="view-screen-header">
-      <button onclick="typeof window.navigateBackOrFallback === 'function' && window.navigateBackOrFallback()" class="back-button">Назад в меню</button>
-      <h1>📑 Все осеменения</h1>
+      <h1>Все осеменения</h1>
     </div>
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- ========== Уведомления, планы, аналитика ========== -->
   <div id="notifications-screen" class="screen">
     <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span> Уведомления</h1>
     <div id="notification-center-container"></div>
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран списка задач -->
   <div id="tasks-screen" class="screen">
     <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg></span> Список задач</h1>
     <div id="tasksScreenContainer" class="tasks-screen-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('lists')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран аналитики -->
@@ -807,7 +824,7 @@
       </div>
       <div id="endometritisDmgResults" style="margin-top: 10px;"></div>
     </div>
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран интервального анализа -->
@@ -816,7 +833,7 @@
     <p class="analytics-interval-intro">Распределение интервалов между осеменениями (внутри одной лактации). Телки — лактация 0.</p>
     <div id="intervalAnalysisFilter" class="analytics-interval-filter"></div>
     <div id="intervalAnalysisTable" class="analytics-interval-table-wrapper"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран «Воспроизводство»: оплодотворяемость за период -->
@@ -826,7 +843,7 @@
     <div id="reproductionFilters" class="analytics-interval-filter"></div>
     <div id="reproductionIndicators" class="analytics-indicators"></div>
     <div id="reproductionTable" class="analytics-interval-table-wrapper"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
@@ -966,9 +983,9 @@
   </div>
 
   <div id="protocols-screen" class="screen">
-    <h1>📋 Протоколы синхронизации</h1>
+    <h1>Протоколы синхронизации</h1>
     <div id="protocols-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('farm-settings')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Справка: диагностика консоли (Electron) -->
@@ -985,12 +1002,12 @@
     </div>
     <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
     <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
-    <h1>🔄 Синхронизация</h1>
+    <h1>Синхронизация</h1>
     <!-- Блок когда сервер ещё не подключён -->
     <div id="sync-connect-block" class="sync-server-section">
       <div class="sync-section sync-connect-url-section">
@@ -1087,7 +1104,7 @@
       <div id="sync-backup-container"></div>
     </div>
     <div id="syncStatus" class="sync-status"></div>
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Подключение скриптов в правильном порядке -->

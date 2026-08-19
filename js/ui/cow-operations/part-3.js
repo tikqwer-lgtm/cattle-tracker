@@ -214,7 +214,7 @@ function saveUziEntry() {
     }
   }
   if (!result) {
-    if (typeof showToast === 'function') showToast('Выберите результат (Не стельная / Стельная)', 'error'); else alert('Выберите результат');
+        if (typeof showToast === 'function') showToast('Выберите результат (Не стельная / Стельная / Сомнительная)', 'error'); else alert('Выберите результат');
     return;
   }
 

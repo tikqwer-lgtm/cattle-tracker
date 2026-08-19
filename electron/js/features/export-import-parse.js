@@ -70,7 +70,7 @@ function separateCattleIdAndDate(value) {
 }
 
 /**
- * Нормализует результат проверки на стельность для uziHistory (Стельная / Не стельная)
+ * Нормализует результат проверки на стельность для uziHistory (Стельная / Не стельная / Сомнительная)
  */
 function normalizePregnancyCheckResult(raw) {
   if (!raw || typeof raw !== 'string') return '';
@@ -78,6 +78,7 @@ function normalizePregnancyCheckResult(raw) {
   if (!s) return '';
   if (s === 'ст' || s === 'стел' || s === 'стельная' || s === 'стел.' || s === 'да') return 'Стельная';
   if (s === 'не стел' || s === 'нестельная' || s === 'яловая' || s === 'ял' || s === 'нет' || s === 'холостая') return 'Не стельная';
+  if (s === 'сомнительная' || s === 'сомн' || s === 'сомн.' || s === 'сомнит') return 'Сомнительная';
   return raw.trim();
 }
 

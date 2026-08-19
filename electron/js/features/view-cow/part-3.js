@@ -111,7 +111,6 @@ function viewCowBack() {
     navigate(returnTo);
     return;
   }
-  if (typeof navigateBack === 'function' && navigateBack()) return;
   if (typeof navigate === 'function') navigate('view');
 }
 

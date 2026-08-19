@@ -1,6 +1,6 @@
   <!-- ========== Форма добавления/редактирования животного ========== -->
   <div id="add-screen" class="screen">
-    <h1 id="addScreenTitle" aria-live="polite">➕ Добавить корову</h1>
+    <h1 id="addScreenTitle" aria-live="polite">Добавить животное</h1>
     <form class="form form-cow-editor-wrap" onsubmit="saveCurrentEntry(); return false;">
       <fieldset class="form-cow-section">
         <legend>Основные данные</legend>
@@ -88,12 +88,12 @@
       </div>
     </form>
 
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button" aria-label="Назад в меню">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button" aria-label="Назад">Назад</button>
   </div>
 
   <!-- Экран: схема стойломест -->
   <div id="stall-map-screen" class="screen stall-map-screen">
-    <h1>▦ Схема стойломест</h1>
+    <h1>Схема стойломест</h1>
     <div id="stallMapYardSummary" class="stall-map-yard-summary">
       <span id="stallMapUnassignedCount" class="stall-map-unassigned-count">Не на стойломестах: —</span>
       <button type="button" id="stallMapCreateYardBtn" class="small-btn stall-map-create-yard-btn">Создать двор</button>
@@ -113,19 +113,19 @@
     <div class="stall-map-extra-actions">
       <button type="button" class="small-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">Инвентаризация</button>
     </div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: инвентаризация стойломест -->
   <div id="stall-inventory-screen" class="screen stall-inventory-screen">
-    <h1>☑ Инвентаризация стойломест</h1>
+    <h1>Инвентаризация стойломест</h1>
     <div class="stall-inventory-tabs" role="tablist">
       <button type="button" class="stall-inventory-tab active" data-tab="print" role="tab">Опись</button>
       <button type="button" class="stall-inventory-tab" data-tab="check" role="tab">Сверка</button>
       <button type="button" class="stall-inventory-tab" data-tab="result" role="tab">Результат</button>
     </div>
     <div id="stallInventoryContent" class="stall-inventory-content"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад в меню</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <div id="stallMapCreateYardModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">

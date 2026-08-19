@@ -1,3 +1,4 @@
+import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../ui/month-nav.js';
 /** __notif part 2 */
 (function () {
   'use strict';
@@ -163,7 +164,13 @@
     if (!containerEl) return;
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    if (!fromDate && !toDate) { fromDate = todayStr; toDate = todayStr; }
+    if (containerEl._tasksYear == null) containerEl._tasksYear = today.getFullYear();
+    if (containerEl._tasksMonth == null) containerEl._tasksMonth = today.getMonth();
+    if (!fromDate && !toDate) {
+      var bounds0 = monthBounds(containerEl._tasksYear, containerEl._tasksMonth);
+      fromDate = bounds0.from;
+      toDate = bounds0.to;
+    }
     var tasks = getProtocolTasks(fromDate, toDate);
     var byDate = {};
     tasks.forEach(function (t) {
@@ -172,16 +179,14 @@
     });
     var dates = Object.keys(byDate).sort();
     var html = '<div class="tasks-list-block">';
-    html += '<h4 class="tasks-list-title">Список задач (инъекции по протоколам)</h4>';
+    html += monthNavHtml({ prev: 'tasksMonthPrev', next: 'tasksMonthNext', label: 'tasksMonthLabel' });
     html += '<div class="tasks-period">';
     html += '<button type="button" class="small-btn tasks-period-btn" data-range="today">Сегодня</button>';
     html += '<button type="button" class="small-btn tasks-period-btn" data-range="tomorrow">Завтра</button>';
-    html += '<button type="button" class="small-btn tasks-period-btn" data-range="week">Неделя вперёд</button>';
-    html += '<label>С <input type="date" id="tasksDateFrom" class="tasks-date-input" value="' + (fromDate || '') + '" /></label>';
-    html += '<label>По <input type="date" id="tasksDateTo" class="tasks-date-input" value="' + (toDate || '') + '" /></label>';
+    html += '<button type="button" class="small-btn tasks-period-btn" data-range="week">Неделя</button>';
     html += '</div>';
     var tasksPrintHtml = (typeof window.isMobile === 'function' && window.isMobile()) ? '' : '<button type="button" class="small-btn" id="tasksPrintBtn">Печать</button>';
-    html += '<div class="tasks-list-actions">' + tasksPrintHtml + '<button type="button" class="small-btn" id="tasksExcelBtn">Экспорт в Excel</button></div>';
+    html += '<div class="list-actions list-actions-inline">' + tasksPrintHtml + '<button type="button" class="small-btn" id="tasksExcelBtn">Экспорт в Excel</button></div>';
     if (dates.length === 0) {
       html += '<p class="tasks-empty">Нет задач на выбранный период.</p>';
     } else {
@@ -205,12 +210,16 @@
     }
     html += '</div>';
     containerEl.innerHTML = html;
+    var monthLabelEl = containerEl.querySelector('#tasksMonthLabel');
+    if (monthLabelEl) monthLabelEl.textContent = formatMonthLabel(containerEl._tasksYear, containerEl._tasksMonth);
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     function applyRange(range) {
       var from = '';
       var to = '';
       if (range === 'today') {
         from = to = todayStr;
+        containerEl._tasksYear = today.getFullYear();
+        containerEl._tasksMonth = today.getMonth();
       } else if (range === 'tomorrow') {
         var t2 = new Date(today);
         t2.setDate(t2.getDate() + 1);
@@ -221,24 +230,28 @@
         t7.setDate(t7.getDate() + 7);
         to = t7.getFullYear() + '-' + String(t7.getMonth() + 1).padStart(2, '0') + '-' + String(t7.getDate()).padStart(2, '0');
       }
-      var fromEl = document.getElementById('tasksDateFrom');
-      var toEl = document.getElementById('tasksDateTo');
-      if (fromEl) fromEl.value = from;
-      if (toEl) toEl.value = to;
       renderTasksList(containerEl, from || undefined, to || undefined);
     }
     containerEl.querySelectorAll('.tasks-period-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        globalThis['__notif'].applyRange(btn.getAttribute('data-range'));
+        applyRange(btn.getAttribute('data-range'));
       });
     });
-    var fromInput = document.getElementById('tasksDateFrom');
-    var toInput = document.getElementById('tasksDateTo');
-    if (fromInput) fromInput.addEventListener('change', function () {
-      renderTasksList(containerEl, fromInput.value || undefined, toInput ? toInput.value : undefined);
+    var prevBtn = containerEl.querySelector('#tasksMonthPrev');
+    var nextBtn = containerEl.querySelector('#tasksMonthNext');
+    if (prevBtn) prevBtn.addEventListener('click', function () {
+      var n = shiftMonth(containerEl._tasksYear, containerEl._tasksMonth, -1);
+      containerEl._tasksYear = n.year;
+      containerEl._tasksMonth = n.month;
+      var b = monthBounds(n.year, n.month);
+      renderTasksList(containerEl, b.from, b.to);
     });
-    if (toInput) toInput.addEventListener('change', function () {
-      renderTasksList(containerEl, fromInput ? fromInput.value : undefined, toInput.value || undefined);
+    if (nextBtn) nextBtn.addEventListener('click', function () {
+      var n = shiftMonth(containerEl._tasksYear, containerEl._tasksMonth, 1);
+      containerEl._tasksYear = n.year;
+      containerEl._tasksMonth = n.month;
+      var b = monthBounds(n.year, n.month);
+      renderTasksList(containerEl, b.from, b.to);
     });
     var printBtn = document.getElementById('tasksPrintBtn');
     if (printBtn) {
@@ -248,9 +261,7 @@
     }
     var excelBtn = document.getElementById('tasksExcelBtn');
     if (excelBtn) excelBtn.addEventListener('click', function () {
-      var from = (fromInput && fromInput.value) || todayStr;
-      var to = (toInput && toInput.value) || todayStr;
-      var taskList = getProtocolTasks(from, to);
+      var taskList = getProtocolTasks(fromDate, toDate);
       if (typeof global.exportListToExcel === 'function') global.exportListToExcel('Список_задач', taskList, ['date', 'cattleId', 'group', 'drug', 'protocolName'], ['Дата', 'Номер животного', 'Группа', 'Препарат/инъекция', 'Протокол']);
     });
   }

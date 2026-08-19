@@ -66,11 +66,28 @@
   max-width: 420px;
   margin-inline: auto;
 }
-.lists-buttons .action-btn {
+.lists-buttons .action-btn,
+.lists-hub-btn {
   width: 100%;
   min-height: 48px;
   padding: 0.5rem 0.75rem;
   font-size: 0.95rem;
+  text-align: center;
+  border: 1px solid var(--color-primary-border, #ccc);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text);
+  cursor: pointer;
+}
+#events-screen {
+  padding: 0 16px;
+}
+.events-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
 }
 .lists-sub-container { margin-top: 1rem; }
 .list-sub-header { margin-bottom: 1rem; }

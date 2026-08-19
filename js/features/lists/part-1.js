@@ -1,3 +1,4 @@
+import { formatMonthLabel, shiftMonth, snapshotDateForMonth, monthNavHtml } from '../../ui/month-nav.js';
 /** __lists part 1 */
 (function () {
   'use strict';
@@ -186,10 +187,10 @@ function dateOnly(d) {
     var hideCalving = typeof getUiRole === 'function' && getUiRole() === 'service';
     container.innerHTML =
       '<div class="lists-buttons">' +
-      '<button type="button" class="action-btn" data-list="uzi">🩺 УЗИ</button>' +
-      '<button type="button" class="action-btn" data-list="insemination">🐄 Осеменение</button>' +
-      (hideCalving ? '' : '<button type="button" class="action-btn" data-list="calving">🐄 Отёлы</button>') +
-      '<button type="button" class="action-btn" data-list="tasks">📋 Список задач на дату</button>' +
+      '<button type="button" class="lists-hub-btn" data-list="uzi">УЗИ</button>' +
+      '<button type="button" class="lists-hub-btn" data-list="insemination">Осеменение</button>' +
+      (hideCalving ? '' : '<button type="button" class="lists-hub-btn" data-list="calving">Отёлы</button>') +
+      '<button type="button" class="lists-hub-btn" data-list="tasks">Список задач на дату</button>' +
       '</div>';
     container.querySelectorAll('.lists-buttons button').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -246,11 +247,10 @@ function dateOnly(d) {
 
   function renderUziListSubScreen(sub) {
     var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var html = '<div class="list-sub-header"><h3>Список на УЗИ</h3>' +
-      '<div class="list-filters">' +
-      '<label>Дата <input type="date" id="uziListDate" value="' + escapeHtml(todayStr) + '" /></label>' +
-      '</div>' +
+    if (sub._uziYear == null) sub._uziYear = today.getFullYear();
+    if (sub._uziMonth == null) sub._uziMonth = today.getMonth();
+    var html = '<div class="list-sub-header">' +
+      monthNavHtml({ prev: 'uziListPrev', next: 'uziListNext', label: 'uziListMonthLabel' }) +
       '<div id="uziListLactationFilter" class="list-filters list-filters-lactation"></div>' +
       '<div class="list-actions list-actions-inline">' +
       '<button type="button" class="small-btn" id="uziListRefresh">Обновить</button>' +
@@ -261,8 +261,9 @@ function dateOnly(d) {
     sub.innerHTML = html;
     sub._activeRefresh = null;
     function refresh() {
-      var dateEl = sub.querySelector('#uziListDate');
-      var dateStr = (dateEl && dateEl.value) ? dateEl.value : todayStr;
+      var dateStr = snapshotDateForMonth(sub._uziYear, sub._uziMonth, new Date());
+      var labelEl = sub.querySelector('#uziListMonthLabel');
+      if (labelEl) labelEl.textContent = formatMonthLabel(sub._uziYear, sub._uziMonth);
       var fullRows = getUziList(dateStr);
       var lactFilterEl = sub.querySelector('#uziListLactationFilter');
       var wrap = sub.querySelector('#uzi-list-table-wrap');
@@ -403,8 +404,20 @@ function dateOnly(d) {
     refresh();
     var refreshBtn = sub.querySelector('#uziListRefresh');
     if (refreshBtn) refreshBtn.addEventListener('click', function () { if (sub._activeRefresh) sub._activeRefresh(); });
-    var dateInput = sub.querySelector('#uziListDate');
-    if (dateInput) dateInput.addEventListener('change', refresh);
+    var prevBtn = sub.querySelector('#uziListPrev');
+    var nextBtn = sub.querySelector('#uziListNext');
+    if (prevBtn) prevBtn.addEventListener('click', function () {
+      var n = shiftMonth(sub._uziYear, sub._uziMonth, -1);
+      sub._uziYear = n.year;
+      sub._uziMonth = n.month;
+      refresh();
+    });
+    if (nextBtn) nextBtn.addEventListener('click', function () {
+      var n = shiftMonth(sub._uziYear, sub._uziMonth, 1);
+      sub._uziYear = n.year;
+      sub._uziMonth = n.month;
+      refresh();
+    });
     var printBtn = sub.querySelector('#uziListPrint');
     if (printBtn) printBtn.addEventListener('click', function () {
       var wrap = sub.querySelector('#uzi-list-table-wrap');

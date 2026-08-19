@@ -5,8 +5,6 @@
   var NS = root['__stallInv'] = root['__stallInv'] || {};
   var global = typeof window !== 'undefined' ? window : this;
 
-var _inventoryLayout = { yards: {} };
-var _inventoryYardCells = [];
 var _inventoryAssignPollTimer = null;
 var _inventoryAssignPollLast = '';
 
@@ -70,7 +68,7 @@ function invLoadSession() {
 
 function invClearSession() {
   globalThis['__stallInv'].state._inventorySession = null;
-  _inventoryYardCells = [];
+  NS.state._inventoryYardCells = [];
   try { sessionStorage.removeItem(invSessionKey()); } catch (e) {}
 }
 
@@ -187,7 +185,7 @@ function invBuildUnassignedTableHtml(unassigned, withStallCol) {
 }
 
 function invRenderPrintTab(host) {
-  var layout = _inventoryLayout;
+  var layout = NS.state._inventoryLayout;
   var keys = invYardKeys(layout);
   if (!keys.length) {
     host.innerHTML = '<p class="stall-inventory-muted">Сначала создайте двор на <button type="button" class="link-btn" id="stallInvGoMap">схеме стойломест</button>.</p>';
@@ -226,7 +224,7 @@ function invRenderPrintTab(host) {
     }
   }
 
-  globalThis['__stallInv'].refreshPrint();
+  refreshPrint();
   var yardEl = host.querySelector('#stallInvPrintYard');
   if (yardEl) yardEl.addEventListener('change', refreshPrint);
   var printBtn = host.querySelector('#stallInvPrintBtn');
@@ -246,14 +244,14 @@ function invRenderPrintTab(host) {
 
 function invPrepareYardCells() {
   if (!globalThis['__stallInv'].state._inventorySession) return;
-  _inventoryYardCells = buildYardCells(_inventoryLayout, globalThis['__stallInv'].state._inventorySession.yardKey, globalThis['__stallInv'].state._inventorySession.expectedSnapshot);
+  NS.state._inventoryYardCells = buildYardCells(NS.state._inventoryLayout, globalThis['__stallInv'].state._inventorySession.yardKey, globalThis['__stallInv'].state._inventorySession.expectedSnapshot);
 }
 
 function invCurrentCell() {
-  if (!globalThis['__stallInv'].state._inventorySession || !_inventoryYardCells.length) return null;
+  if (!globalThis['__stallInv'].state._inventorySession || !NS.state._inventoryYardCells.length) return null;
   var idx = globalThis['__stallInv'].state._inventorySession.currentCellIndex || 0;
-  if (idx < 0 || idx >= _inventoryYardCells.length) return null;
-  return _inventoryYardCells[idx];
+  if (idx < 0 || idx >= NS.state._inventoryYardCells.length) return null;
+  return NS.state._inventoryYardCells[idx];
 }
 
 function invCellAlreadyChecked(cell) {

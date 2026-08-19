@@ -147,7 +147,7 @@ function invCreateNewAnimalCards(newAnimals) {
 function invAdvanceAfterCellCheck() {
   if (!globalThis['__stallInv'].state._inventorySession) return;
   globalThis['__stallInv'].state._inventorySession.currentCellIndex = (globalThis['__stallInv'].state._inventorySession.currentCellIndex || 0) + 1;
-  if (globalThis['__stallInv'].state._inventorySession.currentCellIndex >= _inventoryYardCells.length) {
+  if (globalThis['__stallInv'].state._inventorySession.currentCellIndex >= NS.state._inventoryYardCells.length) {
     globalThis['__stallInv'].state._inventorySession.phase = 'unassigned';
     globalThis['__stallInv'].state._inventorySession.currentCellIndex = 0;
   }
@@ -165,7 +165,7 @@ function invFinishCheckComplete() {
 
 function invFinishCheckEarly() {
   if (!globalThis['__stallInv'].state._inventorySession) return;
-  var progress = getInventoryProgress(globalThis['__stallInv'].state._inventorySession, _inventoryYardCells);
+  var progress = getInventoryProgress(globalThis['__stallInv'].state._inventorySession, NS.state._inventoryYardCells);
   var msg = 'Завершить сверку досрочно?\n\n' +
     'Проверено стойломест: ' + progress.cellsChecked + ' из ' + progress.cellsTotal + '.\n' +
     'Без места: ' + progress.unassignedChecked + ' из ' + progress.unassignedTotal + '.\n\n' +
@@ -207,7 +207,7 @@ function invRenderCellCheck(host) {
     return;
   }
   var idx = globalThis['__stallInv'].state._inventorySession.currentCellIndex || 0;
-  var total = _inventoryYardCells.length;
+  var total = NS.state._inventoryYardCells.length;
   var exp = cell.expected;
   var expText = exp
     ? (globalThis['__stallInv'].invEscapeHtml(exp.cattleId) + (exp.nickname ? ' — ' + globalThis['__stallInv'].invEscapeHtml(exp.nickname) : ''))

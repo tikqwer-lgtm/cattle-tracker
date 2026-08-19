@@ -1,7 +1,7 @@
   <div id="protocols-screen" class="screen">
-    <h1>📋 Протоколы синхронизации</h1>
+    <h1>Протоколы синхронизации</h1>
     <div id="protocols-container"></div>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('farm-settings')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Справка: диагностика консоли (Electron) -->
@@ -18,12 +18,12 @@
     </div>
     <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
     <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('submenu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
-    <h1>🔄 Синхронизация</h1>
+    <h1>Синхронизация</h1>
     <!-- Блок когда сервер ещё не подключён -->
     <div id="sync-connect-block" class="sync-server-section">
       <div class="sync-section sync-connect-url-section">
@@ -120,5 +120,5 @@
       <div id="sync-backup-container"></div>
     </div>
     <div id="syncStatus" class="sync-status"></div>
-    <button onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>

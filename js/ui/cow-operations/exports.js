@@ -24,6 +24,7 @@ if (typeof window !== 'undefined') {
   window.initCalvingScreen = SM.initCalvingScreen;
   window.initProtocolAssignScreen = SM.initProtocolAssignScreen;
   window.initAbortScreen = SM.initAbortScreen;
+  window.cancelEdit = SM.cancelEdit;
 }
 
 // Экспорт функций

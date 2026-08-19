@@ -297,7 +297,7 @@ function viewCow(cattleId) {
   }
   actionRow +=
     '<button type="button" onclick="openViewCowActionHistory(\'' + safeCattleId + '\');" class="small-btn" aria-label="История действий">📜 История</button> ' +
-    '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">← Назад</button>';
+    '<button type="button" onclick="if(window.viewCowBack)window.viewCowBack()" class="small-btn cow-card-back" aria-label="Назад">Назад</button>';
 
   card.innerHTML =
     '<div class="cow-card">' +

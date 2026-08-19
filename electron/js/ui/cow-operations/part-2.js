@@ -309,7 +309,8 @@ function applyUziToEntry(entry, payload) {
     daysFromInsemination: daysNum
   });
   if (result === 'Стельная') entry.status = 'Стельная';
-  if (result === 'Не стельная') entry.status = 'Холостая';
+  else if (result === 'Не стельная') entry.status = 'Холостая';
+  /* Сомнительная: статус карточки не меняем (остаётся Осемененная). */
   entry.synced = false;
   var lastRec = entry.uziHistory[entry.uziHistory.length - 1];
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');

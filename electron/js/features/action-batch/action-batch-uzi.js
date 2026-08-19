@@ -79,6 +79,7 @@
       '<select id="uziEditResult" class="action-batch-modal-input">' +
       '<option value="Стельная"' + (r.result === 'Стельная' ? ' selected' : '') + '>Стельная</option>' +
       '<option value="Не стельная"' + (r.result === 'Не стельная' ? ' selected' : '') + '>Не стельная</option>' +
+      '<option value="Сомнительная"' + (r.result === 'Сомнительная' ? ' selected' : '') + '>Сомнительная</option>' +
       '</select></label>' +
       '<label class="action-batch-modal-label">Дней от осеменения (пусто — авто)<br>' +
       '<input type="number" id="uziEditDays" class="action-batch-modal-input" value="' + (defDays !== '' && defDays != null ? escapeHtml(String(defDays)) : '') + '" placeholder="Авто" /></label>' +
@@ -119,6 +120,7 @@
       '<div class="action-batch-modal-actions action-batch-modal-actions--stack">' +
       '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziPickPregnant">Стельная</button>' +
       '<button type="button" class="action-batch-btn" id="uziPickOpen">Не стельная</button>' +
+      '<button type="button" class="action-batch-btn" id="uziPickDoubtful">Сомнительная</button>' +
       '<button type="button" class="action-batch-btn" id="uziPickCancel">Отмена</button>' +
       '</div>'
     );
@@ -159,6 +161,7 @@
     }
     document.getElementById('uziPickPregnant').addEventListener('click', function () { pick('Стельная'); });
     document.getElementById('uziPickOpen').addEventListener('click', function () { pick('Не стельная'); });
+    document.getElementById('uziPickDoubtful').addEventListener('click', function () { pick('Сомнительная'); });
     document.getElementById('uziPickCancel').addEventListener('click', function () { pick(null); });
   }
 

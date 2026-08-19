@@ -87,7 +87,7 @@ function invRenderUnassignedCheck(host) {
 }
 
 function invRenderCheckStart(host) {
-  var layout = _inventoryLayout;
+  var layout = NS.state._inventoryLayout;
   var keys = globalThis['__stallInv'].invYardKeys(layout);
   var saved = globalThis['__stallInv'].invLoadSession();
   var resumeHtml = saved
@@ -183,10 +183,10 @@ function invRenderResultTab(host) {
     return;
   }
   var result = computeInventoryResult(globalThis['__stallInv'].state._inventorySession, globalThis['__stallInv'].state._inventorySession.expectedSnapshot, {
-    layout: _inventoryLayout,
-    yardCells: _inventoryYardCells
+    layout: NS.state._inventoryLayout,
+    yardCells: NS.state._inventoryYardCells
   });
-  var progress = result.progress || getInventoryProgress(globalThis['__stallInv'].state._inventorySession, _inventoryYardCells);
+  var progress = result.progress || getInventoryProgress(globalThis['__stallInv'].state._inventorySession, NS.state._inventoryYardCells);
   var applyBtn = globalThis['__stallInv'].invIsViewer()
     ? ''
     : '<button type="button" class="action-btn" id="stallInvApplyBtn">Применить места по результатам</button>';

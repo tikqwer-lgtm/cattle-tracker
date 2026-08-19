@@ -6,9 +6,11 @@
   var global = root;
   if (!NS.state) {
     NS.state = {};
-    NS.state.INVENTORY_SESSION_PREFIX = 'cattleTracker_stallInventory_';;
-    NS.state._inventoryTab = 'print';;
-    NS.state._inventorySession = null;;
+    NS.state.INVENTORY_SESSION_PREFIX = 'cattleTracker_stallInventory_';
+    NS.state._inventoryTab = 'print';
+    NS.state._inventorySession = null;
+    NS.state._inventoryLayout = { yards: {} };
+    NS.state._inventoryYardCells = [];
   }
 })();
 export {};

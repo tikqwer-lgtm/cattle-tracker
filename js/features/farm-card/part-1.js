@@ -237,7 +237,20 @@
       reminderAt: raw.reminderAt != null ? String(raw.reminderAt) : '',
       completed: !!raw.completed,
       notifyLocal: raw.notifyLocal !== false,
-      attachments: attachments
+      attachments: attachments,
+      reportItems: Array.isArray(raw.reportItems)
+        ? raw.reportItems
+            .map(function (it) {
+              if (!it || typeof it !== 'object') return null;
+              return {
+                cattleId: it.cattleId != null ? String(it.cattleId) : '',
+                action: it.action != null ? String(it.action) : '',
+                details: it.details != null ? String(it.details) : '',
+                workDate: it.workDate != null ? String(it.workDate) : ''
+              };
+            })
+            .filter(Boolean)
+        : []
     };
   }
 
@@ -864,7 +877,8 @@
     visit: 'Посещение',
     work: 'Работа',
     plan: 'План развития',
-    info: 'Информация'
+    info: 'Информация',
+    service_report: 'Отчёт специалиста'
   };
 
   var EV_FILE_MAX_BYTES = 1.5 * 1024 * 1024;
@@ -2136,7 +2150,11 @@
         return (
           '<tr data-ev-id="' +
           escapeHtml(evId) +
-          '"><td>' +
+          '" data-ev-type="' +
+          escapeHtml(e.eventType || '') +
+          '"' +
+          (e.eventType === 'service_report' ? ' class="farm-card-ev-report"' : '') +
+          '><td>' +
           escapeHtml(e.eventDate || '—') +
           '</td><td>' +
           escapeHtml(evTypeLabels[e.eventType] || e.eventType || '—') +
@@ -2193,7 +2211,8 @@
       ? '<div class="farm-card-actions-row">' +
         '<button type="button" class="action-btn" id="farmCardOpenEvFormBtn">' +
         (_timelineFormOpen ? 'Скрыть форму' : 'Добавить запись') +
-        '</button></div>' +
+        '</button>' +
+        '<button type="button" class="action-btn" id="farmCardServiceReportBtn">Сформировать отчёт</button></div>' +
         timelineTableHtml +
         '<div class="farm-card-form farm-card-ev-add-form" id="farmCardEvAddForm" style="' +
         (_timelineFormOpen ? '' : 'display:none') +
@@ -2326,6 +2345,20 @@
       });
     });
 
+    root.querySelectorAll('tr.farm-card-ev-report').forEach(function (tr) {
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.farm-card-ev-del')) return;
+        var id = tr.getAttribute('data-ev-id');
+        var found = (window.__farmCardBundle && window.__farmCardBundle.events || []).filter(function (e) {
+          return e && e.id === id;
+        })[0];
+        if (found && typeof window.openServiceReportViewer === 'function') {
+          window.openServiceReportViewer(found);
+        }
+      });
+    });
+
     if (canWriteEvents) {
       var openEvForm = document.getElementById('farmCardOpenEvFormBtn');
       if (openEvForm) {
@@ -2350,6 +2383,12 @@
               if (titleEl) titleEl.focus();
             }, 40);
           }
+        };
+      }
+      var reportBtn = document.getElementById('farmCardServiceReportBtn');
+      if (reportBtn) {
+        reportBtn.onclick = function () {
+          if (typeof window.openServiceWorkReportForm === 'function') window.openServiceWorkReportForm();
         };
       }
       var cancelEvForm = document.getElementById('farmCardCancelEvFormBtn');

@@ -5,7 +5,7 @@
 }
 
 .form-actions {
-  @apply mt-5 flex justify-end gap-2.5;
+  @apply mt-5 flex flex-wrap justify-end gap-2.5;
 }
 
 .form-actions button {
@@ -16,11 +16,13 @@
   @apply bg-primary text-white;
 }
 
-#cancelButton {
+#cancelButton,
+#clearFormButton {
   @apply bg-[#999] text-white;
 }
 
 #cancelButton:hover,
+#clearFormButton:hover,
 .back-button:hover {
   @apply bg-[#777];
 }
@@ -106,7 +108,7 @@
   @apply px-2 text-base font-semibold;
 }
 .form-cow-editor-wrap .form-actions {
-  @apply mt-4 mb-0;
+  @apply mt-4 mb-0 flex-wrap;
 }
 
 @media (max-width: 640px) {

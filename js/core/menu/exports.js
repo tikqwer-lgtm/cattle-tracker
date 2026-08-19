@@ -8,6 +8,7 @@ if (typeof window !== 'undefined') {
   window.initMenuCalvingForecast = SM.initMenuCalvingForecast;
   window.navigate = SM.navigate;
   window.navigateBack = SM.navigateBack;
+  window.navigateToParent = SM.navigateToParent;
   window.navigateBackOrFallback = SM.navigateBackOrFallback;
   window.getCurrentScreenId = SM.getCurrentScreenId;
   window.navigateToSubmenu = SM.navigateToSubmenu;
@@ -23,7 +24,7 @@ if (typeof window !== 'undefined') {
       window.viewCowBack();
       return;
     }
-    if (SM.navigateBack()) return;
+    if (SM.navigateToParent && SM.navigateToParent()) return;
     if (_backExitPending) {
       try {
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {

@@ -37,6 +37,19 @@
       </div>
     </div>
 
+    <div class="herd-stats service-herd-stats" id="serviceHerdStats" hidden>
+      <label class="service-dash-mode-wrap" for="serviceDashMode">
+        <span class="service-dash-mode-label">Срез показателей</span>
+        <select id="serviceDashMode" class="service-dash-mode" aria-label="Срез показателей дашборда">
+          <option value="me_object">Я на этом хозяйстве</option>
+          <option value="me_all">Я по всем объектам</option>
+          <option value="compare_object_vs_all">Сравнение: хозяйство / все мои объекты</option>
+          <option value="compare_me_vs_farm">Сравнение: я / все на хозяйстве</option>
+        </select>
+      </label>
+      <div id="serviceDashColumns" class="service-dash-columns" aria-live="polite"></div>
+    </div>
+
     <div class="menu-calving-forecast" id="menuCalvingForecast" aria-label="Отёлы за месяц">
       <p class="menu-calving-forecast-title">Отёлы за месяц</p>
       <div class="menu-calving-header">
@@ -71,6 +84,10 @@
         </span>
         <span class="menu-notifications-badge" id="menuNotificationsBadge" style="display: none;"></span>
       </button>
+    </div>
+
+    <div id="serviceReportHubWrap" class="menu-notifications" hidden>
+      <button type="button" class="menu-notifications-toggle" id="serviceReportHubBtn">Сформировать отчёт</button>
     </div>
 
     <div class="action-buttons">
@@ -112,5 +129,5 @@
       </div>
     </div>
 
-    <button type="button" onclick="typeof window.navigate === 'function' && window.navigate('menu')" class="back-button">Назад</button>
+    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>

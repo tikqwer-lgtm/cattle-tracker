@@ -1,3 +1,4 @@
+import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../ui/month-nav.js';
 /** __lists part 2 */
 (function () {
   'use strict';
@@ -58,12 +59,8 @@
     sub._calvingMonth = view.month;
     persistCalvingListView(sub);
     var printBtnHtml = globalThis['__lists'].listPrintButtonHtml('calvingListPrint');
-    var html = '<div class="list-sub-header"><h3>Отёлы за месяц</h3>' +
-      '<div class="menu-calving-header list-calving-month-nav">' +
-      '<button type="button" id="calvingListPrev" class="menu-calving-nav-btn" aria-label="Предыдущий месяц">‹</button>' +
-      '<span id="calvingListMonthLabel" class="menu-calving-month-label">—</span>' +
-      '<button type="button" id="calvingListNext" class="menu-calving-nav-btn" aria-label="Следующий месяц">›</button>' +
-      '</div>' +
+    var html = '<div class="list-sub-header">' +
+      monthNavHtml({ prev: 'calvingListPrev', next: 'calvingListNext', label: 'calvingListMonthLabel' }) +
       '<div class="list-actions list-actions-inline">' +
       '<button type="button" class="small-btn" id="calvingListRefresh">Обновить</button>' +
       printBtnHtml +
@@ -77,7 +74,7 @@
       var year = sub._calvingYear;
       var month = sub._calvingMonth;
       var labelEl = sub.querySelector('#calvingListMonthLabel');
-      if (labelEl) labelEl.textContent = formatCalvingMonthLabel(year, month);
+      if (labelEl) labelEl.textContent = formatMonthLabel(year, month);
       var list = (typeof getVisibleEntries === 'function') ? getVisibleEntries(global.entries || []) : (global.entries || []);
       var getStats = (typeof window !== 'undefined' && typeof window.getCalvingStatsForMonth === 'function')
         ? window.getCalvingStatsForMonth
@@ -89,7 +86,7 @@
       var wrap = sub.querySelector('#calving-list-table-wrap');
       if (!wrap) return;
       sub._calvingStats = stats;
-      sub._calvingMonthLabel = formatCalvingMonthLabel(year, month);
+      sub._calvingMonthLabel = formatMonthLabel(year, month);
       var rows = stats.rows || [];
 
       if (!rows.length) {
@@ -135,16 +132,18 @@
     var nextBtn = sub.querySelector('#calvingListNext');
     if (prevBtn) {
       prevBtn.addEventListener('click', function () {
-        sub._calvingMonth -= 1;
-        if (sub._calvingMonth < 0) { sub._calvingMonth = 11; sub._calvingYear -= 1; }
+        var n = shiftMonth(sub._calvingYear, sub._calvingMonth, -1);
+        sub._calvingYear = n.year;
+        sub._calvingMonth = n.month;
         persistCalvingListView(sub);
         refresh();
       });
     }
     if (nextBtn) {
       nextBtn.addEventListener('click', function () {
-        sub._calvingMonth += 1;
-        if (sub._calvingMonth > 11) { sub._calvingMonth = 0; sub._calvingYear += 1; }
+        var n = shiftMonth(sub._calvingYear, sub._calvingMonth, 1);
+        sub._calvingYear = n.year;
+        sub._calvingMonth = n.month;
         persistCalvingListView(sub);
         refresh();
       });
@@ -197,7 +196,20 @@
   }
 
   function renderInseminationListSubScreen(sub) {
-    sub.innerHTML = '<div id="list-insem-table" class="view-entries-wrapper list-table-wrap"></div>';
+    var canAdd = typeof window.canInputServiceWorks === 'function'
+      ? window.canInputServiceWorks()
+      : (typeof window.hasCapability === 'function' && window.hasCapability('eventsInput'));
+    var addHtml = canAdd
+      ? '<div class="list-actions list-actions-inline"><button type="button" class="small-btn" id="listInsemAddBtn">Добавить осеменение</button></div>'
+      : '';
+    sub.innerHTML = addHtml + '<div id="list-insem-table" class="view-entries-wrapper list-table-wrap"></div>';
+    var addBtn = sub.querySelector('#listInsemAddBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        window._navReturnTo = 'list-insemination';
+        if (typeof global.navigate === 'function') global.navigate('insemination');
+      });
+    }
     var listEl = sub.querySelector('#list-insem-table');
     var vc = globalThis['__viewCow'];
     if (vc && typeof vc.setAllInseminationsRenderTarget === 'function') {
@@ -332,34 +344,39 @@
     var typeOptions = '<option value="">Все события</option>' + eventTypes.filter(Boolean).map(function (t) { return '<option value="' + globalThis['__lists'].escapeHtml(t) + '">' + globalThis['__lists'].escapeHtml(t) + '</option>'; }).join('');
     var groups = globalThis['__lists'].getUniqueGroups();
     var groupOptions = '<option value="">Все группы</option>' + groups.map(function (g) { return '<option value="' + globalThis['__lists'].escapeHtml(g) + '">' + globalThis['__lists'].escapeHtml(g) + '</option>'; }).join('');
+    var today = new Date();
+    if (container._eventsYear == null) container._eventsYear = today.getFullYear();
+    if (container._eventsMonth == null) container._eventsMonth = today.getMonth();
     if (filtersEl) {
       filtersEl.innerHTML =
+        monthNavHtml({ prev: 'eventsMonthPrev', next: 'eventsMonthNext', label: 'eventsMonthLabel' }) +
         '<div class="events-filters-row">' +
         '<label>Тип: <select id="eventsFilterType">' + typeOptions + '</select></label>' +
         '<label>Группа: <select id="eventsFilterGroup">' + groupOptions + '</select></label>' +
         '<label>Номер: <input type="text" id="eventsFilterCattleId" placeholder="Номер животного" /></label>' +
-        '<label>С <input type="date" id="eventsFilterFrom" /></label>' +
-        '<label>По <input type="date" id="eventsFilterTo" /></label>' +
         '<button type="button" class="small-btn" id="eventsFilterRefresh">Обновить</button>' +
         '</div>';
     }
     if (actionsEl) {
       actionsEl.innerHTML =
+        '<div class="list-actions list-actions-inline">' +
         globalThis['__lists'].listPrintButtonHtml('eventsPrintBtn') +
-        '<button type="button" class="small-btn" id="eventsExcelBtn">Экспорт в Excel</button>';
+        '<button type="button" class="small-btn" id="eventsExcelBtn">Экспорт в Excel</button>' +
+        '</div>';
     }
     function refresh() {
       var typeEl = document.getElementById('eventsFilterType');
       var groupEl = document.getElementById('eventsFilterGroup');
       var cattleEl = document.getElementById('eventsFilterCattleId');
-      var fromEl = document.getElementById('eventsFilterFrom');
-      var toEl = document.getElementById('eventsFilterTo');
+      var bounds = monthBounds(container._eventsYear, container._eventsMonth);
+      var labelEl = document.getElementById('eventsMonthLabel');
+      if (labelEl) labelEl.textContent = formatMonthLabel(container._eventsYear, container._eventsMonth);
       var eventsList = getAllEvents({
         eventType: (typeEl && typeEl.value) || undefined,
         group: (groupEl && groupEl.value) || undefined,
         cattleId: (cattleEl && cattleEl.value) || undefined,
-        fromDate: (fromEl && fromEl.value) || undefined,
-        toDate: (toEl && toEl.value) || undefined
+        fromDate: bounds.from,
+        toDate: bounds.to
       });
       container._eventsList = eventsList;
       if (eventsList.length === 0) {
@@ -384,6 +401,20 @@
       });
     }
     refresh();
+    var prevEv = document.getElementById('eventsMonthPrev');
+    var nextEv = document.getElementById('eventsMonthNext');
+    if (prevEv) prevEv.addEventListener('click', function () {
+      var n = shiftMonth(container._eventsYear, container._eventsMonth, -1);
+      container._eventsYear = n.year;
+      container._eventsMonth = n.month;
+      refresh();
+    });
+    if (nextEv) nextEv.addEventListener('click', function () {
+      var n = shiftMonth(container._eventsYear, container._eventsMonth, 1);
+      container._eventsYear = n.year;
+      container._eventsMonth = n.month;
+      refresh();
+    });
     var refreshBtn = document.getElementById('eventsFilterRefresh');
     if (refreshBtn) refreshBtn.addEventListener('click', refresh);
     var typeSelect = document.getElementById('eventsFilterType');

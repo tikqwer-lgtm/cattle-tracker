@@ -8,6 +8,7 @@ if (typeof window !== 'undefined') {
   window.saveFarmCardBundle = SM.saveFarmCardBundle;
   window.getFarmCardBundleForExport = SM.getFarmCardBundleForExport;
   window.initFarmCardPanel = SM.initFarmCardPanel;
+  window.renderFarmCardPanel = SM.renderFarmCardPanel;
   window.printFarmCard = SM.printFarmCard;
   window.farmCardHasUnsavedChanges = SM.farmCardHasUnsavedChanges;
   window.confirmLeaveFarmCardIfNeeded = SM.confirmLeaveFarmCardIfNeeded;

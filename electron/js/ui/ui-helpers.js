@@ -497,6 +497,7 @@ if (typeof window !== 'undefined') {
   window.showProgressOverlay = showProgressOverlay;
   window.updateList = updateList;
   window.formatDate = formatDate;
+  window.clearForm = clearForm;
   window.showConfirmModal = showConfirmModal;
   window.showTripleModal = showTripleModal;
   window.showProtocolAssignModal = showProtocolAssignModal;

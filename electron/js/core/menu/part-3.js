@@ -148,6 +148,9 @@ function updateMenuGroupVisibility() {
   if (notifBlock) notifBlock.style.display = canNotifications ? '' : 'none';
   var calvingBlock = document.getElementById('menuCalvingForecast');
   if (calvingBlock) calvingBlock.style.display = uiService ? 'none' : '';
+  if (typeof window.updateServiceHerdDashboard === 'function') {
+    window.updateServiceHerdDashboard();
+  }
   if (typeof globalThis['__menu'].updateVersionSwitcher === 'function') {
     globalThis['__menu'].updateVersionSwitcher();
   }
@@ -431,6 +434,14 @@ function initMenuCalvingForecast() {
  * Обновляет статистику стада на экране «Работа со стадом»
  */
 function updateHerdStats() {
+  if (typeof window.updateServiceHerdDashboard === 'function') {
+    window.updateServiceHerdDashboard();
+  }
+  var uiService = typeof getUiRole === 'function' && getUiRole() === 'service';
+  if (uiService) {
+    updateMenuCalvingForecast();
+    return;
+  }
   var rawList = (typeof getVisibleEntries === 'function') ? getVisibleEntries(window.entries || []) : (window.entries || []);
   // активные: без даты выбытия
   var list = (rawList || []).filter(function (e) {
