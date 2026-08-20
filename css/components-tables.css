@@ -437,6 +437,11 @@
   background-color: var(--color-bg);
 }
 
+.autocomplete-list li.autocomplete-create {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
 .autocomplete-list li:last-child {
   border-bottom: none;
 }

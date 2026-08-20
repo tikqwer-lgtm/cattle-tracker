@@ -27,7 +27,8 @@ var MENU_GROUPS = {
       { icon: '🐄', text: 'Отел', onclick: "navigate('calving')", anyCaps: ['eventsInput'] },
       { icon: '⚠️', text: 'Аборт', onclick: "navigate('abort')", anyCaps: ['eventsInput'] },
       { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
-      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')", anyCaps: ['eventsInput', 'serviceWorksInput'] }
+      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
+      { icon: '📄', text: 'Сформировать отчёт', onclick: "typeof openServiceWorkReportForm === 'function' && openServiceWorkReportForm()", anyCaps: ['farmCardEventsWrite'] }
     ]
   },
   analytics: {

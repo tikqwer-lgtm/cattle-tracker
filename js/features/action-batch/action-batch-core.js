@@ -10,6 +10,43 @@
     return typeof window !== 'undefined' && window.entries && Array.isArray(window.entries) ? window.entries : [];
   }
 
+  function findEntry(cattleId) {
+    var id = String(cattleId || '').trim();
+    if (!id) return null;
+    return getEntries().find(function (x) { return String(x.cattleId || '').trim() === id; }) || null;
+  }
+
+  function buildBlankEntry(cattleId) {
+    var entry;
+    if (typeof window.getDefaultCowEntry === 'function') {
+      entry = window.getDefaultCowEntry();
+    } else {
+      entry = {
+        cattleId: '',
+        nickname: '',
+        group: '',
+        status: '',
+        inseminationHistory: [],
+        uziHistory: [],
+        actionHistory: [],
+        lactationHistory: [],
+        protocol: { name: '', startDate: '' },
+        vwp: 60
+      };
+    }
+    entry.cattleId = String(cattleId || '').trim();
+    return entry;
+  }
+
+  function resolveEntryForAction(cattleId) {
+    return findEntry(cattleId) || buildBlankEntry(cattleId);
+  }
+
+  function newAnimalHintHtml(cattleId) {
+    if (findEntry(cattleId)) return '';
+    return '<p class="action-batch-modal-hint">Животного нет в стаде — будет добавлено вместе с событием.</p>';
+  }
+
   function toast(msg, type) {
     if (typeof showToast === 'function') showToast(msg, type || 'info');
     else alert(msg);
@@ -125,24 +162,34 @@
   }
 
   function runSequentialUpdates(operations) {
-    var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function';
+    var useApi = typeof window !== 'undefined' && window.CATTLE_TRACKER_USE_API;
+    var canUpdate = useApi && typeof window.updateEntryViaApi === 'function';
+    var canCreate = useApi && typeof window.createEntryViaApi === 'function';
+
+    function applyOne(op) {
+      var existing = findEntry(op.cattleId);
+      var isNew = !existing;
+      var e = existing || buildBlankEntry(op.cattleId);
+      if (isNew) getEntries().push(e);
+      op.apply(e);
+      if (!useApi) return Promise.resolve();
+      if (isNew) {
+        if (!canCreate) return Promise.reject(new Error('Нет записи: ' + op.cattleId));
+        return window.createEntryViaApi(e);
+      }
+      if (!canUpdate) return Promise.reject(new Error('Нет записи: ' + op.cattleId));
+      return window.updateEntryViaApi(op.cattleId, e);
+    }
+
     if (!useApi) {
       for (var i = 0; i < operations.length; i++) {
-        var op = operations[i];
-        var e = getEntries().find(function (x) { return x.cattleId === op.cattleId; });
-        if (!e) throw new Error('Нет записи: ' + op.cattleId);
-        op.apply(e);
+        applyOne(operations[i]);
       }
       if (typeof saveLocally === 'function') saveLocally();
       return Promise.resolve();
     }
     return operations.reduce(function (p, op) {
-      return p.then(function () {
-        var e = getEntries().find(function (x) { return x.cattleId === op.cattleId; });
-        if (!e) return Promise.reject(new Error('Нет записи: ' + op.cattleId));
-        op.apply(e);
-        return window.updateEntryViaApi(op.cattleId, e);
-      });
+      return p.then(function () { return applyOne(op); });
     }, Promise.resolve());
   }
 
@@ -193,6 +240,10 @@
   }
   window.__actionBatch = {
     getEntries: getEntries,
+    findEntry: findEntry,
+    buildBlankEntry: buildBlankEntry,
+    resolveEntryForAction: resolveEntryForAction,
+    newAnimalHintHtml: newAnimalHintHtml,
     toast: toast,
     uid: uid,
     clearAutocompleteDropdowns: clearAutocompleteDropdowns,

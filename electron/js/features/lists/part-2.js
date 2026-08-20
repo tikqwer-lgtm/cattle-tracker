@@ -351,9 +351,8 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
       filtersEl.innerHTML =
         monthNavHtml({ prev: 'eventsMonthPrev', next: 'eventsMonthNext', label: 'eventsMonthLabel' }) +
         '<div class="events-filters-row">' +
-        '<label>Тип: <select id="eventsFilterType">' + typeOptions + '</select></label>' +
+        '<label>Тип события: <select id="eventsFilterType">' + typeOptions + '</select></label>' +
         '<label>Группа: <select id="eventsFilterGroup">' + groupOptions + '</select></label>' +
-        '<label>Номер: <input type="text" id="eventsFilterCattleId" placeholder="Номер животного" /></label>' +
         '<button type="button" class="small-btn" id="eventsFilterRefresh">Обновить</button>' +
         '</div>';
     }
@@ -367,14 +366,12 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
     function refresh() {
       var typeEl = document.getElementById('eventsFilterType');
       var groupEl = document.getElementById('eventsFilterGroup');
-      var cattleEl = document.getElementById('eventsFilterCattleId');
       var bounds = monthBounds(container._eventsYear, container._eventsMonth);
       var labelEl = document.getElementById('eventsMonthLabel');
       if (labelEl) labelEl.textContent = formatMonthLabel(container._eventsYear, container._eventsMonth);
       var eventsList = getAllEvents({
         eventType: (typeEl && typeEl.value) || undefined,
         group: (groupEl && groupEl.value) || undefined,
-        cattleId: (cattleEl && cattleEl.value) || undefined,
         fromDate: bounds.from,
         toDate: bounds.to
       });
@@ -421,8 +418,6 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
     var groupSelect = document.getElementById('eventsFilterGroup');
     if (typeSelect) typeSelect.addEventListener('change', refresh);
     if (groupSelect) groupSelect.addEventListener('change', refresh);
-    var cattleInput = document.getElementById('eventsFilterCattleId');
-    if (cattleInput) cattleInput.addEventListener('input', refresh);
     var printBtn = document.getElementById('eventsPrintBtn');
     if (printBtn) printBtn.addEventListener('click', function () {
       if (container._eventsList && container._eventsList.length && typeof window.printEventsTable === 'function') {

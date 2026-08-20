@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole, requireObjectAccess } = require('../auth');
+const { requireAuth, requireAnyCapability, requireObjectAccess } = require('../auth');
 
 function getObjectId(req) {
   return req.params.objectId || '';
@@ -24,7 +24,7 @@ router.post(
   '/:objectId/protocols',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireAnyCapability('eventsInput', 'farmCardSettings'),
   (req, res) => {
     const objectId = getObjectId(req);
     const protocol = req.body || {};
@@ -37,7 +37,7 @@ router.put(
   '/:objectId/protocols/:protocolId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireAnyCapability('eventsInput', 'farmCardSettings'),
   (req, res) => {
     const objectId = getObjectId(req);
     const protocolId = getProtocolId(req);
@@ -53,7 +53,7 @@ router.delete(
   '/:objectId/protocols/:protocolId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireAnyCapability('eventsInput', 'farmCardSettings'),
   (req, res) => {
     const objectId = getObjectId(req);
     const protocolId = getProtocolId(req);

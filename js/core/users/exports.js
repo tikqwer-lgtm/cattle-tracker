@@ -18,6 +18,8 @@ if (typeof window !== 'undefined') {
   window.rejectIfPreviewMutation = SM.rejectIfPreviewMutation;
   window.isAppAdminRole = SM.isAppAdminRole;
   window.hasCapability = SM.hasCapability;
+  window.setRoleCapabilities = SM.setRoleCapabilities;
+  window.getRoleCapabilities = SM.getRoleCapabilities;
   window.canInputServiceWorks = SM.canInputServiceWorks;
   window.canAdd = SM.canAdd;
   window.canEdit = SM.canEdit;

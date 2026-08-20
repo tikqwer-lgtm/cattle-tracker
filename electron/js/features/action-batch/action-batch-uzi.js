@@ -9,6 +9,8 @@
     return;
   }
   var getEntries = AB.getEntries;
+  var resolveEntryForAction = AB.resolveEntryForAction;
+  var newAnimalHintHtml = AB.newAnimalHintHtml;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -109,13 +111,10 @@
       toast('Эта корова уже в списке', 'error');
       return;
     }
-    var entry = getEntries().find(function (e) { return e.cattleId === cattleId; });
-    if (!entry) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var entry = resolveEntryForAction(cattleId);
     openOverlay(
       '<h3 class="action-batch-modal-title">УЗИ: ' + escapeHtml(cattleId) + '</h3>' +
+      newAnimalHintHtml(cattleId) +
       '<p class="action-batch-modal-hint">Выберите результат</p>' +
       '<div class="action-batch-modal-actions action-batch-modal-actions--stack">' +
       '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziPickPregnant">Стельная</button>' +
@@ -187,7 +186,7 @@
     draft.forEach(function (r) {
       p = p.then(function (prev) {
         if (!prev) return false;
-        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        var ent = resolveEntryForAction(r.cattleId);
         if (!ent) return false;
         if (!G || typeof G.confirmUziFlow !== 'function') return true;
         if (r._batchGuardKey === batchGuardKey(uziDate, '')) return true;

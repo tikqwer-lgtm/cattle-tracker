@@ -9,6 +9,8 @@
     return;
   }
   var getEntries = AB.getEntries;
+  var findEntry = AB.findEntry;
+  var resolveEntryForAction = AB.resolveEntryForAction;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -111,20 +113,12 @@
       toast('Уже в списке', 'error');
       return;
     }
-    if (!getEntries().find(function (e) { return e.cattleId === cattleId; })) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var mother = resolveEntryForAction(cattleId);
     showCalfModal({ calfId: '', calfSex: 'Телка', calfWeight: '' }, function (data) {
       if (data === null) return;
       var calvingDate = document.getElementById('calvingDateInput') && document.getElementById('calvingDateInput').value;
       if (!calvingDate) {
         toast('Укажите дату отёла', 'error');
-        return;
-      }
-      var mother = getEntries().find(function (e) { return e.cattleId === cattleId; });
-      if (!mother) {
-        toast('Корова не найдена', 'error');
         return;
       }
       var G = window.ActionInputGuards;
@@ -204,8 +198,8 @@
     var confirmChain = Promise.resolve();
     draft.forEach(function (r) {
       confirmChain = confirmChain.then(function () {
-        var mother = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
-        if (!mother) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
+        var mother = resolveEntryForAction(r.cattleId);
+        if (!mother || !mother.cattleId) return Promise.reject(new Error('Нет номера: ' + r.cattleId));
         if (!G || typeof G.confirmCalvingFlow !== 'function') {
           r._calvingDecision = 'calve';
           return;
@@ -225,8 +219,10 @@
         var chain = Promise.resolve();
         draft.forEach(function (r) {
           chain = chain.then(function () {
-            var mother = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
-            if (!mother) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
+            var isNewMother = !findEntry(r.cattleId);
+            var mother = resolveEntryForAction(r.cattleId);
+            if (!mother || !mother.cattleId) return Promise.reject(new Error('Нет номера: ' + r.cattleId));
+            if (isNewMother) getEntries().push(mother);
             var dec = r._calvingDecision || 'calve';
             var fatherBull = '';
             if (getLastRec) {
@@ -247,7 +243,10 @@
               if (calfEntry) getEntries().push(calfEntry);
               return Promise.resolve();
             }
-            return window.updateEntryViaApi(r.cattleId, mother).then(function () {
+            var persistMother = isNewMother && typeof window.createEntryViaApi === 'function'
+              ? window.createEntryViaApi(mother)
+              : window.updateEntryViaApi(r.cattleId, mother);
+            return persistMother.then(function () {
               if (calfEntry) return window.createEntryViaApi(calfEntry);
             });
           });

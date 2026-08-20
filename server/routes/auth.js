@@ -87,7 +87,8 @@ router.post('/login', loginLimiter, (req, res) => {
     role: db.normalizeAppRole ? db.normalizeAppRole(row.role) : row.role
   };
   const token = signToken(user);
-  res.json({ ok: true, user, token });
+  const roleCapabilities = db.getRoleCapabilities ? db.getRoleCapabilities() : undefined;
+  res.json({ ok: true, user, token, roleCapabilities });
 });
 
 router.post('/logout', (req, res) => {
@@ -96,7 +97,8 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/me', requireAuth, (req, res) => {
-  res.json({ ok: true, user: req.user });
+  const roleCapabilities = db.getRoleCapabilities ? db.getRoleCapabilities() : undefined;
+  res.json({ ok: true, user: req.user, roleCapabilities });
 });
 
 const accessRequestLimiter = rateLimit({

@@ -150,16 +150,16 @@ const CASES = [
     hubHidden: ['Аналитика'],
     blockedScreens: ['analytics', 'farm-settings', 'admin'],
     allowedScreen: 'sync',
-    menuNotificationsVisible: true,
+    menuNotificationsVisible: false,
   },
   {
     role: 'service',
     mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
-    hubVisible: ['Животные и списки', 'Аналитика', 'Настройки'],
-    hubHidden: ['Действия'],
-    blockedScreens: ['insemination', 'farm-settings', 'admin'],
-    allowedScreen: 'analytics',
-    menuNotificationsVisible: true,
+    hubVisible: ['Животные и списки', 'Действия', 'Настройки'],
+    hubHidden: ['Аналитика'],
+    blockedScreens: ['analytics', 'farm-settings', 'admin'],
+    allowedScreen: 'sync',
+    menuNotificationsVisible: false,
   },
   {
     role: 'admin',
@@ -168,7 +168,7 @@ const CASES = [
     hubHidden: [],
     blockedScreens: [],
     allowedScreen: 'sync',
-    menuNotificationsVisible: true,
+    menuNotificationsVisible: false,
   },
 ];
 

@@ -2,14 +2,18 @@
   <div id="notifications-screen" class="screen">
     <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span> Уведомления</h1>
     <div id="notification-center-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран списка задач -->
   <div id="tasks-screen" class="screen">
     <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg></span> Список задач</h1>
     <div id="tasksScreenContainer" class="tasks-screen-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран аналитики -->
@@ -48,7 +52,9 @@
       </div>
       <div id="endometritisDmgResults" style="margin-top: 10px;"></div>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран интервального анализа -->
@@ -57,7 +63,9 @@
     <p class="analytics-interval-intro">Распределение интервалов между осеменениями (внутри одной лактации). Телки — лактация 0.</p>
     <div id="intervalAnalysisFilter" class="analytics-interval-filter"></div>
     <div id="intervalAnalysisTable" class="analytics-interval-table-wrapper"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран «Воспроизводство»: оплодотворяемость за период -->
@@ -67,5 +75,7 @@
     <div id="reproductionFilters" class="analytics-interval-filter"></div>
     <div id="reproductionIndicators" class="analytics-indicators"></div>
     <div id="reproductionTable" class="analytics-interval-table-wrapper"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>

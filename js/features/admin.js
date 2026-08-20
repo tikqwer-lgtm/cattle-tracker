@@ -64,6 +64,129 @@
     return r === 'admin' || r === 'manager';
   }
 
+  var ROLE_CAP_FIELDS = [
+    { key: 'cards', label: 'Карточки животных' },
+    { key: 'eventsInput', label: 'Отёл, запуск, аборт, добавление животных' },
+    { key: 'serviceWorksInput', label: 'Осеменение, УЗИ, постановка на протокол' },
+    { key: 'workLists', label: 'Списки работ' },
+    { key: 'stallMap', label: 'Схема стойломест' },
+    { key: 'inventory', label: 'Инвентаризация стойломест' },
+    { key: 'analytics', label: 'Аналитика' },
+    { key: 'farmCardView', label: 'Карточка хозяйства — просмотр' },
+    { key: 'farmCardEventsWrite', label: 'События в карточке хозяйства' },
+    { key: 'farmCardSettings', label: 'Настройки хозяйства' },
+    { key: 'multiBase', label: 'Переключение хозяйств' }
+  ];
+
+  function showAdminTab(tabId) {
+    var tab = String(tabId || 'users').trim() || 'users';
+    try {
+      sessionStorage.setItem('cattleTracker_adminTab', tab);
+    } catch (e) {}
+    document.querySelectorAll('#admin-screen [data-admin-tab]').forEach(function (btn) {
+      var on = btn.getAttribute('data-admin-tab') === tab;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('#admin-screen [data-admin-panel]').forEach(function (panel) {
+      var match = panel.getAttribute('data-admin-panel') === tab;
+      if (match) panel.removeAttribute('hidden');
+      else panel.setAttribute('hidden', '');
+    });
+  }
+
+  function bindAdminTabs() {
+    var screen = document.getElementById('admin-screen');
+    if (!screen) return;
+    var saved = 'users';
+    try {
+      saved = sessionStorage.getItem('cattleTracker_adminTab') || 'users';
+    } catch (e1) {}
+    showAdminTab(saved);
+    if (screen.dataset.tabsBound === '1') return;
+    screen.dataset.tabsBound = '1';
+    screen.querySelectorAll('[data-admin-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showAdminTab(btn.getAttribute('data-admin-tab'));
+      });
+    });
+  }
+
+  function renderRoleCapColumn(roleKey, title, caps) {
+    var html = '<div class="admin-role-cap-col" data-role="' + escapeHtml(roleKey) + '">';
+    html += '<h3 class="admin-role-cap-title">' + escapeHtml(title) + '</h3>';
+    ROLE_CAP_FIELDS.forEach(function (field) {
+      var on = !!(caps && caps[field.key]);
+      html +=
+        '<label class="admin-role-cap-row">' +
+        '<input type="checkbox" data-role-cap="' +
+        escapeHtml(roleKey) +
+        '" data-cap-key="' +
+        escapeHtml(field.key) +
+        '"' +
+        (on ? ' checked' : '') +
+        ' />' +
+        '<span>' +
+        escapeHtml(field.label) +
+        '</span></label>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function bindRoleCapToggles(host, api, roles) {
+    if (!host || !api || !api.putRoleCapabilities) return;
+    host.querySelectorAll('input[data-role-cap]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var role = input.getAttribute('data-role-cap');
+        var key = input.getAttribute('data-cap-key');
+        if (!role || !key || !roles[role]) return;
+        roles[role][key] = !!input.checked;
+        input.disabled = true;
+        api.putRoleCapabilities({
+          inseminator: roles.inseminator,
+          service: roles.service
+        }).then(function (saved) {
+          if (saved) {
+            roles.inseminator = saved.inseminator || roles.inseminator;
+            roles.service = saved.service || roles.service;
+          }
+          if (typeof showToast === 'function') showToast('Права сохранены', 'success');
+          if (typeof globalThis.__menu !== 'undefined' && typeof globalThis.__menu.updateMenuGroupVisibility === 'function') {
+            globalThis.__menu.updateMenuGroupVisibility();
+          }
+        }).catch(function (err) {
+          input.checked = !input.checked;
+          roles[role][key] = !!input.checked;
+          if (typeof showToast === 'function') showToast(err.message || 'Не удалось сохранить права', 'error', 5000);
+        }).then(function () {
+          input.disabled = false;
+        });
+      });
+    });
+  }
+
+  function loadAdminRoleCapabilities(api) {
+    var el = document.getElementById('admin-role-capabilities');
+    if (!el) return;
+    if (!api || !api.getRoleCapabilities) {
+      el.innerHTML = '<p class="admin-message">API недоступен.</p>';
+      return;
+    }
+    el.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+    api.getRoleCapabilities().then(function (roles) {
+      roles = roles || {};
+      el.innerHTML =
+        '<div class="admin-role-cap-grid">' +
+        renderRoleCapColumn('inseminator', 'Осеменатор', roles.inseminator) +
+        renderRoleCapColumn('service', 'Сервис-специалист', roles.service) +
+        '</div>';
+      bindRoleCapToggles(el, api, roles);
+    }).catch(function (err) {
+      el.innerHTML = '<p class="admin-message admin-error">Ошибка: ' + escapeHtml(err.message || 'Не удалось загрузить права') + '</p>';
+    });
+  }
+
   function canDeleteAdminUser(actor, target) {
     if (!actor || !target) return false;
     if (String(actor.id) === String(target.id)) return false;
@@ -423,6 +546,8 @@
     if (!usersEl || !reportsEl) return;
     var api = global.CattleTrackerApi;
     bindAdminCreateObjectBtn();
+    bindAdminTabs();
+    loadAdminRoleCapabilities(api);
     if (!api || !api.getUsers || !api.getReports) {
       usersEl.innerHTML = '<p class="admin-message">API недоступен.</p>';
       reportsEl.innerHTML = '';

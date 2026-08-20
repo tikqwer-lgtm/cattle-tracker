@@ -124,10 +124,10 @@ function initSchema() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at);`);
 
   try {
-    const accessRequests = require('./access-requests');
-    accessRequests.ensureAccessRequestsTable();
+    const roleCapabilities = require('./role-capabilities');
+    roleCapabilities.ensureAppKvTable();
   } catch (e) {
-    console.error('access_requests table:', e.message);
+    console.error('app_kv table:', e.message);
   }
   try {
     const bitrix = require('./bitrix');

@@ -5,7 +5,13 @@
 }
 
 .stall-map-extra-actions {
+  display: flex;
+  justify-content: center;
   margin: 0.75rem 0 1rem;
+}
+
+.stall-map-extra-actions .action-btn {
+  width: min(22rem, 100%);
 }
 
 .stall-inventory-tabs {

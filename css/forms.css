@@ -35,6 +35,10 @@
   @apply bg-primary-hover;
 }
 
+.form button.back-button:hover {
+  @apply bg-[#777];
+}
+
 .server-url-block {
   @apply mb-5 py-3;
 }

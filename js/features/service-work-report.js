@@ -20,14 +20,6 @@ function todayIso() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function isServiceUi() {
-  return typeof getUiRole === 'function' && getUiRole() === 'service';
-}
-
-function canWriteFarmEvents() {
-  return typeof window.hasCapability === 'function' && window.hasCapability('farmCardEventsWrite');
-}
-
 function getUsername() {
   var u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   return (u && u.username) ? String(u.username) : '';
@@ -217,7 +209,7 @@ function openServiceReportViewer(evObj) {
 function syncServiceReportHubButton() {
   var wrap = document.getElementById('serviceReportHubWrap');
   if (!wrap) return;
-  wrap.hidden = !(isServiceUi() && canWriteFarmEvents());
+  wrap.hidden = true;
 }
 
 function bindServiceReportUi() {

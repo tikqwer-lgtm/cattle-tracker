@@ -12,6 +12,7 @@ const farmCard = require('./db/farm-card');
 const userObjects = require('./db/user-objects');
 const accessRequests = require('./db/access-requests');
 const bitrix = require('./db/bitrix');
+const roleCapabilities = require('./db/role-capabilities');
 
 module.exports = {
   ...core,
@@ -25,4 +26,5 @@ module.exports = {
   ...userObjects,
   ...accessRequests,
   ...bitrix,
+  ...roleCapabilities,
 };

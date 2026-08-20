@@ -24,6 +24,7 @@ const farmCardRoutes = require('./routes/farm-card');
 const geosuggestRoutes = require('./routes/geosuggest');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
+const roleCapabilitiesRoutes = require('./routes/role-capabilities');
 const adminMobileApkRoutes = require('./routes/admin-mobile-apk');
 const mobileRoutes = require('./routes/mobile');
 const bitrixRoutes = require('./routes/bitrix');
@@ -80,6 +81,7 @@ app.use('/api', chatRoutes);
 app.use('/api/admin', adminMobileApkRoutes);
 app.use('/api', bitrixRoutes);
 app.use('/api', adminRoutes);
+app.use('/api', roleCapabilitiesRoutes);
 app.use('/api', mobileRoutes);
 
 app.get('/api/health', (req, res) => {

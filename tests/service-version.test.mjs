@@ -29,6 +29,7 @@ describe('service version capabilities and preview', () => {
 
   beforeEach(() => {
     U.clearPreviewRole();
+    U.setRoleCapabilities(null);
     U.state.currentUser = { id: 'u1', username: 'Panko', role: 'admin' };
   });
 
@@ -39,7 +40,16 @@ describe('service version capabilities and preview', () => {
     expect(U.hasCapability('eventsInput', service)).toBe(false);
     expect(U.hasCapability('inventory', service)).toBe(false);
     expect(U.hasCapability('farmCardSettings', service)).toBe(false);
+    expect(U.hasCapability('analytics', service)).toBe(false);
     expect(U.canInputServiceWorks(service)).toBe(true);
+  });
+
+  it('role overlay from admin can enable analytics for service', () => {
+    const service = { id: 's1', username: 'svc', role: 'service' };
+    U.setRoleCapabilities({ service: { analytics: true } });
+    expect(U.hasCapability('analytics', service)).toBe(true);
+    expect(U.hasCapability('eventsInput', service)).toBe(false);
+    U.setRoleCapabilities(null);
   });
 
   it('admin preview switches UI role without changing real role', () => {
@@ -94,6 +104,33 @@ describe('service-work-acl', () => {
     };
     const patched = acl.applyServiceEntryUpdate(existing, incoming);
     expect(patched.ok).toBe(false);
+  });
+
+  it('creates a new cow for service with insemination only', () => {
+    const incoming = {
+      cattleId: '909',
+      nickname: 'hack',
+      calvingDate: '2024-01-01',
+      status: 'Осемененная',
+      inseminationDate: '2026-08-19',
+      actionHistory: [{ eventType: 'Осеменение', date: '2026-08-19' }]
+    };
+    const created = acl.applyServiceEntryCreate(incoming);
+    expect(created.ok).toBe(true);
+    expect(created.entry.cattleId).toBe('909');
+    expect(created.entry.inseminationDate).toBe('2026-08-19');
+    expect(created.entry.status).toBe('Осемененная');
+    expect(created.entry.nickname).toBe('');
+    expect(created.entry.calvingDate).toBe('');
+    expect(created.entry.actionHistory.some((x) => x.eventType === 'Осеменение')).toBe(true);
+  });
+
+  it('rejects service create with calving history', () => {
+    const created = acl.applyServiceEntryCreate({
+      cattleId: '910',
+      actionHistory: [{ eventType: 'Отёл', date: '2026-08-01' }]
+    });
+    expect(created.ok).toBe(false);
   });
 
   it('farm card events-only keeps addresses', () => {

@@ -2,32 +2,42 @@
   <div id="submenu-screen" class="screen">
     <h1 id="submenu-title">Подменю</h1>
     <div id="submenu-buttons" class="menu-section-buttons action-buttons-inner"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран «Списки» -->
   <div id="lists-screen" class="screen">
     <h1>Списки</h1>
     <div id="lists-screen-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <div id="list-uzi-screen" class="screen">
     <h1>Список на УЗИ</h1>
     <div id="list-uzi-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <div id="list-insemination-screen" class="screen">
     <h1>Журнал осеменений</h1>
     <div id="list-insemination-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <div id="list-calving-screen" class="screen">
     <h1>Список отёлов</h1>
     <div id="list-calving-container" class="lists-screen-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран «Список событий» -->
@@ -36,13 +46,22 @@
     <div id="events-screen-filters" class="events-filters"></div>
     <div id="events-screen-container" class="events-screen-container"></div>
     <div id="events-screen-actions" class="events-actions"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран администрирования (только для admin в режиме API) -->
   <div id="admin-screen" class="screen">
     <h1>Администрирование</h1>
-    <section class="admin-section">
+    <div class="admin-tabs" role="tablist">
+      <button type="button" class="admin-tab active" data-admin-tab="users">Пользователи</button>
+      <button type="button" class="admin-tab" data-admin-tab="permissions">Права</button>
+      <button type="button" class="admin-tab" data-admin-tab="excel">Excel</button>
+      <button type="button" class="admin-tab" data-admin-tab="bases">Базы</button>
+      <button type="button" class="admin-tab" data-admin-tab="reports">Отчёты</button>
+    </div>
+    <section class="admin-section" data-admin-panel="excel" hidden>
       <h2>Excel</h2>
       <p class="farm-settings-hint">Экспорт, шаблон и импорт описи (только администратор). Перед импортом выберите нужную базу в «Синхронизация».</p>
       <details class="admin-import-help">
@@ -61,21 +80,26 @@
       </div>
       <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" aria-label="Выбор файла для импорта" />
     </section>
-    <section class="admin-section">
+    <section class="admin-section" data-admin-panel="users">
       <h2>Пользователи</h2>
       <div id="admin-users-container" class="admin-list-container"></div>
     </section>
-    <section class="admin-section admin-access-requests">
+    <section class="admin-section admin-access-requests" data-admin-panel="users">
       <h2>Заявки на доступ</h2>
       <p class="farm-settings-hint">Заявки «Забыл пароль» и «Запросить логин». Смените пароль пользователя выше, затем отметьте заявку выполненной.</p>
       <div id="admin-access-requests-container" class="admin-list-container"></div>
     </section>
-    <section class="admin-section">
+    <section class="admin-section" data-admin-panel="users">
       <h2>Подключение к объектам</h2>
       <p class="farm-settings-hint">Выберите пользователя и отметьте объекты, к которым у него есть доступ. Администраторам назначать объекты не нужно.</p>
       <div id="admin-assign-container" class="admin-assign-container"></div>
     </section>
-    <section class="admin-section">
+    <section class="admin-section" data-admin-panel="permissions" hidden>
+      <h2>Права ролей</h2>
+      <p class="farm-settings-hint">Включите или отключите функции для осеменатора и сервис-специалиста. Администратор всегда имеет полный доступ.</p>
+      <div id="admin-role-capabilities" class="admin-role-capabilities"></div>
+    </section>
+    <section class="admin-section" data-admin-panel="bases" hidden>
       <h2>Базы на сервере</h2>
       <div class="admin-bases-toolbar">
         <button type="button" class="action-btn" id="adminCreateObjectBtn">Создать объект</button>
@@ -83,25 +107,31 @@
       <div id="adminBasesFilter" class="sync-bases-filter"></div>
       <div id="adminServerBasesList" class="sync-server-bases-list" aria-live="polite"></div>
     </section>
-    <section class="admin-section">
+    <section class="admin-section" data-admin-panel="reports" hidden>
       <h2>Отчёты пользователей</h2>
       <div id="admin-reports-container" class="admin-list-container"></div>
     </section>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
   <div id="farm-settings-screen" class="screen">
     <h1>Настройки хозяйства</h1>
     <div id="farm-settings-react-root"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Карточка хозяйства -->
   <div id="farm-card-screen" class="screen">
     <h1>Карточка хозяйства</h1>
     <div id="farmCardRoot" class="farm-card-root" aria-live="polite"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран ввода осеменения (пакетный) -->
@@ -114,7 +144,7 @@
           <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           <ul id="inseminationBatchAddList" class="autocomplete-list" aria-label="Список коров"></ul>
         </div>
-        <p class="action-batch-add-hint">После выбора коровы укажите попытку (по умолчанию следующая).</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите попытку (по умолчанию следующая). Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div class="action-batch-common">
         <label for="inseminationDateInsem">Дата осеменения</label>
@@ -131,9 +161,11 @@
         </select>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="inseminationBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Запуск (начало сухостоя), пакетный -->
@@ -152,9 +184,11 @@
         </div>
       </div>
       <div id="dryBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="dryBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Отёл, пакетный -->
@@ -174,9 +208,11 @@
         <p class="action-batch-add-hint">Можно указать телёнка (номер, пол, вес) или пропустить.</p>
       </div>
       <div id="calvingBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="calvingBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: Аборт (пакетный) -->
@@ -198,9 +234,11 @@
         </div>
       </div>
       <div id="abortBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="abortBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: На протокол, пакетный -->
@@ -223,9 +261,11 @@
         </div>
       </div>
       <div id="protocolBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="protocolBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>
 
   <!-- Экран: УЗИ (пакетный) -->
@@ -244,10 +284,12 @@
           <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
           <ul id="uziBatchAddList" class="autocomplete-list"></ul>
         </div>
-        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ.</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
+    </div>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
       <button type="button" id="uziBatchSaveBtn" class="action-batch-save-all">Сохранить всё</button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
   </div>

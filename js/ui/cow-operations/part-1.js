@@ -415,6 +415,13 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     if (matching.length === 1) {
       e.preventDefault();
       pickEntry(matching[0]);
+      return;
+    }
+    if (typeof onPick === 'function') {
+      e.preventDefault();
+      input.value = v;
+      closeList();
+      onPick(v);
     }
   }
   function populate() {
@@ -450,6 +457,30 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
       });
       list.appendChild(li);
     });
+    var typed = (input.value || '').trim();
+    if (typed && typeof onPick === 'function') {
+      var hasExact = source.some(function (ent) {
+        return String(ent.cattleId || '').trim() === typed;
+      });
+      if (!hasExact) {
+        var createLi = document.createElement('li');
+        createLi.className = 'autocomplete-create';
+        createLi.textContent = 'Добавить в стадо: ' + typed;
+        createLi.setAttribute('role', 'option');
+        createLi.tabIndex = 0;
+        createLi.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+        });
+        createLi.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          input.value = typed;
+          closeList();
+          onPick(typed);
+        });
+        list.appendChild(createLi);
+      }
+    }
     /* Electron: после пересборки списка подсказок иногда «плывёт» ввод; один softRepaint на кадр. */
     if (typeof window !== 'undefined' && window.electronAPI && typeof window.softRepaintCattleTrackerView === 'function') {
       if (!input._cattleAutocompleteRepaintScheduled) {

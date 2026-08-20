@@ -9,6 +9,8 @@
     return;
   }
   var getEntries = AB.getEntries;
+  var resolveEntryForAction = AB.resolveEntryForAction;
+  var newAnimalHintHtml = AB.newAnimalHintHtml;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -75,15 +77,12 @@
       toast('Уже в списке', 'error');
       return;
     }
-    var entry = getEntries().find(function (e) { return e.cattleId === cattleId; });
-    if (!entry) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var entry = resolveEntryForAction(cattleId);
     var defAtt = nextAttemptFor(cattleId);
     var bullDef = (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '';
     openOverlay(
       '<h3 class="action-batch-modal-title">Осеменение: ' + escapeHtml(cattleId) + '</h3>' +
+      newAnimalHintHtml(cattleId) +
       '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemModalAttempt" class="action-batch-modal-input" min="1" value="' + defAtt + '" /></label>' +
       '<label class="action-batch-modal-label">Бык (необязательно, общий можно задать выше)<br>' +
       '<input type="text" id="insemModalBull" class="action-batch-modal-input" list="datalist-farm-bulls" autocomplete="off" value="' + escapeHtml(bullDef) + '" /></label>' +
@@ -186,7 +185,7 @@
     draft.forEach(function (r) {
       p = p.then(function (prev) {
         if (!prev) return false;
-        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        var ent = resolveEntryForAction(r.cattleId);
         if (!ent) return false;
         if (!G || typeof G.confirmInseminationFlow !== 'function') return true;
         if (r._batchGuardKey === batchGuardKey(insemDate || '', '')) return true;

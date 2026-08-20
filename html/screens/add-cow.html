@@ -82,13 +82,12 @@
         </div>
       </fieldset>
       <div class="form-actions">
+        <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button" aria-label="Назад">Назад</button>
         <button type="button" onclick="typeof window.clearForm === 'function' && window.clearForm();" id="clearFormButton" aria-label="Очистить форму" style="display: none;">Очистить форму</button>
         <button type="button" onclick="typeof window.cancelEdit === 'function' && window.cancelEdit()" id="cancelButton" aria-label="Отмена">Отмена</button>
         <button type="submit" id="saveButton" aria-label="Сохранить запись">Сохранить</button>
       </div>
     </form>
-
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button" aria-label="Назад">Назад</button>
   </div>
 
   <!-- Экран: схема стойломест -->
@@ -111,9 +110,14 @@
     </div>
     <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест" style="display: none;"></div>
     <div class="stall-map-extra-actions">
-      <button type="button" class="small-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">Инвентаризация</button>
+      <button type="button" class="action-btn" onclick="typeof window.navigate === 'function' && window.navigate('stall-inventory')">
+        <span>☑</span>
+        <span>Инвентаризация</span>
+      </button>
     </div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран: инвентаризация стойломест -->
@@ -125,7 +129,9 @@
       <button type="button" class="stall-inventory-tab" data-tab="result" role="tab">Результат</button>
     </div>
     <div id="stallInventoryContent" class="stall-inventory-content"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <div id="stallMapCreateYardModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">

@@ -10,7 +10,9 @@
     </div>
     <div id="viewEntriesList" class="view-entries-wrapper"></div>
     <button type="button" id="viewScrollToTopBtn" class="scroll-to-top-btn" aria-label="Вверх" style="display: none;">↑ Вверх</button>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран просмотра карточки животного -->
@@ -19,7 +21,9 @@
       <h1>Просмотр животного</h1>
     </div>
     <div id="viewCowCard" class="view-cow-body"></div>
-    <button type="button" onclick="typeof window.viewCowBack === 'function' && window.viewCowBack()" class="back-button view-cow-back">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.viewCowBack === 'function' && window.viewCowBack()" class="back-button view-cow-back">Назад</button>
+    </div>
   </div>
 
   <!-- Экран «Все осеменения» -->
@@ -28,5 +32,7 @@
       <h1>Все осеменения</h1>
     </div>
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>

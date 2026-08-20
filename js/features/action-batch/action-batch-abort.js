@@ -8,7 +8,7 @@
     console.error('[action-batch] сначала загрузите action-batch-core.js');
     return;
   }
-  var getEntries = AB.getEntries;
+  var resolveEntryForAction = AB.resolveEntryForAction;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -58,11 +58,7 @@
       toast('Уже в списке', 'error');
       return;
     }
-    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
-    if (!ent) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var ent = resolveEntryForAction(cattleId);
     var abortDate = document.getElementById('abortDateInput') && document.getElementById('abortDateInput').value;
     if (!abortDate) {
       toast('Укажите дату события', 'error');
@@ -105,7 +101,7 @@
     draft.forEach(function (r) {
       p = p.then(function (prev) {
         if (!prev) return false;
-        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        var ent = resolveEntryForAction(r.cattleId);
         if (!ent) return false;
         if (!G || typeof G.confirmAbortFlow !== 'function') return true;
         if (r._batchGuardKey === batchGuardKey(abortDate, '')) return true;

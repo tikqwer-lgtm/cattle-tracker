@@ -4,8 +4,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole, requireObjectAccess } = require('../auth');
-const { applyServiceEntryUpdate } = require('../lib/service-work-acl');
+const { requireAuth, requireAnyCapability, requireObjectAccess } = require('../auth');
+const { applyServiceEntryCreate, applyServiceEntryUpdate } = require('../lib/service-work-acl');
+const capLib = require('../lib/capabilities');
+
+function worksOnly(user) {
+  const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
+  return !capLib.userHasCapability(user, 'eventsInput', matrix);
+}
 
 function getObjectId(req) {
   return req.params.objectId || '';
@@ -34,15 +40,21 @@ router.post(
   '/:objectId/entries',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireAnyCapability('eventsInput', 'serviceWorksInput'),
   (req, res) => {
     const objectId = getObjectId(req);
-    const entry = req.body || {};
+    let entry = req.body || {};
     const cattleId = String(entry.cattleId != null ? entry.cattleId : '').trim();
     if (!cattleId) return res.status(400).json({ error: 'cattleId обязателен' });
     if (db.entryExists(objectId, cattleId)) {
       return res.status(409).json({ error: 'Корова с таким номером уже существует' });
     }
+    if (worksOnly(req.user)) {
+      const created = applyServiceEntryCreate(entry);
+      if (!created.ok) return res.status(403).json({ error: created.error || 'Недостаточно прав' });
+      entry = created.entry;
+    }
+    entry.cattleId = cattleId;
     entry.userId = entry.userId || req.user.id;
     entry.lastModifiedBy = entry.lastModifiedBy || req.user.username;
     db.createEntry(entry, objectId);
@@ -55,7 +67,7 @@ router.put(
   '/:objectId/entries/:cattleId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator', 'service'),
+  requireAnyCapability('eventsInput', 'serviceWorksInput'),
   (req, res) => {
     const objectId = getObjectId(req);
     const cattleId = getCattleId(req);
@@ -63,8 +75,7 @@ router.put(
     const existing = db.getEntry(objectId, cattleId, req.user.id, req.user.role);
     if (!existing) return res.status(404).json({ error: 'Запись не найдена' });
     let entry = req.body || {};
-    const role = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
-    if (role === 'service') {
+    if (worksOnly(req.user)) {
       const patched = applyServiceEntryUpdate(existing, entry);
       if (!patched.ok) return res.status(403).json({ error: patched.error || 'Недостаточно прав' });
       entry = patched.entry;
@@ -84,7 +95,7 @@ router.delete(
   '/:objectId/entries/:cattleId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'inseminator'),
+  requireAnyCapability('eventsInput'),
   (req, res) => {
     const objectId = getObjectId(req);
     const cattleId = getCattleId(req);

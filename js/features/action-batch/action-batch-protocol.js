@@ -8,7 +8,7 @@
     console.error('[action-batch] сначала загрузите action-batch-core.js');
     return;
   }
-  var getEntries = AB.getEntries;
+  var resolveEntryForAction = AB.resolveEntryForAction;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -73,11 +73,7 @@
       toast('Уже в списке', 'error');
       return;
     }
-    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
-    if (!ent) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var ent = resolveEntryForAction(cattleId);
     var sel = document.getElementById('protocolSelectAssign');
     var protocolName = sel && sel.value ? sel.value.trim() : '';
     var startDate =
@@ -132,8 +128,8 @@
     var chain = Promise.resolve();
     draft.forEach(function (r) {
       chain = chain.then(function () {
-        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
-        if (!ent) return Promise.reject(new Error('Нет записи: ' + r.cattleId));
+        var ent = resolveEntryForAction(r.cattleId);
+        if (!ent) return Promise.reject(new Error('Нет номера: ' + r.cattleId));
         if (!G || typeof G.confirmProtocolAssignFlow !== 'function') {
           modes[r.cattleId] = 'apply';
           return;

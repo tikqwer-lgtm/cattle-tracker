@@ -4,7 +4,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole, requireObjectAccess } = require('../auth');
+const { requireAuth, requireAnyCapability, requireObjectAccess } = require('../auth');
+const capLib = require('../lib/capabilities');
 
 router.get('/:objectId/farm-card', requireAuth, requireObjectAccess('objectId'), (req, res) => {
   const objectId = String(req.params.objectId || '').trim();
@@ -16,12 +17,12 @@ router.put(
   '/:objectId/farm-card',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireRole('admin', 'service'),
+  requireAnyCapability('farmCardSettings', 'farmCardEventsWrite'),
   (req, res) => {
     const objectId = String(req.params.objectId || '').trim();
     const userId = req.user && req.user.id != null ? String(req.user.id) : null;
-    const role = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
-    const eventsOnly = role === 'service';
+    const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
+    const eventsOnly = !capLib.userHasCapability(req.user, 'farmCardSettings', matrix);
     const result = db.replaceFarmCardBundle(objectId, req.body, {
       userId: userId,
       eventsOnly: eventsOnly,

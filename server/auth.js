@@ -76,6 +76,20 @@ function optionalAuth(req, res, next) {
   next();
 }
 
+function requireAnyCapability(...keys) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
+    const role = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+    if (role === 'admin' || role === 'manager') return next();
+    const capLib = require('./lib/capabilities');
+    const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
+    for (let i = 0; i < keys.length; i++) {
+      if (capLib.userHasCapability(req.user, keys[i], matrix)) return next();
+    }
+    return res.status(403).json({ error: 'Недостаточно прав' });
+  };
+}
+
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -120,6 +134,7 @@ module.exports = {
   requireAuth,
   optionalAuth,
   requireRole,
+  requireAnyCapability,
   isAppAdminRole,
   requireObjectAccess
 };

@@ -9,6 +9,7 @@
     return;
   }
   var getEntries = AB.getEntries;
+  var resolveEntryForAction = AB.resolveEntryForAction;
   var toast = AB.toast;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
@@ -92,11 +93,7 @@
       toast('Уже в списке', 'error');
       return;
     }
-    var ent = getEntries().find(function (e) { return e.cattleId === cattleId; });
-    if (!ent) {
-      toast('Корова не найдена', 'error');
-      return;
-    }
+    var ent = resolveEntryForAction(cattleId);
     var dryDate = document.getElementById('dryStartDateInput') && document.getElementById('dryStartDateInput').value;
     if (!dryDate) {
       toast('Укажите дату начала сухостоя', 'error');
@@ -137,7 +134,7 @@
     draft.forEach(function (r) {
       p = p.then(function (prev) {
         if (!prev) return false;
-        var ent = getEntries().find(function (e) { return e.cattleId === r.cattleId; });
+        var ent = resolveEntryForAction(r.cattleId);
         if (!ent) return false;
         if (!G || typeof G.confirmDryFlow !== 'function') return true;
         if (r._batchGuardKey === batchGuardKey(dryDate, '')) return true;

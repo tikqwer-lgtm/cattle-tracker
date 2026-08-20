@@ -1,7 +1,9 @@
   <div id="protocols-screen" class="screen">
     <h1>Протоколы синхронизации</h1>
     <div id="protocols-container"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Справка: диагностика консоли (Electron) -->
@@ -18,7 +20,9 @@
     </div>
     <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
     <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>
 
   <!-- Экран синхронизации -->
@@ -120,5 +124,7 @@
       <div id="sync-backup-container"></div>
     </div>
     <div id="syncStatus" class="sync-status"></div>
-    <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    <div class="screen-actions">
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
+    </div>
   </div>

@@ -156,7 +156,25 @@
 }
 
 .back-button {
-  @apply mb-5 box-border min-h-11 cursor-pointer border-0 bg-[#999] px-[15px] py-2.5 rounded-md;
+  @apply mb-5 box-border min-h-11 cursor-pointer border-0 bg-[#999] px-5 py-3 text-[1em] text-white rounded-md;
+}
+
+.screen-actions {
+  @apply mt-5 mb-2 flex flex-wrap items-center gap-2.5;
+}
+
+.screen-actions .back-button {
+  @apply mb-0;
+}
+
+.screen-actions > button:not(.back-button) {
+  margin-left: auto;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.form-actions .back-button {
+  @apply mb-0 mr-auto;
 }
 
 .controls {

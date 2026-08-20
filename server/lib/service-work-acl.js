@@ -29,7 +29,39 @@ const SERVICE_PATCH_KEYS = [
 
 function historyItemType(item) {
   if (!item || typeof item !== 'object') return '';
-  return String(item.eventType || item.type || '').trim();
+  return String(item.eventType || item.type || item.action || '').trim();
+}
+
+function blankServiceEntry(cattleId) {
+  return {
+    cattleId: String(cattleId || ''),
+    nickname: '',
+    group: '',
+    birthDate: '',
+    lactation: '',
+    calvingDate: '',
+    inseminationDate: '',
+    attemptNumber: 1,
+    bull: '',
+    inseminator: '',
+    code: '',
+    status: '',
+    exitDate: '',
+    dryStartDate: '',
+    vwp: 60,
+    note: '',
+    protocol: { name: '', startDate: '' },
+    inseminationHistory: [],
+    actionHistory: [],
+    uziHistory: [],
+    lactationHistory: [],
+    parentMother: '',
+    parentFather: '',
+    birthWeight: '',
+    stallYard: '',
+    stallRow: '',
+    stallPlace: ''
+  };
 }
 
 function isAllowedServiceHistoryItem(item) {
@@ -71,6 +103,12 @@ function mergeActionHistory(prev, incoming) {
   return { ok: true, history: incomingAllowed.concat(missingProtected) };
 }
 
+function applyServiceEntryCreate(incoming) {
+  const cattleId = String((incoming && incoming.cattleId) || '').trim();
+  if (!cattleId) return { ok: false, error: 'cattleId обязателен' };
+  return applyServiceEntryUpdate(blankServiceEntry(cattleId), incoming);
+}
+
 function applyServiceEntryUpdate(existing, incoming) {
   if (!existing || typeof existing !== 'object') {
     return { ok: false, error: 'Запись не найдена' };
@@ -105,6 +143,7 @@ module.exports = {
   ALLOWED_HISTORY_TYPES,
   SERVICE_PATCH_KEYS,
   isAllowedServiceHistoryItem,
+  applyServiceEntryCreate,
   applyServiceEntryUpdate,
   applyFarmCardEventsOnly
 };

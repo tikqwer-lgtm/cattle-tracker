@@ -320,7 +320,7 @@
       stallMap: true,
       inventory: false,
       notifications: true,
-      analytics: true,
+      analytics: false,
       farmCardSettings: false,
       farmCardView: true,
       multiBase: true,
@@ -330,11 +330,40 @@
     }
   };
 
+  var _roleCapOverlay = null;
+
+  function setRoleCapabilities(matrix) {
+    if (!matrix || typeof matrix !== 'object') {
+      _roleCapOverlay = null;
+      return;
+    }
+    _roleCapOverlay = {
+      inseminator: matrix.inseminator && typeof matrix.inseminator === 'object' ? matrix.inseminator : null,
+      service: matrix.service && typeof matrix.service === 'object' ? matrix.service : null
+    };
+  }
+
+  function getRoleCapabilities() {
+    return _roleCapOverlay;
+  }
+
+  /** Временно скрыто в UI; модуль и capability оставляем, чтобы вернуть позже. */
+  var PARKED_CAPABILITIES = { notifications: true };
+
   function hasCapability(capability, user) {
     var key = String(capability || '').trim();
     if (!key) return false;
+    if (PARKED_CAPABILITIES[key]) return false;
     var role = getUiRole(user);
+    if (role === 'admin') {
+      var adminCaps = CAPABILITY_MATRIX.admin;
+      return !!adminCaps[key];
+    }
     var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.inseminator;
+    var overlay = _roleCapOverlay && _roleCapOverlay[role];
+    if (overlay && Object.prototype.hasOwnProperty.call(overlay, key)) {
+      return !!overlay[key];
+    }
     return !!roleCaps[key];
   }
 
@@ -411,6 +440,8 @@
   NS.rejectIfPreviewMutation = rejectIfPreviewMutation;
   NS.isAppAdminRole = isAppAdminRole;
   NS.hasCapability = hasCapability;
+  NS.setRoleCapabilities = setRoleCapabilities;
+  NS.getRoleCapabilities = getRoleCapabilities;
   NS.canInputServiceWorks = canInputServiceWorks;
   NS.canAdd = canAdd;
   NS.canEdit = canEdit;

@@ -399,6 +399,9 @@
   function login(username, password) {
     return request('POST', '/api/auth/login', { username: username, password: password }).then(function (data) {
       if (data.token) setToken(data.token);
+      if (data && data.roleCapabilities && typeof global.setRoleCapabilities === 'function') {
+        global.setRoleCapabilities(data.roleCapabilities);
+      }
       return data;
     });
   }
@@ -476,6 +479,9 @@
 
   function getCurrentUser() {
     return request('GET', '/api/auth/me').then(function (data) {
+      if (data && data.roleCapabilities && typeof global.setRoleCapabilities === 'function') {
+        global.setRoleCapabilities(data.roleCapabilities);
+      }
       return data.user || null;
     });
   }
@@ -491,6 +497,26 @@
 
   function getUsers() {
     return request('GET', '/api/admin/users').then(function (data) { return data.users || []; });
+  }
+
+  function getRoleCapabilities() {
+    return request('GET', '/api/role-capabilities').then(function (data) {
+      var roles = data && data.roles;
+      if (roles && typeof global.setRoleCapabilities === 'function') {
+        global.setRoleCapabilities(roles);
+      }
+      return roles;
+    });
+  }
+
+  function putRoleCapabilities(roles) {
+    return request('PUT', '/api/admin/role-capabilities', roles || {}).then(function (data) {
+      var next = data && data.roles;
+      if (next && typeof global.setRoleCapabilities === 'function') {
+        global.setRoleCapabilities(next);
+      }
+      return next;
+    });
   }
 
   function deleteUser(id) {
@@ -604,6 +630,8 @@
     getCurrentUser: getCurrentUser,
     checkUsername: checkUsername,
     getUsers: getUsers,
+    getRoleCapabilities: getRoleCapabilities,
+    putRoleCapabilities: putRoleCapabilities,
     deleteUser: deleteUser,
     updateUserRole: updateUserRole,
     updateUser: updateUser,
