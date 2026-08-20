@@ -95,8 +95,8 @@
       <div id="admin-assign-container" class="admin-assign-container"></div>
     </section>
     <section class="admin-section" data-admin-panel="permissions" hidden>
-      <h2>Права ролей</h2>
-      <p class="farm-settings-hint">Включите или отключите функции для осеменатора и сервис-специалиста. Администратор всегда имеет полный доступ.</p>
+      <h2>Права пользователя</h2>
+      <p class="farm-settings-hint">Выберите человека и включите или отключите функции. Пока переключатели не сохранены, действуют права его роли. Администратор всегда имеет полный доступ.</p>
       <div id="admin-role-capabilities" class="admin-role-capabilities"></div>
     </section>
     <section class="admin-section" data-admin-panel="bases" hidden>
@@ -152,13 +152,16 @@
         <label for="bullInsemBatch">Бык</label>
         <input type="text" id="bullInsemBatch" list="datalist-farm-bulls" placeholder="" autocomplete="off" />
         <label for="inseminatorInsem">Техник ИО</label>
-        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Ввод или выбор" autocomplete="off" />
+        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Логин или ФИО" autocomplete="off" />
         <label for="codeInsem">Код осеменения</label>
-        <select id="codeInsem">
-          <option value="">—</option>
-          <option value="Охота">Охота</option>
-          <option value="Датчик">Датчик</option>
-        </select>
+        <div class="insem-code-row">
+          <select id="codeInsem">
+            <option value="">—</option>
+            <option value="Охота">Охота</option>
+            <option value="Датчик">Датчик</option>
+          </select>
+          <button type="button" id="addProtocolFromInsemBtn" class="small-btn">Добавить протокол</button>
+        </div>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
@@ -276,7 +279,7 @@
         <label for="uziDateInput">Дата проверки</label>
         <input type="date" id="uziDateInput" />
         <label for="uziSpecialistInput">Специалист</label>
-        <input type="text" id="uziSpecialistInput" placeholder="Кто проводил УЗИ" />
+        <input type="text" id="uziSpecialistInput" list="datalist-farm-technicians" placeholder="Логин или ФИО" autocomplete="off" />
       </div>
       <div class="action-batch-add-block">
         <label for="uziBatchAddInput">Добавить по номеру</label>

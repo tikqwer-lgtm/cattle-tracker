@@ -22,7 +22,8 @@ router.put(
     const objectId = String(req.params.objectId || '').trim();
     const userId = req.user && req.user.id != null ? String(req.user.id) : null;
     const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
-    const eventsOnly = !capLib.userHasCapability(req.user, 'farmCardSettings', matrix);
+    const overlay = db.getUserCapabilityOverlay ? db.getUserCapabilityOverlay(req.user && req.user.id) : null;
+    const eventsOnly = !capLib.userHasCapability(req.user, 'farmCardSettings', matrix, overlay);
     const result = db.replaceFarmCardBundle(objectId, req.body, {
       userId: userId,
       eventsOnly: eventsOnly,

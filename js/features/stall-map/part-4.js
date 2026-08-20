@@ -102,7 +102,9 @@ function initStallMapScreen() {
   }
   if (createCancel && !createCancel.dataset.bound) {
     createCancel.dataset.bound = '1';
-    createCancel.addEventListener('click', stallMapCloseCreateYardModal);
+    createCancel.addEventListener('click', function () {
+      globalThis['__stallMap'].stallMapCloseCreateYardModal();
+    });
   }
   if (createModal && !createModal.dataset.overlayBound) {
     createModal.dataset.overlayBound = '1';
@@ -175,7 +177,9 @@ function initStallMapScreen() {
   }
   if (closeBtn && !closeBtn.dataset.bound) {
     closeBtn.dataset.bound = '1';
-    closeBtn.addEventListener('click', stallMapCloseAssignModal);
+    closeBtn.addEventListener('click', function () {
+      globalThis['__stallMap'].stallMapCloseAssignModal();
+    });
   }
   if (modal && !modal.dataset.overlayBound) {
     modal.dataset.overlayBound = '1';
@@ -190,7 +194,9 @@ function initStallMapScreen() {
   var cellRep = document.getElementById('stallMapCellModalReplace');
   if (cellClose && !cellClose.dataset.bound) {
     cellClose.dataset.bound = '1';
-    cellClose.addEventListener('click', stallMapCloseCellModal);
+    cellClose.addEventListener('click', function () {
+      globalThis['__stallMap'].stallMapCloseCellModal();
+    });
   }
   if (cellUn && !cellUn.dataset.bound) {
     cellUn.dataset.bound = '1';

@@ -10,6 +10,7 @@
   }
   var resolveEntryForAction = AB.resolveEntryForAction;
   var toast = AB.toast;
+  var toastSaveError = AB.toastSaveError;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
   var openOverlay = AB.openOverlay;
@@ -168,7 +169,7 @@
       })
       .catch(function (err) {
         if (err && err.code === 'USER_CANCEL') return;
-        toast(err && err.message ? err.message : 'Ошибка', 'error');
+        toastSaveError(err, 'Ошибка');
       });
   }
 

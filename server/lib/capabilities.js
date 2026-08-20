@@ -102,7 +102,11 @@ function mergeRoleCapabilities(stored) {
   };
 }
 
-function userHasCapability(user, capability, storedOrMerged) {
+function mergeUserCapabilities(roleCaps, userOverlay) {
+  return Object.assign({}, roleCaps || {}, pickEditable(userOverlay));
+}
+
+function userHasCapability(user, capability, storedOrMerged, userOverlay) {
   const key = String(capability || '').trim();
   if (!key) return false;
   const role = normalizeRole(user && user.role);
@@ -110,7 +114,8 @@ function userHasCapability(user, capability, storedOrMerged) {
   const merged = storedOrMerged && storedOrMerged.inseminator && storedOrMerged.service
     ? storedOrMerged
     : mergeRoleCapabilities(storedOrMerged);
-  const caps = merged[role] || merged.inseminator;
+  const roleCaps = merged[role] || merged.inseminator;
+  const caps = mergeUserCapabilities(roleCaps, userOverlay);
   return !!caps[key];
 }
 
@@ -122,5 +127,7 @@ module.exports = {
   normalizeRole,
   getDefaultRoleCapabilities,
   mergeRoleCapabilities,
+  mergeUserCapabilities,
+  pickEditable,
   userHasCapability
 };

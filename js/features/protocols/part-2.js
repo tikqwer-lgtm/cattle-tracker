@@ -60,8 +60,8 @@ function collectProtocolNamesForInseminationCode() {
       out.push(name);
     });
   }
-  globalThis['__protocols'].addList(globalThis['__protocols'].getProtocols());
-  globalThis['__protocols'].addList(globalThis['__protocols'].getProtocolsFromLocalStorage());
+  addList(globalThis['__protocols'].getProtocols());
+  addList(globalThis['__protocols'].getProtocolsFromLocalStorage());
   out.sort(function (a, b) { return a.localeCompare(b, 'ru'); });
   return out;
 }
@@ -73,13 +73,15 @@ function collectProtocolNamesForInseminationCode() {
 function fillOneInseminationCodeSelect(sel, preserveValue) {
   if (!sel || sel.tagName !== 'SELECT') return;
   /* Не пересобирать скрытые селекты при фоновой загрузке — меньше лишних мутаций DOM и срывов фокуса в Electron. */
-  if (sel.id === 'codeInsem') {
-    var insSc = document.getElementById('insemination-screen');
-    if (insSc && !insSc.classList.contains('active') && document.activeElement !== sel) return;
-  }
-  if (sel.id === 'code') {
-    var addSc = document.getElementById('add-screen');
-    if (addSc && !addSc.classList.contains('active') && document.activeElement !== sel) return;
+  if (preserveValue === undefined) {
+    if (sel.id === 'codeInsem') {
+      var insSc = document.getElementById('insemination-screen');
+      if (insSc && !insSc.classList.contains('active') && document.activeElement !== sel) return;
+    }
+    if (sel.id === 'code') {
+      var addSc = document.getElementById('add-screen');
+      if (addSc && !addSc.classList.contains('active') && document.activeElement !== sel) return;
+    }
   }
   var ae = document.activeElement;
   var current = preserveValue !== undefined ? preserveValue : sel.value;
@@ -94,10 +96,10 @@ function fillOneInseminationCodeSelect(sel, preserveValue) {
     o.textContent = label || val;
     sel.appendChild(o);
   }
-  globalThis['__protocols'].addOpt('Охота', 'Охота');
-  globalThis['__protocols'].addOpt('Датчик', 'Датчик');
+  addOpt('Охота', 'Охота');
+  addOpt('Датчик', 'Датчик');
   collectProtocolNamesForInseminationCode().forEach(function (name) {
-    globalThis['__protocols'].addOpt(name, name);
+    addOpt(name, name);
   });
   if (current && Array.prototype.some.call(sel.options, function (o) { return o.value === current; })) {
     sel.value = current;
@@ -124,6 +126,130 @@ function fillAllInseminationCodeSelects() {
   fillOneInseminationCodeSelect(document.getElementById('code'));
 }
 
+var _quickProtocolTargetSelectId = 'codeInsem';
+
+function canAddProtocolFromEvent() {
+  if (typeof window.canInputServiceWorks === 'function') return window.canInputServiceWorks();
+  return typeof window.hasCapability === 'function' && window.hasCapability('serviceWorksInput');
+}
+
+function syncQuickProtocolButtons() {
+  var show = canAddProtocolFromEvent();
+  ['addProtocolFromInsemBtn', 'addProtocolFromCowBtn'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+}
+
+function closeQuickProtocolModal() {
+  var modal = document.getElementById('quickProtocolModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function openQuickProtocolModal(selectId) {
+  if (!canAddProtocolFromEvent()) return;
+  _quickProtocolTargetSelectId = selectId || 'codeInsem';
+  var modal = document.getElementById('quickProtocolModal');
+  var input = document.getElementById('quickProtocolNameInput');
+  if (!modal) return;
+  if (input) input.value = '';
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  if (input) {
+    setTimeout(function () {
+      try { input.focus(); } catch (e) {}
+    }, 0);
+  }
+}
+
+function submitQuickProtocol() {
+  var input = document.getElementById('quickProtocolNameInput');
+  var name = input ? String(input.value || '').trim() : '';
+  if (!name) {
+    if (typeof showToast === 'function') showToast('Введите название протокола', 'error');
+    return;
+  }
+  var targetId = _quickProtocolTargetSelectId || 'codeInsem';
+  var addFn = globalThis['__protocols'] && globalThis['__protocols'].addProtocol;
+  if (typeof addFn !== 'function') {
+    if (typeof showToast === 'function') showToast('Не удалось сохранить протокол', 'error');
+    return;
+  }
+  var done = function () {
+    var sel = document.getElementById(targetId);
+    fillOneInseminationCodeSelect(sel, name);
+    if (sel) sel.value = name;
+    closeQuickProtocolModal();
+    if (typeof showToast === 'function') showToast('Протокол добавлен', 'success');
+  };
+  var fail = function (err) {
+    var msg = (err && err.message) ? err.message : 'Не удалось сохранить протокол';
+    if (typeof showToast === 'function') showToast(msg, 'error');
+  };
+  var add = addFn({ name: name, steps: [] });
+  if (add && typeof add.then === 'function') {
+    add.then(done, fail);
+  } else if (add) {
+    done();
+  } else {
+    fail();
+  }
+}
+
+function bindQuickProtocolUi() {
+  syncQuickProtocolButtons();
+  function bindOpen(btnId, selectId) {
+    var btn = document.getElementById(btnId);
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', function () {
+      openQuickProtocolModal(selectId);
+    });
+  }
+  bindOpen('addProtocolFromInsemBtn', 'codeInsem');
+  bindOpen('addProtocolFromCowBtn', 'code');
+  var submitBtn = document.getElementById('quickProtocolSubmitBtn');
+  var cancelBtn = document.getElementById('quickProtocolCancelBtn');
+  var closeBtn = document.getElementById('quickProtocolCloseBtn');
+  var modal = document.getElementById('quickProtocolModal');
+  var nameInp = document.getElementById('quickProtocolNameInput');
+  if (submitBtn && submitBtn.dataset.bound !== '1') {
+    submitBtn.dataset.bound = '1';
+    submitBtn.addEventListener('click', submitQuickProtocol);
+  }
+  function onCancel() {
+    closeQuickProtocolModal();
+  }
+  if (cancelBtn && cancelBtn.dataset.bound !== '1') {
+    cancelBtn.dataset.bound = '1';
+    cancelBtn.addEventListener('click', onCancel);
+  }
+  if (closeBtn && closeBtn.dataset.bound !== '1') {
+    closeBtn.dataset.bound = '1';
+    closeBtn.addEventListener('click', onCancel);
+  }
+  if (modal && modal.dataset.overlayBound !== '1') {
+    modal.dataset.overlayBound = '1';
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeQuickProtocolModal();
+    });
+  }
+  if (nameInp && nameInp.dataset.enterBound !== '1') {
+    nameInp.dataset.enterBound = '1';
+    nameInp.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        submitQuickProtocol();
+      }
+    });
+  }
+  if (!document.documentElement.dataset.quickProtocolNavBound) {
+    document.documentElement.dataset.quickProtocolNavBound = '1';
+    document.addEventListener('cattle-tracker:navigate', syncQuickProtocolButtons);
+  }
+}
 
   // register functions
   NS.getCurrentStepsFromForm = getCurrentStepsFromForm;
@@ -131,5 +257,8 @@ function fillAllInseminationCodeSelects() {
   NS.collectProtocolNamesForInseminationCode = collectProtocolNamesForInseminationCode;
   NS.fillOneInseminationCodeSelect = fillOneInseminationCodeSelect;
   NS.fillAllInseminationCodeSelects = fillAllInseminationCodeSelects;
+  NS.bindQuickProtocolUi = bindQuickProtocolUi;
+  NS.syncQuickProtocolButtons = syncQuickProtocolButtons;
+  NS.openQuickProtocolModal = openQuickProtocolModal;
 })();
 export {};

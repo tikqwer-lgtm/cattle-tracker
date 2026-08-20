@@ -12,6 +12,7 @@
   var resolveEntryForAction = AB.resolveEntryForAction;
   var newAnimalHintHtml = AB.newAnimalHintHtml;
   var toast = AB.toast;
+  var toastSaveError = AB.toastSaveError;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
   var openOverlay = AB.openOverlay;
@@ -21,6 +22,8 @@
   var runSequentialUpdates = AB.runSequentialUpdates;
   var runSequentialCreates = AB.runSequentialCreates;
   var defaultSpecialist = AB.defaultSpecialist;
+  var fillOperatorField = AB.fillOperatorField;
+  var confirmMissingAnimal = AB.confirmMissingAnimal;
   var escapeHtml = AB.escapeHtml;
   var batchGuardKey = AB.batchGuardKey;
   var draftRowWarnClass = AB.draftRowWarnClass;
@@ -106,44 +109,84 @@
     });
   }
 
+  function daysFromDates(insemDate, uziDate) {
+    if (!insemDate || !uziDate) return null;
+    var d1 = new Date(insemDate);
+    var d2 = new Date(uziDate);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+    var n = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+    return n >= 0 ? n : null;
+  }
+
+  function promptDoubtfulInsemInfo(uziDate, existingDays) {
+    if (existingDays != null && !isNaN(existingDays)) return Promise.resolve(existingDays);
+    return new Promise(function (resolve) {
+      var wrap = openOverlay(
+        '<h3 class="action-batch-modal-title">Сомнительная</h3>' +
+        '<p class="action-batch-modal-hint">Укажите день от осеменения или дату осеменения (достаточно одного).</p>' +
+        '<label class="action-batch-modal-label">Дней от осеменения<br>' +
+        '<input type="number" id="uziDoubtDays" class="action-batch-modal-input" min="0" placeholder="Например 32" /></label>' +
+        '<label class="action-batch-modal-label">Дата осеменения<br>' +
+        '<input type="date" id="uziDoubtInsemDate" class="action-batch-modal-input" /></label>' +
+        '<div class="action-batch-modal-actions">' +
+        '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziDoubtOk">OK</button>' +
+        '<button type="button" class="action-batch-btn" id="uziDoubtCancel">Отмена</button>' +
+        '</div>'
+      );
+      var done = false;
+      function finish(val) {
+        if (done) return;
+        done = true;
+        closeTopModal();
+        resolve(val);
+      }
+      document.getElementById('uziDoubtOk').addEventListener('click', function () {
+        var daysEl = document.getElementById('uziDoubtDays');
+        var dateEl = document.getElementById('uziDoubtInsemDate');
+        var dv = daysEl && daysEl.value !== '' ? parseInt(daysEl.value, 10) : NaN;
+        if (!isNaN(dv) && dv >= 0) {
+          finish(dv);
+          return;
+        }
+        var fromDate = daysFromDates(dateEl && dateEl.value, uziDate);
+        if (fromDate != null) {
+          finish(fromDate);
+          return;
+        }
+        toast('Укажите день от осеменения или дату осеменения', 'error');
+      });
+      document.getElementById('uziDoubtCancel').addEventListener('click', function () { finish(false); });
+      if (wrap) {
+        wrap.addEventListener('click', function (e) {
+          if (e.target === wrap) finish(false);
+        });
+      }
+    });
+  }
+
   function promptUziResultThenAdd(cattleId) {
     if (uziDraft.some(function (x) { return x.cattleId === cattleId; })) {
       toast('Эта корова уже в списке', 'error');
       return;
     }
-    var entry = resolveEntryForAction(cattleId);
-    openOverlay(
-      '<h3 class="action-batch-modal-title">УЗИ: ' + escapeHtml(cattleId) + '</h3>' +
-      newAnimalHintHtml(cattleId) +
-      '<p class="action-batch-modal-hint">Выберите результат</p>' +
-      '<div class="action-batch-modal-actions action-batch-modal-actions--stack">' +
-      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziPickPregnant">Стельная</button>' +
-      '<button type="button" class="action-batch-btn" id="uziPickOpen">Не стельная</button>' +
-      '<button type="button" class="action-batch-btn" id="uziPickDoubtful">Сомнительная</button>' +
-      '<button type="button" class="action-batch-btn" id="uziPickCancel">Отмена</button>' +
-      '</div>'
-    );
-    function pick(result) {
-      closeTopModal();
-      if (!result) {
+    confirmMissingAnimal(cattleId).then(function (okAdd) {
+      if (!okAdd) {
         refocusActiveActionBatchNumberInput();
         return;
       }
-      var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
-      if (!uziDate) {
-        toast('Укажите дату проверки', 'error');
-        refocusActiveActionBatchNumberInput();
-        return;
-      }
-      var G = window.ActionInputGuards;
-      var hadWarnings = !!(G && G.checkUzi && !G.checkUzi(entry, uziDate, {}).ok);
-      var p = !G || typeof G.confirmUziFlow !== 'function' ? Promise.resolve(true) : G.confirmUziFlow(entry, uziDate);
-      p.then(function (ok) {
-        if (!ok) {
-          refocusActiveActionBatchNumberInput();
-          return;
-        }
-        var days = computeUziDays(entry, uziDate);
+      var entry = resolveEntryForAction(cattleId);
+      openOverlay(
+        '<h3 class="action-batch-modal-title">УЗИ: ' + escapeHtml(cattleId) + '</h3>' +
+        newAnimalHintHtml(cattleId) +
+        '<p class="action-batch-modal-hint">Выберите результат</p>' +
+        '<div class="action-batch-modal-actions action-batch-modal-actions--stack">' +
+        '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziPickPregnant">Стельная</button>' +
+        '<button type="button" class="action-batch-btn" id="uziPickOpen">Не стельная</button>' +
+        '<button type="button" class="action-batch-btn" id="uziPickDoubtful">Сомнительная</button>' +
+        '<button type="button" class="action-batch-btn" id="uziPickCancel">Отмена</button>' +
+        '</div>'
+      );
+      function addRow(result, days, hadWarnings, uziDate) {
         uziDraft.push({
           id: uid(),
           cattleId: cattleId,
@@ -156,12 +199,46 @@
         if (addIn) addIn.value = '';
         renderUziDraft();
         refocusActiveActionBatchNumberInput();
-      });
-    }
-    document.getElementById('uziPickPregnant').addEventListener('click', function () { pick('Стельная'); });
-    document.getElementById('uziPickOpen').addEventListener('click', function () { pick('Не стельная'); });
-    document.getElementById('uziPickDoubtful').addEventListener('click', function () { pick('Сомнительная'); });
-    document.getElementById('uziPickCancel').addEventListener('click', function () { pick(null); });
+      }
+      function pick(result) {
+        closeTopModal();
+        if (!result) {
+          refocusActiveActionBatchNumberInput();
+          return;
+        }
+        var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
+        if (!uziDate) {
+          toast('Укажите дату проверки', 'error');
+          refocusActiveActionBatchNumberInput();
+          return;
+        }
+        var G = window.ActionInputGuards;
+        var hadWarnings = !!(G && G.checkUzi && !G.checkUzi(entry, uziDate, {}).ok);
+        var p = !G || typeof G.confirmUziFlow !== 'function' ? Promise.resolve(true) : G.confirmUziFlow(entry, uziDate);
+        p.then(function (ok) {
+          if (!ok) {
+            refocusActiveActionBatchNumberInput();
+            return;
+          }
+          var days = computeUziDays(entry, uziDate);
+          if (result !== 'Сомнительная') {
+            addRow(result, days, hadWarnings, uziDate);
+            return;
+          }
+          return promptDoubtfulInsemInfo(uziDate, days).then(function (doubtDays) {
+            if (doubtDays === false) {
+              refocusActiveActionBatchNumberInput();
+              return;
+            }
+            addRow(result, doubtDays != null ? doubtDays : days, hadWarnings, uziDate);
+          });
+        });
+      }
+      document.getElementById('uziPickPregnant').addEventListener('click', function () { pick('Стельная'); });
+      document.getElementById('uziPickOpen').addEventListener('click', function () { pick('Не стельная'); });
+      document.getElementById('uziPickDoubtful').addEventListener('click', function () { pick('Сомнительная'); });
+      document.getElementById('uziPickCancel').addEventListener('click', function () { pick(null); });
+    });
   }
 
   function saveUziBatch() {
@@ -221,14 +298,17 @@
         else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
-        toast(err && err.message ? err.message : 'Ошибка сохранения', 'error');
+        toastSaveError(err, 'Ошибка сохранения');
       });
   }
 
   function initActionBatchUziScreen() {
     uziDraft = [];
-    var spec = document.getElementById('uziSpecialistInput');
-    if (spec && !spec.value.trim()) spec.value = defaultSpecialist();
+    if (typeof fillOperatorField === 'function') fillOperatorField('uziSpecialistInput');
+    else {
+      var spec = document.getElementById('uziSpecialistInput');
+      if (spec && !spec.value.trim()) spec.value = defaultSpecialist();
+    }
     var dateEl = document.getElementById('uziDateInput');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
     if (typeof window.setupCattleAutocompleteFor === 'function') {

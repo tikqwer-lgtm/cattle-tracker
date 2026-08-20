@@ -236,7 +236,24 @@
    */
   function refreshFarmDatalists() {
     fillDatalistById('datalist-farm-bulls', getMergedBullSuggestions());
-    fillDatalistById('datalist-farm-technicians', getFarmTechnicians());
+    var techs = getFarmTechnicians() || [];
+    var login = '';
+    if (typeof getCurrentUser === 'function' && getCurrentUser()) {
+      login = String(getCurrentUser().username || '').trim();
+    }
+    var techVals = [];
+    var seenTech = {};
+    if (login) {
+      techVals.push(login);
+      seenTech[login.toLowerCase()] = true;
+    }
+    techs.forEach(function (t) {
+      var s = String(t || '').trim();
+      if (!s || seenTech[s.toLowerCase()]) return;
+      seenTech[s.toLowerCase()] = true;
+      techVals.push(s);
+    });
+    fillDatalistById('datalist-farm-technicians', techVals);
     fillDatalistById('datalist-farm-drugs', getFarmDrugs());
   }
 

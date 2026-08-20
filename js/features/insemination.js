@@ -181,7 +181,7 @@ function applyInseminationToEntry(entry, data) {
   entry.synced = false;
   var detailsStr = (inseminationDate ? 'Дата: ' + inseminationDate : '') + (attemptNumber ? ', попытка: ' + attemptNumber : '') + (bull ? ', бык: ' + bull : '') + (inseminator ? ', осеменатор: ' + inseminator : '') + (code ? ', код: ' + code : '');
   var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-  if (typeof _pushHist === 'function') _pushHist(entry, 'Осеменение', detailsStr, { eventType: 'Осеменение', attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code });
+  if (typeof _pushHist === 'function') _pushHist(entry, 'Осеменение', detailsStr, { eventType: 'Осеменение', attemptNumber: attemptNumber, bull: bull, inseminator: inseminator, code: code, eventDate: inseminationDate });
 }
 
 /**

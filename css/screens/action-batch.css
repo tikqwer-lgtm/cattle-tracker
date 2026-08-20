@@ -46,6 +46,27 @@
   border-color: var(--color-border-focus);
   box-shadow: 0 0 0 2px rgba(61, 110, 181, 0.18);
 }
+
+.insem-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.action-batch-common .insem-code-row select,
+.form .insem-code-row select {
+  width: auto;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.insem-code-row .small-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--field-min-height, 42px);
+}
 /* Блок «Добавить по номеру» должен быть выше таблицы черновика, иначе список
    автодополнения визуально виден, но клики попадают в черновик под ним. */
 .action-batch-add-block {
@@ -366,6 +387,9 @@
   margin-bottom: 0;
 }
 .admin-table .admin-role-select {
-  min-width: 9rem;
+  min-width: 7.5rem;
+  max-width: 11rem;
+  width: 100%;
+  box-sizing: border-box;
   font-size: 0.9rem;
 }

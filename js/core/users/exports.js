@@ -16,10 +16,13 @@ if (typeof window !== 'undefined') {
   window.clearPreviewRole = SM.clearPreviewRole;
   window.isRolePreviewMode = SM.isRolePreviewMode;
   window.rejectIfPreviewMutation = SM.rejectIfPreviewMutation;
+  window.previewBlockedError = SM.previewBlockedError;
   window.isAppAdminRole = SM.isAppAdminRole;
   window.hasCapability = SM.hasCapability;
   window.setRoleCapabilities = SM.setRoleCapabilities;
   window.getRoleCapabilities = SM.getRoleCapabilities;
+  window.setUserCapabilities = SM.setUserCapabilities;
+  window.getUserCapabilities = SM.getUserCapabilities;
   window.canInputServiceWorks = SM.canInputServiceWorks;
   window.canAdd = SM.canAdd;
   window.canEdit = SM.canEdit;

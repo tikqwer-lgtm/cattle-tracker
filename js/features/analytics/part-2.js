@@ -44,7 +44,7 @@
     { label: '18-24 дня', min: 18, max: 24 },
     { label: '25-35 дней', min: 25, max: 35 },
     { label: '36-48 дней', min: 36, max: 48 },
-    { label: 'Свыше 48 дней', min: 49, max: null }
+    { label: '> 48 дней', min: 49, max: null }
   ];
 
   var intervalAnalysisFilter = { lactation: null };

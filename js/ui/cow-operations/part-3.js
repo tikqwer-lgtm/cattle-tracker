@@ -59,7 +59,7 @@ function applyProtocolAssignToEntry(entry, protocolName, startDate) {
   entry.synced = false;
   var detailsStr = 'Протокол: ' + protocolName + (startDate ? ', начало: ' + startDate : '');
   var _pushHist = typeof pushActionHistory === 'function' ? pushActionHistory : window.pushActionHistory;
-  if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName });
+  if (typeof _pushHist === 'function') _pushHist(entry, 'Постановка на протокол', detailsStr, { eventType: 'Постановка на протокол', protocolName: protocolName, eventDate: startDate });
 }
 
 function applyProtocolClearToEntry(entry) {
@@ -239,13 +239,14 @@ function saveUziEntry() {
           var hasUzi = entryAfter.actionHistory && entryAfter.actionHistory.some(function (item) {
             return item.action === 'УЗИ' && item.details && item.details.indexOf(uziDate) !== -1;
           });
-          if (!hasUzi) pushHistFn(entryAfter, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+          if (!hasUzi) pushHistFn(entryAfter, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result, eventDate: uziDate });
         }
         if (typeof showToast === 'function') showToast('Сохранено', 'success');
         if (typeof updateViewList === 'function') updateViewList();
         if (typeof navigate === 'function') navigate('view-cow');
         viewCow(cattleId);
       }).catch(function (err) {
+        if (err && err.alreadyToasted) return;
         if (typeof showToast === 'function') showToast(err && err.message ? err.message : 'Ошибка', 'error'); else alert(err && err.message ? err.message : 'Ошибка');
       });
       return;

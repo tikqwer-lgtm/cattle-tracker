@@ -72,7 +72,8 @@
 }
 .form-cow-editor label + input:not([type="checkbox"]),
 .form-cow-editor label + select,
-.form-cow-editor label + textarea {
+.form-cow-editor label + textarea,
+.form-cow-editor label + .insem-code-row {
   @apply self-center;
 }
 .form-cow-editor label + textarea {

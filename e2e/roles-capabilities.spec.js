@@ -40,7 +40,11 @@ test.beforeAll(async () => {
       const auth = String(req.headers.authorization || '');
       const m = auth.match(/Bearer\s+e2e-token-([a-z]+)/i);
       const role = m ? String(m[1]).toLowerCase() : 'inseminator';
-      sendJson(res, 200, { user: { id: 'e2e-role', username: 'role-user', role } });
+      sendJson(res, 200, {
+        user: { id: 'e2e-role', username: 'role-user', role },
+        roleCapabilities: { inseminator: {}, service: {} },
+        userCapabilities: {}
+      });
       return;
     }
     if (pathname === '/api/auth/register-status' && req.method === 'GET') {
@@ -90,9 +94,21 @@ test.beforeAll(async () => {
       sendJson(res, 200, {});
       return;
     }
+    if (
+      (pathname === '/api/role-capabilities' || pathname === '/api/admin/role-capabilities') &&
+      req.method === 'GET'
+    ) {
+      sendJson(res, 200, { ok: true, roles: { inseminator: {}, service: {} } });
+      return;
+    }
+    if (req.method === 'GET' && /^\/api\/admin\/users\/[^/]+\/capabilities$/.test(pathname)) {
+      sendJson(res, 200, { ok: true, overlay: {}, capabilities: {} });
+      return;
+    }
     if (req.method === 'GET' && /^\/api\/objects\/[^/]+\/farm-settings$/.test(pathname)) {
       sendJson(res, 200, { technicians: [], bulls: [], drugs: [], vwpDays: 60 });
       return;
+    }
     }
 
     sendJson(res, 404, { error: 'e2e mock: not found', path: pathname });

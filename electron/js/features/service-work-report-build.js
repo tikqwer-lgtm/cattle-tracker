@@ -97,6 +97,23 @@ function pushItem(out, seen, row) {
   out.push(row);
 }
 
+function pushUziItem(out, seen, row) {
+  var key = row.cattleId + '|uzi|' + row.workDate;
+  var prevIdx = seen[key];
+  if (prevIdx != null && out[prevIdx]) {
+    var prev = out[prevIdx];
+    var prevRank = prev.action === 'УЗИ1' || prev.action === 'УЗИ2' ? 2 : 1;
+    var nextRank = row.action === 'УЗИ1' || row.action === 'УЗИ2' ? 2 : 1;
+    if (nextRank > prevRank) {
+      prev.action = row.action;
+      if (row.details) prev.details = row.details;
+    }
+    return;
+  }
+  seen[key] = out.length;
+  out.push(row);
+}
+
 function collectServiceWorkItems(entries, opts) {
   opts = opts || {};
   var date = dateKey(opts.date);
@@ -119,7 +136,7 @@ function collectServiceWorkItems(entries, opts) {
           workDate: d
         });
       } else if (types.uzi && isUziAction(h)) {
-        pushItem(out, seen, {
+        pushUziItem(out, seen, {
           cattleId: cattleId,
           action: uziActionLabel(h),
           details: uziDetails(h),
@@ -155,7 +172,7 @@ function collectServiceWorkItems(entries, opts) {
         var who = actor(rec, rec && rec.specialist);
         if (username && !namesMatch(who, username) && !namesMatch(rec && rec.specialist, username)) return;
         var label = idx === 0 ? 'УЗИ1' : (idx === 1 ? 'УЗИ2' : 'УЗИ');
-        pushItem(out, seen, {
+        pushUziItem(out, seen, {
           cattleId: cattleId,
           action: label,
           details: uziDetails(null, rec),

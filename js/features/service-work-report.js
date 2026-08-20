@@ -76,6 +76,48 @@ function collectFromForm(root) {
   });
 }
 
+function htmlToDataUrl(html) {
+  var b64;
+  try {
+    b64 = btoa(unescape(encodeURIComponent(html)));
+  } catch (e) {
+    b64 = btoa(html);
+  }
+  return 'data:text/html;charset=utf-8;base64,' + b64;
+}
+
+function reportPrintHtml(items, date, username) {
+  return (
+    '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Опись ' +
+    escapeHtml(date) +
+    '</title><style>body{font-family:sans-serif;padding:16px}h1{font-size:1.2rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f3f3f3}</style></head><body>' +
+    '<h1>Опись работ специалиста</h1>' +
+    '<p>' +
+    escapeHtml(date || '') +
+    (username ? ' · ' + escapeHtml(username) : '') +
+    '</p>' +
+    itemsTableHtml(items).replace('class="list-table service-report-table"', 'class="service-report-table"') +
+    '</body></html>'
+  );
+}
+
+function downloadReportFile(items, date) {
+  var html = reportPrintHtml(items, date, getUsername());
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var filename = 'opis-' + (date || todayIso()) + '.html';
+  if (typeof window.downloadBlob === 'function') {
+    window.downloadBlob(blob, filename, html, 'Опись работ');
+    return;
+  }
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+  if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+}
+
 function newEventId() {
   return 'ev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
@@ -92,6 +134,7 @@ function saveReport(items, date) {
     if (!window.__farmCardBundle) window.__farmCardBundle = { events: [] };
     if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
     var title = 'Отчёт ' + date + ' (' + items.length + ' гол.)';
+    var html = reportPrintHtml(items, date, getUsername());
     window.__farmCardBundle.events.push({
       id: newEventId(),
       eventType: 'service_report',
@@ -105,7 +148,15 @@ function saveReport(items, date) {
       reminderAt: '',
       completed: false,
       notifyLocal: true,
-      attachments: []
+      attachments: [
+        {
+          id: 'att_report_' + Date.now(),
+          name: 'opis-' + date + '.html',
+          mime: 'text/html',
+          size: html.length,
+          dataUrl: htmlToDataUrl(html)
+        }
+      ]
     });
     if (typeof window.saveFarmCardBundle !== 'function') {
       if (typeof showToast === 'function') showToast('Не удалось сохранить карточку хозяйства', 'error');
@@ -121,6 +172,7 @@ function saveReport(items, date) {
       return true;
     });
   }).catch(function (err) {
+    if (err && err.alreadyToasted) return false;
     if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка сохранения отчёта', 'error');
     return false;
   });
@@ -148,7 +200,8 @@ function openServiceWorkReportForm() {
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
     '</div>' +
     '<div class="view-fields-actions">' +
-    '<button type="button" class="small-btn" id="serviceReportRefreshBtn">Обновить опись</button>' +
+    '<button type="button" class="action-btn" id="serviceReportRefreshBtn">Обновить опись</button>' +
+    '<button type="button" class="action-btn" id="serviceReportPrintBtn">На печать</button>' +
     '<button type="button" class="action-btn" id="serviceReportSaveBtn">Сохранить в ленту</button>' +
     '</div></div>';
   document.body.appendChild(modal);
@@ -169,6 +222,16 @@ function openServiceWorkReportForm() {
     if (el) el.addEventListener('change', refreshPreview);
   });
   modal.querySelector('#serviceReportRefreshBtn').addEventListener('click', refreshPreview);
+  modal.querySelector('#serviceReportPrintBtn').addEventListener('click', function () {
+    var dateEl = modal.querySelector('#serviceReportDate');
+    var d = (dateEl && dateEl.value) || todayIso();
+    var items = modal._items || collectFromForm(modal);
+    if (!items.length) {
+      if (typeof showToast === 'function') showToast('Нет работ за эту дату', 'error');
+      return;
+    }
+    downloadReportFile(items, d);
+  });
   modal.querySelector('#serviceReportSaveBtn').addEventListener('click', function () {
     var dateEl = modal.querySelector('#serviceReportDate');
     var d = (dateEl && dateEl.value) || todayIso();

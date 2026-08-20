@@ -12,6 +12,7 @@
   var resolveEntryForAction = AB.resolveEntryForAction;
   var newAnimalHintHtml = AB.newAnimalHintHtml;
   var toast = AB.toast;
+  var toastSaveError = AB.toastSaveError;
   var uid = AB.uid;
   var bindOnce = AB.bindOnce;
   var openOverlay = AB.openOverlay;
@@ -226,7 +227,7 @@
         else if (typeof navigate === 'function') navigate('menu');
       })
       .catch(function (err) {
-        toast(err && err.message ? err.message : 'Ошибка', 'error');
+        toastSaveError(err, 'Ошибка');
       });
   }
 
@@ -240,6 +241,7 @@
 
   function initActionBatchInseminationScreen() {
     insemDraft = [];
+    if (typeof AB.fillOperatorField === 'function') AB.fillOperatorField('inseminatorInsem');
     var dateEl = document.getElementById('inseminationDateInsem');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
     bindInseminationBatchAutocomplete();

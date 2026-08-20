@@ -10,7 +10,8 @@ const capLib = require('../lib/capabilities');
 
 function worksOnly(user) {
   const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
-  return !capLib.userHasCapability(user, 'eventsInput', matrix);
+  const overlay = user && db.getUserCapabilityOverlay ? db.getUserCapabilityOverlay(user.id) : null;
+  return !capLib.userHasCapability(user, 'eventsInput', matrix, overlay);
 }
 
 function getObjectId(req) {

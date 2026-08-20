@@ -142,6 +142,7 @@
   function logoutUser() {
     clearPreviewRole();
     saveCurrentUser(null);
+    setUserCapabilities(null);
   }
 
   function getCurrentUser() {
@@ -263,6 +264,13 @@
     return true;
   }
 
+  function previewBlockedError() {
+    var err = new Error('Режим просмотра: изменения отключены');
+    err.alreadyToasted = true;
+    err.code = 'PREVIEW_BLOCKED';
+    return err;
+  }
+
   function isAppAdminRole(user) {
     var u = user || getCurrentUser() || {};
     var role = String(u.role || '').trim().toLowerCase();
@@ -331,6 +339,7 @@
   };
 
   var _roleCapOverlay = null;
+  var _userCapOverlay = null;
 
   function setRoleCapabilities(matrix) {
     if (!matrix || typeof matrix !== 'object') {
@@ -347,6 +356,18 @@
     return _roleCapOverlay;
   }
 
+  function setUserCapabilities(overlay) {
+    if (!overlay || typeof overlay !== 'object') {
+      _userCapOverlay = null;
+      return;
+    }
+    _userCapOverlay = overlay;
+  }
+
+  function getUserCapabilities() {
+    return _userCapOverlay;
+  }
+
   /** Временно скрыто в UI; модуль и capability оставляем, чтобы вернуть позже. */
   var PARKED_CAPABILITIES = { notifications: true };
 
@@ -358,6 +379,9 @@
     if (role === 'admin') {
       var adminCaps = CAPABILITY_MATRIX.admin;
       return !!adminCaps[key];
+    }
+    if (!isRolePreviewMode(user) && _userCapOverlay && Object.prototype.hasOwnProperty.call(_userCapOverlay, key)) {
+      return !!_userCapOverlay[key];
     }
     var roleCaps = CAPABILITY_MATRIX[role] || CAPABILITY_MATRIX.inseminator;
     var overlay = _roleCapOverlay && _roleCapOverlay[role];
@@ -438,10 +462,13 @@
   NS.clearPreviewRole = clearPreviewRole;
   NS.isRolePreviewMode = isRolePreviewMode;
   NS.rejectIfPreviewMutation = rejectIfPreviewMutation;
+  NS.previewBlockedError = previewBlockedError;
   NS.isAppAdminRole = isAppAdminRole;
   NS.hasCapability = hasCapability;
   NS.setRoleCapabilities = setRoleCapabilities;
   NS.getRoleCapabilities = getRoleCapabilities;
+  NS.setUserCapabilities = setUserCapabilities;
+  NS.getUserCapabilities = getUserCapabilities;
   NS.canInputServiceWorks = canInputServiceWorks;
   NS.canAdd = canAdd;
   NS.canEdit = canEdit;

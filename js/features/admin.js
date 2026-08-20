@@ -112,16 +112,13 @@
     });
   }
 
-  function renderRoleCapColumn(roleKey, title, caps) {
-    var html = '<div class="admin-role-cap-col" data-role="' + escapeHtml(roleKey) + '">';
-    html += '<h3 class="admin-role-cap-title">' + escapeHtml(title) + '</h3>';
+  function renderUserCapColumn(caps) {
+    var html = '<div class="admin-role-cap-col">';
     ROLE_CAP_FIELDS.forEach(function (field) {
       var on = !!(caps && caps[field.key]);
       html +=
         '<label class="admin-role-cap-row">' +
-        '<input type="checkbox" data-role-cap="' +
-        escapeHtml(roleKey) +
-        '" data-cap-key="' +
+        '<input type="checkbox" data-user-cap-key="' +
         escapeHtml(field.key) +
         '"' +
         (on ? ' checked' : '') +
@@ -134,22 +131,22 @@
     return html;
   }
 
-  function bindRoleCapToggles(host, api, roles) {
-    if (!host || !api || !api.putRoleCapabilities) return;
-    host.querySelectorAll('input[data-role-cap]').forEach(function (input) {
+  function bindUserCapToggles(host, api, state) {
+    if (!host || !api || !api.putUserCapabilities) return;
+    host.querySelectorAll('input[data-user-cap-key]').forEach(function (input) {
       input.addEventListener('change', function () {
-        var role = input.getAttribute('data-role-cap');
-        var key = input.getAttribute('data-cap-key');
-        if (!role || !key || !roles[role]) return;
-        roles[role][key] = !!input.checked;
+        var key = input.getAttribute('data-user-cap-key');
+        var userId = state.userId;
+        if (!key || !userId) return;
+        state.overlay = state.overlay && typeof state.overlay === 'object' ? state.overlay : {};
+        state.overlay[key] = !!input.checked;
         input.disabled = true;
-        api.putRoleCapabilities({
-          inseminator: roles.inseminator,
-          service: roles.service
-        }).then(function (saved) {
-          if (saved) {
-            roles.inseminator = saved.inseminator || roles.inseminator;
-            roles.service = saved.service || roles.service;
+        api.putUserCapabilities(userId, state.overlay).then(function (saved) {
+          if (saved && saved.overlay) state.overlay = saved.overlay;
+          if (saved && saved.capabilities) state.capabilities = saved.capabilities;
+          var me = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+          if (me && String(me.id) === String(userId) && typeof global.setUserCapabilities === 'function') {
+            global.setUserCapabilities(state.overlay);
           }
           if (typeof showToast === 'function') showToast('Права сохранены', 'success');
           if (typeof globalThis.__menu !== 'undefined' && typeof globalThis.__menu.updateMenuGroupVisibility === 'function') {
@@ -157,7 +154,7 @@
           }
         }).catch(function (err) {
           input.checked = !input.checked;
-          roles[role][key] = !!input.checked;
+          state.overlay[key] = !!input.checked;
           if (typeof showToast === 'function') showToast(err.message || 'Не удалось сохранить права', 'error', 5000);
         }).then(function () {
           input.disabled = false;
@@ -166,22 +163,66 @@
     });
   }
 
+  function loadSelectedUserCapabilities(api, userId, host) {
+    if (!host) return;
+    if (!userId) {
+      host.innerHTML = '<p class="admin-message">Выберите пользователя.</p>';
+      return;
+    }
+    host.innerHTML = '<p class="admin-loading">Загрузка…</p>';
+    api.getUserCapabilities(userId).then(function (data) {
+      var state = {
+        userId: userId,
+        overlay: (data && data.overlay) || {},
+        capabilities: (data && data.capabilities) || {}
+      };
+      host.innerHTML = renderUserCapColumn(state.capabilities);
+      bindUserCapToggles(host, api, state);
+    }).catch(function (err) {
+      host.innerHTML = '<p class="admin-message admin-error">Ошибка: ' + escapeHtml(err.message || 'Не удалось загрузить права') + '</p>';
+    });
+  }
+
   function loadAdminRoleCapabilities(api) {
     var el = document.getElementById('admin-role-capabilities');
     if (!el) return;
-    if (!api || !api.getRoleCapabilities) {
+    if (!api || !api.getUsers || !api.getUserCapabilities) {
       el.innerHTML = '<p class="admin-message">API недоступен.</p>';
       return;
     }
     el.innerHTML = '<p class="admin-loading">Загрузка…</p>';
-    api.getRoleCapabilities().then(function (roles) {
-      roles = roles || {};
+    api.getUsers().then(function (users) {
+      users = (users || []).filter(function (u) { return u && !isAdminUserRole(u.role); });
+      if (!users.length) {
+        el.innerHTML = '<p class="admin-message">Нет пользователей без роли администратора.</p>';
+        return;
+      }
+      var savedId = '';
+      try {
+        savedId = sessionStorage.getItem('cattleTracker_adminCapUserId') || '';
+      } catch (e) {}
+      var selected = users.some(function (u) { return String(u.id) === String(savedId); }) ? savedId : String(users[0].id);
+      var opts = users.map(function (u) {
+        var roleLabel = String(u.role || '') === 'service' ? 'сервис' : 'осеменатор';
+        return '<option value="' + escapeHtml(String(u.id)) + '"' +
+          (String(u.id) === String(selected) ? ' selected' : '') +
+          '>' + escapeHtml((u.username || '') + ' (' + roleLabel + ')') + '</option>';
+      }).join('');
       el.innerHTML =
-        '<div class="admin-role-cap-grid">' +
-        renderRoleCapColumn('inseminator', 'Осеменатор', roles.inseminator) +
-        renderRoleCapColumn('service', 'Сервис-специалист', roles.service) +
-        '</div>';
-      bindRoleCapToggles(el, api, roles);
+        '<label class="admin-cap-user-label">Пользователь ' +
+        '<select id="adminCapUserSelect" class="admin-cap-user-select">' + opts + '</select></label>' +
+        '<div id="admin-user-cap-fields" class="admin-role-cap-grid"></div>';
+      var fields = document.getElementById('admin-user-cap-fields');
+      var sel = document.getElementById('adminCapUserSelect');
+      function persistAndLoad() {
+        var id = sel ? sel.value : selected;
+        try {
+          sessionStorage.setItem('cattleTracker_adminCapUserId', id);
+        } catch (e2) {}
+        loadSelectedUserCapabilities(api, id, fields);
+      }
+      if (sel) sel.addEventListener('change', persistAndLoad);
+      persistAndLoad();
     }).catch(function (err) {
       el.innerHTML = '<p class="admin-message admin-error">Ошибка: ' + escapeHtml(err.message || 'Не удалось загрузить права') + '</p>';
     });

@@ -396,12 +396,19 @@
     return request('POST', '/api/objects', body);
   }
 
+  function applyAuthCapabilities(data) {
+    if (data && data.roleCapabilities && typeof global.setRoleCapabilities === 'function') {
+      global.setRoleCapabilities(data.roleCapabilities);
+    }
+    if (typeof global.setUserCapabilities === 'function') {
+      global.setUserCapabilities(data && data.userCapabilities ? data.userCapabilities : null);
+    }
+  }
+
   function login(username, password) {
     return request('POST', '/api/auth/login', { username: username, password: password }).then(function (data) {
       if (data.token) setToken(data.token);
-      if (data && data.roleCapabilities && typeof global.setRoleCapabilities === 'function') {
-        global.setRoleCapabilities(data.roleCapabilities);
-      }
+      applyAuthCapabilities(data);
       return data;
     });
   }
@@ -409,6 +416,7 @@
   function logout() {
     request('POST', '/api/auth/logout').catch(function () {});
     setToken(null);
+    if (typeof global.setUserCapabilities === 'function') global.setUserCapabilities(null);
   }
 
   function register(username, password, role) {
@@ -479,9 +487,7 @@
 
   function getCurrentUser() {
     return request('GET', '/api/auth/me').then(function (data) {
-      if (data && data.roleCapabilities && typeof global.setRoleCapabilities === 'function') {
-        global.setRoleCapabilities(data.roleCapabilities);
-      }
+      applyAuthCapabilities(data);
       return data.user || null;
     });
   }
@@ -499,24 +505,35 @@
     return request('GET', '/api/admin/users').then(function (data) { return data.users || []; });
   }
 
+  function applyRoleMatrix(data) {
+    var roles = data && data.roles;
+    if (roles && typeof global.setRoleCapabilities === 'function') {
+      global.setRoleCapabilities(roles);
+    }
+    return roles;
+  }
+
   function getRoleCapabilities() {
-    return request('GET', '/api/role-capabilities').then(function (data) {
-      var roles = data && data.roles;
-      if (roles && typeof global.setRoleCapabilities === 'function') {
-        global.setRoleCapabilities(roles);
+    return request('GET', '/api/admin/role-capabilities').then(applyRoleMatrix).catch(function (err) {
+      if (err && err.status === 404) {
+        return request('GET', '/api/role-capabilities').then(applyRoleMatrix);
       }
-      return roles;
+      throw err;
     });
   }
 
   function putRoleCapabilities(roles) {
     return request('PUT', '/api/admin/role-capabilities', roles || {}).then(function (data) {
-      var next = data && data.roles;
-      if (next && typeof global.setRoleCapabilities === 'function') {
-        global.setRoleCapabilities(next);
-      }
-      return next;
+      return applyRoleMatrix(data);
     });
+  }
+
+  function getUserCapabilities(userId) {
+    return request('GET', '/api/admin/users/' + encodeURIComponent(userId) + '/capabilities');
+  }
+
+  function putUserCapabilities(userId, overlay) {
+    return request('PUT', '/api/admin/users/' + encodeURIComponent(userId) + '/capabilities', overlay || {});
   }
 
   function deleteUser(id) {
@@ -632,6 +649,8 @@
     getUsers: getUsers,
     getRoleCapabilities: getRoleCapabilities,
     putRoleCapabilities: putRoleCapabilities,
+    getUserCapabilities: getUserCapabilities,
+    putUserCapabilities: putUserCapabilities,
     deleteUser: deleteUser,
     updateUserRole: updateUserRole,
     updateUser: updateUser,

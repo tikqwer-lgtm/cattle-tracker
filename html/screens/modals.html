@@ -118,6 +118,25 @@
     </div>
   </div>
 
+  <!-- Модалка: быстрое добавление протокола из кода осеменения -->
+  <div id="quickProtocolModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="quickProtocolModalTitle">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="quickProtocolModalTitle">Новый протокол</h2>
+        <button type="button" class="small-btn" id="quickProtocolCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="view-fields-modal-body" style="padding: 1rem 0;">
+        <label for="quickProtocolNameInput">Название (код осеменения)</label>
+        <input type="text" id="quickProtocolNameInput" class="view-fields-template-input view-fields-template-input--block" placeholder="Например: Синхрон-1" autocomplete="off" />
+        <p class="farm-settings-hint">Этапы можно добавить позже в настройках хозяйства.</p>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="quickProtocolCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="quickProtocolSubmitBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Подсказки при первом запуске -->
   <div id="firstRunHints" class="first-run-hints" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="first-run-hints-content">

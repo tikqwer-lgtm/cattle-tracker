@@ -24,7 +24,7 @@ router.post(
   '/:objectId/protocols',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireAnyCapability('eventsInput', 'farmCardSettings'),
+  requireAnyCapability('eventsInput', 'farmCardSettings', 'serviceWorksInput'),
   (req, res) => {
     const objectId = getObjectId(req);
     const protocol = req.body || {};
@@ -37,7 +37,7 @@ router.put(
   '/:objectId/protocols/:protocolId',
   requireAuth,
   requireObjectAccess('objectId'),
-  requireAnyCapability('eventsInput', 'farmCardSettings'),
+  requireAnyCapability('eventsInput', 'farmCardSettings', 'serviceWorksInput'),
   (req, res) => {
     const objectId = getObjectId(req);
     const protocolId = getProtocolId(req);

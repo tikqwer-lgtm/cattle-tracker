@@ -103,12 +103,29 @@ describe('collectServiceWorkItems', () => {
     expect(items).toHaveLength(0);
   });
 
-  it('serializes and parses report text', () => {
-    var items = [
-      { cattleId: '101', action: 'Осеменение', details: 'бык Б-1', workDate: '2026-08-19' }
+  it('dedups USI from actionHistory and uziHistory as one row', () => {
+    var entries = [
+      cow({
+        cattleId: '102',
+        uziHistory: [{ date: '2026-08-19', result: 'Стельная', specialist: 'svc', daysFromInsemination: 32 }],
+        actionHistory: [
+          {
+            dateTime: '20.08.2026 11:00',
+            userName: 'svc',
+            action: 'УЗИ',
+            eventType: 'УЗИ',
+            result: 'Стельная',
+            details: 'Дата: 2026-08-19, Стельная, дней от осеменения: 32'
+          }
+        ]
+      })
     ];
-    var text = serializeReportText(items);
-    expect(text).toMatch(/101/);
-    expect(parseReportItemsFromDescription(text)[0].cattleId).toBe('101');
+    var items = collectServiceWorkItems(entries, {
+      date: '2026-08-19',
+      username: 'svc',
+      types: { insemination: false, uzi: true, protocol: false }
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].action).toBe('УЗИ1');
   });
 });

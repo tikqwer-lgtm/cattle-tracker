@@ -2,7 +2,12 @@
  * Unit-тесты для расчётов аналитики (analytics-calc).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import * as calc from '../js/features/analytics-calc.js';
+
+const analyticsPart2 = join(dirname(fileURLToPath(import.meta.url)), '../js/features/analytics/part-2.js');
 
 beforeAll(() => {
   global.entries = [];
@@ -99,5 +104,13 @@ describe('generateReport', () => {
     expect(report).toHaveProperty('hdr');
     expect(report).toHaveProperty('servicePeriodDays');
     expect(report).toHaveProperty('totalCows');
+  });
+});
+
+describe('interval analysis labels', () => {
+  it('uses > 48 дней instead of свыше', () => {
+    const src = readFileSync(analyticsPart2, 'utf8');
+    expect(src).toContain('> 48 дней');
+    expect(src).not.toContain('Свыше 48 дней');
   });
 });

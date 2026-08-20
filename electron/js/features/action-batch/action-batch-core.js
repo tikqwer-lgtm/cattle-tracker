@@ -52,6 +52,14 @@
     else alert(msg);
   }
 
+  function toastSaveError(err, fallback) {
+    if (err && err.alreadyToasted) return;
+    var msg = err && err.message ? String(err.message) : (fallback || 'Ошибка сохранения');
+    if (err && err.code === 'PREVIEW_BLOCKED') return;
+    if (msg === 'Режим просмотра: изменения отключены') return;
+    toast(msg, 'error');
+  }
+
   function uid() {
     return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   }
@@ -215,6 +223,67 @@
     return '';
   }
 
+  function fillOperatorField(inputId) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var login = defaultSpecialist();
+    var techs = typeof window.getFarmTechnicians === 'function' ? (window.getFarmTechnicians() || []) : [];
+    var listId = input.getAttribute('list') || 'datalist-farm-technicians';
+    input.setAttribute('list', listId);
+    var dl = document.getElementById(listId);
+    if (dl && dl.tagName === 'DATALIST') {
+      var seen = {};
+      var values = [];
+      function addVal(v) {
+        var s = String(v || '').trim();
+        if (!s) return;
+        var k = s.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        values.push(s);
+      }
+      addVal(login);
+      techs.forEach(addVal);
+      dl.innerHTML = '';
+      values.forEach(function (v) {
+        var opt = document.createElement('option');
+        opt.value = v;
+        dl.appendChild(opt);
+      });
+    }
+    if (login && !String(input.value || '').trim()) input.value = login;
+  }
+
+  function confirmMissingAnimal(cattleId) {
+    if (findEntry(cattleId)) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var wrap = openOverlay(
+        '<h3 class="action-batch-modal-title">Нет в стаде</h3>' +
+        '<p class="action-batch-modal-hint">Животного «' + escapeHtml(cattleId) + '» нет в стаде. Добавить вместе с событием?</p>' +
+        '<div class="action-batch-modal-actions">' +
+        '<button type="button" class="action-batch-btn action-batch-btn-primary" id="abMissingYes">Добавить</button>' +
+        '<button type="button" class="action-batch-btn" id="abMissingNo">Отмена</button>' +
+        '</div>'
+      );
+      var done = false;
+      function finish(ok) {
+        if (done) return;
+        done = true;
+        closeTopModal();
+        resolve(!!ok);
+      }
+      var yes = document.getElementById('abMissingYes');
+      var no = document.getElementById('abMissingNo');
+      if (yes) yes.addEventListener('click', function () { finish(true); });
+      if (no) no.addEventListener('click', function () { finish(false); });
+      if (wrap) {
+        wrap.addEventListener('click', function (e) {
+          if (e.target === wrap) finish(false);
+        });
+      }
+    });
+  }
+
   function escapeHtml(s) {
     if (s == null) return '';
     var d = document.createElement('div');
@@ -245,6 +314,7 @@
     resolveEntryForAction: resolveEntryForAction,
     newAnimalHintHtml: newAnimalHintHtml,
     toast: toast,
+    toastSaveError: toastSaveError,
     uid: uid,
     clearAutocompleteDropdowns: clearAutocompleteDropdowns,
     refocusActiveActionBatchNumberInput: refocusActiveActionBatchNumberInput,
@@ -255,6 +325,8 @@
     runSequentialUpdates: runSequentialUpdates,
     runSequentialCreates: runSequentialCreates,
     defaultSpecialist: defaultSpecialist,
+    fillOperatorField: fillOperatorField,
+    confirmMissingAnimal: confirmMissingAnimal,
     escapeHtml: escapeHtml,
     batchGuardKey: batchGuardKey,
     draftRowWarnClass: draftRowWarnClass,

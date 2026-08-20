@@ -293,7 +293,12 @@ function applyUziToEntry(entry, payload) {
   }
   if (!entry.uziHistory) entry.uziHistory = [];
   var statusBefore = (entry.status || '').toString();
-  var eventTypeUzi = (statusBefore.indexOf('Осеменен') !== -1) ? 'УЗИ1' : (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ');
+  var hasInsem = statusBefore.indexOf('Осеменен') !== -1 ||
+    (Array.isArray(entry.inseminationHistory) && entry.inseminationHistory.length > 0) ||
+    !!(entry.inseminationDate);
+  var eventTypeUzi = hasInsem
+    ? (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ1')
+    : (statusBefore.indexOf('Стельная') !== -1 ? 'УЗИ2' : 'УЗИ');
   var lastInsem = getLastInseminationDateBefore(entry, uziDate);
   var daysNum = null;
   if (daysFromInsemination != null && !isNaN(daysFromInsemination)) daysNum = daysFromInsemination;
@@ -316,7 +321,7 @@ function applyUziToEntry(entry, payload) {
   var detailsStr = 'Дата: ' + uziDate + ', ' + result + (specialist ? ', специалист: ' + specialist : '');
   if (lastRec.daysFromInsemination != null && lastRec.daysFromInsemination !== undefined) detailsStr += ', дней от осеменения: ' + lastRec.daysFromInsemination;
   var pushHistFn = (typeof window !== 'undefined' && window.pushActionHistory) ? window.pushActionHistory : (typeof pushActionHistory === 'function' ? pushActionHistory : null);
-  if (pushHistFn) pushHistFn(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result });
+  if (pushHistFn) pushHistFn(entry, 'УЗИ', detailsStr, { eventType: eventTypeUzi, result: result, eventDate: uziDate });
   return { eventTypeUzi: eventTypeUzi, detailsStr: detailsStr };
 }
 

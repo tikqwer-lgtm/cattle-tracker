@@ -296,6 +296,8 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
           group: entry.group || '',
           lactation: (entry.lactation !== undefined && entry.lactation !== null && entry.lactation !== '') || entry.lactation === 0 ? String(entry.lactation) : '—',
           dateTime: item.dateTime || '',
+          eventDate: item.eventDate || item.date || '',
+          date: item.date || item.eventDate || '',
           userName: item.userName || '',
           action: item.action || '',
           eventType: item.eventType || item.action || '',
@@ -319,7 +321,13 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
     }
     if (filters.fromDate || filters.toDate) {
       events = events.filter(function (e) {
-        var d = (e.dateTime || '').slice(0, 10);
+        var isoFn = typeof window.toIsoDateKey === 'function' ? window.toIsoDateKey : null;
+        var d = '';
+        if (isoFn) {
+          d = isoFn(e.eventDate) || isoFn(e.date) || isoFn(e.dateTime) || isoFn(e.details);
+        } else {
+          d = String(e.eventDate || e.date || e.dateTime || '').slice(0, 10);
+        }
         if (filters.fromDate && d < filters.fromDate) return false;
         if (filters.toDate && d > filters.toDate) return false;
         return true;

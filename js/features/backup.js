@@ -152,7 +152,7 @@
     if (typeof global.refreshFarmDatalists === 'function') global.refreshFarmDatalists();
   }
 
-  function downloadBlob(blob, filename, jsonFallback) {
+  function downloadBlob(blob, filename, jsonFallback, shareTitle) {
     var isMobile = typeof global.isMobile === 'function' && global.isMobile();
     function revokeLater(url) {
       setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
@@ -162,7 +162,7 @@
         var file = new File([blob], filename, { type: blob.type || 'application/zip' });
         var canShare = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
         if (canShare) {
-          navigator.share({ title: 'Резервная копия', files: [file] }).then(function () {
+          navigator.share({ title: shareTitle || filename || 'Файл', files: [file] }).then(function () {
             if (typeof showToast === 'function') showToast('Резервная копия передана', 'success');
           }).catch(function (err) {
             if (err && err.name !== 'AbortError' && jsonFallback) showBackupCopyFallback(jsonFallback, filename);
@@ -421,6 +421,7 @@
   }
 
   if (typeof global !== 'undefined') {
+    global.downloadBlob = downloadBlob;
     global.createBackup = createBackup;
     global.listBackups = listBackups;
     global.restoreBackup = restoreBackup;

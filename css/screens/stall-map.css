@@ -23,6 +23,21 @@
   flex-shrink: 0;
 }
 
+.stall-map-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stall-map-icon-btn .ui-icon {
+  display: inline-flex;
+}
+
+.stall-map-icon-btn .ui-icon svg {
+  width: 1.05em;
+  height: 1.05em;
+}
+
 .stall-map-grid-placeholder {
   color: var(--color-text-muted, #555);
   font-size: 0.92rem;
@@ -92,7 +107,7 @@
 .stall-map-grid-wrap {
   max-width: 100%;
   overflow: auto;
-  padding: 8px;
+  padding: 14px;
   margin-bottom: 1rem;
   background: var(--color-primary-light, #f4f7fb);
   border: 1px solid var(--color-primary-border, #c5d4e8);
@@ -113,7 +128,7 @@
   align-items: stretch;
   justify-content: flex-start;
   text-align: center;
-  padding: 8px 5px;
+  padding: 10px 8px;
   border: 1px solid var(--color-primary-border, #b8c8dc);
   border-radius: var(--radius-sm, 4px);
   background: var(--color-bg-elevated, #fff);
@@ -147,7 +162,8 @@
 .stall-map-cell-pos {
   font-weight: 600;
   color: var(--color-text-muted, #555);
-  margin-bottom: 2px;
+  margin: 0 0 6px 0;
+  padding: 0 2px;
 }
 
 .stall-map-cell-id {
@@ -383,7 +399,7 @@
   .stall-map-cell {
     min-height: 76px;
     font-size: 0.74rem;
-    padding: 8px 5px;
+    padding: 10px 8px;
   }
 
   .stall-map-cell-id {

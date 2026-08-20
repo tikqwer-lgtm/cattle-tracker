@@ -34,10 +34,22 @@ function isMobile() {
   if (typeof window === 'undefined' || !window.matchMedia) return false;
   return window.matchMedia('(max-width: 768px)').matches || (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 }
+function toIsoDateKey(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+  var ru = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (ru) {
+    return ru[3] + '-' + String(ru[2]).padStart(2, '0') + '-' + String(ru[1]).padStart(2, '0');
+  }
+  return '';
+}
 if (typeof window !== 'undefined') {
   window.formatDate = formatDate;
   window.nowFormatted = nowFormatted;
   window.validateDateNotFuture = validateDateNotFuture;
   window.isMobile = isMobile;
+  window.toIsoDateKey = toIsoDateKey;
 }
 export {};

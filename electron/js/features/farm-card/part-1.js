@@ -460,7 +460,14 @@
 
   function saveFarmCardBundle(bundle) {
     if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
-      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+      var blocked = typeof window.previewBlockedError === 'function'
+        ? window.previewBlockedError()
+        : (function () {
+          var e = new Error('Режим просмотра: изменения отключены');
+          e.alreadyToasted = true;
+          return e;
+        })();
+      return Promise.reject(blocked);
     }
     var oid = getObjectIdForFarm();
     if (!oid) return Promise.reject(new Error('База не выбрана'));
@@ -1655,6 +1662,8 @@
     var editingGeo =
       _addrEditIdx >= 0 && b.addresses && b.addresses[_addrEditIdx] ? b.addresses[_addrEditIdx] : null;
 
+    var shareIconHtml =
+      '<span class="ui-icon ui-icon--inline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></span>';
     var geoRows = (b.addresses || [])
       .map(function (a, idx) {
         var name = (a.name && String(a.name).trim()) || 'Без названия';
@@ -1667,7 +1676,9 @@
         var shareBtn =
           '<button type="button" class="small-btn farm-card-geo-share-max" data-addr-idx="' +
           idx +
-          '" title="Поделиться в MAX">В MAX</button>';
+          '" title="Поделиться в MAX" aria-label="Поделиться в MAX">' +
+          shareIconHtml +
+          ' В MAX</button>';
         var rowClass = idx === _addrEditIdx ? ' class="farm-card-addr-row--editing"' : '';
         return (
           '<tr data-addr-idx="' +
@@ -1734,7 +1745,9 @@
       '<ul id="farmCardAddrSuggestList" class="farm-card-addr-suggest-list" role="listbox" aria-label="Подсказки адреса" style="display:none;"></ul></div></div>' +
       '<div class="farm-card-form farm-card-geo-block">' +
       '<h4 class="farm-card-h4">Геопозиции</h4>' +
-      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Название</th><th>Ссылка</th><th></th>' +
+      '<div class="farm-card-table-scroll"><table class="farm-card-table"><thead><tr><th>Название</th><th>Ссылка</th><th class="farm-card-geo-share-th">' +
+      shareIconHtml +
+      ' Поделиться</th>' +
       '</tr></thead><tbody>' +
       (geoRows || '<tr><td colspan="3" class="farm-card-empty">Нет геопозиций</td></tr>') +
       '</tbody></table></div>' +

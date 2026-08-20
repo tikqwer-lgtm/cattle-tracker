@@ -83,8 +83,9 @@ function requireAnyCapability(...keys) {
     if (role === 'admin' || role === 'manager') return next();
     const capLib = require('./lib/capabilities');
     const matrix = db.getRoleCapabilities ? db.getRoleCapabilities() : null;
+    const userOverlay = db.getUserCapabilityOverlay ? db.getUserCapabilityOverlay(req.user.id) : null;
     for (let i = 0; i < keys.length; i++) {
-      if (capLib.userHasCapability(req.user, keys[i], matrix)) return next();
+      if (capLib.userHasCapability(req.user, keys[i], matrix, userOverlay)) return next();
     }
     return res.status(403).json({ error: 'Недостаточно прав' });
   };

@@ -119,7 +119,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.3" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.5" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -411,8 +411,8 @@
       <div id="admin-assign-container" class="admin-assign-container"></div>
     </section>
     <section class="admin-section" data-admin-panel="permissions" hidden>
-      <h2>Права ролей</h2>
-      <p class="farm-settings-hint">Включите или отключите функции для осеменатора и сервис-специалиста. Администратор всегда имеет полный доступ.</p>
+      <h2>Права пользователя</h2>
+      <p class="farm-settings-hint">Выберите человека и включите или отключите функции. Пока переключатели не сохранены, действуют права его роли. Администратор всегда имеет полный доступ.</p>
       <div id="admin-role-capabilities" class="admin-role-capabilities"></div>
     </section>
     <section class="admin-section" data-admin-panel="bases" hidden>
@@ -468,13 +468,16 @@
         <label for="bullInsemBatch">Бык</label>
         <input type="text" id="bullInsemBatch" list="datalist-farm-bulls" placeholder="" autocomplete="off" />
         <label for="inseminatorInsem">Техник ИО</label>
-        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Ввод или выбор" autocomplete="off" />
+        <input type="text" id="inseminatorInsem" list="datalist-farm-technicians" placeholder="Логин или ФИО" autocomplete="off" />
         <label for="codeInsem">Код осеменения</label>
-        <select id="codeInsem">
-          <option value="">—</option>
-          <option value="Охота">Охота</option>
-          <option value="Датчик">Датчик</option>
-        </select>
+        <div class="insem-code-row">
+          <select id="codeInsem">
+            <option value="">—</option>
+            <option value="Охота">Охота</option>
+            <option value="Датчик">Датчик</option>
+          </select>
+          <button type="button" id="addProtocolFromInsemBtn" class="small-btn">Добавить протокол</button>
+        </div>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
@@ -592,7 +595,7 @@
         <label for="uziDateInput">Дата проверки</label>
         <input type="date" id="uziDateInput" />
         <label for="uziSpecialistInput">Специалист</label>
-        <input type="text" id="uziSpecialistInput" placeholder="Кто проводил УЗИ" />
+        <input type="text" id="uziSpecialistInput" list="datalist-farm-technicians" placeholder="Логин или ФИО" autocomplete="off" />
       </div>
       <div class="action-batch-add-block">
         <label for="uziBatchAddInput">Добавить по номеру</label>
@@ -643,11 +646,14 @@
           <label for="inseminator">Техник ИО</label>
           <input type="text" id="inseminator" list="datalist-farm-technicians" autocomplete="off" />
           <label for="code">Код</label>
-          <select id="code">
-            <option value="">—</option>
-            <option value="Охота">Охота</option>
-            <option value="Датчик">Датчик</option>
-          </select>
+          <div class="insem-code-row">
+            <select id="code">
+              <option value="">—</option>
+              <option value="Охота">Охота</option>
+              <option value="Датчик">Датчик</option>
+            </select>
+            <button type="button" id="addProtocolFromCowBtn" class="small-btn">Добавить протокол</button>
+          </div>
           <label for="status">Статус</label>
           <select id="status">
             <option value="">—</option>
@@ -707,7 +713,10 @@
     <h1>Схема стойломест</h1>
     <div id="stallMapYardSummary" class="stall-map-yard-summary">
       <span id="stallMapUnassignedCount" class="stall-map-unassigned-count">Не на стойломестах: —</span>
-      <button type="button" id="stallMapCreateYardBtn" class="small-btn stall-map-create-yard-btn">Создать двор</button>
+      <button type="button" id="stallMapCreateYardBtn" class="small-btn stall-map-create-yard-btn stall-map-icon-btn">
+        <span class="ui-icon ui-icon--inline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span>Создать двор</span>
+      </button>
     </div>
     <p id="stallMapGridPlaceholder" class="stall-map-grid-placeholder">Создайте двор, чтобы отобразить сетку стойломест. Ряд — вертикальный столбец, места в ряду сверху вниз; между столбцами — зазор «кормостол».</p>
     <div id="stallMapToolbarWrap" class="stall-map-toolbar-wrap" style="display: none;">
@@ -716,8 +725,14 @@
         <datalist id="stallMapYardDatalist"></datalist>
         <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapRowsInput" min="1" max="200" value="4" /></label>
         <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapColsInput" min="1" max="200" value="10" /></label>
-        <button type="button" id="stallMapSaveGridBtn" class="small-btn">Сохранить сетку</button>
-        <button type="button" id="stallMapDeleteYardBtn" class="small-btn stall-map-delete-yard-btn">Удалить двор</button>
+        <button type="button" id="stallMapSaveGridBtn" class="small-btn stall-map-icon-btn">
+          <span class="ui-icon ui-icon--inline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
+          <span>Сохранить сетку</span>
+        </button>
+        <button type="button" id="stallMapDeleteYardBtn" class="small-btn stall-map-delete-yard-btn stall-map-icon-btn">
+          <span class="ui-icon ui-icon--inline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+          <span>Удалить двор</span>
+        </button>
       </div>
     </div>
     <div id="stallMapGridWrap" class="stall-map-grid-wrap" role="grid" aria-label="Сетка стойломест" style="display: none;"></div>
@@ -1029,6 +1044,25 @@
         <button type="button" class="small-btn" id="importMappingCloseBtn2">Отмена</button>
         <button type="button" class="small-btn" id="importMappingAutoBtn" title="Сопоставить столбцы файла с полями по названиям">Автораспределение</button>
         <button type="button" class="action-btn" id="importMappingImportBtn">Импортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: быстрое добавление протокола из кода осеменения -->
+  <div id="quickProtocolModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="quickProtocolModalTitle">
+    <div class="view-fields-modal-content">
+      <div class="view-fields-modal-header">
+        <h2 id="quickProtocolModalTitle">Новый протокол</h2>
+        <button type="button" class="small-btn" id="quickProtocolCloseBtn" aria-label="Закрыть">Закрыть</button>
+      </div>
+      <div class="view-fields-modal-body" style="padding: 1rem 0;">
+        <label for="quickProtocolNameInput">Название (код осеменения)</label>
+        <input type="text" id="quickProtocolNameInput" class="view-fields-template-input view-fields-template-input--block" placeholder="Например: Синхрон-1" autocomplete="off" />
+        <p class="farm-settings-hint">Этапы можно добавить позже в настройках хозяйства.</p>
+      </div>
+      <div class="view-fields-actions">
+        <button type="button" class="small-btn" id="quickProtocolCancelBtn">Отмена</button>
+        <button type="button" class="action-btn" id="quickProtocolSubmitBtn">Сохранить</button>
       </div>
     </div>
   </div>

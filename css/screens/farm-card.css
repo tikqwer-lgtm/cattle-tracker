@@ -132,6 +132,20 @@
 .farm-card-geo-actions {
   white-space: nowrap;
 }
+.farm-card-geo-share-th {
+  white-space: nowrap;
+}
+.farm-card-geo-share-th .ui-icon,
+.farm-card-geo-share-max .ui-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.2rem;
+}
+.farm-card-geo-share-max {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
 .farm-card-phone-sep {
   opacity: 0.55;
 }

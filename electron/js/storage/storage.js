@@ -292,10 +292,19 @@ if (useApi) {
     if (typeof window.updateHerdStats === 'function') window.updateHerdStats();
   }
 
-  function createEntryViaApi(entry) {
+  function rejectPreviewApi() {
     if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
-      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
+      if (typeof window.previewBlockedError === 'function') return Promise.reject(window.previewBlockedError());
+      var e = new Error('Режим просмотра: изменения отключены');
+      e.alreadyToasted = true;
+      return Promise.reject(e);
     }
+    return null;
+  }
+
+  function createEntryViaApi(entry) {
+    var blocked = rejectPreviewApi();
+    if (blocked) return blocked;
     var objectId = window.getCurrentObjectId();
     var pendingId = window.CattleTrackerApi && window.CattleTrackerApi.PENDING_OBJECT_ID;
     if (pendingId && objectId === pendingId) {
@@ -317,9 +326,8 @@ if (useApi) {
     });
   }
   function updateEntryViaApi(cattleId, entry, opts) {
-    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
-      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
-    }
+    var blockedUpd = rejectPreviewApi();
+    if (blockedUpd) return blockedUpd;
     var skipReload = opts && opts.skipReload === true;
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.updateEntry(objectId, cattleId, entry).then(function () {
@@ -328,9 +336,8 @@ if (useApi) {
     });
   }
   function deleteEntryViaApi(cattleId) {
-    if (typeof window.rejectIfPreviewMutation === 'function' && window.rejectIfPreviewMutation()) {
-      return Promise.reject(new Error('Режим просмотра: изменения отключены'));
-    }
+    var blockedDel = rejectPreviewApi();
+    if (blockedDel) return blockedDel;
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteEntry(objectId, cattleId).then(function () {
       return window.loadLocally({ forceFromServer: true });

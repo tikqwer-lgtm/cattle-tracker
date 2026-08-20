@@ -191,6 +191,18 @@ body {
 .screen.active {
   @apply block;
   animation: screen-enter 0.2s ease-out;
+  padding-inline: 16px;
+  padding-bottom: 20px;
+  box-sizing: border-box;
+}
+
+#auth-screen.active {
+  padding-inline: 0;
+  padding-bottom: 0;
+}
+
+.view-cow-screen.active {
+  padding: 0;
 }
 
 @keyframes screen-enter {

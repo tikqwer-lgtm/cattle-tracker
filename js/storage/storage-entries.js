@@ -351,7 +351,20 @@ function pushActionHistory(entry, action, details, options) {
   if (!entry.actionHistory) entry.actionHistory = [];
   var userName = (typeof window.getCurrentUser === 'function' && window.getCurrentUser()) ? window.getCurrentUser().username : 'Admin';
   var dateTime = typeof window.nowFormatted === 'function' ? window.nowFormatted() : new Date().toISOString();
-  var item = { dateTime: dateTime, userName: userName, action: action, details: details || '' };
+  var isoFn = typeof window.toIsoDateKey === 'function' ? window.toIsoDateKey : function (raw) {
+    var s = String(raw || '').trim();
+    var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+    var ru = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (ru) return ru[3] + '-' + String(ru[2]).padStart(2, '0') + '-' + String(ru[1]).padStart(2, '0');
+    return '';
+  };
+  var eventDate = '';
+  if (options && options.eventDate) eventDate = isoFn(options.eventDate);
+  if (!eventDate && options && options.date) eventDate = isoFn(options.date);
+  if (!eventDate) eventDate = isoFn(details);
+  if (!eventDate) eventDate = isoFn(dateTime);
+  var item = { dateTime: dateTime, userName: userName, action: action, details: details || '', eventDate: eventDate, date: eventDate };
   if (options && typeof options === 'object') {
     if (options.eventType !== undefined) item.eventType = options.eventType;
     if (options.result !== undefined) item.result = options.result;
