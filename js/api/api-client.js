@@ -556,6 +556,19 @@
     return request('DELETE', '/api/reports/' + encodeURIComponent(id));
   }
 
+  function getAgentStatus() {
+    return request('GET', '/api/admin/agent-status').then(function (data) {
+      return data || {};
+    });
+  }
+
+  function postAgentHeartbeat(phase, intervalMinutes) {
+    return request('POST', '/api/admin/agent-heartbeat', {
+      phase: phase,
+      intervalMinutes: intervalMinutes
+    });
+  }
+
   function listMobileApkFiles() {
     return request('GET', '/api/admin/mobile-apk/list');
   }
@@ -671,6 +684,8 @@
     getReports: getReports,
     patchReportStatus: patchReportStatus,
     deleteReport: deleteReport,
+    getAgentStatus: getAgentStatus,
+    postAgentHeartbeat: postAgentHeartbeat,
     listMobileApkFiles: listMobileApkFiles,
     deleteMobileApkFile: deleteMobileApkFile,
     uploadMobileApk: uploadMobileApk
