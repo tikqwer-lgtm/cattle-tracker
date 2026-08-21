@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#3d6eb5" />
   <!-- Стили: сборка Vite → dist/app.css (Tailwind + компоненты) -->
-  <link rel="stylesheet" href="dist/app.css" />
+  <link rel="stylesheet" href="web/app.css" />
 </head>
 <body>
   <datalist id="datalist-farm-bulls"></datalist>
@@ -40,7 +40,7 @@
       <div class="print-header-milk"></div>
       <div class="print-header-content">
         <div class="print-logo">
-          <img src="icons/logo.png" alt="" width="120" height="64" class="print-logo-img" />
+          <img src="app-icons/logo.png" alt="" width="120" height="64" class="print-logo-img" />
           <span class="print-company-name">Молочная компания «Генетика»</span>
         </div>
         <div class="print-details">
@@ -123,7 +123,7 @@
   <!-- ========== Меню (главный экран) ========== -->
   <div id="menu-screen" class="screen">
     <div class="menu-branding" aria-hidden="false">
-      <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
+      <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
@@ -1261,7 +1261,7 @@
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 
-  <script src="dist/app.js"></script>
+  <script src="web/app.js"></script>
   <script>
   (function() {
     function setPrintHeaderDate() {
