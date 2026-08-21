@@ -72,7 +72,12 @@ async function loginToken(apiBase) {
   const u = (process.env.CATTLE_TRACKER_APK_UPLOAD_USER || '').trim();
   const p = (process.env.CATTLE_TRACKER_APK_UPLOAD_PASSWORD || '').trim();
   if (!u || !p) {
-    console.error('Нет CATTLE_TRACKER_APK_UPLOAD_TOKEN или USER+PASSWORD');
+    console.error(
+      'Нет учётки admin. Задайте CATTLE_TRACKER_APK_UPLOAD_USER + CATTLE_TRACKER_APK_UPLOAD_PASSWORD (или TOKEN).'
+    );
+    console.error(
+      'Локально: файл mobile-installer.env (не в git). Облачный агент: Secrets в cursor.com/dashboard/cloud-agents — файлов .env там нет.'
+    );
     process.exit(1);
   }
   const res = await fetch(`${apiBase.replace(/\/$/, '')}/api/auth/login`, {

@@ -225,10 +225,6 @@
     var ver = _mobileUpdateState.localVer || '';
     if (typeof global.showImprovementSuggestionModal === 'function') {
       global.showImprovementSuggestionModal(ver);
-      return;
-    }
-    if (typeof global.showAppVersionActionsModal === 'function') {
-      global.showAppVersionActionsModal({ localVer: ver });
     }
   }
 
@@ -242,12 +238,6 @@
         e.preventDefault();
         e.stopPropagation();
         if (isAppAdminUser()) {
-          if (!getApiBase()) {
-            if (typeof global.showToast === 'function') {
-              global.showToast('Нет связи с сервером', 'error');
-            }
-            return;
-          }
           openImprovementForm();
           return;
         }
@@ -258,10 +248,11 @@
       });
     }
     if (isAppAdminUser()) {
+      var n = typeof global.getImprovementDraftCount === 'function' ? global.getImprovementDraftCount() : 0;
       btn.hidden = false;
-      btn.textContent = 'Обновить';
-      btn.setAttribute('aria-label', 'Отправить предложение по улучшению');
-      btn.title = 'Отправить предложение по улучшению';
+      btn.textContent = n ? 'Обновить (' + n + ')' : 'Обновить';
+      btn.setAttribute('aria-label', 'Предложения по улучшению');
+      btn.title = 'Написать предложения. Можно копить и отправить пачкой.';
       return;
     }
     if (isAndroidCapacitor()) {
@@ -279,10 +270,25 @@
       return;
     }
     checkMobileApkUpdate(true).then(function (state) {
-      if (typeof global.showAppVersionActionsModal === 'function') {
-        global.showAppVersionActionsModal(state);
-        return;
-      }
+      if (typeof global.showAppVersionActionsModal !== 'function') return;
+      global.showAppVersionActionsModal(state, {
+        canUpdate: true,
+        onUpdate: function () {
+          if (state.hasUpdate) {
+            downloadApkFromServer();
+            return;
+          }
+          if (state.available) {
+            if (typeof global.showToast === 'function') {
+              global.showToast('У вас установлена актуальная версия', 'info', 4000);
+            }
+            return;
+          }
+          if (typeof global.showToast === 'function') {
+            global.showToast('На сервере нет файла обновления', 'info', 4000);
+          }
+        }
+      });
     });
   }
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Предложения с телефона
 
-Админ в модале версии жмёт «Обновить» и отправляет текст на `POST /api/reports` (`payload.kind = improvement`).
+Админ жмёт «Обновить» в правом верхнем углу и копит тексты; «Отправить все» шлёт их на `POST /api/reports` (`payload.kind = improvement`). Кнопка «Обновить» в окне версии ставит APK, а не заявку.
 
 ## Когда смотреть заявки
 
@@ -16,13 +16,20 @@ alwaysApply: true
 
 ## Как забрать
 
-Учётные данные admin из `mobile-installer.env` (не коммитить): `CATTLE_TRACKER_APK_UPLOAD_USER` + `PASSWORD` или токен. База API — `CATTLE_TRACKER_API_BASE` или `server/server-address.txt`.
-
 ```bash
 node scripts/fetch-improvement-requests.js
 ```
 
 Либо `GET /api/reports` с JWT admin. Брать только `kind=improvement` и `status=new`.
+
+**Локальный чат в редакторе:** учётные данные из `mobile-installer.env` / `.env` / `.env.local` (не в git): `CATTLE_TRACKER_APK_UPLOAD_USER` + `CATTLE_TRACKER_APK_UPLOAD_PASSWORD` или токен. База API — `CATTLE_TRACKER_API_BASE` или `server/server-address.txt`.
+
+**Cursor Automation / облачный агент:** файлов `.env` на машине нет. Нужны секреты среды Cloud Agents: [cursor.com/dashboard/cloud-agents](https://cursor.com/dashboard/cloud-agents) → Secrets.
+
+- Runtime Secret: `CATTLE_TRACKER_APK_UPLOAD_USER`, `CATTLE_TRACKER_APK_UPLOAD_PASSWORD` (или `CATTLE_TRACKER_APK_UPLOAD_TOKEN`)
+- Environment Variable: `CATTLE_TRACKER_API_BASE` (без `/api`, как в `server/server-address.txt`)
+
+Не коммитить пароли, не создавать `.env` в репозитории, не открывать PR «добавьте секреты». Если переменных нет — остановиться и написать пользователю, что секреты надо задать в дашборде Cloud Agents.
 
 ## Что делать
 

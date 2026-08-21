@@ -42,4 +42,11 @@ test('ввод осеменения: без подсказок, попытка �
   await page.locator('#inseminationBatchAddBtn').click();
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('999');
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('—');
+
+  const addY = (await page.locator('#inseminationBatchAddBtn').boundingBox()).y;
+  const dateY = (await page.locator('#inseminationDateInsem').boundingBox()).y;
+  const tableY = (await page.locator('#inseminationBatchDraftTable').boundingBox()).y;
+  expect(addY).toBeGreaterThan(dateY);
+  expect(addY).toBeLessThan(tableY);
+  await expect(page.locator('#inseminationBatchSaveBtn')).toBeVisible();
 });

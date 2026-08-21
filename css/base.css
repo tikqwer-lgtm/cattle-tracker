@@ -69,6 +69,42 @@ body {
   font-size: 1.05rem;
   font-weight: 600;
 }
+.app-version-suggestion-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: left;
+  line-height: 1.35;
+}
+.app-version-suggestion-queue {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  text-align: left;
+}
+.app-version-suggestion-queue-empty {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+.app-version-suggestion-queue-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.85rem;
+}
+.app-version-suggestion-queue-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .app-version-suggestion-label {
   display: block;
   margin: 0 0 0.35rem;

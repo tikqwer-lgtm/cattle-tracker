@@ -134,15 +134,43 @@ import {
     });
   }
 
-  function isAppAdminUser() {
-    if (typeof global.getCurrentUser !== 'function') return false;
-    var u = global.getCurrentUser();
-    if (!u) return false;
-    if (typeof global.hasCapability === 'function' && global.hasCapability('adminReleaseControls', u)) {
-      return true;
+  var IMPROVEMENT_DRAFTS_KEY = 'cattleTracker_improvementDrafts';
+  var IMPROVEMENT_DRAFTS_MAX = 30;
+
+  function loadImprovementDrafts() {
+    try {
+      var raw = global.localStorage && global.localStorage.getItem(IMPROVEMENT_DRAFTS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map(function (item) {
+          if (typeof item === 'string') return { id: String(Date.now()), text: item };
+          if (item && typeof item.text === 'string') {
+            return { id: String(item.id || Date.now()), text: item.text };
+          }
+          return null;
+        })
+        .filter(function (item) {
+          return item && String(item.text).trim();
+        });
+    } catch (e) {
+      return [];
     }
-    var role = String(u.role || '').trim().toLowerCase();
-    return role === 'admin';
+  }
+
+  function saveImprovementDrafts(list) {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(IMPROVEMENT_DRAFTS_KEY, JSON.stringify(list || []));
+      }
+    } catch (e) {}
+    if (typeof global.syncHeaderReloadButton === 'function') {
+      global.syncHeaderReloadButton();
+    }
+  }
+
+  function getImprovementDraftCount() {
+    return loadImprovementDrafts().length;
   }
 
   function showImprovementSuggestionModal(appVersion) {
@@ -154,24 +182,82 @@ import {
     overlay.setAttribute('aria-labelledby', 'app-version-suggestion-title');
     overlay.innerHTML =
       '<div class="confirm-modal app-version-suggestion-modal">' +
-      '<h2 id="app-version-suggestion-title" class="app-version-actions-title">Предложение по улучшению</h2>' +
-      '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Текст</label>' +
-      '<textarea id="appVersionSuggestionText" class="app-version-suggestion-text" rows="6" maxlength="4000"></textarea>' +
+      '<h2 id="app-version-suggestion-title" class="app-version-actions-title">Предложения</h2>' +
+      '<p class="app-version-suggestion-hint">Можно набрать несколько сообщений и отправить их все сразу. Закрытие окна список не стирает.</p>' +
+      '<ul class="app-version-suggestion-queue" aria-label="Накопленные сообщения"></ul>' +
+      '<p class="app-version-suggestion-queue-empty">Пока нет сохранённых сообщений.</p>' +
+      '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Новое сообщение</label>' +
+      '<textarea id="appVersionSuggestionText" class="app-version-suggestion-text" rows="5" maxlength="4000"></textarea>' +
       '<div class="confirm-modal-actions confirm-modal-actions--stack">' +
-      '<button type="button" class="btn primary app-version-suggestion-send">Отправить</button>' +
-      '<button type="button" class="small-btn app-version-suggestion-cancel">Отмена</button>' +
+      '<button type="button" class="btn app-version-suggestion-add">Добавить в список</button>' +
+      '<button type="button" class="btn primary app-version-suggestion-send">Отправить все</button>' +
+      '<button type="button" class="small-btn app-version-suggestion-cancel">Закрыть</button>' +
       '</div></div>';
 
     var textEl = overlay.querySelector('#appVersionSuggestionText');
+    var queueEl = overlay.querySelector('.app-version-suggestion-queue');
+    var emptyEl = overlay.querySelector('.app-version-suggestion-queue-empty');
+    var btnAdd = overlay.querySelector('.app-version-suggestion-add');
     var btnSend = overlay.querySelector('.app-version-suggestion-send');
     var btnCancel = overlay.querySelector('.app-version-suggestion-cancel');
     var closed = false;
+    var drafts = loadImprovementDrafts();
 
     function close() {
       if (closed) return;
       closed = true;
       overlay.remove();
       restoreModalFocus(focusBefore);
+    }
+
+    function currentText() {
+      return textEl && textEl.value ? String(textEl.value).trim() : '';
+    }
+
+    function pendingMessages() {
+      var list = drafts.map(function (d) {
+        return String(d.text || '').trim();
+      }).filter(Boolean);
+      var extra = currentText();
+      if (extra) list.push(extra);
+      return list;
+    }
+
+    function renderQueue() {
+      if (!queueEl) return;
+      queueEl.innerHTML = '';
+      for (var i = 0; i < drafts.length; i++) {
+        var item = drafts[i];
+        var li = document.createElement('li');
+        li.className = 'app-version-suggestion-queue-item';
+        li.innerHTML =
+          '<span class="app-version-suggestion-queue-text"></span>' +
+          '<button type="button" class="small-btn app-version-suggestion-queue-remove">Удалить</button>';
+        li.querySelector('.app-version-suggestion-queue-text').textContent = item.text;
+        li.querySelector('.app-version-suggestion-queue-remove').setAttribute('data-id', item.id);
+        queueEl.appendChild(li);
+      }
+      if (emptyEl) emptyEl.hidden = drafts.length > 0;
+      if (btnSend) btnSend.disabled = pendingMessages().length === 0;
+    }
+
+    function addCurrentToQueue() {
+      var message = currentText();
+      if (!message) {
+        if (typeof global.showToast === 'function') global.showToast('Введите текст', 'error');
+        return;
+      }
+      if (drafts.length >= IMPROVEMENT_DRAFTS_MAX) {
+        if (typeof global.showToast === 'function') {
+          global.showToast('Сначала отправьте накопленные сообщения', 'error');
+        }
+        return;
+      }
+      drafts.push({ id: String(Date.now()) + '-' + String(Math.random()).slice(2, 8), text: message });
+      saveImprovementDrafts(drafts);
+      if (textEl) textEl.value = '';
+      renderQueue();
+      if (textEl) textEl.focus();
     }
 
     btnCancel.addEventListener('click', close);
@@ -184,10 +270,26 @@ import {
         close();
       }
     });
+    queueEl.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('.app-version-suggestion-queue-remove') : null;
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      drafts = drafts.filter(function (d) {
+        return d.id !== id;
+      });
+      saveImprovementDrafts(drafts);
+      renderQueue();
+    });
+    btnAdd.addEventListener('click', addCurrentToQueue);
+    if (textEl) {
+      textEl.addEventListener('input', function () {
+        if (btnSend) btnSend.disabled = pendingMessages().length === 0;
+      });
+    }
 
     btnSend.addEventListener('click', function () {
-      var message = textEl && textEl.value ? String(textEl.value).trim() : '';
-      if (!message) {
+      var messages = pendingMessages();
+      if (!messages.length) {
         if (typeof global.showToast === 'function') global.showToast('Введите текст', 'error');
         return;
       }
@@ -197,20 +299,48 @@ import {
         return;
       }
       btnSend.disabled = true;
-      api
-        .submitReport(message, { kind: 'improvement', appVersion: appVersion || '' })
+      btnAdd.disabled = true;
+      var sent = 0;
+      var chain = Promise.resolve();
+      messages.forEach(function (message, index) {
+        chain = chain.then(function () {
+          return api.submitReport(message, {
+            kind: 'improvement',
+            appVersion: appVersion || '',
+            batchIndex: index + 1,
+            batchTotal: messages.length
+          }).then(function () {
+            sent += 1;
+          });
+        });
+      });
+      chain
         .then(function () {
+          saveImprovementDrafts([]);
           close();
-          if (typeof global.showToast === 'function') global.showToast('Предложение отправлено', 'success');
+          if (typeof global.showToast === 'function') {
+            var n = messages.length;
+            global.showToast(n === 1 ? 'Предложение отправлено' : 'Отправлено сообщений: ' + n, 'success');
+          }
         })
         .catch(function (err) {
-          btnSend.disabled = false;
+          var leftover = messages.slice(sent);
+          drafts = leftover.map(function (text, i) {
+            return { id: 'left-' + i + '-' + Date.now(), text: text };
+          });
+          saveImprovementDrafts(drafts);
+          if (textEl) textEl.value = '';
+          renderQueue();
+          btnSend.disabled = pendingMessages().length === 0;
+          btnAdd.disabled = false;
           var msg = err && err.message ? String(err.message) : 'Не удалось отправить';
+          if (sent > 0) msg = 'Отправлено ' + sent + ' из ' + messages.length + '. ' + msg;
           if (typeof global.showToast === 'function') global.showToast(msg, 'error', 5000);
         });
     });
 
     document.body.appendChild(overlay);
+    renderQueue();
     if (textEl) textEl.focus();
   }
 
@@ -218,7 +348,9 @@ import {
     options = options || {};
     var focusBefore = document.activeElement;
     var localVer = (state && state.localVer) || '—';
-    var showUpdate = isAppAdminUser();
+    var hasUpdate = !!(state && state.hasUpdate);
+    var canUpdate =
+      hasUpdate && typeof options.onUpdate === 'function' && options.canUpdate !== false;
 
     var overlay = document.createElement('div');
     overlay.className = 'confirm-overlay app-version-actions-overlay';
@@ -227,9 +359,7 @@ import {
     overlay.setAttribute('aria-labelledby', 'app-version-actions-title');
 
     var titleText = 'Версия ' + escapeHtml(localVer);
-    var updateBtnHtml = showUpdate
-      ? '<button type="button" class="btn primary app-version-action-update">Обновить</button>'
-      : '';
+    if (hasUpdate) titleText += ' — доступно обновление';
 
     overlay.innerHTML =
       '<div class="confirm-modal app-version-actions-modal">' +
@@ -237,7 +367,9 @@ import {
       titleText +
       '</h2>' +
       '<div class="confirm-modal-actions confirm-modal-actions--stack">' +
-      updateBtnHtml +
+      '<button type="button" class="btn primary app-version-action-update"' +
+      (canUpdate ? '' : ' disabled aria-disabled="true"') +
+      '>Обновить</button>' +
       '<button type="button" class="btn app-version-action-changelog">Посмотреть список изменений</button>' +
       '<button type="button" class="small-btn app-version-action-cancel">Закрыть</button>' +
       '</div></div>';
@@ -265,12 +397,11 @@ import {
       }
     });
 
-    if (btnUpdate) {
-      btnUpdate.addEventListener('click', function () {
-        close();
-        showImprovementSuggestionModal(localVer);
-      });
-    }
+    btnUpdate.addEventListener('click', function () {
+      if (!canUpdate) return;
+      close();
+      options.onUpdate();
+    });
 
     btnChangelog.addEventListener('click', function () {
       close();
@@ -278,7 +409,7 @@ import {
     });
 
     document.body.appendChild(overlay);
-    (btnUpdate || btnChangelog).focus();
+    (canUpdate ? btnUpdate : btnChangelog).focus();
   }
 
   global.parseChangelogMarkdown = parseChangelogMarkdown;
@@ -287,6 +418,7 @@ import {
   global.showChangelogViewerModal = showChangelogViewerModal;
   global.showAppVersionActionsModal = showAppVersionActionsModal;
   global.showImprovementSuggestionModal = showImprovementSuggestionModal;
+  global.getImprovementDraftCount = getImprovementDraftCount;
 })(typeof window !== 'undefined' ? window : this);
 
 export {};

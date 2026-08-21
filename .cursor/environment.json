@@ -1,0 +1,8 @@
+{
+  "name": "cattle-tracker apk",
+  "install": "npm ci && bash .cursor/install-android-sdk.sh",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  }
+}
