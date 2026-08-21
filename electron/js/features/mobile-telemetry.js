@@ -45,6 +45,9 @@
             },
             getStatus: function () {
               return Promise.resolve({ hasConfig: false, hasPending: false });
+            },
+            getUploadConfig: function () {
+              return Promise.resolve({ apiBase: '', token: '' });
             }
           }
         });

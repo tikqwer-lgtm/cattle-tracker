@@ -35,6 +35,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(OpenExternalUrlPlugin.class);
         registerPlugin(ApkUpdatePlugin.class);
         registerPlugin(TelemetryBridgePlugin.class);
+        registerPlugin(AuthRememberPlugin.class);
         super.onCreate(savedInstanceState);
         TelemetryRingLog.append(this, "lifecycle: MainActivity.onCreate");
         TelemetryUploadWorker.flushPendingIfAny(this);

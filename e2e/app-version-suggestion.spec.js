@@ -51,6 +51,19 @@ test('шапка «Обновить» копит сообщения и отпр�
       window.__sentImprovements.push({ message: message, payload: payload });
       return Promise.resolve({ ok: true });
     };
+    window.CattleTrackerApi.getReports = function () {
+      return Promise.resolve(
+        window.__sentImprovements.map(function (x, i) {
+          return {
+            id: 'r' + i,
+            status: 'new',
+            payload: x.payload,
+            message: x.message,
+            createdAt: '2026-08-21 10:00'
+          };
+        })
+      );
+    };
     localStorage.removeItem('cattleTracker_improvementDrafts');
     if (typeof window.syncHeaderReloadButton === 'function') window.syncHeaderReloadButton();
   });
@@ -63,10 +76,31 @@ test('шапка «Обновить» копит сообщения и отпр�
   await page.locator('.app-version-suggestion-add').click();
   await expect(page.locator('.app-version-suggestion-queue-item')).toHaveCount(2);
   await page.locator('.app-version-suggestion-send').click();
-  await expect(page.locator('#appVersionSuggestionText')).toHaveCount(0);
+  await expect(page.locator('.app-version-suggestion-queue-item')).toHaveCount(0);
+  await expect(page.locator('.app-version-suggestion-sent-item')).toHaveCount(2);
+  await expect(page.locator('#appVersionSuggestionText')).toBeVisible();
   const sent = await page.evaluate(() => window.__sentImprovements);
   expect(sent.map((x) => x.message)).toEqual(['Первое', 'Второе']);
   expect(sent.every((x) => x.payload && x.payload.kind === 'improvement')).toBe(true);
+});
+
+test('у админа в шапке лампы А и С', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Войти без пароля' }).click();
+  await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 15000 });
+
+  await page.evaluate(() => {
+    window.getCurrentUser = function () {
+      return { id: 'admin', username: 'admin', role: 'admin' };
+    };
+    if (typeof window.syncHeaderReloadButton === 'function') window.syncHeaderReloadButton();
+    if (typeof window.syncAgentStatusLamp === 'function') window.syncAgentStatusLamp();
+  });
+
+  await expect(page.locator('#app-header-agent-btn')).toBeVisible();
+  await expect(page.locator('#app-header-agent-btn .app-header-lamp-label')).toHaveText('А');
+  await expect(page.locator('#app-header-connection-btn .app-header-lamp-label')).toHaveText('С');
+  await expect(page.locator('#app-header-agent-next')).toBeVisible();
 });
 
 test('модалка версии: без новой версии кнопка «Обновить» неактивна', async ({ page }) => {

@@ -69,6 +69,41 @@ body {
   font-size: 1.05rem;
   font-weight: 600;
 }
+.app-version-suggestion-sent-title {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+.app-version-suggestion-sent {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  text-align: left;
+}
+.app-version-suggestion-sent-empty {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+.app-version-suggestion-sent-item {
+  margin-bottom: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.app-version-suggestion-sent-meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
 .app-version-suggestion-hint {
   margin: 0 0 0.75rem;
   font-size: 0.85rem;
@@ -170,21 +205,47 @@ body {
   margin: 0;
 }
 
-.app-header-connection-btn {
+.app-header-status-lamps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.app-header-lamp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
+  gap: 4px;
   height: 28px;
-  padding: 0;
+  min-width: 28px;
+  padding: 0 6px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
   cursor: pointer;
 }
-.app-header-connection-btn:hover {
+.app-header-lamp-btn:hover {
   background: var(--color-bg-hover, rgba(0,0,0,0.04));
 }
+.app-header-lamp-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+.app-header-agent-next {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  min-width: 2.6em;
+  line-height: 1;
+}
+.app-header-connection-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-header-lamp-btn .connection-indicator,
 .app-header-connection-btn .connection-indicator {
   width: 12px;
   height: 12px;
