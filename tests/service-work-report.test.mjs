@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   collectServiceWorkItems,
   serializeReportText,
-  parseReportItemsFromDescription
+  parseReportItemsFromDescription,
+  formatUziPrintResult,
+  formatPrintDate,
+  uziPrintTableHtml,
+  uziPrintDocumentHtml
 } from '../js/features/service-work-report-build.js';
 
 function cow(partial) {
@@ -39,6 +43,7 @@ describe('collectServiceWorkItems', () => {
       }),
       cow({
         cattleId: '102',
+        group: 'Тенишево',
         uziHistory: [{ date: '2026-08-19', result: 'Стельная', specialist: 'svc', daysFromInsemination: 32 }],
         actionHistory: [
           {
@@ -74,8 +79,8 @@ describe('collectServiceWorkItems', () => {
     expect(items).toHaveLength(3);
     expect(items[0]).toMatchObject({ cattleId: '101', action: 'Осеменение' });
     expect(items[0].details).toMatch(/Б-1/);
-    expect(items[1]).toMatchObject({ cattleId: '102', action: 'УЗИ1' });
-    expect(items[1].details).toMatch(/Стельная/);
+    expect(items[1].result).toBe('Стельная');
+    expect(items[1].group).toBe('Тенишево');
     expect(items[2]).toMatchObject({ cattleId: '103', action: 'Протокол' });
     expect(items[2].details).toMatch(/Ovsynch/);
   });
@@ -127,5 +132,38 @@ describe('collectServiceWorkItems', () => {
     });
     expect(items).toHaveLength(1);
     expect(items[0].action).toBe('УЗИ1');
+    expect(items[0].result).toBe('Стельная');
+  });
+
+  it('maps USI results for print: яловая / стельная / сомнительная', () => {
+    expect(formatUziPrintResult('Не стельная')).toBe('Яловая');
+    expect(formatUziPrintResult('Стельная')).toBe('Стельная');
+    expect(formatUziPrintResult('Сомнительная')).toBe('Сомнительная');
+    expect(formatPrintDate('2026-08-17')).toBe('17.08.2026');
+  });
+
+  it('builds print table like the UZI Excel form', () => {
+    var html = uziPrintTableHtml(
+      [
+        { cattleId: '2231', action: 'УЗИ1', workDate: '2026-08-17', group: 'Тенишево', result: 'Стельная' },
+        { cattleId: '1593', action: 'УЗИ1', workDate: '2026-08-17', group: 'Шаверки', result: 'Не стельная' }
+      ],
+      'Мокша'
+    );
+    expect(html).toMatch(/№ п\/п/);
+    expect(html).toMatch(/МТФ/);
+    expect(html).toMatch(/Дата узи/);
+    expect(html).toMatch(/Результат/);
+    expect(html).toMatch(/2231/);
+    expect(html).toMatch(/Тенишево/);
+    expect(html).toMatch(/Стельная/);
+    expect(html).toMatch(/Яловая/);
+    var doc = uziPrintDocumentHtml({
+      items: [{ cattleId: '2231', action: 'УЗИ1', workDate: '2026-08-17', group: 'Тенишево', result: 'Стельная' }],
+      date: '2026-08-17',
+      farmName: 'Мокша',
+      username: 'svc'
+    });
+    expect(doc).toMatch(/Список животных с указанием МТФ и номера животных/);
   });
 });

@@ -314,7 +314,7 @@ function initInseminationModule() {
   }
   var inseminationScreen = document.getElementById('insemination-screen');
   if (!inseminationScreen?.classList.contains('active')) return;
-  // Пакетный экран: та же логика, что при navigate (action-batch + setupCattleAutocompleteFor)
+  // Пакетный экран: та же логика, что при navigate (кнопка «Добавить» без подсказок)
   if (document.getElementById('inseminationBatchAddInput')) {
     if (typeof window.initActionBatchInseminationScreen === 'function') {
       window.initActionBatchInseminationScreen();

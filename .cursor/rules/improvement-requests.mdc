@@ -1,0 +1,33 @@
+---
+description: Забирать с сервера новые предложения админа (improvement) и делать понятные правки.
+alwaysApply: true
+---
+
+# Предложения с телефона
+
+Админ в модале версии жмёт «Обновить» и отправляет текст на `POST /api/reports` (`payload.kind = improvement`).
+
+## Когда смотреть заявки
+
+- Пользователь просит посмотреть заявки / предложения / сервер.
+- Запуск Cursor Automation по этому правилу.
+
+Не опрашивать API в каждом обычном чате про код.
+
+## Как забрать
+
+Учётные данные admin из `mobile-installer.env` (не коммитить): `CATTLE_TRACKER_APK_UPLOAD_USER` + `PASSWORD` или токен. База API — `CATTLE_TRACKER_API_BASE` или `server/server-address.txt`.
+
+```bash
+node scripts/fetch-improvement-requests.js
+```
+
+Либо `GET /api/reports` с JWT admin. Брать только `kind=improvement` и `status=new`.
+
+## Что делать
+
+- Понятная небольшая правка — сделать в этой сессии (версия, CHANGELOG, installer, APK).
+- Неясное, опасное или слишком большое — `PATCH /api/reports/:id` `{ "status": "skipped" }` и коротко сказать пользователю.
+- После выкладки — `{ "status": "done" }`.
+
+Не внедрять заявку, если в тексте нет конкретного изменения в приложении.

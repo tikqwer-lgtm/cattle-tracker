@@ -6,25 +6,12 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const apk = require('../lib/mobile-apk-storage');
+const changelogFile = require('../lib/changelog-file');
 
 const router = express.Router();
 
-const CHANGELOG_CANDIDATES = [
-  path.join(__dirname, '..', 'CHANGELOG.md'),
-  path.join(__dirname, '..', '..', 'CHANGELOG.md'),
-];
-
 function readChangelogFile() {
-  for (const p of CHANGELOG_CANDIDATES) {
-    try {
-      if (fs.existsSync(p)) {
-        return fs.readFileSync(p, 'utf8');
-      }
-    } catch (e) {
-      /* try next */
-    }
-  }
-  return null;
+  return changelogFile.readChangelogFile();
 }
 
 router.get('/mobile/changelog', (req, res) => {

@@ -1,4 +1,9 @@
 /** Patch notes: парсинг CHANGELOG.md и модал «Список изменений». */
+import {
+  parseChangelogMarkdown,
+  mergeChangelogEntries
+} from './changelog-parse.js';
+
 (function (global) {
   'use strict';
 
@@ -18,34 +23,15 @@
     return '';
   }
 
-  function parseChangelogMarkdown(text) {
-    var entries = [];
-    if (!text) return entries;
-    var lines = String(text).split(/\r?\n/);
-    var current = null;
-    var currentSection = null;
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      var verMatch = line.match(/^## \[([^\]]+)\]\s*-\s*(.+)$/);
-      if (verMatch) {
-        if (current) entries.push(current);
-        current = { version: verMatch[1].trim(), date: verMatch[2].trim(), sections: [] };
-        currentSection = null;
-        continue;
-      }
-      var secMatch = line.match(/^###\s+(.+)$/);
-      if (secMatch && current) {
-        currentSection = { title: secMatch[1].trim(), items: [] };
-        current.sections.push(currentSection);
-        continue;
-      }
-      var itemMatch = line.match(/^-\s+(.+)$/);
-      if (itemMatch && currentSection) {
-        currentSection.items.push(itemMatch[1].trim());
-      }
-    }
-    if (current) entries.push(current);
-    return entries;
+  function fetchText(url) {
+    return fetch(url, { cache: 'no-cache' })
+      .then(function (res) {
+        if (res.ok) return res.text();
+        return '';
+      })
+      .catch(function () {
+        return '';
+      });
   }
 
   function renderChangelogHtml(entries) {
@@ -77,34 +63,19 @@
   }
 
   function fetchChangelogMarkdown() {
+    var localP = fetchText('CHANGELOG.md');
     var base = getApiBase();
-    if (base) {
-      return fetch(base + '/api/mobile/changelog', { cache: 'no-cache' })
-        .then(function (res) {
-          if (res.ok) return res.text();
-          return null;
-        })
-        .catch(function () {
-          return null;
-        })
-        .then(function (serverText) {
-          if (serverText && String(serverText).trim()) return serverText;
-          return fetch('CHANGELOG.md', { cache: 'no-cache' })
-            .then(function (r) {
-              return r.ok ? r.text() : '';
-            })
-            .catch(function () {
-              return '';
-            });
-        });
-    }
-    return fetch('CHANGELOG.md', { cache: 'no-cache' })
-      .then(function (r) {
-        return r.ok ? r.text() : '';
-      })
-      .catch(function () {
-        return '';
-      });
+    if (!base) return localP;
+    return Promise.all([fetchText(base + '/api/mobile/changelog'), localP]).then(function (pair) {
+      var serverText = pair[0];
+      var localText = pair[1];
+      var merged = mergeChangelogEntries(
+        parseChangelogMarkdown(serverText),
+        parseChangelogMarkdown(localText)
+      );
+      if (merged.length) return { entries: merged, markdown: serverText || localText };
+      return { entries: [], markdown: serverText || localText || '' };
+    });
   }
 
   function restoreModalFocus(focusBefore) {
@@ -155,19 +126,99 @@
     document.body.appendChild(overlay);
     btnClose.focus();
 
-    return fetchChangelogMarkdown().then(function (text) {
-      var entries = parseChangelogMarkdown(text);
+    return fetchChangelogMarkdown().then(function (result) {
+      var entries;
+      if (result && result.entries) entries = result.entries;
+      else entries = parseChangelogMarkdown(typeof result === 'string' ? result : '');
       if (bodyEl) bodyEl.innerHTML = renderChangelogHtml(entries);
     });
+  }
+
+  function isAppAdminUser() {
+    if (typeof global.getCurrentUser !== 'function') return false;
+    var u = global.getCurrentUser();
+    if (!u) return false;
+    if (typeof global.hasCapability === 'function' && global.hasCapability('adminReleaseControls', u)) {
+      return true;
+    }
+    var role = String(u.role || '').trim().toLowerCase();
+    return role === 'admin';
+  }
+
+  function showImprovementSuggestionModal(appVersion) {
+    var focusBefore = document.activeElement;
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay app-version-suggestion-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'app-version-suggestion-title');
+    overlay.innerHTML =
+      '<div class="confirm-modal app-version-suggestion-modal">' +
+      '<h2 id="app-version-suggestion-title" class="app-version-actions-title">Предложение по улучшению</h2>' +
+      '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Текст</label>' +
+      '<textarea id="appVersionSuggestionText" class="app-version-suggestion-text" rows="6" maxlength="4000"></textarea>' +
+      '<div class="confirm-modal-actions confirm-modal-actions--stack">' +
+      '<button type="button" class="btn primary app-version-suggestion-send">Отправить</button>' +
+      '<button type="button" class="small-btn app-version-suggestion-cancel">Отмена</button>' +
+      '</div></div>';
+
+    var textEl = overlay.querySelector('#appVersionSuggestionText');
+    var btnSend = overlay.querySelector('.app-version-suggestion-send');
+    var btnCancel = overlay.querySelector('.app-version-suggestion-cancel');
+    var closed = false;
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      overlay.remove();
+      restoreModalFocus(focusBefore);
+    }
+
+    btnCancel.addEventListener('click', close);
+    overlay.addEventListener('click', function (ev) {
+      if (ev.target === overlay) close();
+    });
+    overlay.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        close();
+      }
+    });
+
+    btnSend.addEventListener('click', function () {
+      var message = textEl && textEl.value ? String(textEl.value).trim() : '';
+      if (!message) {
+        if (typeof global.showToast === 'function') global.showToast('Введите текст', 'error');
+        return;
+      }
+      var api = global.CattleTrackerApi;
+      if (!api || typeof api.submitReport !== 'function') {
+        if (typeof global.showToast === 'function') global.showToast('Нет связи с сервером', 'error');
+        return;
+      }
+      btnSend.disabled = true;
+      api
+        .submitReport(message, { kind: 'improvement', appVersion: appVersion || '' })
+        .then(function () {
+          close();
+          if (typeof global.showToast === 'function') global.showToast('Предложение отправлено', 'success');
+        })
+        .catch(function (err) {
+          btnSend.disabled = false;
+          var msg = err && err.message ? String(err.message) : 'Не удалось отправить';
+          if (typeof global.showToast === 'function') global.showToast(msg, 'error', 5000);
+        });
+    });
+
+    document.body.appendChild(overlay);
+    if (textEl) textEl.focus();
   }
 
   function showAppVersionActionsModal(state, options) {
     options = options || {};
     var focusBefore = document.activeElement;
     var localVer = (state && state.localVer) || '—';
-    var hasUpdate = !!(state && state.hasUpdate);
-    var canUpdate =
-      hasUpdate && typeof options.onUpdate === 'function' && options.canUpdate !== false;
+    var showUpdate = isAppAdminUser();
 
     var overlay = document.createElement('div');
     overlay.className = 'confirm-overlay app-version-actions-overlay';
@@ -176,7 +227,9 @@
     overlay.setAttribute('aria-labelledby', 'app-version-actions-title');
 
     var titleText = 'Версия ' + escapeHtml(localVer);
-    if (hasUpdate) titleText += ' — доступно обновление';
+    var updateBtnHtml = showUpdate
+      ? '<button type="button" class="btn primary app-version-action-update">Обновить</button>'
+      : '';
 
     overlay.innerHTML =
       '<div class="confirm-modal app-version-actions-modal">' +
@@ -184,9 +237,7 @@
       titleText +
       '</h2>' +
       '<div class="confirm-modal-actions confirm-modal-actions--stack">' +
-      '<button type="button" class="btn primary app-version-action-update"' +
-      (canUpdate ? '' : ' disabled aria-disabled="true"') +
-      '>Обновить</button>' +
+      updateBtnHtml +
       '<button type="button" class="btn app-version-action-changelog">Посмотреть список изменений</button>' +
       '<button type="button" class="small-btn app-version-action-cancel">Закрыть</button>' +
       '</div></div>';
@@ -214,11 +265,12 @@
       }
     });
 
-    btnUpdate.addEventListener('click', function () {
-      if (!canUpdate) return;
-      close();
-      options.onUpdate();
-    });
+    if (btnUpdate) {
+      btnUpdate.addEventListener('click', function () {
+        close();
+        showImprovementSuggestionModal(localVer);
+      });
+    }
 
     btnChangelog.addEventListener('click', function () {
       close();
@@ -226,13 +278,15 @@
     });
 
     document.body.appendChild(overlay);
-    (canUpdate ? btnUpdate : btnChangelog).focus();
+    (btnUpdate || btnChangelog).focus();
   }
 
   global.parseChangelogMarkdown = parseChangelogMarkdown;
+  global.mergeChangelogEntries = mergeChangelogEntries;
   global.fetchChangelogMarkdown = fetchChangelogMarkdown;
   global.showChangelogViewerModal = showChangelogViewerModal;
   global.showAppVersionActionsModal = showAppVersionActionsModal;
+  global.showImprovementSuggestionModal = showImprovementSuggestionModal;
 })(typeof window !== 'undefined' ? window : this);
 
 export {};

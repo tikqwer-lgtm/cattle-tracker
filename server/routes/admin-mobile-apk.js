@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { requireAuth, requireRole } = require('../auth');
 const apk = require('../lib/mobile-apk-storage');
+const changelogFile = require('../lib/changelog-file');
 
 const router = express.Router();
 const apkUploadMulter = apk.createApkUploadMulter();
@@ -118,5 +119,21 @@ router.post(
     }
   }
 );
+
+router.put('/changelog', requireAuth, requireRole('admin'), (req, res) => {
+  const markdown =
+    req.body && (req.body.markdown != null ? req.body.markdown : req.body.text);
+  const text = markdown != null ? String(markdown) : '';
+  if (!String(text).trim()) {
+    return res.status(400).json({ error: 'Пустой CHANGELOG' });
+  }
+  try {
+    const saved = changelogFile.writeChangelogFile(text);
+    res.json({ ok: true, path: path.basename(saved) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Не удалось сохранить CHANGELOG' });
+  }
+});
 
 module.exports = router;

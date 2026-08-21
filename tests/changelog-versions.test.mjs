@@ -23,8 +23,9 @@ function parseChangelog(text) {
       currentSection = true;
       continue;
     }
-    if (/^-\s+.+/.test(line) && current && currentSection) {
+    if (/^-\s+.+/.test(line) && current) {
       current.itemCount += 1;
+      currentSection = true;
     }
   }
   if (current) entries.push(current);

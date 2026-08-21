@@ -645,15 +645,21 @@
         for (var j = 0; j < reports.length; j++) {
           var r = reports[j];
           var kindBadge = '';
+          var statusBadge = '';
           var ringBlock = '';
           var payloadPreview = '';
+          var statusRu =
+            r.status === 'done' ? 'сделано' : r.status === 'skipped' ? 'пропущено' : 'новое';
+          statusBadge =
+            '<span class="admin-report-status">' + escapeHtml(statusRu) + '</span> ';
           if (r.payload) {
             try {
               var pl = typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload;
               if (pl && typeof pl === 'object') {
                 if (pl.kind) {
+                  var kindLabel = pl.kind === 'improvement' ? 'Предложение' : String(pl.kind);
                   kindBadge =
-                    '<span class="admin-report-kind">' + escapeHtml(String(pl.kind)) + '</span> ';
+                    '<span class="admin-report-kind">' + escapeHtml(kindLabel) + '</span> ';
                 }
                 if (pl.ringLog) {
                   var ringText = String(pl.ringLog);
@@ -684,6 +690,7 @@
             '">' +
             '<div class="admin-report-meta">' +
             kindBadge +
+            statusBadge +
             escapeHtml(r.createdAt || '') +
             ' — ' +
             escapeHtml(r.username) +

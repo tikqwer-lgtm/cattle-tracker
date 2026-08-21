@@ -4,7 +4,11 @@
 import {
   collectServiceWorkItems,
   serializeReportText,
-  parseReportItemsFromDescription
+  parseReportItemsFromDescription,
+  uziPrintDocumentHtml,
+  uziPrintTableHtml,
+  isUziReportItem,
+  formatPrintDate
 } from './service-work-report-build.js';
 
 function escapeHtml(s) {
@@ -35,30 +39,50 @@ function closeReportModal() {
   if (el && el.parentNode) el.parentNode.removeChild(el);
 }
 
+function getFarmName() {
+  var id = typeof getCurrentObjectId === 'function' ? getCurrentObjectId() : '';
+  var list = typeof getObjectsList === 'function' ? getObjectsList() : [];
+  if (!Array.isArray(list)) return '';
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && String(list[i].id) === String(id)) return String(list[i].name || '').trim();
+  }
+  return '';
+}
+
 function itemsTableHtml(items) {
   if (!items || !items.length) return '<p class="list-empty">Нет работ за эту дату</p>';
-  var rows = items
-    .map(function (it) {
-      return (
-        '<tr><td>' +
-        escapeHtml(it.cattleId) +
-        '</td><td>' +
-        escapeHtml(it.action) +
-        '</td><td>' +
-        escapeHtml(it.details) +
-        '</td><td>' +
-        escapeHtml(it.workDate) +
-        '</td></tr>'
-      );
-    })
-    .join('');
-  return (
-    '<div class="service-report-table-wrap"><table class="list-table service-report-table"><thead><tr>' +
-    '<th>Номер</th><th>Манипуляция</th><th>Детали</th><th>Дата</th>' +
-    '</tr></thead><tbody>' +
-    rows +
-    '</tbody></table></div>'
-  );
+  var uzi = items.filter(isUziReportItem);
+  var other = items.filter(function (it) { return !isUziReportItem(it); });
+  var html = '';
+  if (uzi.length) {
+    html += '<p class="farm-settings-hint">УЗИ — формат для печати (МТФ и результат)</p>';
+    html += '<div class="service-report-table-wrap">' + uziPrintTableHtml(uzi, getFarmName()) + '</div>';
+  }
+  if (other.length) {
+    var rows = other
+      .map(function (it) {
+        return (
+          '<tr><td>' +
+          escapeHtml(it.cattleId) +
+          '</td><td>' +
+          escapeHtml(it.action) +
+          '</td><td>' +
+          escapeHtml(it.details) +
+          '</td><td>' +
+          escapeHtml(it.workDate) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+    html +=
+      (uzi.length ? '<p class="farm-settings-hint">Прочие работы</p>' : '') +
+      '<div class="service-report-table-wrap"><table class="list-table service-report-table"><thead><tr>' +
+      '<th>Номер</th><th>Манипуляция</th><th>Детали</th><th>Дата</th>' +
+      '</tr></thead><tbody>' +
+      rows +
+      '</tbody></table></div>';
+  }
+  return html;
 }
 
 function collectFromForm(root) {
@@ -87,26 +111,49 @@ function htmlToDataUrl(html) {
 }
 
 function reportPrintHtml(items, date, username) {
-  return (
-    '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Опись ' +
-    escapeHtml(date) +
-    '</title><style>body{font-family:sans-serif;padding:16px}h1{font-size:1.2rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f3f3f3}</style></head><body>' +
-    '<h1>Опись работ специалиста</h1>' +
-    '<p>' +
-    escapeHtml(date || '') +
-    (username ? ' · ' + escapeHtml(username) : '') +
-    '</p>' +
-    itemsTableHtml(items).replace('class="list-table service-report-table"', 'class="service-report-table"') +
-    '</body></html>'
+  var farmName = getFarmName();
+  var uziHtml = uziPrintDocumentHtml({
+    items: items,
+    date: date,
+    farmName: farmName,
+    username: username
+  });
+  var other = (items || []).filter(function (it) { return !isUziReportItem(it); });
+  if (uziHtml && !other.length) return uziHtml;
+  if (!uziHtml) {
+    return (
+      '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Опись ' +
+      escapeHtml(date) +
+      '</title><style>body{font-family:sans-serif;padding:16px}h1{font-size:1.2rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f3f3f3}</style></head><body>' +
+      '<h1>Опись работ специалиста</h1>' +
+      '<p>' +
+      escapeHtml(date || '') +
+      (username ? ' · ' + escapeHtml(username) : '') +
+      '</p>' +
+      itemsTableHtml(items) +
+      '</body></html>'
+    );
+  }
+  return uziHtml.replace(
+    '</body></html>',
+    '<h2 style="margin-top:18px;font-size:13pt">Прочие работы</h2>' +
+      itemsTableHtml(other) +
+      '</body></html>'
   );
 }
 
 function downloadReportFile(items, date) {
   var html = reportPrintHtml(items, date, getUsername());
+  var farm = getFarmName();
+  var dPrint = formatPrintDate(date) || date || todayIso();
+  var filename = (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
+    (farm ? ' ' + farm : '') +
+    ' ' +
+    dPrint.replace(/\./g, '.') +
+    '.html';
   var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  var filename = 'opis-' + (date || todayIso()) + '.html';
   if (typeof window.downloadBlob === 'function') {
-    window.downloadBlob(blob, filename, html, 'Опись работ');
+    window.downloadBlob(blob, filename, html, 'УЗИ');
     return;
   }
   var url = URL.createObjectURL(blob);
@@ -151,7 +198,11 @@ function saveReport(items, date) {
       attachments: [
         {
           id: 'att_report_' + Date.now(),
-          name: 'opis-' + date + '.html',
+          name: (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
+            (getFarmName() ? ' ' + getFarmName() : '') +
+            ' ' +
+            (formatPrintDate(date) || date) +
+            '.html',
           mime: 'text/html',
           size: html.length,
           dataUrl: htmlToDataUrl(html)
@@ -197,6 +248,7 @@ function openServiceWorkReportForm() {
     '<label><input type="checkbox" id="serviceReportTypeUzi" checked /> УЗИ</label>' +
     '<label><input type="checkbox" id="serviceReportTypeProtocol" checked /> Протокол</label>' +
     '</div>' +
+    '<p class="farm-settings-hint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
     '</div>' +
     '<div class="view-fields-actions">' +
@@ -261,9 +313,18 @@ function openServiceReportViewer(evObj) {
     (evObj.participants ? ' · ' + escapeHtml(evObj.participants) : '') +
     '</p>' +
     itemsTableHtml(items) +
+    '</div>' +
+    '<div class="view-fields-actions">' +
+    '<button type="button" class="action-btn" id="serviceReportPrintBtn">На печать</button>' +
     '</div></div>';
   document.body.appendChild(modal);
   modal.querySelector('#serviceReportCloseBtn').addEventListener('click', closeReportModal);
+  var printBtn = modal.querySelector('#serviceReportPrintBtn');
+  if (printBtn) {
+    printBtn.addEventListener('click', function () {
+      downloadReportFile(items, evObj.eventDate || todayIso());
+    });
+  }
   modal.addEventListener('click', function (ev) {
     if (ev.target === modal) closeReportModal();
   });

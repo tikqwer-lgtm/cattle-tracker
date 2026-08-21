@@ -70,8 +70,34 @@ function insemDetails(item, rec) {
   return parts.join(', ');
 }
 
+function uziResultOf(item, rec) {
+  return String((item && item.result) || (rec && rec.result) || '').trim();
+}
+
+function formatUziPrintResult(result) {
+  var r = String(result || '').trim();
+  if (!r) return '';
+  if (/не стельн/i.test(r) || /ялов/i.test(r)) return 'Яловая';
+  if (/сомнительн/i.test(r)) return 'Сомнительная';
+  if (/стельн/i.test(r)) return 'Стельная';
+  return r;
+}
+
+function formatPrintDate(raw) {
+  var k = dateKey(raw);
+  if (!k) return '';
+  var p = k.split('-');
+  if (p.length !== 3) return k;
+  return p[2] + '.' + p[1] + '.' + p[0];
+}
+
+function isUziReportItem(it) {
+  var a = String((it && it.action) || '');
+  return a === 'УЗИ' || a.indexOf('УЗИ') === 0;
+}
+
 function uziDetails(item, rec) {
-  var result = (item && item.result) || (rec && rec.result) || '';
+  var result = uziResultOf(item, rec);
   var days = item && item.details && String(item.details).match(/дней от осеменения:\s*(\d+)/i);
   var daysVal = (rec && rec.daysFromInsemination != null && rec.daysFromInsemination !== '')
     ? rec.daysFromInsemination
@@ -108,6 +134,8 @@ function pushUziItem(out, seen, row) {
       prev.action = row.action;
       if (row.details) prev.details = row.details;
     }
+    if (!prev.result && row.result) prev.result = row.result;
+    if (!prev.group && row.group) prev.group = row.group;
     return;
   }
   seen[key] = out.length;
@@ -133,21 +161,25 @@ function collectServiceWorkItems(entries, opts) {
           cattleId: cattleId,
           action: 'Осеменение',
           details: insemDetails(h),
-          workDate: d
+          workDate: d,
+          group: String(entry.group || '')
         });
       } else if (types.uzi && isUziAction(h)) {
         pushUziItem(out, seen, {
           cattleId: cattleId,
           action: uziActionLabel(h),
           details: uziDetails(h),
-          workDate: d
+          workDate: d,
+          group: String(entry.group || ''),
+          result: uziResultOf(h)
         });
       } else if (types.protocol && isProtocolAction(h) && !isInsemAction(h) && !isUziAction(h)) {
         pushItem(out, seen, {
           cattleId: cattleId,
           action: 'Протокол',
           details: protocolDetails(h, entry),
-          workDate: d
+          workDate: d,
+          group: String(entry.group || '')
         });
       }
     });
@@ -161,7 +193,8 @@ function collectServiceWorkItems(entries, opts) {
           cattleId: cattleId,
           action: 'Осеменение',
           details: insemDetails(null, rec),
-          workDate: d
+          workDate: d,
+          group: String(entry.group || '')
         });
       });
     }
@@ -176,7 +209,9 @@ function collectServiceWorkItems(entries, opts) {
           cattleId: cattleId,
           action: label,
           details: uziDetails(null, rec),
-          workDate: d
+          workDate: d,
+          group: String(entry.group || ''),
+          result: uziResultOf(null, rec)
         });
       });
     }
@@ -198,9 +233,24 @@ function collectServiceWorkItems(entries, opts) {
 function serializeReportText(items) {
   return (items || [])
     .map(function (it) {
-      return [it.cattleId || '', it.action || '', it.details || '', it.workDate || ''].join('\t');
+      return [
+        it.cattleId || '',
+        it.action || '',
+        it.details || '',
+        it.workDate || '',
+        it.group || '',
+        it.result || ''
+      ].join('\t');
     })
     .join('\n');
+}
+
+function resultFromDetails(details) {
+  var s = String(details || '');
+  if (/сомнительн/i.test(s)) return 'Сомнительная';
+  if (/не стельн/i.test(s) || /ялов/i.test(s)) return 'Не стельная';
+  if (/стельн/i.test(s)) return 'Стельная';
+  return '';
 }
 
 function parseReportItemsFromDescription(text) {
@@ -213,10 +263,102 @@ function parseReportItemsFromDescription(text) {
         cattleId: p[0] || '',
         action: p[1] || '',
         details: p[2] || '',
-        workDate: p[3] || ''
+        workDate: p[3] || '',
+        group: p[4] || '',
+        result: p[5] || resultFromDetails(p[2])
       };
     })
     .filter(Boolean);
 }
 
-export { collectServiceWorkItems, serializeReportText, parseReportItemsFromDescription, dateKey };
+function escapePrintHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function uziPrintTableHtml(items, farmName) {
+  var farm = String(farmName || '').trim();
+  var rows = (items || []).filter(isUziReportItem);
+  if (!rows.length) return '';
+  var body = rows
+    .map(function (it, idx) {
+      var mtf = String(it.group || '').trim() || farm;
+      return (
+        '<tr>' +
+        '<td class="n">' +
+        (idx + 1) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(it.cattleId) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(mtf) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(formatPrintDate(it.workDate)) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(formatUziPrintResult(it.result || it.details)) +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+  return (
+    '<table class="uzi-print-table">' +
+    '<thead><tr>' +
+    '<th>№ п/п</th><th>№</th><th>МТФ</th><th>Дата узи</th><th>Результат</th>' +
+    '</tr></thead><tbody>' +
+    body +
+    '</tbody></table>'
+  );
+}
+
+function uziPrintDocumentHtml(opts) {
+  opts = opts || {};
+  var date = opts.date || '';
+  var farmName = opts.farmName || '';
+  var username = opts.username || '';
+  var table = uziPrintTableHtml(opts.items || [], farmName);
+  if (!table) return '';
+  var sub = [];
+  if (farmName) sub.push(farmName);
+  if (username) sub.push(username);
+  if (date) sub.push(formatPrintDate(date));
+  return (
+    '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">' +
+    '<title>УЗИ' +
+    (farmName ? ' ' + escapePrintHtml(farmName) : '') +
+    (date ? ' ' + escapePrintHtml(formatPrintDate(date)) : '') +
+    '</title>' +
+    '<style>' +
+    '@page{size:A4;margin:12mm}' +
+    'body{font-family:"Times New Roman",Times,serif;font-size:12pt;color:#000;margin:0;padding:12px}' +
+    'h1{font-size:14pt;text-align:center;margin:0 0 6px;font-weight:700}' +
+    '.sub{text-align:center;margin:0 0 12px;font-size:11pt}' +
+    'table{border-collapse:collapse;width:100%}' +
+    'th,td{border:1px solid #000;padding:4px 6px;text-align:center}' +
+    'th{font-weight:700;background:#f3f3f3}' +
+    'td.n{width:3.5em}' +
+    '</style></head><body>' +
+    '<h1>Список животных с указанием МТФ и номера животных</h1>' +
+    (sub.length ? '<p class="sub">' + escapePrintHtml(sub.join(' · ')) + '</p>' : '') +
+    table +
+    '</body></html>'
+  );
+}
+
+export {
+  collectServiceWorkItems,
+  serializeReportText,
+  parseReportItemsFromDescription,
+  dateKey,
+  formatUziPrintResult,
+  formatPrintDate,
+  isUziReportItem,
+  uziPrintTableHtml,
+  uziPrintDocumentHtml
+};

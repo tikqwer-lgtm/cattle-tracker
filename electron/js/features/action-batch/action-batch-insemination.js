@@ -8,9 +8,8 @@
     console.error('[action-batch] сначала загрузите action-batch-core.js');
     return;
   }
-  var getEntries = AB.getEntries;
+  var findEntry = AB.findEntry;
   var resolveEntryForAction = AB.resolveEntryForAction;
-  var newAnimalHintHtml = AB.newAnimalHintHtml;
   var toast = AB.toast;
   var toastSaveError = AB.toastSaveError;
   var uid = AB.uid;
@@ -18,16 +17,12 @@
   var openOverlay = AB.openOverlay;
   var closeTopModal = AB.closeTopModal;
   var refocusActiveActionBatchNumberInput = AB.refocusActiveActionBatchNumberInput;
-  var computeUziDays = AB.computeUziDays;
   var runSequentialUpdates = AB.runSequentialUpdates;
-  var runSequentialCreates = AB.runSequentialCreates;
-  var defaultSpecialist = AB.defaultSpecialist;
-  var escapeHtml = AB.escapeHtml;
   var batchGuardKey = AB.batchGuardKey;
   var draftRowWarnClass = AB.draftRowWarnClass;
   var clearRowBatchGuard = AB.clearRowBatchGuard;
+  var escapeHtml = AB.escapeHtml;
 
-  // ——— Осеменение ———
   var insemDraft = [];
 
   function renderInsemDraft() {
@@ -66,71 +61,89 @@
     });
   }
 
-  function nextAttemptFor(cattleId) {
+  function nextAttemptForExisting(cattleId) {
     if (typeof window.getInseminationAttempt === 'function') return window.getInseminationAttempt(cattleId);
-    var entry = getEntries().find(function (e) { return e.cattleId === cattleId; });
+    var entry = findEntry(cattleId);
     if (!entry || !Array.isArray(entry.inseminationHistory)) return 1;
     return entry.inseminationHistory.length + 1;
   }
 
-  function promptInsemRow(cattleId) {
+  function parseAttemptField(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return null;
+    var n = parseInt(s, 10);
+    return n >= 1 ? n : null;
+  }
+
+  function syncAttemptFromNumber() {
+    var numEl = document.getElementById('inseminationBatchAddInput');
+    var attEl = document.getElementById('inseminationAttemptInput');
+    if (!numEl || !attEl) return;
+    var cattleId = (numEl.value || '').trim();
+    if (!cattleId || !findEntry(cattleId)) {
+      attEl.value = '';
+      return;
+    }
+    attEl.value = String(nextAttemptForExisting(cattleId));
+  }
+
+  function attemptForDraft(cattleId, fieldValue) {
+    var fromField = parseAttemptField(fieldValue);
+    if (fromField != null) return fromField;
+    if (findEntry(cattleId)) return nextAttemptForExisting(cattleId);
+    return null;
+  }
+
+  function attemptForSave(attemptNumber) {
+    var n = parseInt(attemptNumber, 10);
+    return n >= 1 ? n : 1;
+  }
+
+  function addInsemFromForm() {
+    var addIn = document.getElementById('inseminationBatchAddInput');
+    var attIn = document.getElementById('inseminationAttemptInput');
+    var cattleId = addIn && addIn.value ? String(addIn.value).trim() : '';
+    if (!cattleId) {
+      toast('Укажите номер', 'error');
+      return;
+    }
     if (insemDraft.some(function (x) { return x.cattleId === cattleId; })) {
       toast('Уже в списке', 'error');
       return;
     }
-    var entry = resolveEntryForAction(cattleId);
-    var defAtt = nextAttemptFor(cattleId);
-    var bullDef = (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '';
-    openOverlay(
-      '<h3 class="action-batch-modal-title">Осеменение: ' + escapeHtml(cattleId) + '</h3>' +
-      newAnimalHintHtml(cattleId) +
-      '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemModalAttempt" class="action-batch-modal-input" min="1" value="' + defAtt + '" /></label>' +
-      '<label class="action-batch-modal-label">Бык (необязательно, общий можно задать выше)<br>' +
-      '<input type="text" id="insemModalBull" class="action-batch-modal-input" list="datalist-farm-bulls" autocomplete="off" value="' + escapeHtml(bullDef) + '" /></label>' +
-      '<div class="action-batch-modal-actions">' +
-      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemModalOk">Добавить</button>' +
-      '<button type="button" class="action-batch-btn" id="insemModalCancel">Отмена</button>' +
-      '</div>'
-    );
-    document.getElementById('insemModalOk').addEventListener('click', function () {
-      var att = parseInt(document.getElementById('insemModalAttempt').value, 10) || 1;
-      var bull = document.getElementById('insemModalBull').value || '';
-      var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
-      if (insemDate && typeof validateDateNotFuture === 'function') {
-        var dErr = validateDateNotFuture(insemDate, 'Дата осеменения');
-        if (dErr) {
-          toast(dErr, 'error');
-          return;
-        }
+    var att = attemptForDraft(cattleId, attIn ? attIn.value : '');
+    var bull = (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '';
+    var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
+    if (insemDate && typeof validateDateNotFuture === 'function') {
+      var dErr = validateDateNotFuture(insemDate, 'Дата осеменения');
+      if (dErr) {
+        toast(dErr, 'error');
+        return;
       }
-      closeTopModal();
-      var G = window.ActionInputGuards;
-      var hadWarnings = !!(G && G.checkInsemination && !G.checkInsemination(entry, insemDate, {}).ok);
-      var p =
-        !G || typeof G.confirmInseminationFlow !== 'function'
-          ? Promise.resolve(true)
-          : G.confirmInseminationFlow(entry, insemDate);
-      p.then(function (ok) {
-        if (!ok) {
-          refocusActiveActionBatchNumberInput();
-          return;
-        }
-        insemDraft.push({
-          id: uid(),
-          cattleId: cattleId,
-          attemptNumber: att,
-          bull: bull,
-          _batchGuardKey: batchGuardKey(insemDate || '', ''),
-          _batchGuardWarned: hadWarnings
-        });
-        var addIn = document.getElementById('inseminationBatchAddInput');
-        if (addIn) addIn.value = '';
-        renderInsemDraft();
+    }
+    var entry = resolveEntryForAction(cattleId);
+    var G = window.ActionInputGuards;
+    var hadWarnings = !!(G && G.checkInsemination && !G.checkInsemination(entry, insemDate, {}).ok);
+    var p =
+      !G || typeof G.confirmInseminationFlow !== 'function'
+        ? Promise.resolve(true)
+        : G.confirmInseminationFlow(entry, insemDate);
+    p.then(function (ok) {
+      if (!ok) {
         refocusActiveActionBatchNumberInput();
+        return;
+      }
+      insemDraft.push({
+        id: uid(),
+        cattleId: cattleId,
+        attemptNumber: att,
+        bull: bull,
+        _batchGuardKey: batchGuardKey(insemDate || '', ''),
+        _batchGuardWarned: hadWarnings
       });
-    });
-    document.getElementById('insemModalCancel').addEventListener('click', function () {
-      closeTopModal();
+      if (addIn) addIn.value = '';
+      if (attIn) attIn.value = '';
+      renderInsemDraft();
       refocusActiveActionBatchNumberInput();
     });
   }
@@ -138,9 +151,10 @@
   function editInsemRow(rowId) {
     var r = insemDraft.find(function (x) { return x.id === rowId; });
     if (!r) return;
+    var attVal = r.attemptNumber != null ? r.attemptNumber : '';
     openOverlay(
       '<h3 class="action-batch-modal-title">' + escapeHtml(r.cattleId) + '</h3>' +
-      '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemEdAtt" class="action-batch-modal-input" min="1" value="' + (r.attemptNumber || 1) + '" /></label>' +
+      '<label class="action-batch-modal-label">Попытка<br><input type="number" id="insemEdAtt" class="action-batch-modal-input" min="1" value="' + attVal + '" /></label>' +
       '<label class="action-batch-modal-label">Бык<br><input type="text" id="insemEdBull" class="action-batch-modal-input" list="datalist-farm-bulls" autocomplete="off" value="' + escapeHtml(r.bull || '') + '" /></label>' +
       '<div class="action-batch-modal-actions">' +
       '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemEdOk">OK</button>' +
@@ -148,7 +162,7 @@
       '</div>'
     );
     document.getElementById('insemEdOk').addEventListener('click', function () {
-      r.attemptNumber = parseInt(document.getElementById('insemEdAtt').value, 10) || 1;
+      r.attemptNumber = parseAttemptField(document.getElementById('insemEdAtt').value);
       r.bull = document.getElementById('insemEdBull').value || '';
       clearRowBatchGuard(r);
       closeTopModal();
@@ -203,7 +217,7 @@
             apply: function (entry) {
               applyI(entry, {
                 inseminationDate: insemDate,
-                attemptNumber: r.attemptNumber,
+                attemptNumber: attemptForSave(r.attemptNumber),
                 bull: (r.bull || bullGlobal || '').trim(),
                 inseminator: inseminator,
                 code: code
@@ -231,12 +245,23 @@
       });
   }
 
-  function bindInseminationBatchAutocomplete() {
-    if (typeof window.setupCattleAutocompleteFor === 'function') {
-      window.setupCattleAutocompleteFor('inseminationBatchAddInput', 'inseminationBatchAddList', promptInsemRow);
-    } else {
-      console.warn('[cattle-tracker] setupCattleAutocompleteFor не найден — поле номера на экране осеменения без подсказок');
-    }
+  function bindInseminationAddForm() {
+    var addIn = document.getElementById('inseminationBatchAddInput');
+    bindOnce(document.getElementById('inseminationBatchAddBtn'), 'click', addInsemFromForm);
+    bindOnce(addIn, 'input', syncAttemptFromNumber);
+    bindOnce(addIn, 'change', syncAttemptFromNumber);
+    bindOnce(addIn, 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      addInsemFromForm();
+    });
+    bindOnce(document.getElementById('inseminationAttemptInput'), 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      addInsemFromForm();
+    });
   }
 
   function initActionBatchInseminationScreen() {
@@ -244,12 +269,15 @@
     if (typeof AB.fillOperatorField === 'function') AB.fillOperatorField('inseminatorInsem');
     var dateEl = document.getElementById('inseminationDateInsem');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
-    bindInseminationBatchAutocomplete();
+    var attIn = document.getElementById('inseminationAttemptInput');
+    if (attIn) attIn.value = '';
+    bindInseminationAddForm();
     if (window._prefillCattleId) {
       var aPre = document.getElementById('inseminationBatchAddInput');
       if (aPre) aPre.value = window._prefillCattleId;
       delete window._prefillCattleId;
     }
+    syncAttemptFromNumber();
     function focusInseminationNumberField() {
       var focusAdd = document.getElementById('inseminationBatchAddInput');
       var screen = document.getElementById('insemination-screen');
@@ -275,7 +303,7 @@
     function afterProtocols() {
       if (typeof window.refreshFarmDatalists === 'function') window.refreshFarmDatalists();
       if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
-      bindInseminationBatchAutocomplete();
+      bindInseminationAddForm();
       scheduleInseminationFocus();
     }
     scheduleInseminationFocus();

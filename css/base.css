@@ -69,6 +69,25 @@ body {
   font-size: 1.05rem;
   font-weight: 600;
 }
+.app-version-suggestion-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  text-align: left;
+}
+.app-version-suggestion-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 7rem;
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  font: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
 
 .changelog-viewer-heading {
   margin: 0 0 0.75rem;

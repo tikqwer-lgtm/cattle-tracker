@@ -148,6 +148,14 @@ router.post('/reports', requireAuth, (req, res) => {
   if (!text) {
     return res.status(400).json({ error: 'Введите сообщение' });
   }
+  const kind =
+    payload && typeof payload === 'object' && payload.kind != null ? String(payload.kind).trim() : '';
+  if (kind === 'improvement') {
+    const userRole = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+    if (userRole !== 'admin') {
+      return res.status(403).json({ error: 'Недостаточно прав' });
+    }
+  }
   const payloadJson = payload != null ? JSON.stringify(payload) : null;
   const report = db.createReport(req.user.id, req.user.username, text, payloadJson);
   res.status(201).json({ ok: true, report });
@@ -156,6 +164,16 @@ router.post('/reports', requireAuth, (req, res) => {
 router.get('/reports', requireAuth, requireRole('admin'), (req, res) => {
   const reports = db.getReports();
   res.json({ ok: true, reports });
+});
+
+router.patch('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {
+  const status = req.body && req.body.status;
+  const result = db.updateReportStatus(req.params.id, status);
+  if (!result.ok) {
+    const code = result.error === 'Отчёт не найден' ? 404 : 400;
+    return res.status(code).json({ error: result.error || 'Не удалось обновить' });
+  }
+  res.json({ ok: true, report: result.report });
 });
 
 router.delete('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {

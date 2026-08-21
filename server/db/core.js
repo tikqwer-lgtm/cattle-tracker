@@ -148,6 +148,7 @@ function initSchema() {
   migrateObjectsProfileFarmSettings();
   migrateUsersPasswordPlain();
   migrateUserObjectsAndInbox();
+  migrateReportsStatus();
   try {
     const userObjects = require('./user-objects');
     userObjects.migrateUserRolesToCanonical();
@@ -210,6 +211,18 @@ function migrateUsersPasswordPlain() {
       runSql('ALTER TABLE users ADD COLUMN password_plain TEXT');
     } catch (e) {
       if (!/duplicate column/i.test(e.message)) console.error('migrate users password_plain:', e.message);
+    }
+  }
+}
+
+function migrateReportsStatus() {
+  const info = allSql('PRAGMA table_info(reports)');
+  const names = (info || []).map((r) => (r.name || '').toLowerCase());
+  if (names.indexOf('status') === -1) {
+    try {
+      runSql("ALTER TABLE reports ADD COLUMN status TEXT NOT NULL DEFAULT 'new'");
+    } catch (e) {
+      if (!/duplicate column/i.test(e.message)) console.error('migrate reports status:', e.message);
     }
   }
 }

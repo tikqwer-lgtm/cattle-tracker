@@ -282,6 +282,36 @@ async function uploadApk(apkPath, version, apiBase, token) {
   );
 }
 
+async function uploadChangelog(apiBase, token) {
+  const changelogPath = path.join(root, 'CHANGELOG.md');
+  if (!fs.existsSync(changelogPath)) {
+    console.error('Нет CHANGELOG.md — список изменений на сервере не обновится.');
+    process.exit(1);
+  }
+  const markdown = fs.readFileSync(changelogPath, 'utf8');
+  const url = `${apiBase.replace(/\/$/, '')}/api/admin/changelog`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ markdown }),
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (_) {
+    data = { raw: text };
+  }
+  if (!res.ok) {
+    console.error('Загрузка CHANGELOG:', res.status, data);
+    process.exit(1);
+  }
+  console.log('CHANGELOG.md загружен на сервер');
+}
+
 async function main() {
   if (process.argv.includes('--upload-only')) {
     process.env.CATTLE_TRACKER_MOBILE_UPLOAD_ONLY = '1';
@@ -310,6 +340,7 @@ async function main() {
   const token = await resolveUploadToken(apiBase);
   console.log('API:', apiBase);
   await uploadApk(apkPath, version, apiBase, token);
+  await uploadChangelog(apiBase, token);
 }
 
 main().catch((e) => {
