@@ -82,4 +82,37 @@ describe('auth-session', function () {
     expect(storage.cattleTracker_currentUser).toBeUndefined();
     expect(session.lastUsername).toBe('stale');
   });
+
+  it('пустой localStorage + hydrate JWT → loggedIn', async function () {
+    global.hydrateNativeAuthSession = vi.fn(async function () {
+      global.CattleTrackerApi.getToken.mockReturnValue('jwt-native');
+      return { tokenRestored: true };
+    });
+    global.CattleTrackerApi.getToken.mockReturnValue(null);
+    global.CattleTrackerApi.getCurrentUser.mockResolvedValue({
+      id: 'u1',
+      username: 'Panko',
+      role: 'admin'
+    });
+    await import('../js/core/auth-session.js');
+    const session = await global.restoreApiSession();
+    expect(global.hydrateNativeAuthSession).toHaveBeenCalled();
+    expect(session.status).toBe('loggedIn');
+    expect(session.user.username).toBe('Panko');
+  });
+
+  it('истёкший JWT + сохранённый пароль → повторный вход', async function () {
+    global.CattleTrackerApi.getToken.mockReturnValue('jwt-bad');
+    const err = new Error('Unauthorized');
+    err.status = 401;
+    global.CattleTrackerApi.getCurrentUser.mockRejectedValue(err);
+    global.tryRememberedLogin = vi.fn(async function () {
+      return { id: 'u1', username: 'Panko', role: 'admin' };
+    });
+    await import('../js/core/auth-session.js');
+    const session = await global.restoreApiSession();
+    expect(session.status).toBe('loggedIn');
+    expect(session.user.username).toBe('Panko');
+    expect(global.saveCurrentUser).toHaveBeenCalledWith(session.user);
+  });
 });

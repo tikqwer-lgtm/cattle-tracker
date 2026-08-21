@@ -24,6 +24,7 @@ import './storage/storage-integrity.js';
 import './storage/storage.js';
 import './core/core.js';
 import './core/users.js';
+import './core/auth-remember.js';
 import './core/auth-session.js';
 import './ui/ui-helpers.js';
 import './ui/animate-number.js';

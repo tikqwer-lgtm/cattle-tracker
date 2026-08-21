@@ -158,31 +158,35 @@
     });
   }
 
-  function authRememberStorageKey() {
-    var server = getSelectedAuthServer();
-    var id = server && server.id ? String(server.id) : 'default';
-    return 'cattleTracker_authRemember_' + id;
-  }
-
-  function encodeAuthRememberPayload(obj) {
-    try {
-      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function decodeAuthRememberPayload(raw) {
-    try {
-      return JSON.parse(decodeURIComponent(escape(atob(String(raw || '')))));
-    } catch (e) {
-      return null;
+  function fillAuthFormFromRemember(data) {
+    var userEl = document.getElementById('authUsername');
+    var passEl = document.getElementById('authPassword');
+    var cb = document.getElementById('authRememberPassword');
+    if (!userEl || !passEl || !data || !data.u || !data.p) return;
+    userEl.value = String(data.u);
+    passEl.value = String(data.p);
+    if (cb) cb.checked = true;
+    var select = document.getElementById('authUsernameSelect');
+    if (select) {
+      var found = false;
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === userEl.value) {
+          select.value = userEl.value;
+          found = true;
+          break;
+        }
+      }
+      if (!found) select.value = '';
     }
   }
 
   function clearSavedAuthCredentials() {
+    if (typeof global.clearAuthRemember === 'function') {
+      global.clearAuthRemember();
+      return;
+    }
     try {
-      localStorage.removeItem(authRememberStorageKey());
+      localStorage.removeItem('cattleTracker_authRemember');
     } catch (e) {}
   }
 
@@ -198,42 +202,22 @@
       clearSavedAuthCredentials();
       return;
     }
-    var encoded = encodeAuthRememberPayload({ u: u, p: p });
-    if (!encoded) return;
-    try {
-      localStorage.setItem(authRememberStorageKey(), encoded);
-    } catch (e) {}
+    if (typeof global.saveAuthRemember === 'function') {
+      global.saveAuthRemember(u, p);
+      return;
+    }
   }
 
   function applySavedAuthCredentials() {
     var userEl = document.getElementById('authUsername');
     var passEl = document.getElementById('authPassword');
-    var cb = document.getElementById('authRememberPassword');
     if (!userEl || !passEl) return;
-    var raw = null;
-    try {
-      raw = localStorage.getItem(authRememberStorageKey());
-    } catch (e) {}
-    var data = raw ? decodeAuthRememberPayload(raw) : null;
-    if (data && data.u && data.p) {
-      userEl.value = String(data.u);
-      passEl.value = String(data.p);
-      if (cb) cb.checked = true;
-      var select = document.getElementById('authUsernameSelect');
-      if (select) {
-        var found = false;
-        for (var i = 0; i < select.options.length; i++) {
-          if (select.options[i].value === userEl.value) {
-            select.value = userEl.value;
-            found = true;
-            break;
-          }
-        }
-        if (!found) select.value = '';
-      }
-    } else if (cb) {
-      cb.checked = false;
-    }
+    var loader = typeof global.loadAuthRemember === 'function'
+      ? global.loadAuthRemember()
+      : Promise.resolve(null);
+    Promise.resolve(loader).then(function (data) {
+      fillAuthFormFromRemember(data);
+    }).catch(function () {});
   }
 
   function bindAuthRememberPasswordControl() {
