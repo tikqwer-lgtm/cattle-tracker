@@ -245,6 +245,24 @@ function serializeReportText(items) {
     .join('\n');
 }
 
+function reportWordFilename(items, date, farmName) {
+  var farm = String(farmName || '').trim();
+  var dPrint = formatPrintDate(date) || String(date || '').trim();
+  var prefix = (items || []).some(isUziReportItem) ? 'УЗИ' : 'opis';
+  return prefix + (farm ? ' ' + farm : '') + (dPrint ? ' ' + dPrint : '') + '.doc';
+}
+
+function isDuplicateServiceReport(events, date, items) {
+  var text = serializeReportText(items);
+  var dateK = dateKey(date);
+  return (events || []).some(function (ev) {
+    return ev &&
+      ev.eventType === 'service_report' &&
+      dateKey(ev.eventDate) === dateK &&
+      String(ev.description || '') === text;
+  });
+}
+
 function resultFromDetails(details) {
   var s = String(details || '');
   if (/сомнительн/i.test(s)) return 'Сомнительная';
@@ -360,5 +378,7 @@ export {
   formatPrintDate,
   isUziReportItem,
   uziPrintTableHtml,
-  uziPrintDocumentHtml
+  uziPrintDocumentHtml,
+  reportWordFilename,
+  isDuplicateServiceReport
 };

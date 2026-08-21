@@ -127,7 +127,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.14" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.15" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -481,7 +481,10 @@
       </div>
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Номер</label>
-        <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <div class="action-batch-number-row">
+          <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" id="inseminationGroupAddBtn" class="small-btn">групп ввод</button>
+        </div>
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
         <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>

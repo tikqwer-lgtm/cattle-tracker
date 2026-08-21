@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#3d6eb5" />
   <!-- Стили: сборка Vite → dist/app.css (Tailwind + компоненты) -->
-  <link rel="stylesheet" href="web/app.css" />
+  <link rel="stylesheet" href="dist/app.css" />
 </head>
 <body>
   <datalist id="datalist-farm-bulls"></datalist>
@@ -40,7 +40,7 @@
       <div class="print-header-milk"></div>
       <div class="print-header-content">
         <div class="print-logo">
-          <img src="app-icons/logo.png" alt="" width="120" height="64" class="print-logo-img" />
+          <img src="icons/logo.png" alt="" width="120" height="64" class="print-logo-img" />
           <span class="print-company-name">Молочная компания «Генетика»</span>
         </div>
         <div class="print-details">
@@ -123,11 +123,11 @@
   <!-- ========== Меню (главный экран) ========== -->
   <div id="menu-screen" class="screen">
     <div class="menu-branding" aria-hidden="false">
-      <img src="app-icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
+      <img src="icons/logo.png" alt="Молочная компания Генетика" class="menu-branding-logo menu-branding-logo-full" width="120" height="64" />
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.14" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.15" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -481,7 +481,10 @@
       </div>
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Номер</label>
-        <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <div class="action-batch-number-row">
+          <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" id="inseminationGroupAddBtn" class="small-btn">групп ввод</button>
+        </div>
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
         <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
@@ -1258,7 +1261,7 @@
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 
-  <script src="web/app.js"></script>
+  <script src="dist/app.js"></script>
   <script>
   (function() {
     function setPrintHeaderDate() {

@@ -3007,6 +3007,7 @@
       var addEv = document.getElementById('farmCardAddEvBtn');
       if (addEv) {
         addEv.onclick = function () {
+          if (addEv.getAttribute('data-busy') === '1') return;
           var type = (document.getElementById('farmCardNewEvType') || {}).value || 'shtab';
           var eventDate = (document.getElementById('farmCardNewEvDate') || {}).value || today;
           var title = ((document.getElementById('farmCardNewEvTitle') || {}).value || '').trim();
@@ -3017,6 +3018,14 @@
             return;
           }
           if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
+          var fp = [type, eventDate, title, description, participants].join('\n');
+          var last = window.__farmCardLastEvFingerprint;
+          if (last && last.fp === fp && Date.now() - last.at < 2500) {
+            if (typeof showToast === 'function') showToast('Запись уже добавлена', 'info');
+            return;
+          }
+          addEv.setAttribute('data-busy', '1');
+          addEv.disabled = true;
           window.__farmCardBundle.events.push({
             id: newId('ev_'),
             eventType: type,
@@ -3031,6 +3040,7 @@
             notifyLocal: true,
             attachments: _timelineDraftAttachments.slice()
           });
+          window.__farmCardLastEvFingerprint = { fp: fp, at: Date.now() };
           _timelineDraftAttachments = [];
           _timelineFormOpen = false;
           clearTimelineDraft();

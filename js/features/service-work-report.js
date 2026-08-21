@@ -8,7 +8,9 @@ import {
   uziPrintDocumentHtml,
   uziPrintTableHtml,
   isUziReportItem,
-  formatPrintDate
+  formatPrintDate,
+  reportWordFilename,
+  isDuplicateServiceReport
 } from './service-work-report-build.js';
 
 function escapeHtml(s) {
@@ -142,20 +144,39 @@ function reportPrintHtml(items, date, username) {
   );
 }
 
-function downloadReportFile(items, date) {
-  var html = reportPrintHtml(items, date, getUsername());
-  var farm = getFarmName();
-  var dPrint = formatPrintDate(date) || date || todayIso();
-  var filename = (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
-    (farm ? ' ' + farm : '') +
-    ' ' +
-    dPrint.replace(/\./g, '.') +
-    '.html';
-  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  if (typeof window.downloadBlob === 'function') {
-    window.downloadBlob(blob, filename, html, 'УЗИ');
-    return;
+function asWordHtml(html) {
+  return String(html || '').replace(
+    '<html lang="ru">',
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="ru">'
+  );
+}
+
+function blobToBase64(blob) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () {
+      var s = String(r.result || '');
+      var i = s.indexOf(',');
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.onerror = function () {
+      reject(r.error || new Error('read'));
+    };
+    r.readAsDataURL(blob);
+  });
+}
+
+function isAndroidCapacitor() {
+  try {
+    var C = window.Capacitor;
+    return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'android' &&
+      typeof C.isNativePlatform === 'function' && C.isNativePlatform());
+  } catch (e) {
+    return false;
   }
+}
+
+function downloadWordViaAnchor(blob, filename) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -165,21 +186,59 @@ function downloadReportFile(items, date) {
   if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
 }
 
+function downloadReportFile(items, date) {
+  var html = asWordHtml(reportPrintHtml(items, date, getUsername()));
+  var filename = reportWordFilename(items, date, getFarmName());
+  var blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  if (isAndroidCapacitor()) {
+    return blobToBase64(blob).then(function (b64) {
+      return import('@capacitor/core').then(function (core) {
+        var SaveDocument = core.registerPlugin('SaveDocument', {
+          web: {
+            saveFile: function () {
+              return Promise.reject(new Error('web'));
+            }
+          }
+        });
+        return SaveDocument.saveFile({
+          filename: filename,
+          mime: 'application/msword',
+          base64: b64
+        });
+      });
+    }).then(function (res) {
+      if (res && res.cancelled) return;
+      if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+    }).catch(function () {
+      downloadWordViaAnchor(blob, filename);
+    });
+  }
+  downloadWordViaAnchor(blob, filename);
+}
+
 function newEventId() {
   return 'ev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
+var _saveReportBusy = false;
+
 function saveReport(items, date) {
+  if (_saveReportBusy) return Promise.resolve(false);
   if (!items.length) {
     if (typeof showToast === 'function') showToast('Нет работ за эту дату', 'error');
     return Promise.resolve(false);
   }
+  _saveReportBusy = true;
   var load = typeof window.ensureFarmCardLoaded === 'function'
     ? window.ensureFarmCardLoaded()
     : Promise.resolve();
   return load.then(function () {
     if (!window.__farmCardBundle) window.__farmCardBundle = { events: [] };
     if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
+    if (isDuplicateServiceReport(window.__farmCardBundle.events, date, items)) {
+      if (typeof showToast === 'function') showToast('Этот отчёт уже есть в ленте', 'info');
+      return false;
+    }
     var title = 'Отчёт ' + date + ' (' + items.length + ' гол.)';
     var html = reportPrintHtml(items, date, getUsername());
     window.__farmCardBundle.events.push({
@@ -226,6 +285,9 @@ function saveReport(items, date) {
     if (err && err.alreadyToasted) return false;
     if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка сохранения отчёта', 'error');
     return false;
+  }).then(function (ok) {
+    _saveReportBusy = false;
+    return ok;
   });
 }
 
@@ -285,10 +347,14 @@ function openServiceWorkReportForm() {
     downloadReportFile(items, d);
   });
   modal.querySelector('#serviceReportSaveBtn').addEventListener('click', function () {
+    var btn = modal.querySelector('#serviceReportSaveBtn');
+    if (btn) btn.disabled = true;
     var dateEl = modal.querySelector('#serviceReportDate');
     var d = (dateEl && dateEl.value) || todayIso();
     var items = modal._items || collectFromForm(modal);
-    saveReport(items, d);
+    saveReport(items, d).then(function (ok) {
+      if (!ok && btn && btn.isConnected) btn.disabled = false;
+    });
   });
 }
 

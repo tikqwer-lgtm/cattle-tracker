@@ -6,7 +6,9 @@ import {
   formatUziPrintResult,
   formatPrintDate,
   uziPrintTableHtml,
-  uziPrintDocumentHtml
+  uziPrintDocumentHtml,
+  reportWordFilename,
+  isDuplicateServiceReport
 } from '../js/features/service-work-report-build.js';
 
 function cow(partial) {
@@ -165,5 +167,23 @@ describe('collectServiceWorkItems', () => {
       username: 'svc'
     });
     expect(doc).toMatch(/Список животных с указанием МТФ и номера животных/);
+  });
+
+  it('print filename is Word .doc, not html', () => {
+    var items = [{ cattleId: '1', action: 'УЗИ1' }];
+    expect(reportWordFilename(items, '2026-08-21', 'Мокша')).toBe('УЗИ Мокша 21.08.2026.doc');
+    expect(reportWordFilename([{ cattleId: '1', action: 'Осеменение' }], '2026-08-21', '')).toBe('opis 21.08.2026.doc');
+  });
+
+  it('detects the same service report already in the farm feed', () => {
+    var items = [{ cattleId: '101', action: 'Осеменение', details: '', workDate: '2026-08-21' }];
+    var events = [{
+      eventType: 'service_report',
+      eventDate: '2026-08-21',
+      description: serializeReportText(items)
+    }];
+    expect(isDuplicateServiceReport(events, '2026-08-21', items)).toBe(true);
+    expect(isDuplicateServiceReport(events, '2026-08-22', items)).toBe(false);
+    expect(isDuplicateServiceReport([], '2026-08-21', items)).toBe(false);
   });
 });

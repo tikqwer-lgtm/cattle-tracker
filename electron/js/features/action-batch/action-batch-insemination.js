@@ -99,6 +99,88 @@
     return n >= 1 ? n : 1;
   }
 
+  function addGroupCattleId(cattleId) {
+    var G = window.__inseminationGroup;
+    if (!G) return;
+    var rows = G.buildGroupDraftRows(
+      [cattleId],
+      insemDraft.map(function (x) { return x.cattleId; }),
+      findEntry,
+      {
+        bull: (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '',
+        uid: uid
+      }
+    );
+    if (!rows.length) {
+      toast('Уже в списке или пустой номер', 'error');
+      return false;
+    }
+    var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
+    if (insemDate && typeof validateDateNotFuture === 'function') {
+      var dErr = validateDateNotFuture(insemDate, 'Дата осеменения');
+      if (dErr) {
+        toast(dErr, 'error');
+        return false;
+      }
+    }
+    rows.forEach(function (r) {
+      insemDraft.push({
+        id: r.id,
+        cattleId: r.cattleId,
+        attemptNumber: r.attemptNumber,
+        bull: r.bull,
+        _batchGuardKey: batchGuardKey(insemDate || '', ''),
+        _batchGuardWarned: false
+      });
+    });
+    renderInsemDraft();
+    return true;
+  }
+
+  function openGroupAddOverlay() {
+    openOverlay(
+      '<h3 class="action-batch-modal-title">Групповой ввод</h3>' +
+      '<p class="action-batch-modal-hint">Наберите номер и нажмите OK — корова попадёт в таблицу с теми же датой, быком и техником. Попытка: 1 для новых, следующая для уже в стаде. Отмена закрывает набор.</p>' +
+      '<label class="action-batch-modal-label">Номер<br><input type="text" id="insemGroupNum" class="action-batch-modal-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" /></label>' +
+      '<div class="action-batch-modal-actions">' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupOk">OK</button>' +
+      '<button type="button" class="action-batch-btn" id="insemGroupCancel">Отмена</button>' +
+      '</div>'
+    );
+    var input = document.getElementById('insemGroupNum');
+    function addOne() {
+      var id = input && input.value ? String(input.value).trim() : '';
+      if (!id) {
+        toast('Укажите номер', 'error');
+        return;
+      }
+      if (addGroupCattleId(id) && input) {
+        input.value = '';
+        input.focus();
+      }
+    }
+    var okBtn = document.getElementById('insemGroupOk');
+    var cancelBtn = document.getElementById('insemGroupCancel');
+    if (okBtn) okBtn.addEventListener('click', addOne);
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        closeTopModal();
+        refocusActiveActionBatchNumberInput();
+      });
+    }
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        if (e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        addOne();
+      });
+      setTimeout(function () {
+        try { input.focus(); } catch (e) {}
+      }, 50);
+    }
+  }
+
   function addInsemFromForm() {
     var addIn = document.getElementById('inseminationBatchAddInput');
     var attIn = document.getElementById('inseminationAttemptInput');
@@ -248,6 +330,7 @@
   function bindInseminationAddForm() {
     var addIn = document.getElementById('inseminationBatchAddInput');
     bindOnce(document.getElementById('inseminationBatchAddBtn'), 'click', addInsemFromForm);
+    bindOnce(document.getElementById('inseminationGroupAddBtn'), 'click', openGroupAddOverlay);
     bindOnce(addIn, 'input', syncAttemptFromNumber);
     bindOnce(addIn, 'change', syncAttemptFromNumber);
     bindOnce(addIn, 'keydown', function (e) {

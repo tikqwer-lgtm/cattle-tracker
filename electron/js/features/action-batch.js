@@ -2,6 +2,7 @@
  * Пакетный ввод для экранов «Действия»: фасад (core + экраны).
  */
 import './action-batch/action-batch-core.js';
+import './action-batch/insemination-group.js';
 import './action-batch/action-batch-uzi.js';
 import './action-batch/action-batch-dry.js';
 import './action-batch/action-batch-protocol.js';
