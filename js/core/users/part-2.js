@@ -431,6 +431,9 @@
       }
     }
     if (bar) bar.style.display = 'none';
+    if (typeof global.syncHeaderReloadButton === 'function') {
+      global.syncHeaderReloadButton();
+    }
     var adminSection = document.getElementById('admin-menu-section');
     if (adminSection) {
       var showAdmin =

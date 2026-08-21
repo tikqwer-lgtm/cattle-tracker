@@ -27,6 +27,26 @@ test('модалка версии: у админа «Обновить» откр
   await expect(page.locator('.app-version-suggestion-send')).toBeVisible();
 });
 
+test('шапка «Обновить» у админа открывает форму предложения, а не перезагружает страницу', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Войти без пароля' }).click();
+  await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 15000 });
+
+  await page.evaluate(() => {
+    window.getCurrentUser = function () {
+      return { id: 'admin', username: 'admin', role: 'admin' };
+    };
+    window.CattleTrackerApi = window.CattleTrackerApi || {};
+    window.CattleTrackerApi.getBaseUrl = function () {
+      return 'http://127.0.0.1:9';
+    };
+    if (typeof window.syncHeaderReloadButton === 'function') window.syncHeaderReloadButton();
+  });
+
+  await page.locator('#app-header-reload-btn').click();
+  await expect(page.locator('#appVersionSuggestionText')).toBeVisible();
+});
+
 test('модалка версии: у не-админа кнопки «Обновить» нет', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Войти без пароля' }).click();

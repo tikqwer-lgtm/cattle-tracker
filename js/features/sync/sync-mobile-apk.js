@@ -211,6 +211,69 @@
       });
   }
 
+  function isAppAdminUser() {
+    if (typeof global.getCurrentUser !== 'function') return false;
+    var u = global.getCurrentUser();
+    if (!u) return false;
+    if (typeof global.hasCapability === 'function' && global.hasCapability('adminReleaseControls', u)) {
+      return true;
+    }
+    return String(u.role || '').trim().toLowerCase() === 'admin';
+  }
+
+  function openImprovementForm() {
+    var ver = _mobileUpdateState.localVer || '';
+    if (typeof global.showImprovementSuggestionModal === 'function') {
+      global.showImprovementSuggestionModal(ver);
+      return;
+    }
+    if (typeof global.showAppVersionActionsModal === 'function') {
+      global.showAppVersionActionsModal({ localVer: ver });
+    }
+  }
+
+  function syncHeaderReloadButton() {
+    var btn = document.getElementById('app-header-reload-btn');
+    if (!btn) return;
+    btn.removeAttribute('onclick');
+    if (btn.dataset.suggestionBound !== '1') {
+      btn.dataset.suggestionBound = '1';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isAppAdminUser()) {
+          if (!getApiBase()) {
+            if (typeof global.showToast === 'function') {
+              global.showToast('Нет связи с сервером', 'error');
+            }
+            return;
+          }
+          openImprovementForm();
+          return;
+        }
+        if (isAndroidCapacitor()) return;
+        if (typeof global.reloadCattleTrackerPage === 'function') {
+          global.reloadCattleTrackerPage();
+        }
+      });
+    }
+    if (isAppAdminUser()) {
+      btn.hidden = false;
+      btn.textContent = 'Обновить';
+      btn.setAttribute('aria-label', 'Отправить предложение по улучшению');
+      btn.title = 'Отправить предложение по улучшению';
+      return;
+    }
+    if (isAndroidCapacitor()) {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    btn.textContent = 'Страница';
+    btn.setAttribute('aria-label', 'Обновить страницу');
+    btn.title = 'Обновить страницу, если поля не нажимаются';
+  }
+
   function handleAppVersionHeaderClick() {
     if (!isAndroidCapacitor() || !getApiBase()) {
       return;
@@ -229,6 +292,7 @@
       headerBtn.dataset.versionBound = '1';
       headerBtn.addEventListener('click', handleAppVersionHeaderClick);
     }
+    syncHeaderReloadButton();
     var embedded = readEmbeddedDefaultVersion();
     if (embedded) {
       _mobileUpdateState.localVer = embedded;
@@ -534,6 +598,7 @@
   global.refreshMobileApkServerUi = refreshMobileApkServerUi;
   global.checkMobileApkUpdate = checkMobileApkUpdate;
   global.initAppVersionUpdateUi = initAppVersionUpdateUi;
+  global.syncHeaderReloadButton = syncHeaderReloadButton;
   global.handleAppVersionHeaderClick = handleAppVersionHeaderClick;
 })(typeof window !== 'undefined' ? window : this);
 
