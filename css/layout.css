@@ -692,6 +692,47 @@
   gap: 0.75rem;
   margin: 0.75rem 0;
 }
+.service-report-template-label {
+  display: block;
+  margin: 0.75rem 0 0;
+}
+.service-report-template-label select {
+  margin-left: 0.35rem;
+  min-width: 10rem;
+}
+.service-report-signers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0.75rem 0;
+}
+.service-report-signers label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 12rem;
+  flex: 1;
+}
+.service-report-signers input {
+  width: 100%;
+}
+.moksha-uzi-title {
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 0.75rem;
+}
+.moksha-uzi-signers {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+.moksha-uzi-signer {
+  min-width: 40%;
+}
+.moksha-uzi-sign-label {
+  margin-top: 1rem;
+}
 .service-report-preview,
 .service-report-table-wrap {
   overflow-x: auto;

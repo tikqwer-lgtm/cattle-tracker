@@ -8,7 +8,11 @@ import {
   uziPrintTableHtml,
   uziPrintDocumentHtml,
   reportWordFilename,
-  isDuplicateServiceReport
+  isDuplicateServiceReport,
+  sortMokshaUziItems,
+  mokshaUziAoa,
+  mokshaUziFilename,
+  mokshaUziPreviewHtml
 } from '../js/features/service-work-report-build.js';
 
 function cow(partial) {
@@ -185,5 +189,48 @@ describe('collectServiceWorkItems', () => {
     expect(isDuplicateServiceReport(events, '2026-08-21', items)).toBe(true);
     expect(isDuplicateServiceReport(events, '2026-08-22', items)).toBe(false);
     expect(isDuplicateServiceReport([], '2026-08-21', items)).toBe(false);
+  });
+
+  it('Moksha template sorts by MTF then cattle number', () => {
+    var sorted = sortMokshaUziItems(
+      [
+        { cattleId: '5201', action: 'УЗИ1', workDate: '2026-06-15', group: 'Шаверки' },
+        { cattleId: '1655', action: 'УЗИ1', workDate: '2026-06-15', group: 'Ефаево' },
+        { cattleId: '2307', action: 'УЗИ1', workDate: '2026-06-15', group: 'Тенишево' },
+        { cattleId: '4078', action: 'УЗИ1', workDate: '2026-06-15', group: 'Ефаево' },
+        { cattleId: '99', action: 'Осеменение', workDate: '2026-06-15', group: 'Ефаево' }
+      ],
+      'Мокша'
+    );
+    expect(sorted.map(function (r) { return r.cattleId; })).toEqual(['1655', '4078', '2307', '5201']);
+  });
+
+  it('Moksha AOA matches Excel layout without result column', () => {
+    var aoa = mokshaUziAoa(
+      [
+        { cattleId: '1655', action: 'УЗИ1', workDate: '2026-06-15', group: 'Ефаево', result: 'Стельная' },
+        { cattleId: '1828', action: 'УЗИ1', workDate: '2026-06-15', group: 'Шаверки', result: 'Не стельная' }
+      ],
+      { farmName: 'Мокша', signerLeft: 'Бушаев А.В', signerRight: 'Матвеев П.Н' }
+    );
+    expect(aoa[0][0]).toBe('Список животных с указанием МТФ и номера животных');
+    expect(aoa[2]).toEqual(['№ п/п', '№ Животного', 'МТФ', 'Дата узи']);
+    expect(aoa[2].join('|')).not.toMatch(/Результат/);
+    expect(aoa[3]).toEqual([1, '1655', 'Ефаево', '15.06.2026']);
+    expect(aoa[4]).toEqual([2, '1828', 'Шаверки', '15.06.2026']);
+    expect(aoa[aoa.length - 3]).toEqual(['Бушаев А.В', '', 'Матвеев П.Н', '']);
+    expect(aoa[aoa.length - 1]).toEqual(['Подпись', '', 'Подпись', '']);
+    expect(mokshaUziFilename('2026-06-15', 'Мокша')).toBe('УЗИ Мокша 15.06.2026.xlsx');
+    var preview = mokshaUziPreviewHtml({
+      items: [{ cattleId: '1655', action: 'УЗИ1', workDate: '2026-06-15', group: 'Ефаево' }],
+      farmName: 'Мокша',
+      signerLeft: 'Бушаев А.В',
+      signerRight: 'Матвеев П.Н',
+      date: '2026-06-15'
+    });
+    expect(preview).toMatch(/№ Животного/);
+    expect(preview).not.toMatch(/Результат/);
+    expect(preview).toMatch(/Бушаев А\.В/);
+    expect(preview).toMatch(/Подпись/);
   });
 });

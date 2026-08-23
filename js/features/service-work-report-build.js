@@ -369,6 +369,190 @@ function uziPrintDocumentHtml(opts) {
   );
 }
 
+var MOKSHA_TITLE = 'Список животных с указанием МТФ и номера животных';
+var MOKSHA_HEADERS = ['№ п/п', '№ Животного', 'МТФ', 'Дата узи'];
+
+function mokshaMtfOf(it, farmName) {
+  return String((it && it.group) || '').trim() || String(farmName || '').trim();
+}
+
+function sortMokshaUziItems(items, farmName) {
+  var farm = String(farmName || '').trim();
+  return (items || [])
+    .filter(isUziReportItem)
+    .slice()
+    .sort(function (a, b) {
+      var ma = mokshaMtfOf(a, farm);
+      var mb = mokshaMtfOf(b, farm);
+      var c = ma.localeCompare(mb, 'ru');
+      if (c !== 0) return c;
+      return String(a.cattleId || '').localeCompare(String(b.cattleId || ''), 'ru', { numeric: true });
+    });
+}
+
+/**
+ * Двумерный массив листа «Мокша»: заголовок, колонки, строки УЗИ, подписи.
+ * opts: { farmName, signerLeft, signerRight }
+ */
+function mokshaUziAoa(items, opts) {
+  opts = opts || {};
+  var farm = String(opts.farmName || '').trim();
+  var left = String(opts.signerLeft || '').trim();
+  var right = String(opts.signerRight || '').trim();
+  var rows = sortMokshaUziItems(items, farm);
+  var aoa = [
+    [MOKSHA_TITLE, '', '', ''],
+    ['', '', '', ''],
+    MOKSHA_HEADERS.slice()
+  ];
+  rows.forEach(function (it, idx) {
+    aoa.push([
+      idx + 1,
+      it.cattleId != null ? String(it.cattleId) : '',
+      mokshaMtfOf(it, farm),
+      formatPrintDate(it.workDate) || String(it.workDate || '')
+    ]);
+  });
+  aoa.push(['', '', '', '']);
+  aoa.push([left, '', right, '']);
+  aoa.push(['', '', '', '']);
+  aoa.push(['Подпись', '', 'Подпись', '']);
+  return aoa;
+}
+
+function mokshaUziSheetFromAoa(aoa) {
+  var XLSX = typeof window !== 'undefined' ? window.XLSX : null;
+  if (!XLSX || !XLSX.utils) return null;
+  var ws = XLSX.utils.aoa_to_sheet(aoa || []);
+  ws['!merges'] = [{ s: { c: 0, r: 0 }, e: { c: 3, r: 1 } }];
+  ws['!cols'] = [
+    { wch: 8.57 },
+    { wch: 15.29 },
+    { wch: 11.86 },
+    { wch: 10.57 }
+  ];
+  return ws;
+}
+
+function mokshaUziWorkbook(aoa) {
+  var XLSX = typeof window !== 'undefined' ? window.XLSX : null;
+  if (!XLSX || !XLSX.utils) return null;
+  var wb = XLSX.utils.book_new();
+  var ws = mokshaUziSheetFromAoa(aoa);
+  if (!ws) return null;
+  XLSX.utils.book_append_sheet(wb, ws, 'Лист1');
+  return wb;
+}
+
+function mokshaUziFilename(date, farmName) {
+  var farm = String(farmName || '').trim() || 'Мокша';
+  var dPrint = formatPrintDate(date) || String(date || '').trim();
+  return 'УЗИ ' + farm + (dPrint ? ' ' + dPrint : '') + '.xlsx';
+}
+
+function mokshaUziTableHtml(items, farmName) {
+  var farm = String(farmName || '').trim();
+  var rows = sortMokshaUziItems(items, farm);
+  if (!rows.length) return '';
+  var body = rows
+    .map(function (it, idx) {
+      return (
+        '<tr>' +
+        '<td class="n">' +
+        (idx + 1) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(it.cattleId) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(mokshaMtfOf(it, farm)) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(formatPrintDate(it.workDate)) +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+  return (
+    '<table class="uzi-print-table moksha-uzi-table">' +
+    '<thead><tr>' +
+    '<th>№ п/п</th><th>№ Животного</th><th>МТФ</th><th>Дата узи</th>' +
+    '</tr></thead><tbody>' +
+    body +
+    '</tbody></table>'
+  );
+}
+
+function mokshaUziPreviewHtml(opts) {
+  opts = opts || {};
+  var farmName = opts.farmName || '';
+  var date = opts.date || '';
+  var left = String(opts.signerLeft || '').trim();
+  var right = String(opts.signerRight || '').trim();
+  var table = mokshaUziTableHtml(opts.items || [], farmName);
+  if (!table) return '';
+  return (
+    '<div class="moksha-uzi-preview">' +
+    '<p class="moksha-uzi-title">' +
+    escapePrintHtml(MOKSHA_TITLE) +
+    '</p>' +
+    table +
+    '<div class="moksha-uzi-signers">' +
+    '<div class="moksha-uzi-signer"><div>' +
+    escapePrintHtml(left) +
+    '</div><div class="moksha-uzi-sign-label">Подпись</div></div>' +
+    '<div class="moksha-uzi-signer"><div>' +
+    escapePrintHtml(right) +
+    '</div><div class="moksha-uzi-sign-label">Подпись</div></div>' +
+    '</div>' +
+    (date
+      ? '<p class="farm-settings-hint">' + escapePrintHtml(formatPrintDate(date) || date) + '</p>'
+      : '') +
+    '</div>'
+  );
+}
+
+function mokshaUziDocumentHtml(opts) {
+  opts = opts || {};
+  var farmName = opts.farmName || '';
+  var date = opts.date || '';
+  var left = String(opts.signerLeft || '').trim();
+  var right = String(opts.signerRight || '').trim();
+  var table = mokshaUziTableHtml(opts.items || [], farmName);
+  if (!table) return '';
+  return (
+    '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">' +
+    '<title>' +
+    escapePrintHtml(mokshaUziFilename(date, farmName).replace(/\.xlsx$/i, '')) +
+    '</title>' +
+    '<style>' +
+    'body{font-family:"Times New Roman",Times,serif;font-size:12pt;color:#000;margin:0;padding:12px}' +
+    'h1{font-size:14pt;text-align:center;margin:0 0 12px;font-weight:700}' +
+    'table{border-collapse:collapse;width:100%}' +
+    'th,td{border:1px solid #000;padding:4px 6px;text-align:center}' +
+    'th{font-weight:700}' +
+    'td.n{width:3.5em}' +
+    '.signers{display:flex;justify-content:space-between;margin-top:24px;gap:24px}' +
+    '.signer{min-width:40%}' +
+    '.sign-label{margin-top:18px}' +
+    '</style></head><body>' +
+    '<h1>' +
+    escapePrintHtml(MOKSHA_TITLE) +
+    '</h1>' +
+    table +
+    '<div class="signers">' +
+    '<div class="signer"><div>' +
+    escapePrintHtml(left) +
+    '</div><div class="sign-label">Подпись</div></div>' +
+    '<div class="signer"><div>' +
+    escapePrintHtml(right) +
+    '</div><div class="sign-label">Подпись</div></div>' +
+    '</div>' +
+    '</body></html>'
+  );
+}
+
 export {
   collectServiceWorkItems,
   serializeReportText,
@@ -380,5 +564,12 @@ export {
   uziPrintTableHtml,
   uziPrintDocumentHtml,
   reportWordFilename,
-  isDuplicateServiceReport
+  isDuplicateServiceReport,
+  sortMokshaUziItems,
+  mokshaUziAoa,
+  mokshaUziWorkbook,
+  mokshaUziFilename,
+  mokshaUziPreviewHtml,
+  mokshaUziDocumentHtml,
+  mokshaUziTableHtml
 };
