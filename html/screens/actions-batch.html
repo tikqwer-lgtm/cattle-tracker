@@ -159,17 +159,17 @@
         <label for="inseminationBatchAddInput">Номер</label>
         <div class="action-batch-number-row">
           <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-          <button type="button" id="inseminationGroupAddBtn" class="small-btn">групп ввод</button>
+          <button type="button" id="inseminationGroupAddBtn" class="action-btn">Групп ввод</button>
         </div>
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
-        <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-      <button type="button" id="inseminationBatchSaveBtn" class="action-btn action-batch-save-all">Сохранить всё</button>
+    <div class="screen-actions screen-actions--insem-batch">
+      <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="action-btn">Назад</button>
+      <button type="button" id="inseminationBatchSaveBtn" class="action-btn">Сохранить</button>
     </div>
   </div>
 

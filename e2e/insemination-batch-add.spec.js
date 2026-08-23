@@ -31,6 +31,7 @@ test('ввод осеменения: без подсказок, попытка �
   await expect(page.locator('#inseminationBatchAddList')).toHaveCount(0);
   await expect(page.locator('#inseminationBatchAddBtn')).toBeVisible();
   await expect(page.locator('#inseminationAttemptInput')).toBeVisible();
+  await expect(page.locator('#inseminationBatchSaveBtn')).toHaveText('Сохранить');
 
   await page.locator('#inseminationBatchAddInput').fill('101');
   await expect(page.locator('#inseminationAttemptInput')).toHaveValue('2');
@@ -43,15 +44,13 @@ test('ввод осеменения: без подсказок, попытка �
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('999');
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('—');
 
-  const addY = (await page.locator('#inseminationBatchAddBtn').boundingBox()).y;
-  const dateY = (await page.locator('#inseminationDateInsem').boundingBox()).y;
-  const tableY = (await page.locator('#inseminationBatchDraftTable').boundingBox()).y;
-  expect(addY).toBeGreaterThan(dateY);
-  expect(addY).toBeLessThan(tableY);
-  await expect(page.locator('#inseminationBatchSaveBtn')).toBeVisible();
+  const actions = page.locator('#insemination-screen .screen-actions--insem-batch');
+  await expect(actions.locator('#inseminationBatchAddBtn')).toBeVisible();
+  await expect(actions.getByRole('button', { name: 'Назад' })).toBeVisible();
+  await expect(actions.locator('#inseminationBatchSaveBtn')).toBeVisible();
 });
 
-test('групп ввод: набор номеров в оверлее попадает в таблицу с попыткой 1 / следующей', async ({ page }) => {
+test('Групп ввод: счётчик последнего номера, Сохранить все закрывает и сохраняет', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Войти без пароля' }).click();
   await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 15000 });
@@ -72,16 +71,25 @@ test('групп ввод: набор номеров в оверлее попа�
     if (typeof window.navigate === 'function') window.navigate('insemination');
   });
   await expect(page.locator('#insemination-screen.active')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('#inseminationGroupAddBtn')).toHaveText('Групп ввод');
   await page.locator('#inseminationGroupAddBtn').click();
   await expect(page.locator('#insemGroupNum')).toBeVisible();
+  await expect(page.locator('#insemGroupOk')).toHaveText('Добавить');
+  await expect(page.locator('#insemGroupCancel')).toHaveText('Сохранить все');
+  await expect(page.locator('.action-batch-modal-hint')).toHaveCount(0);
   await page.locator('#insemGroupNum').fill('101');
   await page.locator('#insemGroupOk').click();
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('101');
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('2');
+  await expect(page.locator('#insemGroupLastNum')).toHaveText('1. 101');
   await page.locator('#insemGroupNum').fill('888');
   await page.locator('#insemGroupOk').click();
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('888');
   await expect(page.locator('#inseminationBatchDraftTable')).toContainText('1');
+  await expect(page.locator('#insemGroupLastNum')).toHaveText('2. 888');
+  await page.locator('#insemGroupLastDel').click();
+  await expect(page.locator('#inseminationBatchDraftTable')).not.toContainText('888');
+  await expect(page.locator('#insemGroupLastNum')).toHaveText('1. 101');
   await page.locator('#insemGroupCancel').click();
   await expect(page.locator('#insemGroupNum')).toHaveCount(0);
 });

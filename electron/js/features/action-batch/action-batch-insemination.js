@@ -29,7 +29,7 @@
     var host = document.getElementById('inseminationBatchDraftTable');
     if (!host) return;
     if (!insemDraft.length) {
-      host.innerHTML = '<p class="action-batch-draft-empty">Добавьте коров; для каждой можно задать попытку.</p>';
+      host.innerHTML = '';
       return;
     }
     var rows = insemDraft.map(function (r) {
@@ -140,14 +140,34 @@
   function openGroupAddOverlay() {
     openOverlay(
       '<h3 class="action-batch-modal-title">Групповой ввод</h3>' +
-      '<p class="action-batch-modal-hint">Наберите номер и нажмите OK — корова попадёт в таблицу с теми же датой, быком и техником. Попытка: 1 для новых, следующая для уже в стаде. Отмена закрывает набор.</p>' +
       '<label class="action-batch-modal-label">Номер<br><input type="text" id="insemGroupNum" class="action-batch-modal-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" /></label>' +
+      '<div id="insemGroupLast" class="action-batch-modal-last" hidden>' +
+      '<span><strong id="insemGroupLastNum"></strong></span>' +
+      '<button type="button" class="action-batch-modal-last-del" id="insemGroupLastDel" title="Удалить" aria-label="Удалить последний номер">×</button>' +
+      '</div>' +
       '<div class="action-batch-modal-actions">' +
-      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupOk">OK</button>' +
-      '<button type="button" class="action-batch-btn" id="insemGroupCancel">Отмена</button>' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupOk">Добавить</button>' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupCancel">Сохранить все</button>' +
       '</div>'
     );
     var input = document.getElementById('insemGroupNum');
+    var lastCattleId = null;
+    var lastDraftRowId = null;
+    var lastOrdinal = 0;
+
+    function refreshLastUi() {
+      var wrap = document.getElementById('insemGroupLast');
+      var label = document.getElementById('insemGroupLastNum');
+      if (!wrap || !label) return;
+      if (!lastCattleId || !lastOrdinal) {
+        wrap.hidden = true;
+        label.textContent = '';
+        return;
+      }
+      wrap.hidden = false;
+      label.textContent = lastOrdinal + '. ' + lastCattleId;
+    }
+
     function addOne() {
       var id = input && input.value ? String(input.value).trim() : '';
       if (!id) {
@@ -155,17 +175,57 @@
         return;
       }
       if (addGroupCattleId(id) && input) {
+        lastCattleId = id;
+        lastDraftRowId = null;
+        lastOrdinal = 0;
+        for (var i = insemDraft.length - 1; i >= 0; i--) {
+          if (insemDraft[i].cattleId === id) {
+            lastDraftRowId = insemDraft[i].id;
+            lastOrdinal = i + 1;
+            break;
+          }
+        }
+        refreshLastUi();
         input.value = '';
         input.focus();
       }
     }
+
+    function removeLast() {
+      if (!lastDraftRowId && !lastCattleId) return;
+      if (lastDraftRowId) {
+        insemDraft = insemDraft.filter(function (x) { return x.id !== lastDraftRowId; });
+      } else {
+        for (var i = insemDraft.length - 1; i >= 0; i--) {
+          if (insemDraft[i].cattleId === lastCattleId) {
+            insemDraft.splice(i, 1);
+            break;
+          }
+        }
+      }
+      lastDraftRowId = null;
+      lastCattleId = null;
+      lastOrdinal = 0;
+      if (insemDraft.length) {
+        var prev = insemDraft[insemDraft.length - 1];
+        lastDraftRowId = prev.id;
+        lastCattleId = prev.cattleId;
+        lastOrdinal = insemDraft.length;
+      }
+      renderInsemDraft();
+      refreshLastUi();
+      if (input) input.focus();
+    }
+
     var okBtn = document.getElementById('insemGroupOk');
     var cancelBtn = document.getElementById('insemGroupCancel');
+    var delBtn = document.getElementById('insemGroupLastDel');
     if (okBtn) okBtn.addEventListener('click', addOne);
+    if (delBtn) delBtn.addEventListener('click', removeLast);
     if (cancelBtn) {
       cancelBtn.addEventListener('click', function () {
         closeTopModal();
-        refocusActiveActionBatchNumberInput();
+        saveInsemBatch();
       });
     }
     if (input) {
