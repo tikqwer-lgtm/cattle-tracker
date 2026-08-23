@@ -203,6 +203,10 @@ function navigate(screenId, options) {
   _currentScreenId = screenId;
 
   try {
+    window._currentScreenId = screenId;
+  } catch (eCur) {}
+
+  try {
     window.dispatchEvent(new CustomEvent('cattle-tracker:navigate', { detail: { screenId: screenId } }));
   } catch (eNav) {}
 

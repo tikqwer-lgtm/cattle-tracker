@@ -6,8 +6,9 @@
   <title>Учёт коров — расширенный функционал</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#3d6eb5" />
-  <!-- Стили: сборка Vite → dist/app.css (Tailwind + компоненты) -->
+  <!-- Стили: в dev подключает js/main.tsx; в production — dist/app.css после сборки -->
   <link rel="stylesheet" href="dist/app.css" />
+  <!-- Vite client только в npm run dev (плагин/инъекция); entry модуля ниже в shell-end -->
 </head>
 <body>
   <datalist id="datalist-farm-bulls"></datalist>

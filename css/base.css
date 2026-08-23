@@ -312,6 +312,15 @@ body {
   box-sizing: border-box;
 }
 
+/* React-экраны монтируются в #root (strangler) */
+#root .screen.screen--react.active {
+  @apply block;
+  animation: screen-enter 0.2s ease-out;
+  padding-inline: 16px;
+  padding-bottom: 20px;
+  box-sizing: border-box;
+}
+
 #auth-screen.active {
   padding-inline: 0;
   padding-bottom: 0;

@@ -65,12 +65,7 @@ try {
 } catch (e) {
   console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
 }
-['js', 'lib'].forEach(dir => {
-  if (fs.existsSync(path.join(root, dir))) {
-    copyDir(dir);
-    console.log('  ', dir + '/');
-  }
-});
+/* Канон клиента — корневой js/; в Electron только готовый бандл web/app.js (не зеркало исходников). */
 // Копируем бандл в web/ (не dist/), чтобы electron-builder не конфликтовал с directories.output: "dist"
 const rootDist = path.join(root, 'dist');
 if (fs.existsSync(rootDist)) {

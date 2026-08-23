@@ -1,5 +1,5 @@
 /**
- * Журнал диагностики открытия/закрытия DevTools (Electron) — экран «Справка».
+ * Журнал диагностики открытия/закрытия DevTools (Electron) — экран «Справка» (React).
  */
 (function () {
   'use strict';
@@ -42,20 +42,25 @@
 
   function setup() {
     var api = typeof window !== 'undefined' && window.electronAPI;
-    if (!api || typeof api.getDevtoolsDiagnosticsHistory !== 'function') return;
+    if (!api || typeof api.getDevtoolsDiagnosticsHistory !== 'function') {
+      window.getHelpDevtoolsDiagnosticsText = function () { return ''; };
+      window.refreshHelpDevtoolsDiagnostics = function () {};
+      window.clearHelpDevtoolsDiagnostics = function () {};
+      return;
+    }
 
     var entries = [];
-    var ta = document.getElementById('help-diagnostics-log');
-    var copyBtn = document.getElementById('help-diagnostics-copy-btn');
-    var clearBtn = document.getElementById('help-diagnostics-clear-btn');
-    var refreshBtn = document.getElementById('help-diagnostics-refresh-btn');
-    if (!ta) return;
-
-    var lastVisibilitySnapMs = 0;
 
     function rebuildText() {
-      ta.value = entries.map(formatEntry).filter(Boolean).join('\n');
-      ta.scrollTop = ta.scrollHeight;
+      var text = entries.map(formatEntry).filter(Boolean).join('\n');
+      var ta =
+        document.getElementById('help-diagnostics-log-react') ||
+        document.getElementById('help-diagnostics-log');
+      if (ta) {
+        ta.value = text;
+        ta.scrollTop = ta.scrollHeight;
+      }
+      return text;
     }
 
     function pushLocalSnapshot(label) {
@@ -105,52 +110,23 @@
       }).catch(function () {});
     }
 
+    window.getHelpDevtoolsDiagnosticsText = function () {
+      return rebuildText();
+    };
+
     window.refreshHelpDevtoolsDiagnostics = function () {
       return refreshFromMain();
     };
 
-    if (copyBtn) {
-      copyBtn.addEventListener('click', function () {
-        var text = ta.value || '';
-        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () {
-            if (typeof showToast === 'function') showToast('Журнал скопирован в буфер', 'info');
-          }).catch(function () {
-            ta.select();
-            try {
-              document.execCommand('copy');
-            } catch (e) {}
-          });
-        } else {
-          ta.select();
-          try {
-            document.execCommand('copy');
-          } catch (e2) {}
-        }
-      });
-    }
-
-    if (clearBtn) {
-      clearBtn.addEventListener('click', function () {
-        if (typeof api.clearDevtoolsDiagnosticsLog === 'function') {
-          api.clearDevtoolsDiagnosticsLog();
-        }
-        entries.length = 0;
-        rebuildText();
-        if (typeof showToast === 'function') showToast('Журнал очищен', 'info');
-      });
-    }
-
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function () {
-        refreshFromMain();
-      });
-    }
+    window.clearHelpDevtoolsDiagnostics = function () {
+      if (typeof api.clearDevtoolsDiagnosticsLog === 'function') {
+        api.clearDevtoolsDiagnosticsLog();
+      }
+      entries.length = 0;
+      rebuildText();
+    };
 
     document.addEventListener('visibilitychange', function () {
-      var now = Date.now();
-      if (now - lastVisibilitySnapMs < 1500) return;
-      lastVisibilitySnapMs = now;
       try {
         if (typeof api.sendDevtoolsDiagnosticsSnapshot === 'function') {
           api.sendDevtoolsDiagnosticsSnapshot('document.visibilitychange', collectRendererSnapshot('visibility'));

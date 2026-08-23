@@ -1,10 +1,11 @@
 /**
- * Vite config: ESM entry (js/main.js), single bundle dist/app.js + dist/app.css.
- * External libs (PapaParse, Chart.js, xlsx) stay in index.html script tags.
+ * Vite: production — один IIFE-бандл dist/app.js (Electron/Capacitor/file://).
+ * Dev — HTML entry + /js/main.tsx как module (HMR / Fast Refresh).
  */
 const path = require('path');
 const fs = require('fs');
 const tailwindcss = require('@tailwindcss/vite').default;
+const react = require('@vitejs/plugin-react').default;
 
 function copyDirSync(srcDir, destDir) {
   if (!fs.existsSync(srcDir)) return;
@@ -30,10 +31,26 @@ function viteDistCopyPlugin() {
       const indexPath = path.join(root, 'index.html');
       if (fs.existsSync(indexPath)) {
         let html = fs.readFileSync(indexPath, 'utf8');
+        /* Production: classic IIFE bundle (не Vite module entry). */
+        html = html.replace(
+          /<script\s+type="module"\s+src="\/js\/main\.tsx"><\/script>[\s\S]*?<script>\s*\(function \(\) \{[\s\S]*?\}\)\(\);\s*<\/script>/,
+          '<script src="app.js"></script>'
+        );
         html = html.replace(/src="dist\/app\.js"/g, 'src="app.js"');
         html = html.replace(/href="dist\/app\.css"/g, 'href="app.css"');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/print\.css"[^>]*>\s*/g, '');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/style\.css"[^>]*>\s*/g, '');
+        /* Если fallback-скрипт остался — убрать module entry, оставить только app.js */
+        if (html.includes('type="module"') && html.includes('/js/main.tsx')) {
+          html = html.replace(/<script\s+type="module"\s+src="\/js\/main\.tsx"><\/script>\s*/g, '');
+          html = html.replace(
+            /<script>\s*\(function \(\) \{[\s\S]*?dist\/app\.js[\s\S]*?\}\)\(\);\s*<\/script>/,
+            '<script src="app.js"></script>'
+          );
+        }
+        if (!html.includes('src="app.js"') && !html.includes("src='app.js'")) {
+          html = html.replace('</body>', '<script src="app.js"></script>\n</body>');
+        }
         fs.writeFileSync(path.join(distDir, 'index.html'), html);
       }
       for (const dir of ['icons']) {
@@ -50,6 +67,11 @@ function viteDistCopyPlugin() {
 
 module.exports = {
   root: __dirname,
+  plugins: [react(), tailwindcss(), viteDistCopyPlugin()],
+  server: {
+    port: 5173,
+    strictPort: true
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -68,6 +90,5 @@ module.exports = {
         name: 'CattleTrackerBundle'
       }
     }
-  },
-  plugins: [tailwindcss(), viteDistCopyPlugin()]
+  }
 };
