@@ -5,8 +5,7 @@ title Воркер Cursor — cattle-pc
 echo Запуск воркера в этом проекте. Окно не закрывайте.
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-agent-worker.ps1"
-if errorlevel 1 (
-  echo.
-  echo Воркер не запустился.
-  pause
-)
+echo.
+echo --------------------------------
+echo Воркер остановился (окно само не должно пропадать).
+pause
