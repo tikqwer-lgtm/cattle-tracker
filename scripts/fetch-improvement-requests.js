@@ -102,16 +102,37 @@ function reportKind(r) {
   }
 }
 
+async function postHeartbeat(apiBase, token, phase) {
+  const intervalMinutes = parseInt(process.env.CATTLE_TRACKER_AGENT_INTERVAL_MINUTES || '30', 10);
+  try {
+    await fetch(`${apiBase.replace(/\/$/, '')}/api/admin/agent-heartbeat`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phase: phase,
+        intervalMinutes: isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : 30,
+      }),
+    });
+  } catch (e) {
+    /* старый сервер без маршрута — не мешаем списку заявок */
+  }
+}
+
 async function main() {
   loadLocalEnvFiles();
   const apiBase = getApiBase();
   const token = await loginToken(apiBase);
+  await postHeartbeat(apiBase, token, 'working');
   const res = await fetch(`${apiBase.replace(/\/$/, '')}/api/reports`, {
     headers: { Authorization: 'Bearer ' + token },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.error('GET /api/reports:', res.status, data.error || '');
+    await postHeartbeat(apiBase, token, 'idle');
     process.exit(1);
   }
   const reports = Array.isArray(data.reports) ? data.reports : [];
@@ -120,6 +141,7 @@ async function main() {
   });
   if (!pending.length) {
     console.log('Новых предложений нет.');
+    await postHeartbeat(apiBase, token, 'idle');
     return;
   }
   pending.forEach(function (r) {
@@ -130,6 +152,7 @@ async function main() {
   });
   console.log('---');
   console.log('Всего новых:', pending.length);
+  await postHeartbeat(apiBase, token, 'working');
 }
 
 main().catch(function (e) {

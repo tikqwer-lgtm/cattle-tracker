@@ -4,6 +4,7 @@
 const core = require('./db/core');
 const users = require('./db/users');
 const reports = require('./db/reports');
+const agentStatus = require('./db/agent-status');
 const objects = require('./db/objects');
 const entries = require('./db/entries');
 const protocols = require('./db/protocols');
@@ -18,6 +19,7 @@ module.exports = {
   ...core,
   ...users,
   ...reports,
+  ...agentStatus,
   ...objects,
   ...entries,
   ...protocols,

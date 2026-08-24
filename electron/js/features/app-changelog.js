@@ -3,6 +3,7 @@ import {
   parseChangelogMarkdown,
   mergeChangelogEntries
 } from './changelog-parse.js';
+import { filterPendingImprovements } from './agent-status-format.js';
 
 (function (global) {
   'use strict';
@@ -184,6 +185,9 @@ import {
       '<div class="confirm-modal app-version-suggestion-modal">' +
       '<h2 id="app-version-suggestion-title" class="app-version-actions-title">Предложения</h2>' +
       '<p class="app-version-suggestion-hint">Можно набрать несколько сообщений и отправить их все сразу. Закрытие окна список не стирает.</p>' +
+      '<h3 class="app-version-suggestion-sent-title">Отправлено, ещё не обработано</h3>' +
+      '<ul class="app-version-suggestion-sent" aria-label="Необработанные заявки"></ul>' +
+      '<p class="app-version-suggestion-sent-empty">Нет заявок в очереди агента.</p>' +
       '<ul class="app-version-suggestion-queue" aria-label="Накопленные сообщения"></ul>' +
       '<p class="app-version-suggestion-queue-empty">Пока нет сохранённых сообщений.</p>' +
       '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Новое сообщение</label>' +
@@ -197,11 +201,59 @@ import {
     var textEl = overlay.querySelector('#appVersionSuggestionText');
     var queueEl = overlay.querySelector('.app-version-suggestion-queue');
     var emptyEl = overlay.querySelector('.app-version-suggestion-queue-empty');
+    var sentEl = overlay.querySelector('.app-version-suggestion-sent');
+    var sentEmptyEl = overlay.querySelector('.app-version-suggestion-sent-empty');
     var btnAdd = overlay.querySelector('.app-version-suggestion-add');
     var btnSend = overlay.querySelector('.app-version-suggestion-send');
     var btnCancel = overlay.querySelector('.app-version-suggestion-cancel');
     var closed = false;
     var drafts = loadImprovementDrafts();
+
+    function renderSent(list) {
+      if (!sentEl) return;
+      sentEl.innerHTML = '';
+      var items = list || [];
+      for (var i = 0; i < items.length; i++) {
+        var r = items[i];
+        var li = document.createElement('li');
+        li.className = 'app-version-suggestion-sent-item';
+        var text = document.createElement('span');
+        text.textContent = r.message || '';
+        li.appendChild(text);
+        if (r.createdAt) {
+          var meta = document.createElement('span');
+          meta.className = 'app-version-suggestion-sent-meta';
+          meta.textContent = r.createdAt;
+          li.appendChild(meta);
+        }
+        sentEl.appendChild(li);
+      }
+      if (sentEmptyEl) sentEmptyEl.hidden = items.length > 0;
+    }
+
+    function loadSentPending() {
+      var api = global.CattleTrackerApi;
+      if (!api || typeof api.getReports !== 'function') {
+        renderSent([]);
+        return;
+      }
+      api
+        .getReports()
+        .then(function (reports) {
+          renderSent(filterPendingImprovements(reports));
+        })
+        .catch(function () {
+          if (api.getAgentStatus) {
+            return api.getAgentStatus().then(function (data) {
+              renderSent((data && data.pending) || []);
+            });
+          }
+          renderSent([]);
+        })
+        .catch(function () {
+          renderSent([]);
+        });
+    }
 
     function close() {
       if (closed) return;
@@ -316,11 +368,19 @@ import {
       });
       chain
         .then(function () {
+          drafts = [];
           saveImprovementDrafts([]);
-          close();
+          if (textEl) textEl.value = '';
+          renderQueue();
+          loadSentPending();
+          btnSend.disabled = true;
+          btnAdd.disabled = false;
           if (typeof global.showToast === 'function') {
             var n = messages.length;
             global.showToast(n === 1 ? 'Предложение отправлено' : 'Отправлено сообщений: ' + n, 'success');
+          }
+          if (typeof global.fetchAgentStatus === 'function') {
+            global.fetchAgentStatus();
           }
         })
         .catch(function (err) {
@@ -341,6 +401,7 @@ import {
 
     document.body.appendChild(overlay);
     renderQueue();
+    loadSentPending();
     if (textEl) textEl.focus();
   }
 

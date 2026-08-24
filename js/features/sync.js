@@ -4,6 +4,7 @@
  */
 import './sync/sync-status-sync.js';
 import './app-changelog.js';
+import './agent-status.js';
 import './sync/sync-connect.js';
 import './sync/sync-bases.js';
 import './sync/sync-mobile-apk.js';

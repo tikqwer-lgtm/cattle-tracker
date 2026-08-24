@@ -19,9 +19,17 @@
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <button type="button" id="app-version-header" class="app-version-header app-version-header-btn" aria-label="Версия приложения. Нажмите для обновления или списка изменений."></button>
     <div class="app-header-actions">
-      <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
-        <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
-      </button>
+      <div class="app-header-status-lamps">
+        <button type="button" id="app-header-agent-btn" class="app-header-lamp-btn" hidden title="Агент" aria-label="Состояние агента">
+          <span class="app-header-lamp-label" aria-hidden="true">А</span>
+          <span id="connection-indicator-agent" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+          <span id="app-header-agent-next" class="app-header-agent-next">—</span>
+        </button>
+        <button type="button" id="app-header-connection-btn" class="app-header-lamp-btn app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
+          <span class="app-header-lamp-label" aria-hidden="true">С</span>
+          <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
       <button type="button" id="app-header-reload-btn" class="app-header-reload-btn" tabindex="-1" title="Обновить страницу, если поля не нажимаются (как после открытия консоли). Черновики на экранах «Действия» не сохранятся. Не в цепочке Tab — чтобы после обхода DevTools фокус не залипал на этой кнопке." aria-label="Обновить страницу">Обновить</button>
     </div>
   </header>
@@ -119,7 +127,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.11" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.13" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -838,6 +846,9 @@
   <div id="all-inseminations-screen" class="screen">
     <div class="view-screen-header">
       <h1>Все осеменения</h1>
+      <div class="list-actions list-actions-inline" id="allInsemAddWrap" hidden>
+        <button type="button" class="small-btn" id="allInsemAddBtn">Добавить осеменение</button>
+      </div>
     </div>
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
     <div class="screen-actions">

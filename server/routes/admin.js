@@ -183,6 +183,33 @@ router.delete('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {
   res.json({ ok: true });
 });
 
+router.get('/admin/agent-status', requireAuth, requireRole('admin'), (req, res) => {
+  const status = db.getAgentStatus ? db.getAgentStatus() : {};
+  const reports = db.getReports ? db.getReports() : [];
+  const pending = db.pendingImprovements ? db.pendingImprovements(reports) : [];
+  res.json({
+    ok: true,
+    phase: status.phase || 'idle',
+    lastSeenAt: status.lastSeenAt || null,
+    nextPollAt: status.nextPollAt || null,
+    intervalMinutes: status.intervalMinutes || 30,
+    pendingCount: pending.length,
+    pending: pending
+  });
+});
+
+router.post('/admin/agent-heartbeat', requireAuth, requireRole('admin'), (req, res) => {
+  if (!db.setAgentHeartbeat) {
+    return res.status(500).json({ error: 'Статус агента недоступен' });
+  }
+  const body = req.body || {};
+  const status = db.setAgentHeartbeat({
+    phase: body.phase,
+    intervalMinutes: body.intervalMinutes
+  });
+  res.json({ ok: true, status: status });
+});
+
 router.get('/admin/access-requests', requireAuth, requireRole('admin'), (req, res) => {
   const status = (req.query && req.query.status) || 'pending';
   const list = status === 'all' ? db.listAccessRequests(null) : db.listAccessRequests(status);
