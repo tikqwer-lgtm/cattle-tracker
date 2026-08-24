@@ -18,6 +18,8 @@ import './utils/xlsx-global.js';
 import './core/events.js';
 import './api/api-client.js';
 import './storage/storage-objects.js';
+import './storage/data-hash.js';
+import './storage/offline-outbox.js';
 import './storage/object-data.js';
 import './storage/storage-entries.js';
 import './storage/storage-integrity.js';

@@ -451,9 +451,6 @@
     }
   }
 
-  /**
-   * Fallback: открыть URL во внешнем браузере (старые сборки без ApkUpdatePlugin).
-   */
   function openApkDownloadUrl(apkUrl) {
     var C = global.Capacitor;
     var isAndroidNative =
@@ -492,38 +489,106 @@
       });
   }
 
-  function downloadApkViaNative(apkUrl) {
-    var C = global.Capacitor;
-    var isAndroidNative =
-      C &&
-      typeof C.isNativePlatform === 'function' &&
-      C.isNativePlatform() &&
-      typeof C.getPlatform === 'function' &&
-      C.getPlatform() === 'android';
-    if (!isAndroidNative) {
-      return openApkDownloadUrl(apkUrl);
-    }
-    if (typeof global.showToast === 'function') {
-      global.showToast('Скачивание обновления…', 'info', 3000);
-    }
-    return import('@capacitor/core')
-      .then(function (core) {
-        var ApkUpdate = core.registerPlugin('ApkUpdate', {
-          web: {
-            downloadApk: function () {
-              return Promise.reject(new Error('web'));
-            }
+  var _apkQueue = [];
+  var _apkActive = false;
+  var _apkPlugin = null;
+  var _apkProgressHandle = null;
+
+  function getApkUpdatePlugin() {
+    if (_apkPlugin) return Promise.resolve(_apkPlugin);
+    return import('@capacitor/core').then(function (core) {
+      _apkPlugin = core.registerPlugin('ApkUpdate', {
+        web: {
+          downloadApk: function () {
+            return Promise.reject(new Error('web'));
+          },
+          cancelDownload: function () {
+            return Promise.resolve();
           }
-        });
-        return ApkUpdate.downloadApk({ url: apkUrl });
+        }
+      });
+      return _apkPlugin;
+    });
+  }
+
+  function clearApkProgressListener() {
+    if (_apkProgressHandle && typeof _apkProgressHandle.remove === 'function') {
+      _apkProgressHandle.remove();
+    }
+    _apkProgressHandle = null;
+  }
+
+  function cancelApkDownload() {
+    _apkQueue.length = 0;
+    return getApkUpdatePlugin()
+      .then(function (plugin) {
+        if (plugin && typeof plugin.cancelDownload === 'function') {
+          return plugin.cancelDownload();
+        }
+      })
+      .catch(function () {})
+      .then(function () {
+        if (typeof global.hideUpdateProgress === 'function') global.hideUpdateProgress();
+        if (typeof global.showToast === 'function') {
+          global.showToast('Загрузка обновления отменена', 'info', 3000);
+        }
+      });
+  }
+
+  function formatApkBytes(n) {
+    var v = Number(n) || 0;
+    if (v < 1024) return v + ' Б';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(0) + ' КБ';
+    return (v / (1024 * 1024)).toFixed(1) + ' МБ';
+  }
+
+  function showApkProgress(info) {
+    if (typeof global.showUpdateProgress !== 'function') return;
+    var loaded = info && info.loaded != null ? Number(info.loaded) : 0;
+    var total = info && info.total != null ? Number(info.total) : 0;
+    var percent = info && info.percent != null ? Number(info.percent) : -1;
+    var detail =
+      total > 0
+        ? formatApkBytes(loaded) + ' из ' + formatApkBytes(total)
+        : loaded > 0
+          ? formatApkBytes(loaded)
+          : 'Подключение…';
+    global.showUpdateProgress(percent, null, 0, {
+      onCancel: cancelApkDownload,
+      title: 'Скачивание обновления',
+      detail: detail
+    });
+  }
+
+  function downloadOneApk(apkUrl) {
+    return getApkUpdatePlugin()
+      .then(function (plugin) {
+        clearApkProgressListener();
+        showApkProgress({ percent: -1, loaded: 0, total: 0 });
+        if (plugin && typeof plugin.addListener === 'function') {
+          var maybe = plugin.addListener('progress', showApkProgress);
+          return Promise.resolve(maybe).then(function (handle) {
+            _apkProgressHandle = handle;
+            return plugin.downloadApk({ url: apkUrl });
+          });
+        }
+        return plugin.downloadApk({ url: apkUrl });
       })
       .then(function () {
+        if (typeof global.showUpdateProgress === 'function') {
+          global.showUpdateProgress(100, null, 0, { onCancel: null, detail: 'Готово' });
+        }
         if (typeof global.showToast === 'function') {
           global.showToast('Откройте установщик на экране', 'success', 4000);
         }
       })
       .catch(function (err) {
         var msg = err && err.message ? String(err.message) : '';
+        if (msg === 'CANCELLED' || msg.indexOf('CANCELLED') !== -1) {
+          if (typeof global.hideUpdateProgress === 'function') global.hideUpdateProgress();
+          return;
+        }
+        if (typeof global.hideUpdateProgress === 'function') global.hideUpdateProgress();
         if (
           msg === 'NEED_INSTALL_PERMISSION' ||
           msg.indexOf('Разрешите установку') !== -1 ||
@@ -543,7 +608,39 @@
           return;
         }
         return openApkDownloadUrl(apkUrl);
+      })
+      .finally(function () {
+        clearApkProgressListener();
       });
+  }
+
+  function runApkQueue() {
+    if (_apkActive) return Promise.resolve();
+    var url = _apkQueue.shift();
+    if (!url) return Promise.resolve();
+    _apkActive = true;
+    return downloadOneApk(url).finally(function () {
+      _apkActive = false;
+      return runApkQueue();
+    });
+  }
+
+  function downloadApkViaNative(apkUrl) {
+    var C = global.Capacitor;
+    var isAndroidNative =
+      C &&
+      typeof C.isNativePlatform === 'function' &&
+      C.isNativePlatform() &&
+      typeof C.getPlatform === 'function' &&
+      C.getPlatform() === 'android';
+    if (!isAndroidNative) {
+      return openApkDownloadUrl(apkUrl);
+    }
+    _apkQueue.push(apkUrl);
+    if (_apkActive && typeof global.showToast === 'function') {
+      global.showToast('Обновление в очереди: скачается после текущего.', 'info', 3000);
+    }
+    return runApkQueue();
   }
 
   function resolveApkDownloadUrl() {

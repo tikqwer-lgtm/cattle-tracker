@@ -7,6 +7,8 @@ if (useApi) {
   var _loadLocallyGeneration = 0;
   /** Локальный снимок записей по objectId (режим API); офлайн-приоритет до явного обновления с сервера. */
   var API_ENTRIES_CACHE_PREFIX = 'cattleTracker_apiEntries_';
+  var API_OBJECTS_CACHE_KEY = 'cattleTracker_apiObjectsList';
+  var API_ENTRIES_HASH_PREFIX = 'cattleTracker_apiEntriesHash_';
 
   function readApiEntriesCache(objectId) {
     if (!objectId) return null;
@@ -24,6 +26,7 @@ if (useApi) {
     if (!objectId) return;
     try {
       localStorage.setItem(API_ENTRIES_CACHE_PREFIX + objectId, JSON.stringify(entries || []));
+      writeEntriesHash(objectId, entries || []);
     } catch (e) {
       console.warn('writeApiEntriesCache:', e.message);
     }
@@ -41,10 +44,56 @@ if (useApi) {
       var keys = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf(API_ENTRIES_CACHE_PREFIX) === 0) keys.push(k);
+        if (
+          k &&
+          (k.indexOf(API_ENTRIES_CACHE_PREFIX) === 0 ||
+            k.indexOf(API_ENTRIES_HASH_PREFIX) === 0 ||
+            k === API_OBJECTS_CACHE_KEY)
+        ) {
+          keys.push(k);
+        }
       }
       keys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
     } catch (e) {}
+  }
+
+  function readObjectsListCache() {
+    try {
+      var raw = localStorage.getItem(API_OBJECTS_CACHE_KEY);
+      var parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeObjectsListCache(list) {
+    try {
+      localStorage.setItem(API_OBJECTS_CACHE_KEY, JSON.stringify(list || []));
+    } catch (e) {}
+  }
+
+  function writeEntriesHash(objectId, entries) {
+    if (!objectId || !window.CattleTrackerDataHash) return;
+    try {
+      localStorage.setItem(API_ENTRIES_HASH_PREFIX + objectId, window.CattleTrackerDataHash.contentHash(entries || []));
+    } catch (e) {}
+  }
+
+  function isOfflineNetworkError(err) {
+    if (window.CattleTrackerOutbox && typeof window.CattleTrackerOutbox.isNetworkError === 'function') {
+      return window.CattleTrackerOutbox.isNetworkError(err);
+    }
+    var msg = err && err.message ? String(err.message) : '';
+    return msg.indexOf('Сервер недоступен') !== -1 || msg.indexOf('Нет связи') !== -1;
+  }
+
+  function enqueueOffline(item) {
+    if (!window.CattleTrackerOutbox || typeof window.CattleTrackerOutbox.enqueue !== 'function') return;
+    window.CattleTrackerOutbox.enqueue(item);
+    if (typeof window.showToast === 'function') {
+      window.showToast('Сохранено локально. Отправится при появлении сети.', 'info', 4000);
+    }
   }
 
   window.readApiEntriesCache = readApiEntriesCache;
@@ -78,11 +127,37 @@ if (useApi) {
     if (!found) window.setCurrentObjectId(list[0].id);
   }
 
+  function applyObjectsList(list) {
+    _objectsCache = list && list.length ? list : [];
+    writeObjectsListCache(_objectsCache);
+    normalizeApiObjectSelectionForRole();
+    return _objectsCache;
+  }
+
   function loadObjectsFromApi() {
-    return window.CattleTrackerApi.getObjectsList().then(function (list) {
-      _objectsCache = list && list.length ? list : [];
+    var cached = readObjectsListCache();
+    if (cached && cached.length) {
+      _objectsCache = cached;
       normalizeApiObjectSelectionForRole();
+    }
+    var net = window.CattleTrackerApi.getObjectsList().then(function (list) {
+      applyObjectsList(list);
+      if (typeof window.updateObjectSwitcher === 'function') {
+        try { window.updateObjectSwitcher(); } catch (eSw) {}
+      }
       return _objectsCache;
+    });
+    if (cached && cached.length) {
+      net.catch(function () {});
+      return Promise.resolve(_objectsCache);
+    }
+    return net.catch(function (err) {
+      if (cached && cached.length) {
+        _objectsCache = cached;
+        normalizeApiObjectSelectionForRole();
+        return _objectsCache;
+      }
+      throw err;
     });
   }
   window.getCurrentObjectId = function () { return window.CattleTrackerApi.getCurrentObjectId(); };
@@ -252,8 +327,27 @@ if (useApi) {
         if (myGen !== _loadLocallyGeneration || window.getCurrentObjectId() !== objectId) {
           return typeof window.entries !== 'undefined' ? window.entries : [];
         }
-        writeApiEntriesCache(objectId, list || []);
-        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(list || []); else { window.entries.length = 0; (list || []).forEach(function (e) { window.entries.push(e); }); if (typeof window !== 'undefined') window.entries = window.entries; }
+        var incoming = list || [];
+        var cachedNow = readApiEntriesCache(objectId);
+        var pendingLocal = false;
+        if (window.CattleTrackerOutbox && typeof window.CattleTrackerOutbox.readQueue === 'function') {
+          pendingLocal = window.CattleTrackerOutbox.readQueue().some(function (x) {
+            return x && x.objectId === objectId;
+          });
+        }
+        if (pendingLocal && cachedNow) {
+          incoming = cachedNow;
+        } else if (window.CattleTrackerDataHash && cachedNow) {
+          var picked = window.CattleTrackerDataHash.pickNewerSource(
+            cachedNow,
+            window.CattleTrackerDataHash.maxUpdatedAtMs(cachedNow),
+            incoming,
+            window.CattleTrackerDataHash.maxUpdatedAtMs(incoming)
+          );
+          incoming = picked.value || incoming;
+        }
+        writeApiEntriesCache(objectId, incoming);
+        if (typeof window.replaceEntriesWith === 'function') window.replaceEntriesWith(incoming); else { window.entries.length = 0; incoming.forEach(function (e) { window.entries.push(e); }); if (typeof window !== 'undefined') window.entries = window.entries; }
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('entries:updated', window.entries);
         }
@@ -277,9 +371,13 @@ if (useApi) {
               window.CattleTrackerEvents.emit('entries:updated', window.entries);
             }
             if (typeof window.updateList === 'function') window.updateList();
+            return finishLoadEntriesUi();
+          }
+          if (typeof window.showToast === 'function' && isOfflineNetworkError(err)) {
+            window.showToast('Нет сети и нет локальной копии этого объекта.', 'error', 5000);
           }
         }
-        throw err;
+        return typeof window.entries !== 'undefined' ? window.entries : [];
       });
     });
   };
@@ -310,10 +408,16 @@ if (useApi) {
     if (pendingId && objectId === pendingId) {
       return Promise.reject(new Error('Сначала выберите базу в разделе «Синхронизация»'));
     }
+    if (typeof window.upsertEntryInStore === 'function') {
+      window.upsertEntryInStore(entry);
+    }
+    writeApiEntriesCache(objectId, window.entries || []);
+    refreshEntriesUiAfterMutation();
     return window.CattleTrackerApi.createEntry(objectId, entry).then(function (created) {
       if (typeof window.upsertEntryInStore === 'function') {
         window.upsertEntryInStore(created && created.cattleId ? created : entry);
       }
+      writeApiEntriesCache(objectId, window.entries || []);
       refreshEntriesUiAfterMutation();
       return window.loadLocally({ forceFromServer: true }).then(function () {
         refreshEntriesUiAfterMutation();
@@ -323,6 +427,13 @@ if (useApi) {
         refreshEntriesUiAfterMutation();
         return window.entries;
       });
+    }).catch(function (err) {
+      if (isOfflineNetworkError(err)) {
+        enqueueOffline({ op: 'create', objectId: objectId, cattleId: entry && entry.cattleId, entry: entry });
+        refreshEntriesUiAfterMutation();
+        return window.entries;
+      }
+      throw err;
     });
   }
   function updateEntryViaApi(cattleId, entry, opts) {
@@ -330,9 +441,21 @@ if (useApi) {
     if (blockedUpd) return blockedUpd;
     var skipReload = opts && opts.skipReload === true;
     var objectId = window.getCurrentObjectId();
+    if (typeof window.upsertEntryInStore === 'function') {
+      window.upsertEntryInStore(entry && entry.cattleId ? entry : Object.assign({}, entry, { cattleId: cattleId }));
+    }
+    writeApiEntriesCache(objectId, window.entries || []);
+    if (!skipReload) refreshEntriesUiAfterMutation();
     return window.CattleTrackerApi.updateEntry(objectId, cattleId, entry).then(function () {
       if (skipReload) return Promise.resolve();
       return window.loadLocally({ forceFromServer: true });
+    }).catch(function (err) {
+      if (isOfflineNetworkError(err)) {
+        enqueueOffline({ op: 'update', objectId: objectId, cattleId: cattleId, entry: entry });
+        refreshEntriesUiAfterMutation();
+        return window.entries;
+      }
+      throw err;
     });
   }
   function deleteEntryViaApi(cattleId) {
@@ -341,6 +464,21 @@ if (useApi) {
     var objectId = window.getCurrentObjectId();
     return window.CattleTrackerApi.deleteEntry(objectId, cattleId).then(function () {
       return window.loadLocally({ forceFromServer: true });
+    }).catch(function (err) {
+      if (isOfflineNetworkError(err)) {
+        if (typeof window.removeEntryFromStore === 'function') {
+          window.removeEntryFromStore(cattleId);
+        } else if (Array.isArray(window.entries)) {
+          window.entries = window.entries.filter(function (e) {
+            return !e || e.cattleId !== cattleId;
+          });
+        }
+        writeApiEntriesCache(objectId, window.entries || []);
+        enqueueOffline({ op: 'delete', objectId: objectId, cattleId: cattleId });
+        refreshEntriesUiAfterMutation();
+        return window.entries;
+      }
+      throw err;
     });
   }
   window.createEntryViaApi = createEntryViaApi;
