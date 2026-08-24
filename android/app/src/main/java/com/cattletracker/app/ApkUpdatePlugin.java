@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import androidx.core.content.FileProvider;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -15,10 +16,11 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Скачивает APK в cache приложения (один файл с перезаписью) и открывает установщик.
- * Не создаёт копии в папке «Загрузки».
+ * Шлёт прогресс в JS и умеет отменять загрузку.
  */
 @CapacitorPlugin(name = "ApkUpdate")
 public class ApkUpdatePlugin extends Plugin {
@@ -28,6 +30,10 @@ public class ApkUpdatePlugin extends Plugin {
     private static final int READ_TIMEOUT_MS = 120000;
     private static final int MIN_APK_BYTES = 1024;
     public static final String ERR_NEED_INSTALL_PERMISSION = "NEED_INSTALL_PERMISSION";
+    public static final String ERR_CANCELLED = "CANCELLED";
+
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
+    private volatile HttpURLConnection currentConn;
 
     @PluginMethod
     public void downloadApk(PluginCall call) {
@@ -37,6 +43,7 @@ public class ApkUpdatePlugin extends Plugin {
             return;
         }
 
+        cancelled.set(false);
         new Thread(() -> {
             try {
                 File out = new File(getContext().getCacheDir(), APK_CACHE_NAME);
@@ -45,6 +52,14 @@ public class ApkUpdatePlugin extends Plugin {
                     return;
                 }
                 downloadToFile(url, out);
+                if (cancelled.get()) {
+                    if (out.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        out.delete();
+                    }
+                    call.reject(ERR_CANCELLED);
+                    return;
+                }
                 getActivity().runOnUiThread(() -> {
                     try {
                         openInstallIntent(out);
@@ -59,15 +74,42 @@ public class ApkUpdatePlugin extends Plugin {
                     }
                 });
             } catch (Exception e) {
+                if (cancelled.get() || ERR_CANCELLED.equals(e.getMessage())) {
+                    call.reject(ERR_CANCELLED);
+                    return;
+                }
                 call.reject(e.getMessage() != null ? e.getMessage() : "Ошибка загрузки", e);
+            } finally {
+                currentConn = null;
             }
         }).start();
+    }
+
+    @PluginMethod
+    public void cancelDownload(PluginCall call) {
+        cancelled.set(true);
+        HttpURLConnection conn = currentConn;
+        if (conn != null) {
+            try {
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        }
+        call.resolve();
     }
 
     @PluginMethod
     public void openInstallSettings(PluginCall call) {
         openInstallUnknownAppsSettings();
         call.resolve();
+    }
+
+    private void emitProgress(long loaded, long total) {
+        JSObject data = new JSObject();
+        int percent = total > 0 ? (int) Math.min(100, (loaded * 100) / total) : -1;
+        data.put("percent", percent);
+        data.put("loaded", loaded);
+        data.put("total", total);
+        notifyListeners("progress", data);
     }
 
     private void downloadToFile(String urlStr, File out) throws Exception {
@@ -77,10 +119,14 @@ public class ApkUpdatePlugin extends Plugin {
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
+            currentConn = conn;
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setInstanceFollowRedirects(true);
             conn.connect();
+            if (cancelled.get()) {
+                throw new Exception(ERR_CANCELLED);
+            }
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) {
                 throw new Exception("Сервер вернул код " + code);
@@ -91,11 +137,24 @@ public class ApkUpdatePlugin extends Plugin {
             byte[] buf = new byte[8192];
             long total = 0;
             int n;
+            long lastEmit = 0;
+            emitProgress(0, expected);
             while ((n = in.read(buf)) != -1) {
+                if (cancelled.get()) {
+                    throw new Exception(ERR_CANCELLED);
+                }
                 fos.write(buf, 0, n);
                 total += n;
+                if (total - lastEmit >= 64 * 1024 || (expected > 0 && total == expected)) {
+                    lastEmit = total;
+                    emitProgress(total, expected);
+                }
             }
             fos.flush();
+            emitProgress(total, expected > 0 ? expected : total);
+            if (cancelled.get()) {
+                throw new Exception(ERR_CANCELLED);
+            }
             if (total < MIN_APK_BYTES) {
                 out.delete();
                 throw new Exception("Файл слишком маленький — возможно, ошибка загрузки");
@@ -118,6 +177,7 @@ public class ApkUpdatePlugin extends Plugin {
             if (conn != null) {
                 conn.disconnect();
             }
+            currentConn = null;
         }
     }
 
