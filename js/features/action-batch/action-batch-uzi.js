@@ -164,6 +164,133 @@
     });
   }
 
+  function makeUziGroupRow(draft, cattleId, result, days, uziDate) {
+    var id = String(cattleId || '').trim();
+    if (!id) return { ok: false, error: 'empty' };
+    if ((draft || []).some(function (x) { return String(x.cattleId || '').trim() === id; })) {
+      return { ok: false, error: 'dup' };
+    }
+    if (!result) return { ok: false, error: 'result' };
+    return {
+      ok: true,
+      row: {
+        id: uid(),
+        cattleId: id,
+        result: result,
+        daysFromInsemination: days != null ? days : null,
+        _batchGuardKey: batchGuardKey(uziDate || '', ''),
+        _batchGuardWarned: false
+      }
+    };
+  }
+
+  function addUziGroupCattleId(cattleId, result, days) {
+    var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
+    if (!uziDate) {
+      toast('Укажите дату проверки', 'error');
+      return false;
+    }
+    if (uziDate && typeof validateDateNotFuture === 'function') {
+      var dErr = validateDateNotFuture(uziDate, 'Дата УЗИ');
+      if (dErr) {
+        toast(dErr, 'error');
+        return false;
+      }
+    }
+    var made = makeUziGroupRow(uziDraft, cattleId, result, days, uziDate);
+    if (!made.ok) {
+      if (made.error === 'empty') toast('Укажите номер', 'error');
+      else if (made.error === 'dup') toast('Уже в списке', 'error');
+      else toast('Выберите результат', 'error');
+      return false;
+    }
+    var entry = resolveEntryForAction(cattleId);
+    if (made.row.daysFromInsemination == null && entry) {
+      var autoDays = computeUziDays(entry, uziDate);
+      if (autoDays != null) made.row.daysFromInsemination = autoDays;
+    }
+    if (result === 'Сомнительная' && made.row.daysFromInsemination == null) {
+      toast('Для «Сомнительная» укажите дней от осеменения', 'error');
+      return false;
+    }
+    uziDraft.push(made.row);
+    renderUziDraft();
+    return true;
+  }
+
+  function openUziGroupAddOverlay() {
+    var uziDate = (document.getElementById('uziDateInput') && document.getElementById('uziDateInput').value) || '';
+    if (!uziDate) {
+      toast('Укажите дату проверки', 'error');
+      return;
+    }
+    openOverlay(
+      '<h3 class="action-batch-modal-title">Групповой ввод УЗИ</h3>' +
+      '<p class="action-batch-modal-hint">Выберите результат, наберите номер и нажмите OK. Корова попадёт в таблицу. Отмена закрывает набор.</p>' +
+      '<label class="action-batch-modal-label">Результат<br>' +
+      '<select id="uziGroupResult" class="action-batch-modal-input">' +
+      '<option value="Стельная">Стельная</option>' +
+      '<option value="Не стельная">Не стельная</option>' +
+      '<option value="Сомнительная">Сомнительная</option>' +
+      '</select></label>' +
+      '<label id="uziGroupDaysRow" class="action-batch-modal-label" style="display:none">Дней от осеменения<br>' +
+      '<input type="number" id="uziGroupDays" class="action-batch-modal-input" min="0" placeholder="Авто, если известно" /></label>' +
+      '<label class="action-batch-modal-label">Номер<br>' +
+      '<input type="text" id="uziGroupNum" class="action-batch-modal-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" /></label>' +
+      '<div class="action-batch-modal-actions">' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="uziGroupOk">OK</button>' +
+      '<button type="button" class="action-batch-btn" id="uziGroupCancel">Отмена</button>' +
+      '</div>'
+    );
+    var input = document.getElementById('uziGroupNum');
+    var resultEl = document.getElementById('uziGroupResult');
+    var daysEl = document.getElementById('uziGroupDays');
+    var daysRow = document.getElementById('uziGroupDaysRow');
+    function syncDaysRow() {
+      if (!daysRow || !resultEl) return;
+      daysRow.style.display = resultEl.value === 'Сомнительная' ? '' : 'none';
+    }
+    function parseDaysField() {
+      var daysRaw = daysEl && daysEl.value !== '' ? parseInt(daysEl.value, 10) : NaN;
+      return !isNaN(daysRaw) && daysRaw >= 0 ? daysRaw : null;
+    }
+    function addOne() {
+      var id = input && input.value ? String(input.value).trim() : '';
+      var result = resultEl ? resultEl.value : '';
+      if (!id) {
+        toast('Укажите номер', 'error');
+        return;
+      }
+      var daysToPass = result === 'Сомнительная' ? parseDaysField() : null;
+      if (addUziGroupCattleId(id, result, daysToPass) && input) {
+        input.value = '';
+        input.focus();
+      }
+    }
+    if (resultEl) resultEl.addEventListener('change', syncDaysRow);
+    syncDaysRow();
+    var okBtn = document.getElementById('uziGroupOk');
+    var cancelBtn = document.getElementById('uziGroupCancel');
+    if (okBtn) okBtn.addEventListener('click', addOne);
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        closeTopModal();
+        refocusActiveActionBatchNumberInput();
+      });
+    }
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        if (e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        addOne();
+      });
+      setTimeout(function () {
+        try { input.focus(); } catch (e) {}
+      }, 50);
+    }
+  }
+
   function promptUziResultThenAdd(cattleId) {
     if (uziDraft.some(function (x) { return x.cattleId === cattleId; })) {
       toast('Эта корова уже в списке', 'error');
@@ -322,11 +449,13 @@
       delete window._prefillCattleId;
     }
     bindOnce(document.getElementById('uziBatchSaveBtn'), 'click', saveUziBatch);
+    bindOnce(document.getElementById('uziGroupAddBtn'), 'click', openUziGroupAddOverlay);
     bindOnce(dateEl, 'change', function () { renderUziDraft(); });
     bindOnce(dateEl, 'input', function () { renderUziDraft(); });
     renderUziDraft();
   }
   window.initActionBatchUziScreen = initActionBatchUziScreen;
+  window.__uziGroup = { makeUziGroupRow: makeUziGroupRow };
 })();
 
 export {};
