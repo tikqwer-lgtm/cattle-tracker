@@ -6,8 +6,9 @@
   <title>Учёт коров — расширенный функционал</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#3d6eb5" />
-  <!-- Стили: сборка Vite → dist/app.css (Tailwind + компоненты) -->
+  <!-- Стили: в dev подключает js/main.tsx; в production — dist/app.css после сборки -->
   <link rel="stylesheet" href="web/app.css" />
+  <!-- Vite client только в npm run dev (плагин/инъекция); entry модуля ниже в shell-end -->
 </head>
 <body>
   <datalist id="datalist-farm-bulls"></datalist>
@@ -19,9 +20,17 @@
   <header id="app-header" class="app-header" aria-label="Шапка приложения">
     <button type="button" id="app-version-header" class="app-version-header app-version-header-btn" aria-label="Версия приложения. Нажмите для обновления или списка изменений."></button>
     <div class="app-header-actions">
-      <button type="button" id="app-header-connection-btn" class="app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
-        <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
-      </button>
+      <div class="app-header-status-lamps">
+        <button type="button" id="app-header-agent-btn" class="app-header-lamp-btn" hidden title="Агент" aria-label="Состояние агента">
+          <span class="app-header-lamp-label" aria-hidden="true">А</span>
+          <span id="connection-indicator-agent" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+          <span id="app-header-agent-next" class="app-header-agent-next">—</span>
+        </button>
+        <button type="button" id="app-header-connection-btn" class="app-header-lamp-btn app-header-connection-btn" title="Настройки сервера: адрес, подключение/отключение" aria-label="Состояние подключения к серверу. Нажмите для перехода в настройки." onclick="typeof window.navigate === 'function' && window.navigate('sync')">
+          <span class="app-header-lamp-label" aria-hidden="true">С</span>
+          <span id="connection-indicator-global" class="connection-indicator connection-indicator--disconnected" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
       <button type="button" id="app-header-reload-btn" class="app-header-reload-btn" tabindex="-1" title="Обновить страницу, если поля не нажимаются (как после открытия консоли). Черновики на экранах «Действия» не сохранятся. Не в цепочке Tab — чтобы после обхода DevTools фокус не залипал на этой кнопке." aria-label="Обновить страницу">Обновить</button>
     </div>
   </header>
@@ -81,7 +90,7 @@
           <label for="authPassword">Пароль</label>
           <input type="password" id="authPassword" autocomplete="current-password" required />
           <label class="auth-remember-password-label" for="authRememberPassword">
-            <input type="checkbox" id="authRememberPassword" />
+            <input type="checkbox" id="authRememberPassword" checked />
             Запомнить пароль
           </label>
           <div class="form-actions auth-login-actions">
@@ -107,7 +116,7 @@
             <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
           </div>
         </form>
-        <p id="auth-user-data-hint" class="auth-user-data-hint">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+        <p id="auth-user-data-hint" class="auth-user-data-hint">Логин и пароль запоминаются на этом телефоне, в том числе после обновления. После полной переустановки войдите ещё раз.</p>
       </div>
     </div>
   </div>
@@ -119,7 +128,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.11" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.22" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -432,14 +441,7 @@
     </div>
   </div>
 
-  <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
-  <div id="farm-settings-screen" class="screen">
-    <h1>Настройки хозяйства</h1>
-    <div id="farm-settings-react-root"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Настройки хозяйства: React (js/screens/FarmSettings.tsx), разметка в #root -->
 
   <!-- Карточка хозяйства -->
   <div id="farm-card-screen" class="screen">
@@ -473,16 +475,19 @@
       </div>
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Номер</label>
-        <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <div class="action-batch-number-row">
+          <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" id="inseminationGroupAddBtn" class="action-btn">Групп ввод</button>
+        </div>
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
-        <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-      <button type="button" id="inseminationBatchSaveBtn" class="action-btn action-batch-save-all">Сохранить всё</button>
+    <div class="screen-actions screen-actions--insem-batch">
+      <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="action-btn">Назад</button>
+      <button type="button" id="inseminationBatchSaveBtn" class="action-btn">Сохранить</button>
     </div>
   </div>
 
@@ -598,11 +603,14 @@
       </div>
       <div class="action-batch-add-block">
         <label for="uziBatchAddInput">Добавить по номеру</label>
-        <div class="autocomplete">
-          <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
-          <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+        <div class="action-batch-number-row">
+          <div class="autocomplete">
+            <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
+            <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+          </div>
+          <button type="button" id="uziGroupAddBtn" class="small-btn">групп ввод</button>
         </div>
-        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. Если номера нет в стаде, животное добавится вместе с событием.</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. «групп ввод» — набор номеров с одним результатом. Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
@@ -838,6 +846,9 @@
   <div id="all-inseminations-screen" class="screen">
     <div class="view-screen-header">
       <h1>Все осеменения</h1>
+      <div class="list-actions list-actions-inline" id="allInsemAddWrap" hidden>
+        <button type="button" class="small-btn" id="allInsemAddBtn">Добавить осеменение</button>
+      </div>
     </div>
     <div id="allInseminationsList" class="view-entries-wrapper" style="padding: 12px; overflow: auto;"></div>
     <div class="screen-actions">
@@ -845,87 +856,7 @@
     </div>
   </div>
 
-  <!-- ========== Уведомления, планы, аналитика ========== -->
-  <div id="notifications-screen" class="screen">
-    <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span> Уведомления</h1>
-    <div id="notification-center-container"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
-
-  <!-- Экран списка задач -->
-  <div id="tasks-screen" class="screen">
-    <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg></span> Список задач</h1>
-    <div id="tasksScreenContainer" class="tasks-screen-container"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
-
-  <!-- Экран аналитики -->
-  <div id="analytics-screen" class="screen">
-    <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/></svg></span> Аналитика</h1>
-    <div class="analytics-controls">
-      <label>Период: <select id="analyticsPeriod">
-        <option value="month">Месяц</option>
-        <option value="quarter">Квартал</option>
-        <option value="year">Год</option>
-        <option value="custom">Произвольный</option>
-      </select></label>
-      <span id="analyticsCustomDates" class="analytics-custom-dates" style="display: none;">
-        <label>С: <input type="date" id="analyticsDateFrom"></label>
-        <label>По: <input type="date" id="analyticsDateTo"></label>
-      </span>
-      <label>ПДО (дн.): <input type="number" id="analyticsPdo" min="0" max="365" value="50" class="analytics-pdo-input"></label>
-      <label>Разбивка: <select id="analyticsBreakdown">
-        <option value="">Нет</option>
-        <option value="group">По группам</option>
-        <option value="lactation">По лактациям</option>
-        <option value="inseminator">По осеменаторам</option>
-        <option value="bull">По быкам</option>
-      </select></label>
-      <button type="button" id="analyticsRefreshBtn" class="small-btn">Обновить</button>
-    </div>
-    <div id="analyticsIndicators" class="analytics-indicators"></div>
-    <div id="analyticsBreakdownTable" class="analytics-breakdown-table-wrapper" style="display: none;"></div>
-    <div id="analyticsCharts" class="analytics-charts"></div>
-    <div id="endometritisDmgBlock" class="analytics-breakdown-table-wrapper" style="margin-top: 16px;">
-      <h2 style="margin: 8px 0;">Эндометрит ДМГ</h2>
-      <div class="analytics-controls" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap;">
-        <input type="file" id="endometritisDmgFile" accept=".xlsx" aria-label="Файл DC (.xlsx) для Эндометрит ДМГ" />
-        <button type="button" id="endometritisDmgCalcBtn" class="small-btn">Посчитать</button>
-        <span id="endometritisDmgStatus" style="color:#666;"></span>
-      </div>
-      <div id="endometritisDmgResults" style="margin-top: 10px;"></div>
-    </div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
-
-  <!-- Экран интервального анализа -->
-  <div id="interval-analysis-screen" class="screen">
-    <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg></span> Интервальный анализ</h1>
-    <p class="analytics-interval-intro">Распределение интервалов между осеменениями (внутри одной лактации). Телки — лактация 0.</p>
-    <div id="intervalAnalysisFilter" class="analytics-interval-filter"></div>
-    <div id="intervalAnalysisTable" class="analytics-interval-table-wrapper"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
-
-  <!-- Экран «Воспроизводство»: оплодотворяемость за период -->
-  <div id="reproduction-screen" class="screen">
-    <h1><span class="ui-icon ui-icon--title" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="14" rx="7" ry="5"/><path d="M5 14c0-3 3-7 7-9 4 2 7 6 7 9"/><path d="M9 10.5c.5-1.5 1.5-2.5 3-2.5s2.5 1 3 2.5"/><circle cx="9.5" cy="14" r="0.8" fill="currentColor" stroke="none"/><circle cx="14.5" cy="14" r="0.8" fill="currentColor" stroke="none"/></svg></span> Воспроизводство</h1>
-    <p class="analytics-interval-intro">Показатели оплодотворяемости: количество стельных из осеменённых в выбранный период (по текущей базе). Животные с осеменением без проверки стельности не входят в расчёт; их количество показывается при наведении на звёздочку рядом с показателем оплодотворяемости.</p>
-    <div id="reproductionFilters" class="analytics-interval-filter"></div>
-    <div id="reproductionIndicators" class="analytics-indicators"></div>
-    <div id="reproductionTable" class="analytics-interval-table-wrapper"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- ========== Уведомления, планы, аналитика: React (см. js/screens/*) ========== -->
 
   <!-- Модальное окно: Добавить / Редактировать объект (базу) -->
   <div id="addObjectModal" class="view-fields-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addObjectModalTitle" hidden data-editing-id="">
@@ -1082,32 +1013,9 @@
     </div>
   </div>
 
-  <div id="protocols-screen" class="screen">
-    <h1>Протоколы синхронизации</h1>
-    <div id="protocols-container"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Протоколы: React (js/screens/ProtocolsScreen.tsx), разметка в #root -->
 
-  <!-- Справка: диагностика консоли (Electron) -->
-  <div id="help-screen" class="screen">
-    <h1>Справка</h1>
-    <p class="help-diagnostics-intro">
-      Журнал событий основного процесса и страницы при открытии и закрытии консоли разработчика.
-      Нужен для поиска остаточных эффектов после закрытия DevTools. При зависании ввода в десктопе используйте кнопку «Обновить» в шапке.
-    </p>
-    <div class="help-diagnostics-toolbar">
-      <button type="button" class="action-btn" id="help-diagnostics-copy-btn">Копировать журнал</button>
-      <button type="button" class="small-btn" id="help-diagnostics-refresh-btn">Обновить из приложения</button>
-      <button type="button" class="small-btn" id="help-diagnostics-clear-btn">Очистить</button>
-    </div>
-    <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
-    <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Справка: React (js/screens/HelpScreen.tsx), разметка в #root -->
 
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
@@ -1247,7 +1155,28 @@
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 
-  <script src="web/app.js"></script>
+  <!--
+    Dev (npm run dev): Vite отдаёт этот HTML и подхватывает module entry → HMR.
+    Production: viteDistCopyPlugin в dist/index.html подменяет на <script src="app.js">.
+    Electron/file:// без Vite: сразу ниже подключается dist/app.js, если не порт Vite.
+  -->
+  <script type="module" src="/js/main.tsx"></script>
+  <script>
+  (function () {
+    try {
+      var port = String((typeof location !== 'undefined' && location.port) || '');
+      if (port === '5173' || port === '5174') return;
+      /* Уже на Vite — module entry достаточно. Иначе IIFE-бандл. */
+      var existing = document.querySelector('script[src="web/app.js"], script[src="app.js"], script[src="web/app.js"]');
+      if (existing) return;
+      var mod = document.querySelector('script[type="module"][src="/js/main.tsx"]');
+      if (mod) mod.remove();
+      var s = document.createElement('script');
+      s.src = 'dist/app.js';
+      document.body.appendChild(s);
+    } catch (e) {}
+  })();
+  </script>
   <script>
   (function() {
     function setPrintHeaderDate() {

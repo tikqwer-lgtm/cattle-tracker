@@ -425,6 +425,35 @@
         if (!isFarmCardLoadCurrent(myGen, oid)) return window.__farmCardBundle || emptyBundle();
         var localBefore = readFarmCardCache(oid);
         var b = normalizeBundle(data);
+        if (window.CattleTrackerDataHash && localBefore) {
+          var picked = window.CattleTrackerDataHash.pickNewerSource(
+            localBefore,
+            Number(localBefore._savedAt) || window.CattleTrackerDataHash.maxUpdatedAtMs(localBefore),
+            b,
+            window.CattleTrackerDataHash.maxUpdatedAtMs(b)
+          );
+          if (picked.source === 'equal') {
+            window.__farmCardBundle = normalizeBundle(localBefore);
+            clearFarmCardDirty();
+            return window.__farmCardBundle;
+          }
+          if (picked.source === 'local') {
+            window.__farmCardBundle = normalizeBundle(localBefore);
+            if (window.CattleTrackerOutbox && typeof window.CattleTrackerOutbox.enqueue === 'function') {
+              window.CattleTrackerOutbox.enqueue({
+                op: 'farm-card',
+                objectId: oid,
+                bundle: localBefore
+              });
+            }
+            clearFarmCardDirty();
+            if (typeof window.CattleTrackerEvents !== 'undefined') {
+              window.CattleTrackerEvents.emit('farm-card:updated', window.__farmCardBundle);
+            }
+            return window.__farmCardBundle;
+          }
+          b = normalizeBundle(picked.value);
+        }
         // Пока сервер без bullFertility — не затираем локально сохранённые CR по быкам
         if (
           localBefore &&
@@ -472,6 +501,7 @@
     var oid = getObjectIdForFarm();
     if (!oid) return Promise.reject(new Error('База не выбрана'));
     var b = normalizeBundle(bundle);
+    b._savedAt = Date.now();
     window.__farmCardBundle = b;
     writeFarmCardCache(oid, b);
     var hasServerToken =
@@ -486,7 +516,10 @@
     if (canSyncApi) {
       var sentBullFertility = (b.bullFertility || []).slice();
       var sentMetricValues = (b.metricValues || []).slice();
-      return window.CattleTrackerApi.putFarmCard(oid, b).then(function (data) {
+      var payload = JSON.parse(JSON.stringify(b));
+      delete payload._savedAt;
+      delete payload._contentHash;
+      return window.CattleTrackerApi.putFarmCard(oid, payload).then(function (data) {
         var merged = normalizeBundle(data);
         // Клиент — источник правды для bullFertility (добавление и удаление),
         // пока ответ сервера может быть без поля или устаревшим.
@@ -510,6 +543,20 @@
           window.CattleTrackerEvents.emit('farm-goal:changed', window.__farmCardBundle.goals || []);
         }
         return window.__farmCardBundle;
+      }).catch(function (err) {
+        var net =
+          window.CattleTrackerOutbox &&
+          typeof window.CattleTrackerOutbox.isNetworkError === 'function' &&
+          window.CattleTrackerOutbox.isNetworkError(err);
+        if (net) {
+          window.CattleTrackerOutbox.enqueue({ op: 'farm-card', objectId: oid, bundle: b });
+          clearFarmCardDirty();
+          if (typeof window.showToast === 'function') {
+            window.showToast('Карточка сохранена локально. Отправится при появлении сети.', 'info', 4000);
+          }
+          return window.__farmCardBundle;
+        }
+        throw err;
       });
     }
     clearFarmCardDirty();
@@ -3007,6 +3054,7 @@
       var addEv = document.getElementById('farmCardAddEvBtn');
       if (addEv) {
         addEv.onclick = function () {
+          if (addEv.getAttribute('data-busy') === '1') return;
           var type = (document.getElementById('farmCardNewEvType') || {}).value || 'shtab';
           var eventDate = (document.getElementById('farmCardNewEvDate') || {}).value || today;
           var title = ((document.getElementById('farmCardNewEvTitle') || {}).value || '').trim();
@@ -3017,6 +3065,14 @@
             return;
           }
           if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
+          var fp = [type, eventDate, title, description, participants].join('\n');
+          var last = window.__farmCardLastEvFingerprint;
+          if (last && last.fp === fp && Date.now() - last.at < 2500) {
+            if (typeof showToast === 'function') showToast('Запись уже добавлена', 'info');
+            return;
+          }
+          addEv.setAttribute('data-busy', '1');
+          addEv.disabled = true;
           window.__farmCardBundle.events.push({
             id: newId('ev_'),
             eventType: type,
@@ -3031,6 +3087,7 @@
             notifyLocal: true,
             attachments: _timelineDraftAttachments.slice()
           });
+          window.__farmCardLastEvFingerprint = { fp: fp, at: Date.now() };
           _timelineDraftAttachments = [];
           _timelineFormOpen = false;
           clearTimelineDraft();

@@ -8,8 +8,17 @@ import {
   uziPrintDocumentHtml,
   uziPrintTableHtml,
   isUziReportItem,
-  formatPrintDate
+  formatPrintDate,
+  reportWordFilename,
+  isDuplicateServiceReport,
+  mokshaUziAoa,
+  mokshaUziWorkbook,
+  mokshaUziFilename,
+  mokshaUziPreviewHtml,
+  mokshaUziDocumentHtml
 } from './service-work-report-build.js';
+
+var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -49,6 +58,24 @@ function getFarmName() {
   return '';
 }
 
+function getSelectedTemplate(root) {
+  var el = root && root.querySelector('#serviceReportTemplate');
+  return (el && el.value) || 'standard';
+}
+
+function isMokshaTemplate(root) {
+  return getSelectedTemplate(root) === 'moksha';
+}
+
+function getMokshaSigners(root) {
+  var leftEl = root && root.querySelector('#serviceReportSignerLeft');
+  var rightEl = root && root.querySelector('#serviceReportSignerRight');
+  return {
+    signerLeft: (leftEl && leftEl.value) || '',
+    signerRight: (rightEl && rightEl.value) || ''
+  };
+}
+
 function itemsTableHtml(items) {
   if (!items || !items.length) return '<p class="list-empty">Нет работ за эту дату</p>';
   var uzi = items.filter(isUziReportItem);
@@ -85,14 +112,29 @@ function itemsTableHtml(items) {
   return html;
 }
 
+function mokshaPreviewHtml(items, date, signers) {
+  if (!items || !items.length) return '<p class="list-empty">Нет УЗИ за эту дату</p>';
+  var html = mokshaUziPreviewHtml({
+    items: items,
+    date: date,
+    farmName: getFarmName(),
+    signerLeft: signers && signers.signerLeft,
+    signerRight: signers && signers.signerRight
+  });
+  return html || '<p class="list-empty">Нет УЗИ за эту дату</p>';
+}
+
 function collectFromForm(root) {
   var dateEl = root.querySelector('#serviceReportDate');
   var date = (dateEl && dateEl.value) || todayIso();
-  var types = {
-    insemination: !!(root.querySelector('#serviceReportTypeInsem') && root.querySelector('#serviceReportTypeInsem').checked),
-    uzi: !!(root.querySelector('#serviceReportTypeUzi') && root.querySelector('#serviceReportTypeUzi').checked),
-    protocol: !!(root.querySelector('#serviceReportTypeProtocol') && root.querySelector('#serviceReportTypeProtocol').checked)
-  };
+  var moksha = isMokshaTemplate(root);
+  var types = moksha
+    ? { insemination: false, uzi: true, protocol: false }
+    : {
+        insemination: !!(root.querySelector('#serviceReportTypeInsem') && root.querySelector('#serviceReportTypeInsem').checked),
+        uzi: !!(root.querySelector('#serviceReportTypeUzi') && root.querySelector('#serviceReportTypeUzi').checked),
+        protocol: !!(root.querySelector('#serviceReportTypeProtocol') && root.querySelector('#serviceReportTypeProtocol').checked)
+      };
   return collectServiceWorkItems(getEntriesList(), {
     date: date,
     username: getUsername(),
@@ -142,20 +184,46 @@ function reportPrintHtml(items, date, username) {
   );
 }
 
-function downloadReportFile(items, date) {
-  var html = reportPrintHtml(items, date, getUsername());
-  var farm = getFarmName();
-  var dPrint = formatPrintDate(date) || date || todayIso();
-  var filename = (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
-    (farm ? ' ' + farm : '') +
-    ' ' +
-    dPrint.replace(/\./g, '.') +
-    '.html';
-  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  if (typeof window.downloadBlob === 'function') {
-    window.downloadBlob(blob, filename, html, 'УЗИ');
-    return;
+function asWordHtml(html) {
+  return String(html || '').replace(
+    '<html lang="ru">',
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="ru">'
+  );
+}
+
+function blobToBase64(blob) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () {
+      var s = String(r.result || '');
+      var i = s.indexOf(',');
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.onerror = function () {
+      reject(r.error || new Error('read'));
+    };
+    r.readAsDataURL(blob);
+  });
+}
+
+function isAndroidCapacitor() {
+  try {
+    var C = window.Capacitor;
+    return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'android' &&
+      typeof C.isNativePlatform === 'function' && C.isNativePlatform());
+  } catch (e) {
+    return false;
   }
+}
+
+function s2ab(s) {
+  var buf = new ArrayBuffer(s.length);
+  var view = new Uint8Array(buf);
+  for (var i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+  return buf;
+}
+
+function downloadViaAnchor(blob, filename) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -165,23 +233,109 @@ function downloadReportFile(items, date) {
   if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
 }
 
+function saveBlobWithPlugin(blob, filename, mime) {
+  if (isAndroidCapacitor()) {
+    return blobToBase64(blob).then(function (b64) {
+      return import('@capacitor/core').then(function (core) {
+        var SaveDocument = core.registerPlugin('SaveDocument', {
+          web: {
+            saveFile: function () {
+              return Promise.reject(new Error('web'));
+            }
+          }
+        });
+        return SaveDocument.saveFile({
+          filename: filename,
+          mime: mime,
+          base64: b64
+        });
+      });
+    }).then(function (res) {
+      if (res && res.cancelled) return;
+      if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+    }).catch(function () {
+      downloadViaAnchor(blob, filename);
+    });
+  }
+  downloadViaAnchor(blob, filename);
+  return Promise.resolve();
+}
+
+function downloadReportFile(items, date) {
+  var html = asWordHtml(reportPrintHtml(items, date, getUsername()));
+  var filename = reportWordFilename(items, date, getFarmName());
+  var blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  return saveBlobWithPlugin(blob, filename, 'application/msword');
+}
+
+function downloadMokshaExcel(items, date, signers) {
+  if (typeof window.XLSX === 'undefined') {
+    if (typeof showToast === 'function') showToast('Библиотека Excel не загружена', 'error');
+    return Promise.resolve();
+  }
+  var farmName = getFarmName() || 'Мокша';
+  var aoa = mokshaUziAoa(items, {
+    farmName: farmName,
+    signerLeft: signers && signers.signerLeft,
+    signerRight: signers && signers.signerRight
+  });
+  var wb = mokshaUziWorkbook(aoa);
+  if (!wb) {
+    if (typeof showToast === 'function') showToast('Не удалось сформировать Excel', 'error');
+    return Promise.resolve();
+  }
+  var filename = mokshaUziFilename(date, farmName);
+  var binary = window.XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+  var blob = new Blob([s2ab(binary)], { type: XLSX_MIME });
+  return saveBlobWithPlugin(blob, filename, XLSX_MIME);
+}
+
 function newEventId() {
   return 'ev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-function saveReport(items, date) {
+var _saveReportBusy = false;
+
+function saveReport(items, date, opts) {
+  opts = opts || {};
+  if (_saveReportBusy) return Promise.resolve(false);
   if (!items.length) {
     if (typeof showToast === 'function') showToast('Нет работ за эту дату', 'error');
     return Promise.resolve(false);
   }
+  _saveReportBusy = true;
   var load = typeof window.ensureFarmCardLoaded === 'function'
     ? window.ensureFarmCardLoaded()
     : Promise.resolve();
   return load.then(function () {
     if (!window.__farmCardBundle) window.__farmCardBundle = { events: [] };
     if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
+    if (isDuplicateServiceReport(window.__farmCardBundle.events, date, items)) {
+      if (typeof showToast === 'function') showToast('Этот отчёт уже есть в ленте', 'info');
+      return false;
+    }
     var title = 'Отчёт ' + date + ' (' + items.length + ' гол.)';
-    var html = reportPrintHtml(items, date, getUsername());
+    var farm = getFarmName();
+    var html;
+    var attName;
+    if (opts.template === 'moksha') {
+      html = mokshaUziDocumentHtml({
+        items: items,
+        date: date,
+        farmName: farm,
+        signerLeft: opts.signerLeft,
+        signerRight: opts.signerRight
+      });
+      attName = mokshaUziFilename(date, farm || 'Мокша').replace(/\.xlsx$/i, '.html');
+    } else {
+      html = reportPrintHtml(items, date, getUsername());
+      attName =
+        (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
+        (farm ? ' ' + farm : '') +
+        ' ' +
+        (formatPrintDate(date) || date) +
+        '.html';
+    }
     window.__farmCardBundle.events.push({
       id: newEventId(),
       eventType: 'service_report',
@@ -190,6 +344,7 @@ function saveReport(items, date) {
       participants: getUsername(),
       description: serializeReportText(items),
       reportItems: items,
+      reportTemplate: opts.template || 'standard',
       task: '',
       goal: '',
       reminderAt: '',
@@ -198,11 +353,7 @@ function saveReport(items, date) {
       attachments: [
         {
           id: 'att_report_' + Date.now(),
-          name: (items.some(isUziReportItem) ? 'УЗИ' : 'opis') +
-            (getFarmName() ? ' ' + getFarmName() : '') +
-            ' ' +
-            (formatPrintDate(date) || date) +
-            '.html',
+          name: attName,
           mime: 'text/html',
           size: html.length,
           dataUrl: htmlToDataUrl(html)
@@ -226,6 +377,9 @@ function saveReport(items, date) {
     if (err && err.alreadyToasted) return false;
     if (typeof showToast === 'function') showToast((err && err.message) || 'Ошибка сохранения отчёта', 'error');
     return false;
+  }).then(function (ok) {
+    _saveReportBusy = false;
+    return ok;
   });
 }
 
@@ -243,12 +397,23 @@ function openServiceWorkReportForm() {
     '<button type="button" class="small-btn" id="serviceReportCloseBtn">Закрыть</button></div>' +
     '<div class="view-fields-modal-body">' +
     '<label>Дата работы <input type="date" id="serviceReportDate" value="' + escapeHtml(date) + '" /></label>' +
-    '<div class="service-report-types">' +
+    '<label class="service-report-template-label">Шаблон ' +
+    '<select id="serviceReportTemplate">' +
+    '<option value="standard">Стандартный</option>' +
+    '<option value="moksha">Мокша</option>' +
+    '</select></label>' +
+    '<div class="service-report-types" id="serviceReportTypes">' +
     '<label><input type="checkbox" id="serviceReportTypeInsem" checked /> Осеменение</label>' +
     '<label><input type="checkbox" id="serviceReportTypeUzi" checked /> УЗИ</label>' +
     '<label><input type="checkbox" id="serviceReportTypeProtocol" checked /> Протокол</label>' +
     '</div>' +
-    '<p class="farm-settings-hint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
+    '<div class="service-report-signers" id="serviceReportSigners" hidden>' +
+    '<label>Подпись слева <input type="text" id="serviceReportSignerLeft" value="' +
+    escapeHtml(getUsername()) +
+    '" /></label>' +
+    '<label>Подпись справа <input type="text" id="serviceReportSignerRight" value="" /></label>' +
+    '</div>' +
+    '<p class="farm-settings-hint" id="serviceReportHint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
     '</div>' +
     '<div class="view-fields-actions">' +
@@ -258,20 +423,61 @@ function openServiceWorkReportForm() {
     '</div></div>';
   document.body.appendChild(modal);
 
+  function syncTemplateUi() {
+    var moksha = isMokshaTemplate(modal);
+    var typesEl = modal.querySelector('#serviceReportTypes');
+    var signersEl = modal.querySelector('#serviceReportSigners');
+    var hintEl = modal.querySelector('#serviceReportHint');
+    var printBtn = modal.querySelector('#serviceReportPrintBtn');
+    if (typesEl) typesEl.hidden = moksha;
+    if (signersEl) signersEl.hidden = !moksha;
+    if (hintEl) {
+      hintEl.textContent = moksha
+        ? 'Шаблон «Мокша»: Excel без колонки результата, группировка по МТФ, две подписи внизу.'
+        : 'Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».';
+    }
+    if (printBtn) printBtn.textContent = moksha ? 'Скачать Excel' : 'На печать';
+  }
+
   function refreshPreview() {
+    var dateEl = modal.querySelector('#serviceReportDate');
+    var d = (dateEl && dateEl.value) || todayIso();
     var items = collectFromForm(modal);
     var box = modal.querySelector('#serviceReportPreview');
-    if (box) box.innerHTML = itemsTableHtml(items);
+    if (box) {
+      box.innerHTML = isMokshaTemplate(modal)
+        ? mokshaPreviewHtml(items, d, getMokshaSigners(modal))
+        : itemsTableHtml(items);
+    }
     modal._items = items;
   }
+
+  function onFormChange() {
+    syncTemplateUi();
+    refreshPreview();
+  }
+
+  syncTemplateUi();
   refreshPreview();
   modal.querySelector('#serviceReportCloseBtn').addEventListener('click', closeReportModal);
   modal.addEventListener('click', function (ev) {
     if (ev.target === modal) closeReportModal();
   });
-  ['serviceReportDate', 'serviceReportTypeInsem', 'serviceReportTypeUzi', 'serviceReportTypeProtocol'].forEach(function (id) {
+  [
+    'serviceReportDate',
+    'serviceReportTemplate',
+    'serviceReportTypeInsem',
+    'serviceReportTypeUzi',
+    'serviceReportTypeProtocol',
+    'serviceReportSignerLeft',
+    'serviceReportSignerRight'
+  ].forEach(function (id) {
     var el = modal.querySelector('#' + id);
-    if (el) el.addEventListener('change', refreshPreview);
+    if (!el) return;
+    el.addEventListener('change', onFormChange);
+    if (el.tagName === 'INPUT' && el.type === 'text') {
+      el.addEventListener('input', refreshPreview);
+    }
   });
   modal.querySelector('#serviceReportRefreshBtn').addEventListener('click', refreshPreview);
   modal.querySelector('#serviceReportPrintBtn').addEventListener('click', function () {
@@ -279,16 +485,31 @@ function openServiceWorkReportForm() {
     var d = (dateEl && dateEl.value) || todayIso();
     var items = modal._items || collectFromForm(modal);
     if (!items.length) {
-      if (typeof showToast === 'function') showToast('Нет работ за эту дату', 'error');
+      if (typeof showToast === 'function') {
+        showToast(isMokshaTemplate(modal) ? 'Нет УЗИ за эту дату' : 'Нет работ за эту дату', 'error');
+      }
+      return;
+    }
+    if (isMokshaTemplate(modal)) {
+      downloadMokshaExcel(items, d, getMokshaSigners(modal));
       return;
     }
     downloadReportFile(items, d);
   });
   modal.querySelector('#serviceReportSaveBtn').addEventListener('click', function () {
+    var btn = modal.querySelector('#serviceReportSaveBtn');
+    if (btn) btn.disabled = true;
     var dateEl = modal.querySelector('#serviceReportDate');
     var d = (dateEl && dateEl.value) || todayIso();
     var items = modal._items || collectFromForm(modal);
-    saveReport(items, d);
+    var signers = getMokshaSigners(modal);
+    saveReport(items, d, {
+      template: getSelectedTemplate(modal),
+      signerLeft: signers.signerLeft,
+      signerRight: signers.signerRight
+    }).then(function (ok) {
+      if (!ok && btn && btn.isConnected) btn.disabled = false;
+    });
   });
 }
 
@@ -298,6 +519,7 @@ function openServiceReportViewer(evObj) {
   var items = Array.isArray(evObj.reportItems) && evObj.reportItems.length
     ? evObj.reportItems
     : parseReportItemsFromDescription(evObj.description);
+  var isMoksha = evObj.reportTemplate === 'moksha';
   var modal = document.createElement('div');
   modal.id = 'serviceReportModal';
   modal.className = 'view-fields-modal active';
@@ -311,18 +533,34 @@ function openServiceReportViewer(evObj) {
     '<div class="view-fields-modal-body">' +
     '<p class="farm-settings-hint">Дата: ' + escapeHtml(evObj.eventDate || '—') +
     (evObj.participants ? ' · ' + escapeHtml(evObj.participants) : '') +
+    (isMoksha ? ' · шаблон Мокша' : '') +
     '</p>' +
-    itemsTableHtml(items) +
+    (isMoksha
+      ? mokshaPreviewHtml(items, evObj.eventDate || '', {
+          signerLeft: evObj.participants || '',
+          signerRight: ''
+        })
+      : itemsTableHtml(items)) +
     '</div>' +
     '<div class="view-fields-actions">' +
-    '<button type="button" class="action-btn" id="serviceReportPrintBtn">На печать</button>' +
+    '<button type="button" class="action-btn" id="serviceReportPrintBtn">' +
+    (isMoksha ? 'Скачать Excel' : 'На печать') +
+    '</button>' +
     '</div></div>';
   document.body.appendChild(modal);
   modal.querySelector('#serviceReportCloseBtn').addEventListener('click', closeReportModal);
   var printBtn = modal.querySelector('#serviceReportPrintBtn');
   if (printBtn) {
     printBtn.addEventListener('click', function () {
-      downloadReportFile(items, evObj.eventDate || todayIso());
+      var d = evObj.eventDate || todayIso();
+      if (isMoksha) {
+        downloadMokshaExcel(items, d, {
+          signerLeft: evObj.participants || getUsername(),
+          signerRight: ''
+        });
+        return;
+      }
+      downloadReportFile(items, d);
     });
   }
   modal.addEventListener('click', function (ev) {

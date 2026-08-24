@@ -74,7 +74,80 @@
     return Promise.resolve(_session);
   }
 
-  function doRestore() {
+  function notifySessionUi() {
+    if (typeof global.updateAuthBar === 'function') global.updateAuthBar();
+    if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
+    if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
+    if (_session.status === 'loggedIn' && typeof global.processServerInbox === 'function') {
+      try {
+        global.processServerInbox();
+      } catch (_) {}
+    }
+  }
+
+  function applyLoggedIn(user) {
+    persistUser(user);
+    _session = { status: 'loggedIn', user: user, lastUsername: user.username || null };
+    notifySessionUi();
+    return _session;
+  }
+
+  function tryRememberedSession() {
+    if (typeof global.tryRememberedLogin !== 'function') return Promise.resolve(null);
+    return global.tryRememberedLogin().then(function (user) {
+      if (user && user.username) return applyLoggedIn(user);
+      return null;
+    }).catch(function () {
+      return null;
+    });
+  }
+
+  function restoreWithToken(api) {
+    return api.getCurrentUser().then(function (user) {
+      if (user && user.username) {
+        return applyLoggedIn(user);
+      }
+      if (typeof api.setToken === 'function') api.setToken(null);
+      return tryRememberedSession().then(function (ok) {
+        if (ok) return ok;
+        persistUser(null);
+        _session = {
+          status: 'sessionExpired',
+          user: null,
+          lastUsername: getStaleUsername() || getLastUsername()
+        };
+        notifySessionUi();
+        return _session;
+      });
+    }).catch(function (err) {
+      if (err && err.status === 401) {
+        var lastExpired = getStaleUsername() || getLastUsername();
+        if (typeof api.setToken === 'function') api.setToken(null);
+        return tryRememberedSession().then(function (ok) {
+          if (ok) return ok;
+          persistUser(null);
+          _session = {
+            status: 'sessionExpired',
+            user: null,
+            lastUsername: lastExpired
+          };
+          notifySessionUi();
+          return _session;
+        });
+      }
+      var cached = null;
+      if (typeof global.getCurrentUser === 'function') cached = global.getCurrentUser();
+      _session = {
+        status: 'offline',
+        user: cached,
+        lastUsername: cached && cached.username ? cached.username : (getLastUsername() || null)
+      };
+      notifySessionUi();
+      return _session;
+    });
+  }
+
+  function doRestoreAfterHydrate() {
     if (!useApiMode()) {
       return restoreLocalSession();
     }
@@ -83,63 +156,32 @@
     var token = typeof api.getToken === 'function' ? api.getToken() : null;
 
     if (!token) {
-      var lastNoToken = getStaleUsername() || getLastUsername();
-      persistUser(null);
-      _session = {
-        status: 'serverOnly',
-        user: null,
-        lastUsername: lastNoToken
-      };
-      if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
-      if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
-      return Promise.resolve(_session);
+      return tryRememberedSession().then(function (ok) {
+        if (ok) return ok;
+        var lastNoToken = getStaleUsername() || getLastUsername();
+        persistUser(null);
+        _session = {
+          status: 'serverOnly',
+          user: null,
+          lastUsername: lastNoToken
+        };
+        if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
+        if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
+        return _session;
+      });
     }
 
-    return api.getCurrentUser().then(function (user) {
-      if (user && user.username) {
-        persistUser(user);
-        _session = { status: 'loggedIn', user: user, lastUsername: user.username };
-      } else {
-        if (typeof api.setToken === 'function') api.setToken(null);
-        persistUser(null);
-        _session = {
-          status: 'sessionExpired',
-          user: null,
-          lastUsername: getStaleUsername() || getLastUsername()
-        };
-      }
-      if (typeof global.updateAuthBar === 'function') global.updateAuthBar();
-      if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
-      if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
-      if (_session.status === 'loggedIn' && typeof global.processServerInbox === 'function') {
-        try {
-          global.processServerInbox();
-        } catch (_) {}
-      }
-      return _session;
-    }).catch(function (err) {
-      if (err && err.status === 401) {
-        var lastExpired = getStaleUsername() || getLastUsername();
-        if (typeof api.setToken === 'function') api.setToken(null);
-        persistUser(null);
-        _session = {
-          status: 'sessionExpired',
-          user: null,
-          lastUsername: lastExpired
-        };
-      } else {
-        var cached = null;
-        if (typeof global.getCurrentUser === 'function') cached = global.getCurrentUser();
-        _session = {
-          status: 'offline',
-          user: cached,
-          lastUsername: cached && cached.username ? cached.username : (getLastUsername() || null)
-        };
-      }
-      if (typeof global.updateAuthBar === 'function') global.updateAuthBar();
-      if (typeof global.updateAuthSessionStatusUi === 'function') global.updateAuthSessionStatusUi();
-      if (typeof global.updateSyncAuthStatusUi === 'function') global.updateSyncAuthStatusUi();
-      return _session;
+    return restoreWithToken(api);
+  }
+
+  function doRestore() {
+    var ready = typeof global.hydrateNativeAuthSession === 'function'
+      ? global.hydrateNativeAuthSession()
+      : Promise.resolve();
+    return Promise.resolve(ready).catch(function () {
+      return null;
+    }).then(function () {
+      return doRestoreAfterHydrate();
     });
   }
 

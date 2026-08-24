@@ -111,6 +111,12 @@
     }
   }
 
+  var REQUEST_TIMEOUT_MS = 15000;
+
+  function isAbortError(err) {
+    return !!(err && (err.name === 'AbortError' || (err.message && String(err.message).indexOf('aborted') !== -1)));
+  }
+
   function request(method, path, body) {
     var base = getBaseUrl();
     if (!base) return Promise.reject(new Error('CATTLE_TRACKER_API_BASE не задан'));
@@ -122,6 +128,16 @@
     var token = getToken();
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     if (body !== undefined) opts.body = JSON.stringify(body);
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = null;
+    if (ctrl) {
+      opts.signal = ctrl.signal;
+      timeoutId = setTimeout(function () {
+        try {
+          ctrl.abort();
+        } catch (eAbort) {}
+      }, REQUEST_TIMEOUT_MS);
+    }
     return fetch(base + path, opts).then(function (res) {
       var contentType = res.headers.get('Content-Type') || '';
       var isJson = contentType.indexOf('application/json') !== -1;
@@ -154,10 +170,15 @@
       };
       return next();
     }).catch(function (err) {
+      if (isAbortError(err)) {
+        return Promise.reject(new Error('Нет связи. Показаны сохранённые данные.'));
+      }
       if (err && err.message === 'Failed to fetch') {
         return Promise.reject(new Error('Сервер недоступен. Проверьте адрес API (Настройки → Войти) и что сервер запущен.'));
       }
       return Promise.reject(err);
+    }).finally(function () {
+      if (timeoutId) clearTimeout(timeoutId);
     });
   }
 
@@ -212,6 +233,10 @@
         } catch (err) {
           reject(new Error('Некорректный ответ сервера'));
         }
+      };
+      xhr.timeout = REQUEST_TIMEOUT_MS;
+      xhr.ontimeout = function () {
+        reject(new Error('Нет связи. Показаны сохранённые данные.'));
       };
       xhr.onerror = function () {
         reject(new Error('Сервер недоступен. Проверьте адрес API (Настройки → Войти) и что сервер запущен.'));
@@ -556,6 +581,19 @@
     return request('DELETE', '/api/reports/' + encodeURIComponent(id));
   }
 
+  function getAgentStatus() {
+    return request('GET', '/api/admin/agent-status').then(function (data) {
+      return data || {};
+    });
+  }
+
+  function postAgentHeartbeat(phase, intervalMinutes) {
+    return request('POST', '/api/admin/agent-heartbeat', {
+      phase: phase,
+      intervalMinutes: intervalMinutes
+    });
+  }
+
   function listMobileApkFiles() {
     return request('GET', '/api/admin/mobile-apk/list');
   }
@@ -601,6 +639,7 @@
 
   var api = {
     PENDING_OBJECT_ID: PENDING_OBJECT_ID,
+    REQUEST_TIMEOUT_MS: REQUEST_TIMEOUT_MS,
     getHiddenObjectIds: getHiddenObjectIds,
     filterObjectsListVisible: filterObjectsListVisible,
     hideObjectLocal: hideObjectLocal,
@@ -671,6 +710,8 @@
     getReports: getReports,
     patchReportStatus: patchReportStatus,
     deleteReport: deleteReport,
+    getAgentStatus: getAgentStatus,
+    postAgentHeartbeat: postAgentHeartbeat,
     listMobileApkFiles: listMobileApkFiles,
     deleteMobileApkFile: deleteMobileApkFile,
     uploadMobileApk: uploadMobileApk

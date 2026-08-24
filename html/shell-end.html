@@ -32,7 +32,28 @@
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 
-  <script src="dist/app.js"></script>
+  <!--
+    Dev (npm run dev): Vite отдаёт этот HTML и подхватывает module entry → HMR.
+    Production: viteDistCopyPlugin в dist/index.html подменяет на <script src="app.js">.
+    Electron/file:// без Vite: сразу ниже подключается dist/app.js, если не порт Vite.
+  -->
+  <script type="module" src="/js/main.tsx"></script>
+  <script>
+  (function () {
+    try {
+      var port = String((typeof location !== 'undefined' && location.port) || '');
+      if (port === '5173' || port === '5174') return;
+      /* Уже на Vite — module entry достаточно. Иначе IIFE-бандл. */
+      var existing = document.querySelector('script[src="dist/app.js"], script[src="app.js"], script[src="web/app.js"]');
+      if (existing) return;
+      var mod = document.querySelector('script[type="module"][src="/js/main.tsx"]');
+      if (mod) mod.remove();
+      var s = document.createElement('script');
+      s.src = 'dist/app.js';
+      document.body.appendChild(s);
+    } catch (e) {}
+  })();
+  </script>
   <script>
   (function() {
     function setPrintHeaderDate() {

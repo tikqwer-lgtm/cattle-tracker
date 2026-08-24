@@ -54,4 +54,14 @@ public class TelemetryBridgePlugin extends Plugin {
         o.put("appVersion", TelemetryConfig.getAppVersion(getContext()));
         call.resolve(o);
     }
+
+    @PluginMethod
+    public void getUploadConfig(PluginCall call) {
+        JSObject o = new JSObject();
+        String apiBase = TelemetryConfig.getApiBase(getContext());
+        String token = TelemetryConfig.getToken(getContext());
+        o.put("apiBase", apiBase != null ? apiBase : "");
+        o.put("token", token != null ? token : "");
+        call.resolve(o);
+    }
 }

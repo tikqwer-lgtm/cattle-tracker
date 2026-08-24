@@ -60,6 +60,17 @@
   background: #ef4444;
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
+.connection-indicator--stale {
+  background: #eab308;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.55);
+}
+.connection-indicator--busy {
+  animation: connection-indicator-pulse 1.2s ease-in-out infinite;
+}
+@keyframes connection-indicator-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
 .sync-connect-row {
   display: flex;
   align-items: center;

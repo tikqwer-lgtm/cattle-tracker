@@ -33,7 +33,7 @@
           <label for="authPassword">Пароль</label>
           <input type="password" id="authPassword" autocomplete="current-password" required />
           <label class="auth-remember-password-label" for="authRememberPassword">
-            <input type="checkbox" id="authRememberPassword" />
+            <input type="checkbox" id="authRememberPassword" checked />
             Запомнить пароль
           </label>
           <div class="form-actions auth-login-actions">
@@ -59,7 +59,7 @@
             <button type="button" onclick="typeof window.showAuthLogin === 'function' && window.showAuthLogin()">Назад к входу</button>
           </div>
         </form>
-        <p id="auth-user-data-hint" class="auth-user-data-hint">Данные пользователей хранятся на сервере. После переустановки приложения войдите с тем же логином и паролем.</p>
+        <p id="auth-user-data-hint" class="auth-user-data-hint">Логин и пароль запоминаются на этом телефоне, в том числе после обновления. После полной переустановки войдите ещё раз.</p>
       </div>
     </div>
   </div>

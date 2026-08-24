@@ -1,5 +1,6 @@
 /**
  * Split monolithic JS into IIFE submodules under a folder.
+ * @deprecated Не запускать новые сплиты — strangler на React (js/screens/*.tsx).
  * Functions are registered on window[namespace]; cross-chunk calls use window[namespace].fn().
  *
  * node scripts/split-iife-module.js <sourceRel> <folderRel> <namespace> <chunkSize>

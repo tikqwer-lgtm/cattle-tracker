@@ -26,24 +26,28 @@ function initOfflineIndicator() {
         el.hidden = false;
         el.setAttribute('aria-hidden', 'false');
         window.refreshFromServer().then(function () {
-          globalThis['__app'].setOnline();
+          if (window.CattleTrackerOutbox && typeof window.CattleTrackerOutbox.flush === 'function') {
+            return window.CattleTrackerOutbox.flush();
+          }
+        }).then(function () {
+          setOnline();
         }).catch(function () {
-          globalThis['__app'].setOnline();
+          setOnline();
         });
       } else {
-        globalThis['__app'].setOnline();
+        setOnline();
       }
     } else {
-      globalThis['__app'].setOffline();
+      setOffline();
     }
   }
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    globalThis['__app'].setOffline();
+    setOffline();
   } else {
-    globalThis['__app'].setOnline();
+    setOnline();
   }
   window.addEventListener('online', update);
-  window.addEventListener('offline', function () { globalThis['__app'].setOffline(); });
+  window.addEventListener('offline', function () { setOffline(); });
 }
 
 // Запуск приложения при загрузке

@@ -497,10 +497,22 @@ function createWindow() {
 
   const ses = mainWindow.webContents.session;
   ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] }).then(() => {
-    mainWindow.loadFile(indexPath).catch((err) => {
-      console.error('loadFile failed:', err);
-      mainWindow.loadURL(pathToFileURL(indexPath).href);
-    });
+    const viteDevUrl = (process.env.CATTLE_TRACKER_VITE_DEV_URL || '').trim()
+      || (process.env.CATTLE_TRACKER_VITE_DEV === '1' ? 'http://localhost:5173' : '');
+    if (viteDevUrl && isDev) {
+      mainWindow.loadURL(viteDevUrl).catch((err) => {
+        console.error('loadURL Vite failed, fallback to file:', err);
+        mainWindow.loadFile(indexPath).catch((err2) => {
+          console.error('loadFile failed:', err2);
+          mainWindow.loadURL(pathToFileURL(indexPath).href);
+        });
+      });
+    } else {
+      mainWindow.loadFile(indexPath).catch((err) => {
+        console.error('loadFile failed:', err);
+        mainWindow.loadURL(pathToFileURL(indexPath).href);
+      });
+    }
   });
 
   /* DevTools не открываем автоматически (экран входа / главное меню). Включить: CATTLE_TRACKER_OPEN_DEVTOOLS=1 */

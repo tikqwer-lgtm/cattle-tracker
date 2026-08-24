@@ -1,29 +1,6 @@
-  <div id="protocols-screen" class="screen">
-    <h1>Протоколы синхронизации</h1>
-    <div id="protocols-container"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Протоколы: React (js/screens/ProtocolsScreen.tsx), разметка в #root -->
 
-  <!-- Справка: диагностика консоли (Electron) -->
-  <div id="help-screen" class="screen">
-    <h1>Справка</h1>
-    <p class="help-diagnostics-intro">
-      Журнал событий основного процесса и страницы при открытии и закрытии консоли разработчика.
-      Нужен для поиска остаточных эффектов после закрытия DevTools. При зависании ввода в десктопе используйте кнопку «Обновить» в шапке.
-    </p>
-    <div class="help-diagnostics-toolbar">
-      <button type="button" class="action-btn" id="help-diagnostics-copy-btn">Копировать журнал</button>
-      <button type="button" class="small-btn" id="help-diagnostics-refresh-btn">Обновить из приложения</button>
-      <button type="button" class="small-btn" id="help-diagnostics-clear-btn">Очистить</button>
-    </div>
-    <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
-    <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Справка: React (js/screens/HelpScreen.tsx), разметка в #root -->
 
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">

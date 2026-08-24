@@ -247,6 +247,9 @@
         }
       });
     }
+    if (typeof global.syncAgentStatusLamp === 'function') {
+      global.syncAgentStatusLamp();
+    }
     if (isAppAdminUser()) {
       var n = typeof global.getImprovementDraftCount === 'function' ? global.getImprovementDraftCount() : 0;
       btn.hidden = false;

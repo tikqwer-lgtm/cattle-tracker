@@ -116,14 +116,7 @@
     </div>
   </div>
 
-  <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
-  <div id="farm-settings-screen" class="screen">
-    <h1>Настройки хозяйства</h1>
-    <div id="farm-settings-react-root"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Настройки хозяйства: React (js/screens/FarmSettings.tsx), разметка в #root -->
 
   <!-- Карточка хозяйства -->
   <div id="farm-card-screen" class="screen">
@@ -157,16 +150,19 @@
       </div>
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Номер</label>
-        <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <div class="action-batch-number-row">
+          <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" id="inseminationGroupAddBtn" class="action-btn">Групп ввод</button>
+        </div>
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
-        <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
       </div>
       <div id="inseminationBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-      <button type="button" id="inseminationBatchSaveBtn" class="action-btn action-batch-save-all">Сохранить всё</button>
+    <div class="screen-actions screen-actions--insem-batch">
+      <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
+      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="action-btn">Назад</button>
+      <button type="button" id="inseminationBatchSaveBtn" class="action-btn">Сохранить</button>
     </div>
   </div>
 
@@ -282,11 +278,14 @@
       </div>
       <div class="action-batch-add-block">
         <label for="uziBatchAddInput">Добавить по номеру</label>
-        <div class="autocomplete">
-          <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
-          <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+        <div class="action-batch-number-row">
+          <div class="autocomplete">
+            <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
+            <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+          </div>
+          <button type="button" id="uziGroupAddBtn" class="small-btn">групп ввод</button>
         </div>
-        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. Если номера нет в стаде, животное добавится вместе с событием.</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. «групп ввод» — набор номеров с одним результатом. Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
     </div>

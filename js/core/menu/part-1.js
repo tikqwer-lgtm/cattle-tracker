@@ -203,6 +203,10 @@ function navigate(screenId, options) {
   _currentScreenId = screenId;
 
   try {
+    window._currentScreenId = screenId;
+  } catch (eCur) {}
+
+  try {
     window.dispatchEvent(new CustomEvent('cattle-tracker:navigate', { detail: { screenId: screenId } }));
   } catch (eNav) {}
 
@@ -287,6 +291,19 @@ function navigate(screenId, options) {
     var vcAllInsem = globalThis['__viewCow'];
     if (vcAllInsem && typeof vcAllInsem.resetAllInseminationsRenderTarget === 'function') {
       vcAllInsem.resetAllInseminationsRenderTarget();
+    }
+    var allInsemCanAdd = typeof window.canInputServiceWorks === 'function'
+      ? window.canInputServiceWorks()
+      : (typeof window.hasCapability === 'function' && window.hasCapability('eventsInput'));
+    var allInsemAddWrap = document.getElementById('allInsemAddWrap');
+    var allInsemAddBtn = document.getElementById('allInsemAddBtn');
+    if (allInsemAddWrap) allInsemAddWrap.hidden = !allInsemCanAdd;
+    if (allInsemAddBtn && !allInsemAddBtn.dataset.bound) {
+      allInsemAddBtn.dataset.bound = '1';
+      allInsemAddBtn.addEventListener('click', function () {
+        window._navReturnTo = 'all-inseminations';
+        navigate('insemination');
+      });
     }
     window.renderAllInseminationsScreen();
   }

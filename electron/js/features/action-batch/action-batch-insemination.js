@@ -29,7 +29,7 @@
     var host = document.getElementById('inseminationBatchDraftTable');
     if (!host) return;
     if (!insemDraft.length) {
-      host.innerHTML = '<p class="action-batch-draft-empty">Добавьте коров; для каждой можно задать попытку.</p>';
+      host.innerHTML = '';
       return;
     }
     var rows = insemDraft.map(function (r) {
@@ -97,6 +97,148 @@
   function attemptForSave(attemptNumber) {
     var n = parseInt(attemptNumber, 10);
     return n >= 1 ? n : 1;
+  }
+
+  function addGroupCattleId(cattleId) {
+    var G = window.__inseminationGroup;
+    if (!G) return;
+    var rows = G.buildGroupDraftRows(
+      [cattleId],
+      insemDraft.map(function (x) { return x.cattleId; }),
+      findEntry,
+      {
+        bull: (document.getElementById('bullInsemBatch') && document.getElementById('bullInsemBatch').value) || '',
+        uid: uid
+      }
+    );
+    if (!rows.length) {
+      toast('Уже в списке или пустой номер', 'error');
+      return false;
+    }
+    var insemDate = document.getElementById('inseminationDateInsem') && document.getElementById('inseminationDateInsem').value;
+    if (insemDate && typeof validateDateNotFuture === 'function') {
+      var dErr = validateDateNotFuture(insemDate, 'Дата осеменения');
+      if (dErr) {
+        toast(dErr, 'error');
+        return false;
+      }
+    }
+    rows.forEach(function (r) {
+      insemDraft.push({
+        id: r.id,
+        cattleId: r.cattleId,
+        attemptNumber: r.attemptNumber,
+        bull: r.bull,
+        _batchGuardKey: batchGuardKey(insemDate || '', ''),
+        _batchGuardWarned: false
+      });
+    });
+    renderInsemDraft();
+    return true;
+  }
+
+  function openGroupAddOverlay() {
+    openOverlay(
+      '<h3 class="action-batch-modal-title">Групповой ввод</h3>' +
+      '<label class="action-batch-modal-label">Номер<br><input type="text" id="insemGroupNum" class="action-batch-modal-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" /></label>' +
+      '<div id="insemGroupLast" class="action-batch-modal-last" hidden>' +
+      '<span><strong id="insemGroupLastNum"></strong></span>' +
+      '<button type="button" class="action-batch-modal-last-del" id="insemGroupLastDel" title="Удалить" aria-label="Удалить последний номер">×</button>' +
+      '</div>' +
+      '<div class="action-batch-modal-actions">' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupOk">Добавить</button>' +
+      '<button type="button" class="action-batch-btn action-batch-btn-primary" id="insemGroupCancel">Сохранить все</button>' +
+      '</div>'
+    );
+    var input = document.getElementById('insemGroupNum');
+    var lastCattleId = null;
+    var lastDraftRowId = null;
+    var lastOrdinal = 0;
+
+    function refreshLastUi() {
+      var wrap = document.getElementById('insemGroupLast');
+      var label = document.getElementById('insemGroupLastNum');
+      if (!wrap || !label) return;
+      if (!lastCattleId || !lastOrdinal) {
+        wrap.hidden = true;
+        label.textContent = '';
+        return;
+      }
+      wrap.hidden = false;
+      label.textContent = lastOrdinal + '. ' + lastCattleId;
+    }
+
+    function addOne() {
+      var id = input && input.value ? String(input.value).trim() : '';
+      if (!id) {
+        toast('Укажите номер', 'error');
+        return;
+      }
+      if (addGroupCattleId(id) && input) {
+        lastCattleId = id;
+        lastDraftRowId = null;
+        lastOrdinal = 0;
+        for (var i = insemDraft.length - 1; i >= 0; i--) {
+          if (insemDraft[i].cattleId === id) {
+            lastDraftRowId = insemDraft[i].id;
+            lastOrdinal = i + 1;
+            break;
+          }
+        }
+        refreshLastUi();
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    function removeLast() {
+      if (!lastDraftRowId && !lastCattleId) return;
+      if (lastDraftRowId) {
+        insemDraft = insemDraft.filter(function (x) { return x.id !== lastDraftRowId; });
+      } else {
+        for (var i = insemDraft.length - 1; i >= 0; i--) {
+          if (insemDraft[i].cattleId === lastCattleId) {
+            insemDraft.splice(i, 1);
+            break;
+          }
+        }
+      }
+      lastDraftRowId = null;
+      lastCattleId = null;
+      lastOrdinal = 0;
+      if (insemDraft.length) {
+        var prev = insemDraft[insemDraft.length - 1];
+        lastDraftRowId = prev.id;
+        lastCattleId = prev.cattleId;
+        lastOrdinal = insemDraft.length;
+      }
+      renderInsemDraft();
+      refreshLastUi();
+      if (input) input.focus();
+    }
+
+    var okBtn = document.getElementById('insemGroupOk');
+    var cancelBtn = document.getElementById('insemGroupCancel');
+    var delBtn = document.getElementById('insemGroupLastDel');
+    if (okBtn) okBtn.addEventListener('click', addOne);
+    if (delBtn) delBtn.addEventListener('click', removeLast);
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        closeTopModal();
+        saveInsemBatch();
+      });
+    }
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        if (e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        addOne();
+      });
+      setTimeout(function () {
+        try { input.focus(); } catch (e) {}
+      }, 50);
+    }
   }
 
   function addInsemFromForm() {
@@ -248,6 +390,7 @@
   function bindInseminationAddForm() {
     var addIn = document.getElementById('inseminationBatchAddInput');
     bindOnce(document.getElementById('inseminationBatchAddBtn'), 'click', addInsemFromForm);
+    bindOnce(document.getElementById('inseminationGroupAddBtn'), 'click', openGroupAddOverlay);
     bindOnce(addIn, 'input', syncAttemptFromNumber);
     bindOnce(addIn, 'change', syncAttemptFromNumber);
     bindOnce(addIn, 'keydown', function (e) {
