@@ -26,6 +26,10 @@ function initOfflineIndicator() {
         el.hidden = false;
         el.setAttribute('aria-hidden', 'false');
         window.refreshFromServer().then(function () {
+          if (window.CattleTrackerOutbox && typeof window.CattleTrackerOutbox.flush === 'function') {
+            return window.CattleTrackerOutbox.flush();
+          }
+        }).then(function () {
           globalThis['__app'].setOnline();
         }).catch(function () {
           globalThis['__app'].setOnline();

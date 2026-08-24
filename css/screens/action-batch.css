@@ -67,6 +67,23 @@
   align-items: center;
   min-height: var(--field-min-height, 42px);
 }
+.action-batch-number-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+}
+.action-batch-number-row .autocomplete {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.action-batch-number-row .small-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--field-min-height, 42px);
+  white-space: nowrap;
+}
 /* Блок «Добавить по номеру» должен быть выше таблицы черновика, иначе список
    автодополнения визуально виден, но клики попадают в черновик под ним. */
 .action-batch-add-block {

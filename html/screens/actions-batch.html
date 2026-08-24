@@ -278,11 +278,14 @@
       </div>
       <div class="action-batch-add-block">
         <label for="uziBatchAddInput">Добавить по номеру</label>
-        <div class="autocomplete">
-          <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
-          <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+        <div class="action-batch-number-row">
+          <div class="autocomplete">
+            <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
+            <ul id="uziBatchAddList" class="autocomplete-list"></ul>
+          </div>
+          <button type="button" id="uziGroupAddBtn" class="small-btn">групп ввод</button>
         </div>
-        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. Если номера нет в стаде, животное добавится вместе с событием.</p>
+        <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. «групп ввод» — набор номеров с одним результатом. Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
     </div>
