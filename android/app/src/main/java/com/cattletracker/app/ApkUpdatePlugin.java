@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Base64;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -13,104 +14,141 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Скачивает APK в cache приложения (один файл с перезаписью) и открывает установщик.
- * Прогресс и отмена — в UI приложения, без очереди DownloadManager.
+ * Принимает APK кусками из WebView (fetch) и открывает установщик.
+ * Сеть идёт в JS — тот же стек, что и остальной API, без зависания HttpURLConnection.
  */
 @CapacitorPlugin(name = "ApkUpdate")
 public class ApkUpdatePlugin extends Plugin {
 
     private static final String APK_CACHE_NAME = "cattle-tracker-update.apk";
-    private static final int CONNECT_TIMEOUT_MS = 30000;
-    private static final int READ_TIMEOUT_MS = 120000;
     private static final int MIN_APK_BYTES = 1024;
     public static final String ERR_NEED_INSTALL_PERMISSION = "NEED_INSTALL_PERMISSION";
     public static final String ERR_CANCELED = "CANCELED";
 
     private final AtomicBoolean cancelRequested = new AtomicBoolean(false);
-    private final AtomicBoolean downloadRunning = new AtomicBoolean(false);
-    private volatile HttpURLConnection currentConn;
-    private volatile Thread downloadThread;
+    private final Object fileLock = new Object();
+    private FileOutputStream apkSink;
+    private File apkFile;
 
     @PluginMethod
-    public void downloadApk(PluginCall call) {
-        String url = call.getString("url");
-        if (url == null || url.isEmpty()) {
-            call.reject("Не указан url");
-            return;
-        }
-        if (!downloadRunning.compareAndSet(false, true)) {
-            call.reject("Загрузка уже идёт");
-            return;
-        }
-        cancelRequested.set(false);
-        currentConn = null;
-
-        Thread t = new Thread(() -> {
-            File out = new File(getContext().getCacheDir(), APK_CACHE_NAME);
+    public void startApkFile(PluginCall call) {
+        synchronized (fileLock) {
+            cancelRequested.set(false);
+            closeSinkLocked();
+            apkFile = new File(getContext().getCacheDir(), APK_CACHE_NAME);
+            if (apkFile.exists() && !apkFile.delete()) {
+                call.reject("Не удалось удалить предыдущий файл обновления");
+                return;
+            }
             try {
-                if (out.exists() && !out.delete()) {
-                    call.reject("Не удалось удалить предыдущий файл обновления");
-                    return;
-                }
-                downloadToFile(url, out);
-                if (cancelRequested.get()) {
-                    if (out.exists()) out.delete();
-                    call.reject(ERR_CANCELED);
-                    return;
-                }
-                getActivity().runOnUiThread(() -> {
-                    try {
-                        openInstallIntent(out);
-                        call.resolve();
-                    } catch (Exception e) {
-                        if (!canInstallPackages()) {
-                            openInstallUnknownAppsSettings();
-                            call.reject(ERR_NEED_INSTALL_PERMISSION);
-                        } else {
-                            call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось открыть установщик", e);
-                        }
-                    }
-                });
-            } catch (CanceledException e) {
-                if (out.exists()) out.delete();
-                call.reject(ERR_CANCELED);
+                apkSink = new FileOutputStream(apkFile);
+                call.resolve();
             } catch (Exception e) {
-                if (out.exists()) out.delete();
-                if (cancelRequested.get()) {
-                    call.reject(ERR_CANCELED);
-                } else {
-                    call.reject(e.getMessage() != null ? e.getMessage() : "Ошибка загрузки", e);
+                apkSink = null;
+                call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось открыть файл обновления", e);
+            }
+        }
+    }
+
+    @PluginMethod
+    public void appendApkChunk(PluginCall call) {
+        String data = call.getString("data");
+        if (data == null || data.isEmpty()) {
+            call.resolve();
+            return;
+        }
+        synchronized (fileLock) {
+            if (cancelRequested.get()) {
+                call.reject(ERR_CANCELED);
+                return;
+            }
+            if (apkSink == null) {
+                call.reject("Файл обновления не открыт");
+                return;
+            }
+            try {
+                apkSink.write(Base64.decode(data, Base64.DEFAULT));
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось записать фрагмент APK", e);
+            }
+        }
+    }
+
+    @PluginMethod
+    public void finishApkFile(PluginCall call) {
+        synchronized (fileLock) {
+            try {
+                if (apkSink != null) {
+                    apkSink.flush();
                 }
-            } finally {
-                downloadRunning.set(false);
-                currentConn = null;
-                downloadThread = null;
+                closeSinkLocked();
+                if (cancelRequested.get()) {
+                    deleteApkLocked();
+                    call.reject(ERR_CANCELED);
+                    return;
+                }
+                if (apkFile == null || !apkFile.exists() || apkFile.length() < MIN_APK_BYTES) {
+                    deleteApkLocked();
+                    call.reject("Файл слишком маленький — возможно, ошибка загрузки");
+                    return;
+                }
+                JSObject out = new JSObject();
+                out.put("size", apkFile.length());
+                call.resolve(out);
+            } catch (Exception e) {
+                closeSinkLocked();
+                deleteApkLocked();
+                call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось сохранить APK", e);
+            }
+        }
+    }
+
+    @PluginMethod
+    public void installDownloadedApk(PluginCall call) {
+        File out;
+        synchronized (fileLock) {
+            out = apkFile != null ? apkFile : new File(getContext().getCacheDir(), APK_CACHE_NAME);
+        }
+        if (!out.exists() || out.length() < MIN_APK_BYTES) {
+            call.reject("Нет скачанного файла обновления");
+            return;
+        }
+        Activity activity = getActivity();
+        if (activity == null) {
+            try {
+                openInstallIntent(out);
+                call.resolve();
+            } catch (Exception e) {
+                rejectInstall(call, e);
+            }
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            try {
+                openInstallIntent(out);
+                call.resolve();
+            } catch (Exception e) {
+                rejectInstall(call, e);
             }
         });
-        downloadThread = t;
-        t.start();
+    }
+
+    /** Старый метод: не качаем в Java — JS уходит в браузер. */
+    @PluginMethod
+    public void downloadApk(PluginCall call) {
+        call.reject("web");
     }
 
     @PluginMethod
     public void cancelDownload(PluginCall call) {
         cancelRequested.set(true);
-        HttpURLConnection conn = currentConn;
-        if (conn != null) {
-            try {
-                conn.disconnect();
-            } catch (Exception ignored) {}
-        }
-        Thread t = downloadThread;
-        if (t != null) {
-            try {
-                t.interrupt();
-            } catch (Exception ignored) {}
+        synchronized (fileLock) {
+            closeSinkLocked();
+            deleteApkLocked();
         }
         call.resolve();
     }
@@ -121,87 +159,27 @@ public class ApkUpdatePlugin extends Plugin {
         call.resolve();
     }
 
-    private void notifyProgress(long loaded, long expected) {
-        JSObject data = new JSObject();
-        data.put("loaded", loaded);
-        data.put("total", expected > 0 ? expected : 0);
-        int pct = expected > 0 ? (int) Math.min(100, Math.round(100.0 * loaded / expected)) : 0;
-        data.put("percent", pct);
-        Activity activity = getActivity();
-        if (activity != null) {
-            activity.runOnUiThread(() -> notifyListeners("progress", data));
+    private void rejectInstall(PluginCall call, Exception e) {
+        if (!canInstallPackages()) {
+            openInstallUnknownAppsSettings();
+            call.reject(ERR_NEED_INSTALL_PERMISSION);
         } else {
-            notifyListeners("progress", data);
+            call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось открыть установщик", e);
         }
     }
 
-    private void downloadToFile(String urlStr, File out) throws Exception {
-        HttpURLConnection conn = null;
-        InputStream in = null;
-        FileOutputStream fos = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            currentConn = conn;
-            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setInstanceFollowRedirects(true);
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            if (cancelRequested.get()) {
-                throw new CanceledException();
-            }
-            notifyProgress(0, 0);
-            conn.connect();
-            if (cancelRequested.get()) {
-                throw new CanceledException();
-            }
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) {
-                throw new Exception("Сервер вернул код " + code);
-            }
-            long expected = conn.getContentLengthLong();
-            in = conn.getInputStream();
-            fos = new FileOutputStream(out);
-            byte[] buf = new byte[8192];
-            long total = 0;
-            int n;
-            long lastNotify = 0;
-            notifyProgress(0, expected > 0 ? expected : 0);
-            while ((n = in.read(buf)) != -1) {
-                if (cancelRequested.get()) {
-                    throw new CanceledException();
-                }
-                fos.write(buf, 0, n);
-                total += n;
-                if (total - lastNotify >= 32 * 1024 || (expected > 0 && total >= expected)) {
-                    lastNotify = total;
-                    notifyProgress(total, expected > 0 ? expected : total);
-                }
-            }
-            fos.flush();
-            notifyProgress(total, expected > 0 ? expected : total);
-            if (total < MIN_APK_BYTES) {
-                out.delete();
-                throw new Exception("Файл слишком маленький — возможно, ошибка загрузки");
-            }
-            if (expected > 0 && total != expected) {
-                out.delete();
-                throw new Exception("Загрузка прервана");
-            }
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                } catch (Exception ignored) {}
-            }
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (Exception ignored) {}
-            }
-            if (conn != null) {
-                conn.disconnect();
-            }
+    private void closeSinkLocked() {
+        if (apkSink != null) {
+            try {
+                apkSink.close();
+            } catch (Exception ignored) {}
+            apkSink = null;
+        }
+    }
+
+    private void deleteApkLocked() {
+        if (apkFile != null && apkFile.exists()) {
+            apkFile.delete();
         }
     }
 
@@ -233,11 +211,11 @@ public class ApkUpdatePlugin extends Plugin {
         }
     }
 
-    private void openInstallIntent(File apkFile) {
+    private void openInstallIntent(File apk) {
         Uri apkUri = FileProvider.getUriForFile(
             getContext(),
             getContext().getPackageName() + ".fileprovider",
-            apkFile
+            apk
         );
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
@@ -248,12 +226,6 @@ public class ApkUpdatePlugin extends Plugin {
         } else {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(intent);
-        }
-    }
-
-    private static class CanceledException extends Exception {
-        CanceledException() {
-            super(ERR_CANCELED);
         }
     }
 }

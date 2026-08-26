@@ -99,20 +99,41 @@ function rebuildTr(trXml, cells) {
   return trOpen(trXml) + cells.join('') + '</w:tr>';
 }
 
+function boldPlaceholderRun(placeholder) {
+  return (
+    '<w:r><w:rPr><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>' +
+    '<w:t xml:space="preserve"> ' +
+    placeholder +
+    '</w:t></w:r>'
+  );
+}
+
+function restBlankOpen(rest) {
+  return (
+    '<w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>' +
+    '<w:t xml:space="preserve">' +
+    rest
+  );
+}
+
 function patchDocumentXml(xml) {
   xml = xml.replace(/<w:sdt>[\s\S]*?Watermarks[\s\S]*?<\/w:sdt>/, '');
   xml = xml.replace(/«___»___________[\u00a0 ]202/, '{{actDate}}');
   xml = xml.replace(
-    /> ____________________________________________</,
-    '> {{executorFio}}<'
+    ' ____________________________________________',
+    ' </w:t></w:r>' + boldPlaceholderRun('{{executorFio}}') + restBlankOpen(' ____________________ ')
   );
   xml = xml.replace(
-    />с одной стороны, и _________________________________________________</,
-    '>с одной стороны, и {{customerOrg}}<'
+    'с одной стороны, и _________________________________________________',
+    'с одной стороны, и </w:t></w:r>' +
+      boldPlaceholderRun('{{customerOrg}}') +
+      restBlankOpen(' ____________________')
   );
   xml = xml.replace(
-    /, в лице ____________________________________, действующего/,
-    ', в лице {{customerFio}}, действующего'
+    ', в лице ____________________________________, действующего',
+    ', в лице </w:t></w:r>' +
+      boldPlaceholderRun('{{customerFio}}') +
+      restBlankOpen(' ________________, действующего')
   );
   xml = xml.replace(
     /Стоимость оказанных услуг составила _______ \(____________________________________________________________________________\) /,

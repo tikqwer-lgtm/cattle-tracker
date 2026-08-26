@@ -1,0 +1,33 @@
+/**
+ * Подпись прогресса загрузки APK.
+ * Пока байт нет — «Загрузка…»; дальше всегда видны полученные килобайты,
+ * даже если сервер не прислал Content-Length.
+ */
+export function formatBytes(n) {
+  var v = Number(n) || 0;
+  if (v < 1024) return v + ' Б';
+  if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' КБ';
+  return (v / (1024 * 1024)).toFixed(1) + ' МБ';
+}
+
+export function formatApkProgressDetail(loaded, total) {
+  var got = Number(loaded) || 0;
+  var all = Number(total) || 0;
+  if (got <= 0) return 'Загрузка…';
+  if (all > 0) {
+    var pct = Math.min(100, Math.round((100 * got) / all));
+    return formatBytes(got) + ' из ' + formatBytes(all) + ' (' + pct + '%)';
+  }
+  return formatBytes(got);
+}
+
+export function uint8ToBase64(u8) {
+  var bytes = u8 || new Uint8Array(0);
+  var chunk = 0x8000;
+  var s = '';
+  var i;
+  for (i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}

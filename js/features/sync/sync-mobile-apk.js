@@ -1,3 +1,5 @@
+import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress-text.js';
+
 /** Секция «Установка обновления (APK)» на синхронизации (Android + режим API). */
 (function (global) {
   'use strict';
@@ -491,13 +493,7 @@
       });
   }
 
-  function formatBytes(n) {
-    var v = Number(n) || 0;
-    if (v < 1024) return v + ' Б';
-    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' КБ';
-    return (v / (1024 * 1024)).toFixed(1) + ' МБ';
-  }
-
+  var APK_CHUNK_BYTES = 256 * 1024;
   var apkUpdatePlugin = null;
   var apkUpdatePluginPromise = null;
 
@@ -511,11 +507,20 @@
             downloadApk: function () {
               return Promise.reject(new Error('web'));
             },
+            startApkFile: function () {
+              return Promise.reject(new Error('web'));
+            },
+            appendApkChunk: function () {
+              return Promise.reject(new Error('web'));
+            },
+            finishApkFile: function () {
+              return Promise.reject(new Error('web'));
+            },
+            installDownloadedApk: function () {
+              return Promise.reject(new Error('web'));
+            },
             cancelDownload: function () {
               return Promise.resolve();
-            },
-            addListener: function () {
-              return Promise.resolve({ remove: function () {} });
             }
           }
         });
@@ -532,6 +537,89 @@
     getApkUpdatePlugin();
   }
 
+  function concatUint8(a, b) {
+    if (!a || !a.length) return b;
+    if (!b || !b.length) return a;
+    var out = new Uint8Array(a.length + b.length);
+    out.set(a, 0);
+    out.set(b, a.length);
+    return out;
+  }
+
+  function throwIfCanceled(userCanceled) {
+    if (userCanceled) {
+      var err = new Error('CANCELED');
+      err.message = 'CANCELED';
+      throw err;
+    }
+  }
+
+  function pipeApkToPlugin(plugin, apkUrl, progress, abortCtrl, userCanceledRef) {
+    var loaded = 0;
+    function report(total) {
+      if (progress) progress.update(loaded, total, formatApkProgressDetail(loaded, total));
+    }
+    function flushChunk(buf) {
+      throwIfCanceled(userCanceledRef.canceled);
+      return plugin.appendApkChunk({ data: uint8ToBase64(buf) });
+    }
+    function writeAll(u8, total) {
+      var offset = 0;
+      function next() {
+        throwIfCanceled(userCanceledRef.canceled);
+        if (offset >= u8.length) return Promise.resolve();
+        var end = Math.min(offset + APK_CHUNK_BYTES, u8.length);
+        var piece = u8.subarray(offset, end);
+        offset = end;
+        loaded = offset;
+        report(total);
+        return flushChunk(piece).then(next);
+      }
+      return next();
+    }
+    return fetch(apkUrl, { cache: 'no-store', signal: abortCtrl.signal }).then(function (res) {
+      throwIfCanceled(userCanceledRef.canceled);
+      if (!res.ok) throw new Error('Сервер вернул код ' + res.status);
+      var total = Number(res.headers.get('content-length')) || 0;
+      report(total);
+      if (!res.body || typeof res.body.getReader !== 'function') {
+        return res.arrayBuffer().then(function (buf) {
+          var u8 = new Uint8Array(buf);
+          loaded = 0;
+          return writeAll(u8, u8.length);
+        });
+      }
+      var reader = res.body.getReader();
+      var pending = new Uint8Array(0);
+      function readNext() {
+        throwIfCanceled(userCanceledRef.canceled);
+        return reader.read().then(function (step) {
+          if (step.done) {
+            if (pending.length) {
+              report(total);
+              return flushChunk(pending);
+            }
+            return undefined;
+          }
+          pending = concatUint8(pending, step.value);
+          loaded += step.value.length;
+          report(total);
+          var writes = Promise.resolve();
+          while (pending.length >= APK_CHUNK_BYTES) {
+            (function (chunk) {
+              writes = writes.then(function () {
+                return flushChunk(chunk);
+              });
+            })(new Uint8Array(pending.subarray(0, APK_CHUNK_BYTES)));
+            pending = pending.subarray(APK_CHUNK_BYTES);
+          }
+          return writes.then(readNext);
+        });
+      }
+      return readNext();
+    });
+  }
+
   function downloadApkViaNative(apkUrl) {
     var C = global.Capacitor;
     var isAndroidNative =
@@ -543,8 +631,9 @@
     if (!isAndroidNative) {
       return openApkDownloadUrl(apkUrl);
     }
-    var userCanceled = false;
+    var userCanceledRef = { canceled: false };
     var pluginRef = apkUpdatePlugin;
+    var abortCtrl = typeof AbortController === 'function' ? new AbortController() : { abort: function () {}, signal: undefined };
     var progress =
       typeof global.showProgressOverlay === 'function'
         ? global.showProgressOverlay({
@@ -553,7 +642,10 @@
             cancelText: 'Отмена',
             blocking: true,
             onCancel: function () {
-              userCanceled = true;
+              userCanceledRef.canceled = true;
+              try {
+                abortCtrl.abort();
+              } catch (eAbort) {}
               if (pluginRef && typeof pluginRef.cancelDownload === 'function') {
                 try {
                   pluginRef.cancelDownload();
@@ -575,47 +667,37 @@
             }
           })
         : null;
-    var listenerHandle = null;
-
-    function attachProgress(plugin) {
-      if (!plugin || typeof plugin.addListener !== 'function') return Promise.resolve(null);
-      return plugin.addListener('progress', function (ev) {
-        if (!progress || !ev || userCanceled) return;
-        var loaded = Number(ev.loaded) || 0;
-        var total = Number(ev.total) || 0;
-        var pct = total > 0 ? Math.min(100, Math.round((100 * loaded) / total)) : Number(ev.percent) || 0;
-        var text =
-          total > 0
-            ? formatBytes(loaded) + ' из ' + formatBytes(total) + ' (' + pct + '%)'
-            : loaded > 0
-              ? formatBytes(loaded)
-              : 'Загрузка…';
-        progress.update(loaded, total > 0 ? total : loaded, text);
-      });
-    }
 
     function startDownload(plugin) {
-      if (!plugin || typeof plugin.downloadApk !== 'function') {
+      if (!plugin || typeof plugin.startApkFile !== 'function') {
         return Promise.reject(new Error('web'));
       }
       pluginRef = plugin;
-      if (userCanceled) {
-        if (plugin.cancelDownload) plugin.cancelDownload();
-        return Promise.reject(new Error('CANCELED'));
-      }
+      throwIfCanceled(userCanceledRef.canceled);
       if (progress) progress.update(0, 0, 'Загрузка…');
-      attachProgress(plugin)
-        .then(function (handle) {
-          listenerHandle = handle;
+      return plugin
+        .startApkFile()
+        .then(function () {
+          return pipeApkToPlugin(plugin, apkUrl, progress, abortCtrl, userCanceledRef);
         })
-        .catch(function () {});
-      return plugin.downloadApk({ url: apkUrl });
+        .then(function () {
+          throwIfCanceled(userCanceledRef.canceled);
+          return plugin.finishApkFile();
+        })
+        .then(function () {
+          if (progress) {
+            progress.close();
+            progress = null;
+          }
+          throwIfCanceled(userCanceledRef.canceled);
+          return plugin.installDownloadedApk();
+        });
     }
 
     return (pluginRef ? Promise.resolve(pluginRef) : getApkUpdatePlugin())
       .then(startDownload)
       .then(function () {
-        if (userCanceled) return;
+        if (userCanceledRef.canceled) return;
         if (progress) progress.close();
         if (typeof global.showToast === 'function') {
           global.showToast('Откройте установщик на экране', 'success', 4000);
@@ -623,11 +705,21 @@
       })
       .catch(function (err) {
         if (progress) progress.close();
-        if (userCanceled) return;
+        if (userCanceledRef.canceled) return;
         var msg = err && err.message ? String(err.message) : '';
+        if (err && err.name === 'AbortError') msg = 'CANCELED';
         if (msg === 'CANCELED' || /отмен/i.test(msg)) {
           if (typeof global.showToast === 'function') global.showToast('Загрузка отменена', 'info', 3000);
           return;
+        }
+        if (
+          msg !== 'NEED_INSTALL_PERMISSION' &&
+          pluginRef &&
+          typeof pluginRef.cancelDownload === 'function'
+        ) {
+          try {
+            pluginRef.cancelDownload();
+          } catch (eCancel) {}
         }
         if (
           msg === 'NEED_INSTALL_PERMISSION' ||
@@ -645,17 +737,9 @@
         }
         if (msg && msg !== 'web') {
           if (typeof global.showToast === 'function') global.showToast(msg, 'error', 6000);
-          return;
+          return openApkDownloadUrl(apkUrl);
         }
         return openApkDownloadUrl(apkUrl);
-      })
-      .then(function (result) {
-        if (listenerHandle && typeof listenerHandle.remove === 'function') {
-          try {
-            listenerHandle.remove();
-          } catch (e) {}
-        }
-        return result;
       });
   }
 

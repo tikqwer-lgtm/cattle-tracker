@@ -132,7 +132,15 @@ function showProgressOverlay(opts) {
       var d = Number(done) || 0;
       var t = Number(total) || 0;
       var pct = t > 0 ? Math.min(100, Math.round((100 * d) / t)) : 0;
-      if (fillEl) fillEl.style.width = pct + '%';
+      if (fillEl) {
+        if (t > 0) {
+          fillEl.classList.remove('ct-progress-bar-fill--pulse');
+          fillEl.style.width = pct + '%';
+        } else {
+          fillEl.classList.add('ct-progress-bar-fill--pulse');
+          fillEl.style.width = '35%';
+        }
+      }
       if (detailEl) {
         detailEl.textContent = text || (t > 0 ? (d + ' из ' + t + ' (' + pct + '%)') : String(d));
       }

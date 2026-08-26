@@ -131,6 +131,15 @@ describe('buildActDocx from template', () => {
     expect(xml).toMatch(/Иванов И\.И\./);
     expect(xml).toMatch(/ООО Ромашка/);
     expect(xml).toMatch(/Петров П\.П\./);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> Иванов И\.И\.<\/w:t>/);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> ООО Ромашка<\/w:t>/);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> Петров П\.П\.<\/w:t>/);
+    expect(xml).not.toMatch(/Иванов И\.И\.с одной/);
+    expect(xml).toMatch(/<w:b\/>[\s\S]{0,120}Иванов И\.И\./);
+    expect(xml).toMatch(/<w:b\/>[\s\S]{0,120}ООО Ромашка/);
+    expect(xml).toMatch(/<w:b\/>[\s\S]{0,120}Петров П\.П\./);
+    expect(xml).toMatch(/Иванов И\.И\./);
+    expect(xml).toMatch(/_{5,}/);
     expect(xml).toMatch(/2196/);
     expect((xml.match(/Услуги оказаны Исполнителем/g) || []).length).toBe(1);
     expect((xml.match(/составили настоящий Акт/g) || []).length).toBe(1);
@@ -145,6 +154,10 @@ describe('buildActDocx from template', () => {
     expect(xml).toMatch(/\{\{svcName3\}\}/);
     expect(xml).toMatch(/\{\{customerOrg\}\}/);
     expect(xml).toMatch(/\{\{customerFio\}\}/);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> \{\{executorFio\}\}<\/w:t>/);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> \{\{customerOrg\}\}<\/w:t>/);
+    expect(xml).toMatch(/<w:t xml:space="preserve"> \{\{customerFio\}\}<\/w:t>/);
+    expect(xml).toMatch(/_{5,}/);
     expect((xml.match(/<w:tr\b/g) || []).length).toBeGreaterThanOrEqual(5);
   });
 
