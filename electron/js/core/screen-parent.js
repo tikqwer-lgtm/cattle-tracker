@@ -25,7 +25,7 @@ var SCREEN_PARENT = {
   'farm-settings': { screen: 'submenu', group: 'settings' },
   protocols: { screen: 'farm-settings' },
   help: { screen: 'submenu', group: 'settings' },
-  admin: { screen: 'herd-hub' },
+  admin: { screen: 'menu' },
   insemination: { screen: 'submenu', group: 'actions' },
   dry: { screen: 'submenu', group: 'actions' },
   calving: { screen: 'submenu', group: 'actions' },

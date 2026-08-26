@@ -109,7 +109,6 @@ test.beforeAll(async () => {
       sendJson(res, 200, { technicians: [], bulls: [], drugs: [], vwpDays: 60 });
       return;
     }
-    }
 
     sendJson(res, 404, { error: 'e2e mock: not found', path: pathname });
   });
@@ -144,7 +143,7 @@ async function openMenuAsRole(page, role) {
 }
 
 function menuGroup(page, title) {
-  return page.locator('#menu-screen .menu-group-btn').filter({ hasText: title });
+  return page.locator('#menu-main-content .menu-group-btn').filter({ hasText: title });
 }
 
 function herdHubGroup(page, title) {
@@ -161,27 +160,27 @@ async function openHerdHub(page) {
 const CASES = [
   {
     role: 'inseminator',
-    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства', 'Выход'],
     hubVisible: ['Животные и списки', 'Действия'],
-    hubHidden: ['Аналитика'],
+    hubHidden: ['Аналитика', 'Администрирование', 'Выход'],
     blockedScreens: ['analytics', 'farm-settings', 'admin'],
     allowedScreen: 'sync',
     menuNotificationsVisible: false,
   },
   {
     role: 'service',
-    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства', 'Выход'],
     hubVisible: ['Животные и списки', 'Действия', 'Настройки'],
-    hubHidden: ['Аналитика'],
+    hubHidden: ['Аналитика', 'Администрирование', 'Выход'],
     blockedScreens: ['analytics', 'farm-settings', 'admin'],
     allowedScreen: 'sync',
     menuNotificationsVisible: false,
   },
   {
     role: 'admin',
-    mainVisible: ['Работа со стадом', 'Карточка хозяйства'],
-    hubVisible: ['Животные и списки', 'Действия', 'Аналитика', 'Настройки', 'Администрирование'],
-    hubHidden: [],
+    mainVisible: ['Работа со стадом', 'Карточка хозяйства', 'Администрирование', 'Выход'],
+    hubVisible: ['Животные и списки', 'Действия', 'Аналитика', 'Настройки'],
+    hubHidden: ['Администрирование', 'Выход'],
     blockedScreens: [],
     allowedScreen: 'sync',
     menuNotificationsVisible: false,

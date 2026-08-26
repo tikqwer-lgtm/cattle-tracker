@@ -78,6 +78,7 @@ function patchServicesTable(xml) {
   dataCells[1] = injectIntoCell(dataCells[1], '{{svcName}}');
   dataCells[2] = injectIntoCell(dataCells[2], '{{svcUnit}}');
   dataCells[3] = injectIntoCell(dataCells[3], '{{svcQty}}');
+  dataCells[4] = injectIntoCell(dataCells[4], '{{svcPrice}}');
   dataCells[6] = injectIntoCell(dataCells[6], '{{svcSum}}');
   const dataRow = rebuildTr(data, dataCells);
 
@@ -116,6 +117,7 @@ function patchDocumentXml(xml) {
   if (xml.indexOf('{{executorFio}}') < 0) throw new Error('Не вставлен {{executorFio}}');
   if (xml.indexOf('{{customerFio}}') < 0) throw new Error('Не вставлен {{customerFio}}');
   if (xml.indexOf('{{svcName}}') < 0) throw new Error('Не вставлен {{svcName}}');
+  if (xml.indexOf('{{svcPrice}}') < 0) throw new Error('Не вставлен {{svcPrice}}');
   if (xml.indexOf('{{totalWords}}') < 0) throw new Error('Не вставлен {{totalWords}}');
   if (/ОБРАЗЕЦ/.test(xml)) throw new Error('Водяной знак ОБРАЗЕЦ не удалён');
   return xml;

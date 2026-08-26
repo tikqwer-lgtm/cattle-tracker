@@ -121,10 +121,19 @@ function formatAmount(n) {
   return v.toFixed(2).replace('.', ',');
 }
 
+function rowAmount(row) {
+  var priceRaw = row && row.price;
+  var hasPrice = priceRaw != null && String(priceRaw).trim() !== '';
+  if (hasPrice) {
+    return Math.round(parseAmount(row.qty) * parseAmount(priceRaw) * 100) / 100;
+  }
+  return parseAmount(row && row.sum);
+}
+
 function sumServiceRows(rows) {
   var sum = 0;
   (rows || []).forEach(function (row) {
-    sum += parseAmount(row && row.sum);
+    sum += rowAmount(row);
   });
   return Math.round(sum * 100) / 100;
 }
@@ -157,6 +166,7 @@ export {
   parseAmount,
   formatAmount,
   sumServiceRows,
+  rowAmount,
   formatActHeaderDate,
   amountWithWords,
   pluralRu

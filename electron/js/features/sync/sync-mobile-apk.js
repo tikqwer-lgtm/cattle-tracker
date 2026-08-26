@@ -248,11 +248,10 @@
       });
     }
     if (isAppAdminUser()) {
-      var n = typeof global.getImprovementDraftCount === 'function' ? global.getImprovementDraftCount() : 0;
       btn.hidden = false;
-      btn.textContent = n ? 'Обновить (' + n + ')' : 'Обновить';
+      btn.textContent = 'Обновить';
       btn.setAttribute('aria-label', 'Предложения по улучшению');
-      btn.title = 'Написать предложения. Можно копить и отправить пачкой.';
+      btn.title = 'Написать предложение';
       return;
     }
     if (isAndroidCapacitor()) {
@@ -492,6 +491,31 @@
       });
   }
 
+  function formatBytes(n) {
+    var v = Number(n) || 0;
+    if (v < 1024) return v + ' Б';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' КБ';
+    return (v / (1024 * 1024)).toFixed(1) + ' МБ';
+  }
+
+  function getApkUpdatePlugin() {
+    return import('@capacitor/core').then(function (core) {
+      return core.registerPlugin('ApkUpdate', {
+        web: {
+          downloadApk: function () {
+            return Promise.reject(new Error('web'));
+          },
+          cancelDownload: function () {
+            return Promise.resolve();
+          },
+          addListener: function () {
+            return Promise.resolve({ remove: function () {} });
+          }
+        }
+      });
+    });
+  }
+
   function downloadApkViaNative(apkUrl) {
     var C = global.Capacitor;
     var isAndroidNative =
@@ -503,27 +527,57 @@
     if (!isAndroidNative) {
       return openApkDownloadUrl(apkUrl);
     }
-    if (typeof global.showToast === 'function') {
-      global.showToast('Скачивание обновления…', 'info', 3000);
-    }
-    return import('@capacitor/core')
-      .then(function (core) {
-        var ApkUpdate = core.registerPlugin('ApkUpdate', {
-          web: {
-            downloadApk: function () {
-              return Promise.reject(new Error('web'));
+    var progress =
+      typeof global.showProgressOverlay === 'function'
+        ? global.showProgressOverlay({
+            title: 'Загрузка обновления',
+            detail: 'Подключение…',
+            cancelText: 'Отмена',
+            blocking: true,
+            onCancel: function () {
+              getApkUpdatePlugin()
+                .then(function (plugin) {
+                  return plugin.cancelDownload();
+                })
+                .catch(function () {});
             }
-          }
+          })
+        : null;
+    var listenerHandle = null;
+    return getApkUpdatePlugin()
+      .then(function (ApkUpdate) {
+        var listenP =
+          typeof ApkUpdate.addListener === 'function'
+            ? ApkUpdate.addListener('progress', function (ev) {
+                if (!progress || !ev) return;
+                var loaded = Number(ev.loaded) || 0;
+                var total = Number(ev.total) || 0;
+                var pct = total > 0 ? Math.min(100, Math.round((100 * loaded) / total)) : Number(ev.percent) || 0;
+                var text =
+                  total > 0
+                    ? formatBytes(loaded) + ' из ' + formatBytes(total) + ' (' + pct + '%)'
+                    : formatBytes(loaded);
+                progress.update(loaded, total > 0 ? total : loaded, text);
+              })
+            : Promise.resolve(null);
+        return listenP.then(function (handle) {
+          listenerHandle = handle;
+          return ApkUpdate.downloadApk({ url: apkUrl });
         });
-        return ApkUpdate.downloadApk({ url: apkUrl });
       })
       .then(function () {
+        if (progress) progress.close();
         if (typeof global.showToast === 'function') {
           global.showToast('Откройте установщик на экране', 'success', 4000);
         }
       })
       .catch(function (err) {
+        if (progress) progress.close();
         var msg = err && err.message ? String(err.message) : '';
+        if (msg === 'CANCELED' || /отмен/i.test(msg)) {
+          if (typeof global.showToast === 'function') global.showToast('Загрузка отменена', 'info', 3000);
+          return;
+        }
         if (
           msg === 'NEED_INSTALL_PERMISSION' ||
           msg.indexOf('Разрешите установку') !== -1 ||
@@ -543,6 +597,14 @@
           return;
         }
         return openApkDownloadUrl(apkUrl);
+      })
+      .then(function (result) {
+        if (listenerHandle && typeof listenerHandle.remove === 'function') {
+          try {
+            listenerHandle.remove();
+          } catch (e) {}
+        }
+        return result;
       });
   }
 

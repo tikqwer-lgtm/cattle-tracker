@@ -45,6 +45,7 @@ describe('act amounts', () => {
   it('sums rows and formats date for the header', () => {
     expect(parseAmount('1 234,5')).toBe(1234.5);
     expect(sumServiceRows([{ sum: '100' }, { sum: '50,5' }, { sum: '' }])).toBe(150.5);
+    expect(sumServiceRows([{ qty: '10', price: '50' }, { qty: '2', price: '3,5' }])).toBe(507);
     expect(formatActHeaderDate('2026-08-26')).toBe('«26» августа 2026');
     expect(amountWithWords(1234).display).toBe('1234 (одна тысяча двести тридцать четыре)');
   });
@@ -104,5 +105,10 @@ describe('buildActDocx from template', () => {
     expect(xml).toMatch(/2196/);
     expect(xml).not.toMatch(/\{\{/);
     expect(xml).not.toMatch(/ОБРАЗЕЦ/);
+  });
+
+  it('has a price placeholder in the blank', () => {
+    var xml = strFromU8(unzipSync(fs.readFileSync(templatePath))['word/document.xml']);
+    expect(xml).toMatch(/\{\{svcPrice\}\}/);
   });
 });

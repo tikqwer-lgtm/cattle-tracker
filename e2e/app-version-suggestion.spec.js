@@ -33,7 +33,7 @@ test('модалка версии: «Обновить» ставит APK, а н�
   expect(await page.evaluate(() => window.__apkUpdateCalled)).toBe(true);
 });
 
-test('шапка «Обновить» копит сообщения и отправляет их пачкой', async ({ page }) => {
+test('шапка «Обновить» отправляет одно предложение сразу', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Войти без пароля' }).click();
   await expect(page.locator('#menu-screen.active')).toBeVisible({ timeout: 15000 });
@@ -57,15 +57,13 @@ test('шапка «Обновить» копит сообщения и отпр�
 
   await page.locator('#app-header-reload-btn').click();
   await expect(page.locator('#appVersionSuggestionText')).toBeVisible();
-  await page.locator('#appVersionSuggestionText').fill('Первое');
-  await page.locator('.app-version-suggestion-add').click();
-  await page.locator('#appVersionSuggestionText').fill('Второе');
-  await page.locator('.app-version-suggestion-add').click();
-  await expect(page.locator('.app-version-suggestion-queue-item')).toHaveCount(2);
+  await expect(page.locator('.app-version-suggestion-add')).toHaveCount(0);
+  await expect(page.locator('.app-version-suggestion-queue-item')).toHaveCount(0);
+  await page.locator('#appVersionSuggestionText').fill('Сделать поле цены');
   await page.locator('.app-version-suggestion-send').click();
   await expect(page.locator('#appVersionSuggestionText')).toHaveCount(0);
   const sent = await page.evaluate(() => window.__sentImprovements);
-  expect(sent.map((x) => x.message)).toEqual(['Первое', 'Второе']);
+  expect(sent.map((x) => x.message)).toEqual(['Сделать поле цены']);
   expect(sent.every((x) => x.payload && x.payload.kind === 'improvement')).toBe(true);
 });
 

@@ -10,7 +10,7 @@ import {
   isUziReportItem,
   formatPrintDate
 } from './service-work-report-build.js';
-import { amountWithWords, sumServiceRows } from '../utils/number-to-words-ru.js';
+import { amountWithWords, rowAmount, sumServiceRows } from '../utils/number-to-words-ru.js';
 import {
   collectActFormData,
   actFilename,
@@ -244,7 +244,8 @@ function actRowHtml() {
     '<td><input type="text" data-act-field="name" placeholder="Наименование" /></td>' +
     '<td><input type="text" data-act-field="unit" placeholder="гол" /></td>' +
     '<td><input type="number" inputmode="decimal" data-act-field="qty" min="0" step="any" /></td>' +
-    '<td><input type="number" inputmode="decimal" data-act-field="sum" min="0" step="any" /></td>' +
+    '<td><input type="number" inputmode="decimal" data-act-field="price" min="0" step="any" /></td>' +
+    '<td><input type="text" data-act-field="sum" readonly tabindex="-1" /></td>' +
     '<td><button type="button" class="small-btn service-act-del-row">Удалить</button></td>' +
     '</tr>'
   );
@@ -254,13 +255,13 @@ function actBlockHtml() {
   return (
     '<div class="service-act-block" id="serviceActBlock">' +
     '<h3>Акт об оказании услуг</h3>' +
-    '<p class="farm-settings-hint">Поля подставляются в бланк Word. Итого считается по суммам строк.</p>' +
+    '<p class="farm-settings-hint">Сумма строки = количество × цена. Итого считается само.</p>' +
     '<div class="service-act-fields">' +
-    '<label>В лице (исполнитель) <input type="text" id="serviceActExecutorFio" autocomplete="name" /></label>' +
-    '<label>С одной стороны, и <input type="text" id="serviceActCustomerFio" autocomplete="name" /></label>' +
+    '<label>В лице (исполнитель) <input type="text" id="serviceActExecutorFio" class="service-act-fio" autocomplete="name" /></label>' +
+    '<label>С одной стороны, и <input type="text" id="serviceActCustomerFio" class="service-act-fio" autocomplete="name" /></label>' +
     '</div>' +
     '<div class="service-act-table-wrap"><table class="list-table service-act-table"><thead><tr>' +
-    '<th>Наименование услуги</th><th>Ед. изм</th><th>Количество, гол</th><th>Сумма</th><th></th>' +
+    '<th>Наименование услуги</th><th>Ед. изм</th><th>Количество, гол</th><th>Цена</th><th>Сумма</th><th></th>' +
     '</tr></thead><tbody id="serviceActRows">' +
     actRowHtml() +
     '</tbody></table></div>' +
@@ -275,6 +276,18 @@ function actBlockHtml() {
 
 function refreshActTotal(root) {
   var data = collectActFormData(root, '');
+  root.querySelectorAll('.service-act-row').forEach(function (tr) {
+    var qty = ((tr.querySelector('[data-act-field="qty"]') || {}).value || '').trim();
+    var price = ((tr.querySelector('[data-act-field="price"]') || {}).value || '').trim();
+    var sumEl = tr.querySelector('[data-act-field="sum"]');
+    if (!sumEl) return;
+    if (!qty && !price) {
+      sumEl.value = '';
+      return;
+    }
+    var packed = amountWithWords(rowAmount({ qty: qty, price: price }));
+    sumEl.value = packed.digits;
+  });
   var total = sumServiceRows(data.rows);
   var packed = amountWithWords(total);
   var line = root.querySelector('#serviceActTotalLine');
@@ -342,8 +355,14 @@ function bindServiceActBlock(modal) {
     dl.addEventListener('click', function () {
       buildActFromForm(modal).then(function (file) {
         if (!file) return;
-        downloadActDocx(file.bytes, file.filename);
-        if (typeof showToast === 'function') showToast('Акт сохранён', 'success');
+        downloadActDocx(file.bytes, file.filename).then(function (res) {
+          if (res && res.canceled) return;
+          if (typeof showToast === 'function') showToast('Акт сохранён', 'success');
+        }).catch(function (err) {
+          if (typeof showToast === 'function') {
+            showToast((err && err.message) || 'Не удалось сохранить акт', 'error');
+          }
+        });
       });
     });
   }
@@ -352,7 +371,11 @@ function bindServiceActBlock(modal) {
     maxBtn.addEventListener('click', function () {
       buildActFromForm(modal).then(function (file) {
         if (!file) return;
-        return shareActDocx(file.bytes, file.filename);
+        return shareActDocx(file.bytes, file.filename).catch(function (err) {
+          if (typeof showToast === 'function') {
+            showToast((err && err.message) || 'Не удалось открыть MAX', 'error', 5000);
+          }
+        });
       });
     });
   }

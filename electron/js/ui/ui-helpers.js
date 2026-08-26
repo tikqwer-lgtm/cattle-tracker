@@ -64,18 +64,47 @@ function showProgressOverlay(opts) {
   overlay.className = 'ct-progress-overlay';
   overlay.setAttribute('role', 'alertdialog');
   overlay.setAttribute('aria-live', 'polite');
+  var cancelHtml = opts.cancelText
+    ? '<button type="button" class="btn ct-progress-cancel">' + String(opts.cancelText).replace(/</g, '&lt;') + '</button>'
+    : '';
   overlay.innerHTML =
     '<div class="ct-progress-card">' +
     '<div class="ct-progress-title"></div>' +
     '<div class="ct-progress-bar-track"><div class="ct-progress-bar-fill"></div></div>' +
     '<div class="ct-progress-detail"></div>' +
+    cancelHtml +
     '</div>';
+  if (opts.blocking) overlay.classList.add('ct-progress-overlay--blocking');
   var titleEl = overlay.querySelector('.ct-progress-title');
   var fillEl = overlay.querySelector('.ct-progress-bar-fill');
   var detailEl = overlay.querySelector('.ct-progress-detail');
+  var cancelBtn = overlay.querySelector('.ct-progress-cancel');
   titleEl.textContent = opts.title || 'Подождите…';
   detailEl.textContent = opts.detail || 'Подготовка…';
+  var canceled = false;
+  function requestCancel() {
+    if (canceled) return;
+    canceled = true;
+    if (typeof opts.onCancel === 'function') opts.onCancel();
+  }
+  if (cancelBtn) cancelBtn.addEventListener('click', requestCancel);
+  overlay.addEventListener('click', function (ev) {
+    ev.stopPropagation();
+  });
+  overlay.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && opts.cancelText) {
+      ev.preventDefault();
+      requestCancel();
+    }
+  });
   document.body.appendChild(overlay);
+  if (cancelBtn) {
+    try {
+      cancelBtn.focus();
+    } catch (e) {}
+  }
+  var prevOverflow = document.body.style.overflow;
+  if (opts.blocking) document.body.style.overflow = 'hidden';
   return {
     update: function (done, total, text) {
       var d = Number(done) || 0;
@@ -90,6 +119,7 @@ function showProgressOverlay(opts) {
       if (titleEl) titleEl.textContent = title || '';
     },
     close: function () {
+      if (opts.blocking) document.body.style.overflow = prevOverflow || '';
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     }
   };

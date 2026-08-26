@@ -254,6 +254,16 @@
   text-align: center;
   min-height: 1.25em;
 }
+.ct-progress-overlay--blocking {
+  z-index: 20000;
+  pointer-events: auto;
+  touch-action: none;
+}
+.ct-progress-cancel {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+}
 .view-virtual-viewport {
   position: absolute;
   left: 0;

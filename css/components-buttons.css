@@ -21,8 +21,7 @@
 }
 
 #menu-screen .action-buttons--main-hub {
-  grid-template-columns: 1fr;
-  max-width: 360px;
+  max-width: 520px;
 }
 
 @media (min-width: 560px) {

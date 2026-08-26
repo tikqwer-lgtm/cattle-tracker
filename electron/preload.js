@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('cattle-tracker-native-window-refresh', typeof reason === 'string' ? reason : ''),
   /** Кнопка «Восстановить ввод» в шапке: обход «мёртвого ввода» (кратко открыть/закрыть DevTools в упакованной сборке). */
   requestHitTestWorkaround: () => ipcRenderer.send('cattle-tracker-hit-test-workaround'),
+  /** Сохранить байты через системный диалог (акт Word и т.п.). */
+  saveBytesDialog: (opts) => ipcRenderer.invoke('save-bytes-dialog', opts),
   /** Диалог выбора APK (возвращает только путь — загрузка в main-процессе). */
   selectApkFile: () => ipcRenderer.invoke('select-apk-file'),
   uploadApkToServer: (opts) => ipcRenderer.invoke('upload-apk-to-server', opts),

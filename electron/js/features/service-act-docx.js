@@ -7,6 +7,7 @@ import {
   formatActHeaderDate,
   formatAmount,
   parseAmount,
+  rowAmount,
   sumServiceRows
 } from '../utils/number-to-words-ru.js';
 
@@ -32,7 +33,11 @@ function fillRowTemplate(tpl, row, index) {
   xml = replaceAll(xml, '{{svcUnit}}', escapeXml((row && row.unit) || ''));
   var qty = row && row.qty != null && String(row.qty).trim() !== '' ? String(row.qty).trim() : '';
   xml = replaceAll(xml, '{{svcQty}}', escapeXml(qty));
-  var sumStr = row && row.sum != null && String(row.sum).trim() !== '' ? formatAmount(parseAmount(row.sum)) : '';
+  var priceStr =
+    row && row.price != null && String(row.price).trim() !== '' ? formatAmount(parseAmount(row.price)) : '';
+  xml = replaceAll(xml, '{{svcPrice}}', escapeXml(priceStr));
+  var sumVal = rowAmount(row);
+  var sumStr = qty || priceStr ? formatAmount(sumVal) : '';
   xml = replaceAll(xml, '{{svcSum}}', escapeXml(sumStr));
   return xml;
 }
@@ -41,7 +46,7 @@ function expandServiceRows(xml, rows) {
   var re = /<w:tr\b[^>]*>[\s\S]*?\{\{svcName\}\}[\s\S]*?<\/w:tr>/;
   var m = String(xml || '').match(re);
   if (!m) throw new Error('В шаблоне акта нет строки услуг');
-  var list = rows && rows.length ? rows : [{ name: '', unit: '', qty: '', sum: '' }];
+  var list = rows && rows.length ? rows : [{ name: '', unit: '', qty: '', price: '' }];
   var built = list
     .map(function (row, i) {
       return fillRowTemplate(m[0], row, i);
@@ -73,9 +78,9 @@ function collectActFormData(root, dateIso) {
     var name = ((tr.querySelector('[data-act-field="name"]') || {}).value || '').trim();
     var unit = ((tr.querySelector('[data-act-field="unit"]') || {}).value || '').trim();
     var qty = ((tr.querySelector('[data-act-field="qty"]') || {}).value || '').trim();
-    var sum = ((tr.querySelector('[data-act-field="sum"]') || {}).value || '').trim();
-    if (!name && !unit && !qty && !sum) return;
-    rows.push({ name: name, unit: unit, qty: qty, sum: sum });
+    var price = ((tr.querySelector('[data-act-field="price"]') || {}).value || '').trim();
+    if (!name && !unit && !qty && !price) return;
+    rows.push({ name: name, unit: unit, qty: qty, price: price });
   });
   return {
     actDate: formatActHeaderDate(dateIso),
@@ -124,10 +129,43 @@ function fetchActTemplateBytes() {
   return tryUrl(0);
 }
 
-function downloadActDocx(bytes, filename) {
-  var blob = new Blob([bytes], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+function bytesToBase64(bytes) {
+  var arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  var binary = '';
+  var chunk = 0x8000;
+  for (var i = 0; i < arr.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+var DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+function getAppFilePlugin() {
+  if (typeof window === 'undefined' || !window.Capacitor) return Promise.resolve(null);
+  var C = window.Capacitor;
+  var native =
+    typeof C.isNativePlatform === 'function' &&
+    C.isNativePlatform() &&
+    typeof C.getPlatform === 'function' &&
+    C.getPlatform() === 'android';
+  if (!native) return Promise.resolve(null);
+  return import('@capacitor/core').then(function (core) {
+    return core.registerPlugin('AppFile', {
+      web: {
+        saveFile: function () {
+          return Promise.reject(new Error('web'));
+        },
+        shareFile: function () {
+          return Promise.reject(new Error('web'));
+        }
+      }
+    });
   });
+}
+
+function fallbackDownload(bytes, filename) {
+  var blob = new Blob([bytes], { type: DOCX_MIME });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -140,28 +178,85 @@ function downloadActDocx(bytes, filename) {
   }, 2000);
 }
 
-function shareActDocx(bytes, filename) {
-  var blob = new Blob([bytes], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  });
-  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-    try {
-      var file = new File([blob], filename, { type: blob.type });
-      var can = typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] });
-      if (can) {
-        return navigator.share({
-          title: filename,
-          text: 'Акт об оказании услуг',
-          files: [file]
+function downloadActDocx(bytes, filename) {
+  var name = filename || 'акт.docx';
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.saveBytesDialog === 'function') {
+    return window.electronAPI
+      .saveBytesDialog({
+        filename: name,
+        mime: DOCX_MIME,
+        data: bytesToBase64(bytes)
+      })
+      .then(function (res) {
+        if (res && res.canceled) return { canceled: true };
+        if (res && res.ok === false) throw new Error(res.error || 'Не удалось сохранить');
+        return { canceled: false };
+      });
+  }
+  return getAppFilePlugin().then(function (plugin) {
+    if (plugin && typeof plugin.saveFile === 'function') {
+      return plugin
+        .saveFile({ filename: name, mime: DOCX_MIME, data: bytesToBase64(bytes) })
+        .then(function (res) {
+          return { canceled: !!(res && res.canceled) };
         });
-      }
-    } catch (e) {}
-  }
-  downloadActDocx(bytes, filename);
-  if (typeof showToast === 'function') {
-    showToast('Файл сохранён. Откройте его в MAX', 'success');
-  }
-  return Promise.resolve('downloaded');
+    }
+    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+      return window
+        .showSaveFilePicker({
+          suggestedName: name,
+          types: [
+            {
+              description: 'Word',
+              accept: { [DOCX_MIME]: ['.docx'] }
+            }
+          ]
+        })
+        .then(function (handle) {
+          return handle.createWritable();
+        })
+        .then(function (writable) {
+          return writable.write(new Blob([bytes], { type: DOCX_MIME })).then(function () {
+            return writable.close();
+          });
+        })
+        .then(function () {
+          return { canceled: false };
+        })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') return { canceled: true };
+          throw err;
+        });
+    }
+    fallbackDownload(bytes, name);
+    return { canceled: false };
+  });
+}
+
+function shareActDocx(bytes, filename) {
+  var name = filename || 'акт.docx';
+  return getAppFilePlugin().then(function (plugin) {
+    if (plugin && typeof plugin.shareFile === 'function') {
+      return plugin.shareFile({ filename: name, mime: DOCX_MIME, data: bytesToBase64(bytes) });
+    }
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        var file = new File([bytes], name, { type: DOCX_MIME });
+        var can = typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] });
+        if (can) {
+          return navigator.share({
+            title: name,
+            text: 'Акт об оказании услуг',
+            files: [file]
+          });
+        }
+      } catch (e) {}
+    }
+    if (typeof showToast === 'function') {
+      showToast('Не удалось открыть MAX. Сохраните файл и отправьте вручную.', 'error', 5000);
+    }
+    return Promise.reject(new Error('share unavailable'));
+  });
 }
 
 export {

@@ -12,9 +12,11 @@ describe('resolveScreenParent', () => {
     expect(resolveScreenParent('stall-inventory')).toEqual({ screen: 'submenu', group: 'data' });
   });
 
-  it('submenu → herd-hub → menu; menu has no parent', () => {
+  it('submenu → herd-hub → menu; admin and farm-card → menu', () => {
     expect(resolveScreenParent('submenu')).toEqual({ screen: 'herd-hub' });
     expect(resolveScreenParent('herd-hub')).toEqual({ screen: 'menu' });
+    expect(resolveScreenParent('admin')).toEqual({ screen: 'menu' });
+    expect(resolveScreenParent('farm-card')).toEqual({ screen: 'menu' });
     expect(resolveScreenParent('menu')).toBeNull();
   });
 

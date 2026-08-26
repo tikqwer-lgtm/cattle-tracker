@@ -73,12 +73,12 @@ test.describe('Чек-лист: вход и выход', () => {
     await enterLocalMenu(page);
     await expect(page.getByRole('button', { name: 'Работа со стадом' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Карточка хозяйства' })).toBeVisible();
+    await expect(page.locator('#menuLogoutBtn')).toBeVisible();
   });
 
   test('выход возвращает на вход и фокус в пароль', async ({ page }) => {
     await enterLocalMenu(page);
-    await openHerdHub(page);
-    await page.getByRole('button', { name: 'Выход' }).click();
+    await page.locator('#menuLogoutBtn').click();
     await expect(page.locator('#auth-screen.active')).toBeVisible({ timeout: 10000 });
     const serverAuth = page.locator('#auth-server-block');
     if (await serverAuth.isVisible()) {

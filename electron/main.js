@@ -586,6 +586,26 @@ function sendApkUploadProgress(payload) {
   }
 }
 
+ipcMain.handle('save-bytes-dialog', async (_evt, payload) => {
+  try {
+    const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow();
+    if (!win) return { ok: false, canceled: true };
+    const filename = String((payload && payload.filename) || 'файл.docx');
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Сохранить акт',
+      defaultPath: filename,
+      filters: [{ name: 'Word', extensions: ['docx'] }]
+    });
+    if (canceled || !filePath) return { canceled: true };
+    const b64 = String((payload && payload.data) || '');
+    if (!b64) return { ok: false, error: 'Нет данных файла' };
+    fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+    return { ok: true, canceled: false, path: filePath };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || 'Не удалось сохранить' };
+  }
+});
+
 /** Только путь: большие APK не передаём через IPC в renderer (лимит/тихий сбой). */
 ipcMain.handle('select-apk-file', async () => {
   const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow();

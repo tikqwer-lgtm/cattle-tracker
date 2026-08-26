@@ -34,6 +34,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(OpenExternalUrlPlugin.class);
         registerPlugin(ApkUpdatePlugin.class);
+        registerPlugin(AppFilePlugin.class);
         registerPlugin(TelemetryBridgePlugin.class);
         super.onCreate(savedInstanceState);
         TelemetryRingLog.append(this, "lifecycle: MainActivity.onCreate");
