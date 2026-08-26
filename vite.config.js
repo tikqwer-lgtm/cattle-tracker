@@ -24,6 +24,19 @@ function viteDistCopyPlugin() {
   const root = path.resolve(__dirname);
   return {
     name: 'vite-dist-copy',
+    configureServer(server) {
+      server.middlewares.use(function (req, res, next) {
+        const url = String((req && req.url) || '').split('?')[0];
+        if (url !== '/templates/act-uslug.docx') return next();
+        const file = path.join(root, 'assets', 'templates', 'act-uslug.docx');
+        if (!fs.existsSync(file)) return next();
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        );
+        fs.createReadStream(file).pipe(res);
+      });
+    },
     closeBundle() {
       const distDir = path.join(root, 'dist');
       if (!fs.existsSync(distDir)) return;
@@ -39,6 +52,10 @@ function viteDistCopyPlugin() {
       for (const dir of ['icons']) {
         const src = path.join(root, dir);
         if (fs.existsSync(src)) copyDirSync(src, path.join(distDir, dir));
+      }
+      const templatesSrc = path.join(root, 'assets', 'templates');
+      if (fs.existsSync(templatesSrc)) {
+        copyDirSync(templatesSrc, path.join(distDir, 'templates'));
       }
       for (const f of ['manifest.json', 'sw.js', 'package.json', 'CHANGELOG.md']) {
         const src = path.join(root, f);

@@ -71,6 +71,11 @@ try {
     console.log('  ', dir + '/');
   }
 });
+const templatesSrc = path.join(root, 'assets', 'templates');
+if (fs.existsSync(templatesSrc)) {
+  copyDirTo('assets/templates', 'templates');
+  console.log('  templates/ (акт Word)');
+}
 // Копируем бандл в web/ (не dist/), чтобы electron-builder не конфликтовал с directories.output: "dist"
 const rootDist = path.join(root, 'dist');
 if (fs.existsSync(rootDist)) {

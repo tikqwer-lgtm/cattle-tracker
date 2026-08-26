@@ -10,6 +10,15 @@ import {
   isUziReportItem,
   formatPrintDate
 } from './service-work-report-build.js';
+import { amountWithWords, sumServiceRows } from '../utils/number-to-words-ru.js';
+import {
+  collectActFormData,
+  actFilename,
+  buildActDocx,
+  fetchActTemplateBytes,
+  downloadActDocx,
+  shareActDocx
+} from './service-act-docx.js';
 
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -229,6 +238,127 @@ function saveReport(items, date) {
   });
 }
 
+function actRowHtml() {
+  return (
+    '<tr class="service-act-row">' +
+    '<td><input type="text" data-act-field="name" placeholder="Наименование" /></td>' +
+    '<td><input type="text" data-act-field="unit" placeholder="гол" /></td>' +
+    '<td><input type="number" inputmode="decimal" data-act-field="qty" min="0" step="any" /></td>' +
+    '<td><input type="number" inputmode="decimal" data-act-field="sum" min="0" step="any" /></td>' +
+    '<td><button type="button" class="small-btn service-act-del-row">Удалить</button></td>' +
+    '</tr>'
+  );
+}
+
+function actBlockHtml() {
+  return (
+    '<div class="service-act-block" id="serviceActBlock">' +
+    '<h3>Акт об оказании услуг</h3>' +
+    '<p class="farm-settings-hint">Поля подставляются в бланк Word. Итого считается по суммам строк.</p>' +
+    '<div class="service-act-fields">' +
+    '<label>В лице (исполнитель) <input type="text" id="serviceActExecutorFio" autocomplete="name" /></label>' +
+    '<label>С одной стороны, и <input type="text" id="serviceActCustomerFio" autocomplete="name" /></label>' +
+    '</div>' +
+    '<div class="service-act-table-wrap"><table class="list-table service-act-table"><thead><tr>' +
+    '<th>Наименование услуги</th><th>Ед. изм</th><th>Количество, гол</th><th>Сумма</th><th></th>' +
+    '</tr></thead><tbody id="serviceActRows">' +
+    actRowHtml() +
+    '</tbody></table></div>' +
+    '<button type="button" class="small-btn" id="serviceActAddRowBtn">Добавить строку</button>' +
+    '<p class="service-act-total" id="serviceActTotalLine">Итого: 0 (ноль)</p>' +
+    '<div class="service-act-actions">' +
+    '<button type="button" class="action-btn" id="serviceActDownloadBtn">Скачать Word</button>' +
+    '<button type="button" class="action-btn" id="serviceActMaxBtn">Отправить в MAX</button>' +
+    '</div></div>'
+  );
+}
+
+function refreshActTotal(root) {
+  var data = collectActFormData(root, '');
+  var total = sumServiceRows(data.rows);
+  var packed = amountWithWords(total);
+  var line = root.querySelector('#serviceActTotalLine');
+  if (line) {
+    line.textContent = 'Итого: ' + packed.digits + ' (' + packed.words + ') ' + packed.rubleWord;
+  }
+}
+
+function currentActDate(root) {
+  var dateEl = root.querySelector('#serviceReportDate');
+  return (dateEl && dateEl.value) || todayIso();
+}
+
+function buildActFromForm(root) {
+  var data = collectActFormData(root, currentActDate(root));
+  if (!data.rows.length) {
+    if (typeof showToast === 'function') showToast('Добавьте хотя бы одну услугу в акт', 'error');
+    return Promise.resolve(null);
+  }
+  return fetchActTemplateBytes()
+    .then(function (bytes) {
+      return {
+        bytes: buildActDocx(bytes, data),
+        filename: actFilename(currentActDate(root))
+      };
+    })
+    .catch(function (err) {
+      if (typeof showToast === 'function') {
+        showToast((err && err.message) || 'Не удалось собрать акт', 'error');
+      }
+      return null;
+    });
+}
+
+function bindServiceActBlock(modal) {
+  var tbody = modal.querySelector('#serviceActRows');
+  var addBtn = modal.querySelector('#serviceActAddRowBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', function () {
+      if (!tbody) return;
+      tbody.insertAdjacentHTML('beforeend', actRowHtml());
+      refreshActTotal(modal);
+    });
+  }
+  modal.addEventListener('click', function (ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('.service-act-del-row') : null;
+    if (!btn || !tbody) return;
+    var tr = btn.closest('tr');
+    if (!tr) return;
+    if (tbody.querySelectorAll('.service-act-row').length <= 1) {
+      tr.querySelectorAll('input').forEach(function (inp) {
+        inp.value = '';
+      });
+    } else {
+      tr.parentNode.removeChild(tr);
+    }
+    refreshActTotal(modal);
+  });
+  modal.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t && t.getAttribute && t.getAttribute('data-act-field')) refreshActTotal(modal);
+  });
+  var dl = modal.querySelector('#serviceActDownloadBtn');
+  if (dl) {
+    dl.addEventListener('click', function () {
+      buildActFromForm(modal).then(function (file) {
+        if (!file) return;
+        downloadActDocx(file.bytes, file.filename);
+        if (typeof showToast === 'function') showToast('Акт сохранён', 'success');
+      });
+    });
+  }
+  var maxBtn = modal.querySelector('#serviceActMaxBtn');
+  if (maxBtn) {
+    maxBtn.addEventListener('click', function () {
+      buildActFromForm(modal).then(function (file) {
+        if (!file) return;
+        return shareActDocx(file.bytes, file.filename);
+      });
+    });
+  }
+  refreshActTotal(modal);
+}
+
 function openServiceWorkReportForm() {
   closeReportModal();
   var date = todayIso();
@@ -250,6 +380,7 @@ function openServiceWorkReportForm() {
     '</div>' +
     '<p class="farm-settings-hint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
+    actBlockHtml() +
     '</div>' +
     '<div class="view-fields-actions">' +
     '<button type="button" class="action-btn" id="serviceReportRefreshBtn">Обновить опись</button>' +
@@ -257,6 +388,7 @@ function openServiceWorkReportForm() {
     '<button type="button" class="action-btn" id="serviceReportSaveBtn">Сохранить в ленту</button>' +
     '</div></div>';
   document.body.appendChild(modal);
+  bindServiceActBlock(modal);
 
   function refreshPreview() {
     var items = collectFromForm(modal);

@@ -697,6 +697,53 @@
   overflow-x: auto;
   margin-top: 0.75rem;
 }
+.service-act-block {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #ddd);
+}
+.service-act-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+.service-act-fields label {
+  display: block;
+  margin: 0.4rem 0;
+}
+.service-act-fields input[type='text'],
+.service-act-fields input[type='number'] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.service-act-table-wrap {
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.service-act-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.service-act-table th,
+.service-act-table td {
+  padding: 4px;
+  vertical-align: middle;
+}
+.service-act-table input {
+  width: 100%;
+  min-width: 4.5rem;
+  box-sizing: border-box;
+}
+.service-act-total {
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+.service-act-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.5rem;
+}
 .farm-card-ev-report td {
   cursor: pointer;
 }
