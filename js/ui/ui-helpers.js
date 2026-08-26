@@ -85,9 +85,31 @@ function showProgressOverlay(opts) {
   function requestCancel() {
     if (canceled) return;
     canceled = true;
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = 'Отмена…';
+    }
     if (typeof opts.onCancel === 'function') opts.onCancel();
   }
-  if (cancelBtn) cancelBtn.addEventListener('click', requestCancel);
+  function bindCancel(el) {
+    if (!el) return;
+    el.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      requestCancel();
+    });
+    el.addEventListener('pointerup', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      requestCancel();
+    });
+    el.addEventListener('touchend', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      requestCancel();
+    });
+  }
+  bindCancel(cancelBtn);
   overlay.addEventListener('click', function (ev) {
     ev.stopPropagation();
   });

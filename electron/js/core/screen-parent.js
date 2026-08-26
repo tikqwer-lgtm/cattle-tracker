@@ -34,9 +34,10 @@ var SCREEN_PARENT = {
   'protocol-assign': { screen: 'submenu', group: 'actions' }
 };
 
-function resolveScreenParent(screenId) {
+function resolveScreenParent(screenId, submenuGroup) {
   if (!screenId || screenId === 'menu' || screenId === 'auth') return null;
   if (screenId === 'view-cow') return { type: 'viewCowBack' };
+  if (screenId === 'submenu' && submenuGroup === 'settings') return { screen: 'menu' };
   return SCREEN_PARENT[screenId] || { screen: 'menu' };
 }
 

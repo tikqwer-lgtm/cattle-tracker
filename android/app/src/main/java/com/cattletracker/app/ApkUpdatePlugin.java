@@ -34,6 +34,8 @@ public class ApkUpdatePlugin extends Plugin {
 
     private final AtomicBoolean cancelRequested = new AtomicBoolean(false);
     private final AtomicBoolean downloadRunning = new AtomicBoolean(false);
+    private volatile HttpURLConnection currentConn;
+    private volatile Thread downloadThread;
 
     @PluginMethod
     public void downloadApk(PluginCall call) {
@@ -47,8 +49,9 @@ public class ApkUpdatePlugin extends Plugin {
             return;
         }
         cancelRequested.set(false);
+        currentConn = null;
 
-        new Thread(() -> {
+        Thread t = new Thread(() -> {
             File out = new File(getContext().getCacheDir(), APK_CACHE_NAME);
             try {
                 if (out.exists() && !out.delete()) {
@@ -79,16 +82,36 @@ public class ApkUpdatePlugin extends Plugin {
                 call.reject(ERR_CANCELED);
             } catch (Exception e) {
                 if (out.exists()) out.delete();
-                call.reject(e.getMessage() != null ? e.getMessage() : "Ошибка загрузки", e);
+                if (cancelRequested.get()) {
+                    call.reject(ERR_CANCELED);
+                } else {
+                    call.reject(e.getMessage() != null ? e.getMessage() : "Ошибка загрузки", e);
+                }
             } finally {
                 downloadRunning.set(false);
+                currentConn = null;
+                downloadThread = null;
             }
-        }).start();
+        });
+        downloadThread = t;
+        t.start();
     }
 
     @PluginMethod
     public void cancelDownload(PluginCall call) {
         cancelRequested.set(true);
+        HttpURLConnection conn = currentConn;
+        if (conn != null) {
+            try {
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        }
+        Thread t = downloadThread;
+        if (t != null) {
+            try {
+                t.interrupt();
+            } catch (Exception ignored) {}
+        }
         call.resolve();
     }
 
@@ -101,10 +124,15 @@ public class ApkUpdatePlugin extends Plugin {
     private void notifyProgress(long loaded, long expected) {
         JSObject data = new JSObject();
         data.put("loaded", loaded);
-        data.put("total", expected);
+        data.put("total", expected > 0 ? expected : 0);
         int pct = expected > 0 ? (int) Math.min(100, Math.round(100.0 * loaded / expected)) : 0;
         data.put("percent", pct);
-        notifyListeners("progress", data);
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(() -> notifyListeners("progress", data));
+        } else {
+            notifyListeners("progress", data);
+        }
     }
 
     private void downloadToFile(String urlStr, File out) throws Exception {
@@ -114,10 +142,19 @@ public class ApkUpdatePlugin extends Plugin {
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
+            currentConn = conn;
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setInstanceFollowRedirects(true);
+            conn.setRequestProperty("Accept-Encoding", "identity");
+            if (cancelRequested.get()) {
+                throw new CanceledException();
+            }
+            notifyProgress(0, 0);
             conn.connect();
+            if (cancelRequested.get()) {
+                throw new CanceledException();
+            }
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) {
                 throw new Exception("Сервер вернул код " + code);
@@ -129,16 +166,16 @@ public class ApkUpdatePlugin extends Plugin {
             long total = 0;
             int n;
             long lastNotify = 0;
-            notifyProgress(0, expected);
+            notifyProgress(0, expected > 0 ? expected : 0);
             while ((n = in.read(buf)) != -1) {
                 if (cancelRequested.get()) {
                     throw new CanceledException();
                 }
                 fos.write(buf, 0, n);
                 total += n;
-                if (total - lastNotify >= 64 * 1024 || (expected > 0 && total >= expected)) {
+                if (total - lastNotify >= 32 * 1024 || (expected > 0 && total >= expected)) {
                     lastNotify = total;
-                    notifyProgress(total, expected);
+                    notifyProgress(total, expected > 0 ? expected : total);
                 }
             }
             fos.flush();

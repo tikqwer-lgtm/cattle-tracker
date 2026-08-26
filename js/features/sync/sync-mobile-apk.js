@@ -498,22 +498,38 @@
     return (v / (1024 * 1024)).toFixed(1) + ' МБ';
   }
 
+  var apkUpdatePlugin = null;
+  var apkUpdatePluginPromise = null;
+
   function getApkUpdatePlugin() {
-    return import('@capacitor/core').then(function (core) {
-      return core.registerPlugin('ApkUpdate', {
-        web: {
-          downloadApk: function () {
-            return Promise.reject(new Error('web'));
-          },
-          cancelDownload: function () {
-            return Promise.resolve();
-          },
-          addListener: function () {
-            return Promise.resolve({ remove: function () {} });
+    if (apkUpdatePlugin) return Promise.resolve(apkUpdatePlugin);
+    if (apkUpdatePluginPromise) return apkUpdatePluginPromise;
+    apkUpdatePluginPromise = import('@capacitor/core')
+      .then(function (core) {
+        apkUpdatePlugin = core.registerPlugin('ApkUpdate', {
+          web: {
+            downloadApk: function () {
+              return Promise.reject(new Error('web'));
+            },
+            cancelDownload: function () {
+              return Promise.resolve();
+            },
+            addListener: function () {
+              return Promise.resolve({ remove: function () {} });
+            }
           }
-        }
+        });
+        return apkUpdatePlugin;
+      })
+      .catch(function () {
+        apkUpdatePluginPromise = null;
+        return null;
       });
-    });
+    return apkUpdatePluginPromise;
+  }
+
+  if (typeof global.Capacitor !== 'undefined') {
+    getApkUpdatePlugin();
   }
 
   function downloadApkViaNative(apkUrl) {
@@ -527,45 +543,79 @@
     if (!isAndroidNative) {
       return openApkDownloadUrl(apkUrl);
     }
+    var userCanceled = false;
+    var pluginRef = apkUpdatePlugin;
     var progress =
       typeof global.showProgressOverlay === 'function'
         ? global.showProgressOverlay({
             title: 'Загрузка обновления',
-            detail: 'Подключение…',
+            detail: 'Загрузка…',
             cancelText: 'Отмена',
             blocking: true,
             onCancel: function () {
-              getApkUpdatePlugin()
-                .then(function (plugin) {
-                  return plugin.cancelDownload();
-                })
-                .catch(function () {});
+              userCanceled = true;
+              if (pluginRef && typeof pluginRef.cancelDownload === 'function') {
+                try {
+                  pluginRef.cancelDownload();
+                } catch (eCancel) {}
+              } else {
+                getApkUpdatePlugin()
+                  .then(function (plugin) {
+                    if (plugin && plugin.cancelDownload) return plugin.cancelDownload();
+                  })
+                  .catch(function () {});
+              }
+              if (progress) {
+                progress.close();
+                progress = null;
+              }
+              if (typeof global.showToast === 'function') {
+                global.showToast('Загрузка отменена', 'info', 3000);
+              }
             }
           })
         : null;
     var listenerHandle = null;
-    return getApkUpdatePlugin()
-      .then(function (ApkUpdate) {
-        var listenP =
-          typeof ApkUpdate.addListener === 'function'
-            ? ApkUpdate.addListener('progress', function (ev) {
-                if (!progress || !ev) return;
-                var loaded = Number(ev.loaded) || 0;
-                var total = Number(ev.total) || 0;
-                var pct = total > 0 ? Math.min(100, Math.round((100 * loaded) / total)) : Number(ev.percent) || 0;
-                var text =
-                  total > 0
-                    ? formatBytes(loaded) + ' из ' + formatBytes(total) + ' (' + pct + '%)'
-                    : formatBytes(loaded);
-                progress.update(loaded, total > 0 ? total : loaded, text);
-              })
-            : Promise.resolve(null);
-        return listenP.then(function (handle) {
+
+    function attachProgress(plugin) {
+      if (!plugin || typeof plugin.addListener !== 'function') return Promise.resolve(null);
+      return plugin.addListener('progress', function (ev) {
+        if (!progress || !ev || userCanceled) return;
+        var loaded = Number(ev.loaded) || 0;
+        var total = Number(ev.total) || 0;
+        var pct = total > 0 ? Math.min(100, Math.round((100 * loaded) / total)) : Number(ev.percent) || 0;
+        var text =
+          total > 0
+            ? formatBytes(loaded) + ' из ' + formatBytes(total) + ' (' + pct + '%)'
+            : loaded > 0
+              ? formatBytes(loaded)
+              : 'Загрузка…';
+        progress.update(loaded, total > 0 ? total : loaded, text);
+      });
+    }
+
+    function startDownload(plugin) {
+      if (!plugin || typeof plugin.downloadApk !== 'function') {
+        return Promise.reject(new Error('web'));
+      }
+      pluginRef = plugin;
+      if (userCanceled) {
+        if (plugin.cancelDownload) plugin.cancelDownload();
+        return Promise.reject(new Error('CANCELED'));
+      }
+      if (progress) progress.update(0, 0, 'Загрузка…');
+      attachProgress(plugin)
+        .then(function (handle) {
           listenerHandle = handle;
-          return ApkUpdate.downloadApk({ url: apkUrl });
-        });
-      })
+        })
+        .catch(function () {});
+      return plugin.downloadApk({ url: apkUrl });
+    }
+
+    return (pluginRef ? Promise.resolve(pluginRef) : getApkUpdatePlugin())
+      .then(startDownload)
       .then(function () {
+        if (userCanceled) return;
         if (progress) progress.close();
         if (typeof global.showToast === 'function') {
           global.showToast('Откройте установщик на экране', 'success', 4000);
@@ -573,6 +623,7 @@
       })
       .catch(function (err) {
         if (progress) progress.close();
+        if (userCanceled) return;
         var msg = err && err.message ? String(err.message) : '';
         if (msg === 'CANCELED' || /отмен/i.test(msg)) {
           if (typeof global.showToast === 'function') global.showToast('Загрузка отменена', 'info', 3000);

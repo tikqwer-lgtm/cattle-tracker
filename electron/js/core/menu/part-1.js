@@ -152,7 +152,7 @@ function navigateToParent() {
       return true;
     }
   }
-  var parent = resolveScreenParent(_currentScreenId);
+  var parent = resolveScreenParent(_currentScreenId, typeof window !== 'undefined' ? window._submenuGroup : undefined);
   if (!parent) return false;
   if (parent.type === 'viewCowBack') {
     if (typeof window.viewCowBack === 'function') {

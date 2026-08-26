@@ -1,10 +1,10 @@
 package com.cattletracker.app;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import androidx.core.content.FileProvider;
@@ -15,6 +15,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
@@ -28,19 +29,26 @@ public class AppFilePlugin extends Plugin {
     private static final String DOCX_MIME =
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+    private File pendingSaveFile;
+
     @PluginMethod
     public void saveFile(PluginCall call) {
         String filename = call.getString("filename", "file.docx");
-        String mime = call.getString("mime", DOCX_MIME);
-        if (call.getString("data") == null || call.getString("data").isEmpty()) {
+        String data = call.getString("data");
+        if (data == null || data.isEmpty()) {
             call.reject("Нет данных файла");
             return;
         }
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType(mime != null && !mime.isEmpty() ? mime : "*/*");
-        intent.putExtra(Intent.EXTRA_TITLE, filename);
-        startActivityForResult(call, intent, "onSavePicked");
+        try {
+            pendingSaveFile = writeCache(sanitizeName(filename), data);
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType(DOCX_MIME);
+            intent.putExtra(Intent.EXTRA_TITLE, sanitizeName(filename));
+            startActivityForResult(call, intent, "onSavePicked");
+        } catch (Exception e) {
+            call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось открыть сохранение", e);
+        }
     }
 
     @ActivityCallback
@@ -49,7 +57,7 @@ public class AppFilePlugin extends Plugin {
             return;
         }
         JSObject out = new JSObject();
-        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+        if (result == null || result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
             out.put("canceled", true);
             call.resolve(out);
             return;
@@ -61,7 +69,17 @@ public class AppFilePlugin extends Plugin {
             return;
         }
         try {
-            byte[] bytes = Base64.decode(call.getString("data"), Base64.DEFAULT);
+            byte[] bytes;
+            if (pendingSaveFile != null && pendingSaveFile.exists()) {
+                bytes = readFile(pendingSaveFile);
+            } else {
+                String data = call.getString("data");
+                if (data == null || data.isEmpty()) {
+                    call.reject("Нет данных файла");
+                    return;
+                }
+                bytes = Base64.decode(data, Base64.DEFAULT);
+            }
             OutputStream os = getContext().getContentResolver().openOutputStream(uri);
             if (os == null) {
                 call.reject("Не удалось открыть файл для записи");
@@ -83,53 +101,85 @@ public class AppFilePlugin extends Plugin {
     @PluginMethod
     public void shareFile(PluginCall call) {
         String filename = call.getString("filename", "file.docx");
-        String mime = call.getString("mime", DOCX_MIME);
         String data = call.getString("data");
         if (data == null || data.isEmpty()) {
             call.reject("Нет данных файла");
             return;
         }
-        if (mime == null || mime.isEmpty()) {
-            mime = DOCX_MIME;
-        }
         try {
-            byte[] bytes = Base64.decode(data, Base64.DEFAULT);
-            File out = new File(getContext().getCacheDir(), sanitizeName(filename));
-            FileOutputStream fos = new FileOutputStream(out);
-            try {
-                fos.write(bytes);
-                fos.flush();
-            } finally {
-                fos.close();
-            }
+            File out = writeCache(sanitizeName(filename), data);
             Uri uri = FileProvider.getUriForFile(
                 getContext(),
                 getContext().getPackageName() + ".fileprovider",
                 out
             );
             Intent send = new Intent(Intent.ACTION_SEND);
-            send.setType(mime);
+            send.setType("*/*");
             send.putExtra(Intent.EXTRA_STREAM, uri);
             send.putExtra(Intent.EXTRA_SUBJECT, filename);
+            send.setClipData(ClipData.newRawUri(filename, uri));
             send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Activity activity = getActivity();
+            if (activity == null) {
+                send.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
             if (isPackageInstalled(MAX_PACKAGE)) {
-                send.setPackage(MAX_PACKAGE);
-                grantUri(uri, MAX_PACKAGE);
+                try {
+                    Intent max = new Intent(send);
+                    max.setPackage(MAX_PACKAGE);
+                    grantUri(uri, MAX_PACKAGE);
+                    startIntent(activity, max);
+                    JSObject res = new JSObject();
+                    res.put("ok", true);
+                    call.resolve(res);
+                    return;
+                } catch (Exception ignored) {}
             }
             Intent chooser = Intent.createChooser(send, "Отправить в MAX");
             chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Activity activity = getActivity();
-            if (activity != null) {
-                activity.startActivity(chooser);
-            } else {
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(chooser);
-            }
+            startIntent(activity, chooser);
             JSObject res = new JSObject();
             res.put("ok", true);
             call.resolve(res);
         } catch (Exception e) {
             call.reject(e.getMessage() != null ? e.getMessage() : "Не удалось отправить файл", e);
+        }
+    }
+
+    private void startIntent(Activity activity, Intent intent) {
+        if (activity != null) {
+            activity.startActivity(intent);
+        } else {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+        }
+    }
+
+    private File writeCache(String filename, String base64) throws Exception {
+        byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+        File out = new File(getContext().getCacheDir(), filename);
+        FileOutputStream fos = new FileOutputStream(out);
+        try {
+            fos.write(bytes);
+            fos.flush();
+        } finally {
+            fos.close();
+        }
+        return out;
+    }
+
+    private static byte[] readFile(File file) throws Exception {
+        FileInputStream in = new FileInputStream(file);
+        try {
+            byte[] bytes = new byte[(int) file.length()];
+            int off = 0;
+            int n;
+            while (off < bytes.length && (n = in.read(bytes, off, bytes.length - off)) > 0) {
+                off += n;
+            }
+            return bytes;
+        } finally {
+            in.close();
         }
     }
 
@@ -141,14 +191,6 @@ public class AppFilePlugin extends Plugin {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             );
         } catch (Exception ignored) {}
-        if (Build.VERSION.SDK_INT >= 16) {
-            try {
-                getContext().getPackageManager().queryIntentActivities(
-                    new Intent(Intent.ACTION_SEND).setType("*/*"),
-                    PackageManager.MATCH_DEFAULT_ONLY
-                );
-            } catch (Exception ignored) {}
-        }
     }
 
     private boolean isPackageInstalled(String packageName) {
@@ -163,7 +205,10 @@ public class AppFilePlugin extends Plugin {
     private static String sanitizeName(String name) {
         String n = name != null ? name.trim() : "";
         n = n.replaceAll("[\\\\/:*?\"<>|]", "_");
+        n = n.replaceAll("(?i)\\.docx\\s*\\((\\d+)\\)\\s*$", " ($1).docx");
+        n = n.replaceAll("(?i)\\.docx(\\d+)\\s*$", " ($1).docx");
         if (n.isEmpty()) n = "file.docx";
+        if (!n.toLowerCase().endsWith(".docx")) n = n + ".docx";
         return n;
     }
 }

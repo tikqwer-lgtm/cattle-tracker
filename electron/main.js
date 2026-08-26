@@ -589,14 +589,19 @@ function sendApkUploadProgress(payload) {
 ipcMain.handle('save-bytes-dialog', async (_evt, payload) => {
   try {
     const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow();
-    if (!win) return { ok: false, canceled: true };
     const filename = String((payload && payload.filename) || 'файл.docx');
-    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    const opts = {
       title: 'Сохранить акт',
-      defaultPath: filename,
+      defaultPath: filename.toLowerCase().endsWith('.docx') ? filename : filename + '.docx',
       filters: [{ name: 'Word', extensions: ['docx'] }]
-    });
-    if (canceled || !filePath) return { canceled: true };
+    };
+    const { canceled, filePath: picked } = win
+      ? await dialog.showSaveDialog(win, opts)
+      : await dialog.showSaveDialog(opts);
+    if (canceled || !picked) return { canceled: true };
+    let filePath = String(picked);
+    filePath = filePath.replace(/\.docx\s*\((\d+)\)\s*$/i, ' ($1).docx');
+    if (!filePath.toLowerCase().endsWith('.docx')) filePath += '.docx';
     const b64 = String((payload && payload.data) || '');
     if (!b64) return { ok: false, error: 'Нет данных файла' };
     fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));

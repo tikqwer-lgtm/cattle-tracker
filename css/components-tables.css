@@ -226,6 +226,8 @@
   padding: 20px 18px 16px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
   box-sizing: border-box;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 .ct-progress-title {
   margin: 0 0 14px;
@@ -257,12 +259,17 @@
 .ct-progress-overlay--blocking {
   z-index: 20000;
   pointer-events: auto;
-  touch-action: none;
+  touch-action: auto;
 }
 .ct-progress-cancel {
   display: block;
   width: 100%;
   margin-top: 14px;
+  min-height: 44px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 1;
 }
 .view-virtual-viewport {
   position: absolute;

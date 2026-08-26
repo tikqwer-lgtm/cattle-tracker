@@ -11,9 +11,12 @@ import {
   amountWithWords
 } from '../js/utils/number-to-words-ru.js';
 import {
-  expandServiceRows,
+  fillServiceTable,
   fillActDocumentXml,
-  buildActDocx
+  buildActDocx,
+  fetchActTemplateBytes,
+  getCachedActTemplateBytes,
+  ensureDocxFilename
 } from '../js/features/service-act-docx.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
@@ -52,19 +55,23 @@ describe('act amounts', () => {
 });
 
 describe('fillActDocumentXml', () => {
-  it('clones the service row and substitutes placeholders', () => {
+  it('fills three fixed service rows without cloning the preamble', () => {
     var xml =
+      '<w:p><w:r><w:t>преамбула {{executorFio}}</w:t></w:r></w:p>' +
       '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>hdr</w:t></w:r></w:p></w:tc></w:tr>' +
-      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum}}</w:t></w:r></w:p></w:tc>' +
-      '<w:tc><w:p><w:r><w:t>{{svcName}}</w:t></w:r></w:p></w:tc>' +
-      '<w:tc><w:p><w:r><w:t>{{svcUnit}}</w:t></w:r></w:p></w:tc>' +
-      '<w:tc><w:p><w:r><w:t>{{svcQty}}</w:t></w:r></w:p></w:tc>' +
-      '<w:tc><w:p><w:r><w:t>{{svcSum}}</w:t></w:r></w:p></w:tc></w:tr>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum1}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName1}}</w:t></w:r></w:p></w:tc></w:tr>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum2}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName2}}</w:t></w:r></w:p></w:tc></w:tr>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum3}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName3}}</w:t></w:r></w:p></w:tc></w:tr>' +
       '<w:tr><w:tc><w:p><w:r><w:t>Итого {{total}}</w:t></w:r></w:p></w:tc></w:tr></w:tbl>' +
-      '<w:p><w:r><w:t>{{actDate}} {{executorFio}} {{customerFio}} ({{totalWords}})</w:t></w:r></w:p>';
+      '<w:p><w:r><w:t>Услуги оказаны Исполнителем</w:t></w:r></w:p>' +
+      '<w:p><w:r><w:t>{{actDate}} {{customerOrg}} {{customerFio}} ({{totalWords}})</w:t></w:r></w:p>';
     var out = fillActDocumentXml(xml, {
       actDate: '«26» августа 2026',
       executorFio: 'Иванов И.И.',
+      customerOrg: 'ООО Ромашка',
       customerFio: 'Петров П.П.',
       rows: [
         { name: 'УЗИ', unit: 'гол', qty: '10', sum: '100' },
@@ -74,15 +81,34 @@ describe('fillActDocumentXml', () => {
     expect(out).toMatch(/УЗИ/);
     expect(out).toMatch(/Осеменение/);
     expect(out).toMatch(/Иванов И\.И\./);
+    expect(out).toMatch(/ООО Ромашка/);
     expect(out).toMatch(/Петров П\.П\./);
     expect(out).toMatch(/300/);
     expect(out).toMatch(/триста/);
-    expect(out).not.toMatch(/\{\{svcName\}\}/);
-    expect(expandServiceRows(xml, [{ name: 'A', unit: '', qty: '', sum: '1' }])).toMatch(/>A</);
+    expect((out.match(/преамбула/g) || []).length).toBe(1);
+    expect((out.match(/Услуги оказаны Исполнителем/g) || []).length).toBe(1);
+    expect(out.match(/<w:tr\b/g).length).toBe(5);
+    expect(out).not.toMatch(/\{\{svcName/);
+    expect(fillServiceTable(xml, [{ name: 'A', unit: '', qty: '', sum: '1' }])).toMatch(/>A</);
+  });
+
+  it('keeps three service rows when only one service is filled', () => {
+    var xml =
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum1}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName1}}</w:t></w:r></w:p></w:tc></w:tr>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum2}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName2}}</w:t></w:r></w:p></w:tc></w:tr>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>{{rowNum3}}</w:t></w:r></w:p></w:tc>' +
+      '<w:tc><w:p><w:r><w:t>{{svcName3}}</w:t></w:r></w:p></w:tc></w:tr>';
+    var out = fillServiceTable(xml, [{ name: 'УЗИ', unit: 'гол', qty: '1', price: '10' }]);
+    expect(out.match(/<w:tr\b/g).length).toBe(3);
+    expect(out).toMatch(/>1</);
+    expect(out).toMatch(/>2</);
+    expect(out).toMatch(/>3</);
   });
 
   it('escapes XML in user text', () => {
-    var xml = '<w:tr><w:tc><w:p><w:r><w:t>{{svcName}}</w:t></w:r></w:p></w:tc></w:tr>{{total}}';
+    var xml = '<w:tr><w:tc><w:p><w:r><w:t>{{svcName1}}</w:t></w:r></w:p></w:tc></w:tr>{{total}}{{svcName2}}{{svcName3}}{{rowNum1}}{{rowNum2}}{{rowNum3}}{{svcUnit1}}{{svcQty1}}{{svcPrice1}}{{svcSum1}}{{svcUnit2}}{{svcQty2}}{{svcPrice2}}{{svcSum2}}{{svcUnit3}}{{svcQty3}}{{svcPrice3}}{{svcSum3}}';
     var out = fillActDocumentXml(xml, {
       rows: [{ name: 'A & B <тест>', unit: '', qty: '', sum: '0' }]
     });
@@ -96,19 +122,59 @@ describe('buildActDocx from template', () => {
     var bytes = buildActDocx(fs.readFileSync(templatePath), {
       actDate: '«26» августа 2026',
       executorFio: 'Иванов И.И.',
+      customerOrg: 'ООО Ромашка',
       customerFio: 'Петров П.П.',
       rows: [{ name: 'УЗИ-диагностика', unit: 'гол', qty: '12', sum: '2196' }]
     });
     var xml = strFromU8(unzipSync(bytes)['word/document.xml']);
     expect(xml).toMatch(/УЗИ-диагностика/);
     expect(xml).toMatch(/Иванов И\.И\./);
+    expect(xml).toMatch(/ООО Ромашка/);
+    expect(xml).toMatch(/Петров П\.П\./);
     expect(xml).toMatch(/2196/);
+    expect((xml.match(/Услуги оказаны Исполнителем/g) || []).length).toBe(1);
+    expect((xml.match(/составили настоящий Акт/g) || []).length).toBe(1);
     expect(xml).not.toMatch(/\{\{/);
     expect(xml).not.toMatch(/ОБРАЗЕЦ/);
   });
 
-  it('has a price placeholder in the blank', () => {
+  it('keeps three service rows and organization placeholders in the blank', () => {
     var xml = strFromU8(unzipSync(fs.readFileSync(templatePath))['word/document.xml']);
-    expect(xml).toMatch(/\{\{svcPrice\}\}/);
+    expect(xml).toMatch(/\{\{svcPrice1\}\}/);
+    expect(xml).toMatch(/\{\{svcName2\}\}/);
+    expect(xml).toMatch(/\{\{svcName3\}\}/);
+    expect(xml).toMatch(/\{\{customerOrg\}\}/);
+    expect(xml).toMatch(/\{\{customerFio\}\}/);
+    expect((xml.match(/<w:tr\b/g) || []).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('caches template bytes after the first fetch', async () => {
+    var raw = fs.readFileSync(templatePath);
+    var origFetch = global.fetch;
+    global.fetch = async function () {
+      return {
+        ok: true,
+        arrayBuffer: async function () {
+          return raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        }
+      };
+    };
+    try {
+      var bytes = await fetchActTemplateBytes();
+      expect(bytes.byteLength).toBeGreaterThan(100);
+      expect(getCachedActTemplateBytes()).toBe(bytes);
+      var again = await fetchActTemplateBytes();
+      expect(again).toBe(bytes);
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+});
+
+describe('ensureDocxFilename', () => {
+  it('turns .docx(1) into a real Word name', () => {
+    expect(ensureDocxFilename('акт.docx(1)')).toBe('акт (1).docx');
+    expect(ensureDocxFilename('акт.docx')).toBe('акт.docx');
+    expect(ensureDocxFilename('акт')).toBe('акт.docx');
   });
 });

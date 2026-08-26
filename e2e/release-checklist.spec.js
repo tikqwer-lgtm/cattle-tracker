@@ -73,6 +73,7 @@ test.describe('Чек-лист: вход и выход', () => {
     await enterLocalMenu(page);
     await expect(page.getByRole('button', { name: 'Работа со стадом' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Карточка хозяйства' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Настройки' })).toBeVisible();
     await expect(page.locator('#menuLogoutBtn')).toBeVisible();
   });
 

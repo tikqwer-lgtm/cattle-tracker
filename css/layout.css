@@ -686,6 +686,31 @@
 .uzi-print-table td.n {
   width: 3.5em;
 }
+.service-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0.75rem 0 1rem;
+}
+.service-report-tab {
+  min-height: var(--field-min-height, 42px);
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-primary-border, #ccc);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text, #111);
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.service-report-tab.active {
+  background: var(--color-primary, #3d6eb5);
+  border-color: var(--color-primary-dark, #1e3a5f);
+  color: #fff;
+}
+.service-report-tab-panel[hidden] {
+  display: none !important;
+}
 .service-report-types {
   display: flex;
   flex-wrap: wrap;
@@ -698,9 +723,8 @@
   margin-top: 0.75rem;
 }
 .service-act-block {
-  margin-top: 1.25rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-border, #ddd);
+  margin-top: 0;
+  padding-top: 0;
 }
 .service-act-block h3 {
   margin: 0 0 0.5rem;

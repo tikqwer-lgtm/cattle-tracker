@@ -15,9 +15,10 @@ import {
   collectActFormData,
   actFilename,
   buildActDocx,
-  fetchActTemplateBytes,
   downloadActDocx,
-  shareActDocx
+  shareActDocx,
+  prefetchActTemplate,
+  getCachedActTemplateBytes
 } from './service-act-docx.js';
 
 function escapeHtml(s) {
@@ -251,21 +252,28 @@ function actRowHtml() {
   );
 }
 
+function actRowsHtml(count) {
+  var n = count > 0 ? count : 3;
+  var html = '';
+  var i;
+  for (i = 0; i < n; i++) html += actRowHtml();
+  return html;
+}
+
 function actBlockHtml() {
   return (
     '<div class="service-act-block" id="serviceActBlock">' +
-    '<h3>Акт об оказании услуг</h3>' +
-    '<p class="farm-settings-hint">Сумма строки = количество × цена. Итого считается само.</p>' +
+    '<p class="farm-settings-hint">Сумма строки = количество × цена. Итого считается само. В бланке три строки, как в образце.</p>' +
     '<div class="service-act-fields">' +
     '<label>В лице (исполнитель) <input type="text" id="serviceActExecutorFio" class="service-act-fio" autocomplete="name" /></label>' +
-    '<label>С одной стороны, и <input type="text" id="serviceActCustomerFio" class="service-act-fio" autocomplete="name" /></label>' +
+    '<label>Организация (заказчик) <input type="text" id="serviceActCustomerOrg" class="service-act-fio" autocomplete="organization" /></label>' +
+    '<label>В лице (заказчик) <input type="text" id="serviceActCustomerFio" class="service-act-fio" autocomplete="name" /></label>' +
     '</div>' +
     '<div class="service-act-table-wrap"><table class="list-table service-act-table"><thead><tr>' +
     '<th>Наименование услуги</th><th>Ед. изм</th><th>Количество, гол</th><th>Цена</th><th>Сумма</th><th></th>' +
     '</tr></thead><tbody id="serviceActRows">' +
-    actRowHtml() +
+    actRowsHtml(3) +
     '</tbody></table></div>' +
-    '<button type="button" class="small-btn" id="serviceActAddRowBtn">Добавить строку</button>' +
     '<p class="service-act-total" id="serviceActTotalLine">Итого: 0 (ноль)</p>' +
     '<div class="service-act-actions">' +
     '<button type="button" class="action-btn" id="serviceActDownloadBtn">Скачать Word</button>' +
@@ -301,43 +309,41 @@ function currentActDate(root) {
   return (dateEl && dateEl.value) || todayIso();
 }
 
-function buildActFromForm(root) {
+function actFileFromForm(root) {
   var data = collectActFormData(root, currentActDate(root));
   if (!data.rows.length) {
     if (typeof showToast === 'function') showToast('Добавьте хотя бы одну услугу в акт', 'error');
-    return Promise.resolve(null);
+    return null;
   }
-  return fetchActTemplateBytes()
-    .then(function (bytes) {
-      return {
-        bytes: buildActDocx(bytes, data),
-        filename: actFilename(currentActDate(root))
-      };
-    })
-    .catch(function (err) {
-      if (typeof showToast === 'function') {
-        showToast((err && err.message) || 'Не удалось собрать акт', 'error');
-      }
-      return null;
-    });
+  var cached = getCachedActTemplateBytes();
+  if (!cached) {
+    prefetchActTemplate();
+    if (typeof showToast === 'function') {
+      showToast('Бланк ещё загружается. Нажмите ещё раз через секунду.', 'info', 4000);
+    }
+    return null;
+  }
+  try {
+    return {
+      bytes: buildActDocx(cached, data),
+      filename: actFilename(currentActDate(root))
+    };
+  } catch (err) {
+    if (typeof showToast === 'function') {
+      showToast((err && err.message) || 'Не удалось собрать акт', 'error');
+    }
+    return null;
+  }
 }
 
 function bindServiceActBlock(modal) {
   var tbody = modal.querySelector('#serviceActRows');
-  var addBtn = modal.querySelector('#serviceActAddRowBtn');
-  if (addBtn) {
-    addBtn.addEventListener('click', function () {
-      if (!tbody) return;
-      tbody.insertAdjacentHTML('beforeend', actRowHtml());
-      refreshActTotal(modal);
-    });
-  }
   modal.addEventListener('click', function (ev) {
     var btn = ev.target && ev.target.closest ? ev.target.closest('.service-act-del-row') : null;
     if (!btn || !tbody) return;
     var tr = btn.closest('tr');
     if (!tr) return;
-    if (tbody.querySelectorAll('.service-act-row').length <= 1) {
+    if (tbody.querySelectorAll('.service-act-row').length <= 3) {
       tr.querySelectorAll('input').forEach(function (inp) {
         inp.value = '';
       });
@@ -353,33 +359,55 @@ function bindServiceActBlock(modal) {
   var dl = modal.querySelector('#serviceActDownloadBtn');
   if (dl) {
     dl.addEventListener('click', function () {
-      buildActFromForm(modal).then(function (file) {
-        if (!file) return;
-        downloadActDocx(file.bytes, file.filename).then(function (res) {
-          if (res && res.canceled) return;
-          if (typeof showToast === 'function') showToast('Акт сохранён', 'success');
-        }).catch(function (err) {
-          if (typeof showToast === 'function') {
-            showToast((err && err.message) || 'Не удалось сохранить акт', 'error');
-          }
-        });
+      var file = actFileFromForm(modal);
+      if (!file) return;
+      Promise.resolve(downloadActDocx(file.bytes, file.filename)).then(function (res) {
+        if (res && res.canceled) return;
+        if (typeof showToast === 'function') showToast('Акт сохранён', 'success');
+      }).catch(function (err) {
+        if (typeof showToast === 'function') {
+          showToast((err && err.message) || 'Не удалось сохранить акт', 'error');
+        }
       });
     });
   }
   var maxBtn = modal.querySelector('#serviceActMaxBtn');
   if (maxBtn) {
     maxBtn.addEventListener('click', function () {
-      buildActFromForm(modal).then(function (file) {
-        if (!file) return;
-        return shareActDocx(file.bytes, file.filename).catch(function (err) {
-          if (typeof showToast === 'function') {
-            showToast((err && err.message) || 'Не удалось открыть MAX', 'error', 5000);
-          }
-        });
+      var file = actFileFromForm(modal);
+      if (!file) return;
+      Promise.resolve(shareActDocx(file.bytes, file.filename)).catch(function (err) {
+        if (typeof showToast === 'function') {
+          showToast((err && err.message) || 'Не удалось открыть MAX', 'error', 5000);
+        }
       });
     });
   }
   refreshActTotal(modal);
+  prefetchActTemplate();
+}
+
+function bindServiceReportTabs(modal) {
+  var tabs = modal.querySelectorAll('.service-report-tab');
+  if (!tabs.length) return;
+  function showTab(id) {
+    tabs.forEach(function (btn) {
+      var on = btn.getAttribute('data-report-tab') === id;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    modal.querySelectorAll('.service-report-tab-panel').forEach(function (panel) {
+      var on = panel.getAttribute('data-report-panel') === id;
+      if (on) panel.removeAttribute('hidden');
+      else panel.setAttribute('hidden', '');
+    });
+    if (id === 'act') prefetchActTemplate();
+  }
+  tabs.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      showTab(btn.getAttribute('data-report-tab') || 'opis');
+    });
+  });
 }
 
 function openServiceWorkReportForm() {
@@ -396,6 +424,11 @@ function openServiceWorkReportForm() {
     '<button type="button" class="small-btn" id="serviceReportCloseBtn">Закрыть</button></div>' +
     '<div class="view-fields-modal-body">' +
     '<label>Дата работы <input type="date" id="serviceReportDate" value="' + escapeHtml(date) + '" /></label>' +
+    '<div class="service-report-tabs" role="tablist" aria-label="Разделы отчёта">' +
+    '<button type="button" class="service-report-tab active" data-report-tab="opis" role="tab" aria-selected="true">Опись</button>' +
+    '<button type="button" class="service-report-tab" data-report-tab="act" role="tab" aria-selected="false">Акт</button>' +
+    '</div>' +
+    '<div class="service-report-tab-panel" data-report-panel="opis" role="tabpanel">' +
     '<div class="service-report-types">' +
     '<label><input type="checkbox" id="serviceReportTypeInsem" checked /> Осеменение</label>' +
     '<label><input type="checkbox" id="serviceReportTypeUzi" checked /> УЗИ</label>' +
@@ -403,15 +436,19 @@ function openServiceWorkReportForm() {
     '</div>' +
     '<p class="farm-settings-hint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
-    actBlockHtml() +
-    '</div>' +
     '<div class="view-fields-actions">' +
     '<button type="button" class="action-btn" id="serviceReportRefreshBtn">Обновить опись</button>' +
     '<button type="button" class="action-btn" id="serviceReportPrintBtn">На печать</button>' +
     '<button type="button" class="action-btn" id="serviceReportSaveBtn">Сохранить в ленту</button>' +
+    '</div>' +
+    '</div>' +
+    '<div class="service-report-tab-panel" data-report-panel="act" role="tabpanel" hidden>' +
+    actBlockHtml() +
+    '</div>' +
     '</div></div>';
   document.body.appendChild(modal);
   bindServiceActBlock(modal);
+  bindServiceReportTabs(modal);
 
   function refreshPreview() {
     var items = collectFromForm(modal);
