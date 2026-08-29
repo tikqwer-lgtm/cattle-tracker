@@ -1,20 +1,26 @@
+/**
+ * Настройки хозяйства — полный React-экран (без portal в HTML).
+ */
 import React, { useCallback, useEffect, useState } from 'react';
-
-function isAdmin(): boolean {
-  const u = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
-  if (!u) return false;
-  if (typeof window.hasCapability === 'function') return window.hasCapability('farmCardSettings', u);
-  return u.role === 'admin';
-}
-
-function loadLists() {
-  return {
-    tech: (window.getFarmTechnicians?.() ?? []).slice(),
-    bulls: (window.getFarmBullsManual?.() ?? []).slice(),
-    drugs: (window.getFarmDrugs?.() ?? []).slice(),
-    vwp: window.getFarmVwpDays?.() ?? 60,
-  };
-}
+import { ScreenFrame } from './AppShell';
+import { useCapability } from '../data/hooks';
+import {
+  fillAllInseminationCodeSelects,
+  getChatAssistantSettings,
+  getFarmBullsManual,
+  getFarmDrugs,
+  getFarmTechnicians,
+  getFarmVwpDays,
+  persistFarmSettingsToServer,
+  refreshFarmDatalists,
+  setChatAssistantSettings,
+  setFarmBullsManual,
+  setFarmDrugs,
+  setFarmTechnicians,
+  setFarmVwpDays,
+  type ChatAssistantSettings,
+} from '../data/farm';
+import { navigate, showToast } from '../data/session';
 
 function ChipList({
   items,
@@ -89,21 +95,20 @@ function AddRow({
 }
 
 function ChatAssistantToggles(): React.ReactElement {
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<ChatAssistantSettings>({
     planHints: true,
     overdueHints: true,
     dailyPlanHints: true,
   });
 
   useEffect(() => {
-    const s = window.getChatAssistantSettings?.();
-    if (s) setSettings(s);
+    setSettings(getChatAssistantSettings());
   }, []);
 
-  const update = (key: keyof typeof settings, value: boolean) => {
+  const update = (key: keyof ChatAssistantSettings, value: boolean) => {
     const next = { ...settings, [key]: value };
     setSettings(next);
-    window.setChatAssistantSettings?.(next);
+    setChatAssistantSettings(next);
   };
 
   return (
@@ -137,7 +142,7 @@ function ChatAssistantToggles(): React.ReactElement {
 }
 
 export default function FarmSettings(): React.ReactElement {
-  const admin = isAdmin();
+  const admin = useCapability('farmCardSettings');
   const [tech, setTech] = useState<string[]>([]);
   const [bulls, setBulls] = useState<string[]>([]);
   const [drugs, setDrugs] = useState<string[]>([]);
@@ -145,12 +150,11 @@ export default function FarmSettings(): React.ReactElement {
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
-    const data = loadLists();
-    setTech(data.tech);
-    setBulls(data.bulls);
-    setDrugs(data.drugs);
-    setVwp(data.vwp);
-    window.refreshFarmDatalists?.();
+    setTech(getFarmTechnicians());
+    setBulls(getFarmBullsManual());
+    setDrugs(getFarmDrugs());
+    setVwp(getFarmVwpDays());
+    refreshFarmDatalists();
   }, []);
 
   useEffect(() => {
@@ -165,141 +169,135 @@ export default function FarmSettings(): React.ReactElement {
   const handleSave = () => {
     if (!admin || saving) return;
     setSaving(true);
-    window.setFarmTechnicians?.(tech);
-    window.setFarmBullsManual?.(bulls);
-    window.setFarmDrugs?.(drugs);
-    window.setFarmVwpDays?.(vwp);
+    setFarmTechnicians(tech);
+    setFarmBullsManual(bulls);
+    setFarmDrugs(drugs);
+    setFarmVwpDays(vwp);
 
     const done = () => {
-      window.refreshFarmDatalists?.();
-      window.fillAllInseminationCodeSelects?.();
+      refreshFarmDatalists();
+      fillAllInseminationCodeSelects();
       setSaving(false);
-      if (typeof (window as Window & { showToast?: (m: string, t: string) => void }).showToast === 'function') {
-        (window as Window & { showToast: (m: string, t: string) => void }).showToast('Сохранено', 'success');
-      }
+      showToast('Сохранено', 'success');
     };
 
     const fail = (err: unknown) => {
-      window.refreshFarmDatalists?.();
+      refreshFarmDatalists();
       setSaving(false);
-      const msg = err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Ошибка сохранения на сервере';
-      if (typeof (window as Window & { showToast?: (m: string, t: string) => void }).showToast === 'function') {
-        (window as Window & { showToast: (m: string, t: string) => void }).showToast(msg, 'error');
-      }
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as Error).message)
+          : 'Ошибка сохранения на сервере';
+      showToast(msg, 'error');
     };
 
-    const p = window.persistFarmSettingsToServer?.();
-    if (p && typeof p.then === 'function') {
-      p.then(done).catch(fail);
-    } else {
-      done();
-    }
+    persistFarmSettingsToServer().then(done).catch(fail);
   };
 
   return (
-    <div className="farm-settings-wrap">
-      <div className="farm-settings-protocols-entry">
-        <button
-          type="button"
-          className="action-btn"
-          onClick={() => window.navigate?.('protocols')}
-        >
-          📋 Протоколы синхронизации
-        </button>
-      </div>
+    <ScreenFrame title="Настройки хозяйства">
+      <div className="farm-settings-wrap">
+        <div className="farm-settings-protocols-entry">
+          <button type="button" className="action-btn" onClick={() => navigate('protocols')}>
+            📋 Протоколы синхронизации
+          </button>
+        </div>
 
-      <section className="farm-settings-section">
-        <h2>Техники ИО</h2>
-        <p className="farm-settings-hint">
-          Подсказки в поле «Техник ИО» при осеменении и в карточке коровы. Редактирование списка — только администратор.
-        </p>
-        <ChipList
-          items={tech}
-          editable={admin}
-          onRemove={(i) => setTech((prev) => prev.filter((_, idx) => idx !== i))}
-        />
-        <AddRow
-          placeholder="Например: Иванов И.И."
-          editable={admin}
-          onAdd={(v) => setTech((prev) => addUnique(prev, v))}
-        />
-      </section>
-
-      <section className="farm-settings-section">
-        <h2>Быки (справочник)</h2>
-        <p className="farm-settings-hint">
-          Дополнительно к быкам из описи. Подсказки в поле «Бык». Редактирование — только администратор.
-        </p>
-        <ChipList
-          items={bulls}
-          editable={admin}
-          onRemove={(i) => setBulls((prev) => prev.filter((_, idx) => idx !== i))}
-        />
-        <AddRow
-          placeholder="Номер или кличка быка"
-          editable={admin}
-          onAdd={(v) => setBulls((prev) => addUnique(prev, v))}
-        />
-      </section>
-
-      <section className="farm-settings-section">
-        <h2>Список препаратов</h2>
-        <p className="farm-settings-hint">
-          Подсказки в шагах протокола синхронизации. Редактирование — только администратор.
-        </p>
-        <ChipList
-          items={drugs}
-          editable={admin}
-          onRemove={(i) => setDrugs((prev) => prev.filter((_, idx) => idx !== i))}
-        />
-        <AddRow
-          placeholder="Например: ПГ 500"
-          editable={admin}
-          onAdd={(v) => setDrugs((prev) => addUnique(prev, v))}
-        />
-      </section>
-
-      <section className="farm-settings-section">
-        <h2>ПДО (период добровольного ожидания)</h2>
-        <p className="farm-settings-hint">
-          После этого количества дней лактации без осеменения появится уведомление о рекомендации ИО. Редактирование — только администратор.
-        </p>
-        <label className="farm-settings-vwp-row">
-          <span>Дней</span>
-          <input
-            type="number"
-            className="farm-settings-inline-input farm-settings-vwp-input"
-            min={30}
-            max={120}
-            step={1}
-            readOnly={!admin}
-            value={vwp}
-            onChange={(e) => setVwp(Number(e.target.value))}
+        <section className="farm-settings-section">
+          <h2>Техники ИО</h2>
+          <p className="farm-settings-hint">
+            Подсказки в поле «Техник ИО» при осеменении и в карточке коровы. Редактирование списка — только
+            администратор.
+          </p>
+          <ChipList
+            items={tech}
+            editable={admin}
+            onRemove={(i) => setTech((prev) => prev.filter((_, idx) => idx !== i))}
           />
-        </label>
-      </section>
+          <AddRow
+            placeholder="Например: Иванов И.И."
+            editable={admin}
+            onAdd={(v) => setTech((prev) => addUnique(prev, v))}
+          />
+        </section>
 
-      <section className="farm-settings-section">
-        <h2>Код осеменения</h2>
-        <p className="farm-settings-hint">
-          В списке кода доступны «Охота», «Датчик» и все протоколы из «Протоколы синхронизации» (кнопка выше).
-        </p>
-      </section>
+        <section className="farm-settings-section">
+          <h2>Быки (справочник)</h2>
+          <p className="farm-settings-hint">
+            Дополнительно к быкам из описи. Подсказки в поле «Бык». Редактирование — только администратор.
+          </p>
+          <ChipList
+            items={bulls}
+            editable={admin}
+            onRemove={(i) => setBulls((prev) => prev.filter((_, idx) => idx !== i))}
+          />
+          <AddRow
+            placeholder="Номер или кличка быка"
+            editable={admin}
+            onAdd={(v) => setBulls((prev) => addUnique(prev, v))}
+          />
+        </section>
 
-      <section className="farm-settings-section">
-        <h2>Чат-консультант</h2>
-        <p className="farm-settings-hint">
-          Подсказки по планам работ (уколы, УЗИ, осеменения). Команды в чате: «Что дальше» и «Дай план».
-          Настройки сохраняются на этом устройстве.
-        </p>
-        <ChatAssistantToggles />
-      </section>
+        <section className="farm-settings-section">
+          <h2>Список препаратов</h2>
+          <p className="farm-settings-hint">
+            Подсказки в шагах протокола синхронизации. Редактирование — только администратор.
+          </p>
+          <ChipList
+            items={drugs}
+            editable={admin}
+            onRemove={(i) => setDrugs((prev) => prev.filter((_, idx) => idx !== i))}
+          />
+          <AddRow
+            placeholder="Например: ПГ 500"
+            editable={admin}
+            onAdd={(v) => setDrugs((prev) => addUnique(prev, v))}
+          />
+        </section>
 
-      {admin && (
-        <button type="button" className="action-batch-save-all" disabled={saving} onClick={handleSave}>
-          {saving ? 'Сохранение…' : 'Сохранить'}
-        </button>
-      )}
-    </div>
+        <section className="farm-settings-section">
+          <h2>ПДО (период добровольного ожидания)</h2>
+          <p className="farm-settings-hint">
+            После этого количества дней лактации без осеменения появится уведомление о рекомендации ИО.
+            Редактирование — только администратор.
+          </p>
+          <label className="farm-settings-vwp-row">
+            <span>Дней</span>
+            <input
+              type="number"
+              className="farm-settings-inline-input farm-settings-vwp-input"
+              min={30}
+              max={120}
+              step={1}
+              readOnly={!admin}
+              value={vwp}
+              onChange={(e) => setVwp(Number(e.target.value))}
+            />
+          </label>
+        </section>
+
+        <section className="farm-settings-section">
+          <h2>Код осеменения</h2>
+          <p className="farm-settings-hint">
+            В списке кода доступны «Охота», «Датчик» и все протоколы из «Протоколы синхронизации» (кнопка выше).
+          </p>
+        </section>
+
+        <section className="farm-settings-section">
+          <h2>Чат-консультант</h2>
+          <p className="farm-settings-hint">
+            Подсказки по планам работ (уколы, УЗИ, осеменения). Команды в чате: «Что дальше» и «Дай план».
+            Настройки сохраняются на этом устройстве.
+          </p>
+          <ChatAssistantToggles />
+        </section>
+
+        {admin && (
+          <button type="button" className="action-batch-save-all" disabled={saving} onClick={handleSave}>
+            {saving ? 'Сохранение…' : 'Сохранить'}
+          </button>
+        )}
+      </div>
+    </ScreenFrame>
   );
 }

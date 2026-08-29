@@ -1,10 +1,11 @@
 /**
- * Vite config: ESM entry (js/main.js), single bundle dist/app.js + dist/app.css.
- * External libs (PapaParse, Chart.js, xlsx) stay in index.html script tags.
+ * Vite: production — один IIFE-бандл dist/app.js (Electron/Capacitor/file://).
+ * Dev — HTML entry + /js/main.tsx как module (HMR / Fast Refresh).
  */
 const path = require('path');
 const fs = require('fs');
 const tailwindcss = require('@tailwindcss/vite').default;
+const react = require('@vitejs/plugin-react').default;
 
 function copyDirSync(srcDir, destDir) {
   if (!fs.existsSync(srcDir)) return;
@@ -47,6 +48,17 @@ function viteDistCopyPlugin() {
         html = html.replace(/href="dist\/app\.css"/g, 'href="app.css"');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/print\.css"[^>]*>\s*/g, '');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/style\.css"[^>]*>\s*/g, '');
+        /* Dev module entry → production IIFE */
+        if (html.includes('type="module"') && html.includes('/js/main.tsx')) {
+          html = html.replace(/<script\s+type="module"\s+src="\/js\/main\.tsx"><\/script>\s*/g, '');
+          html = html.replace(
+            /<script>\s*\(function \(\) \{[\s\S]*?dist\/app\.js[\s\S]*?\}\)\(\);\s*<\/script>/,
+            '<script src="app.js"></script>'
+          );
+        }
+        if (!html.includes('src="app.js"') && !html.includes("src='app.js'")) {
+          html = html.replace('</body>', '<script src="app.js"></script>\n</body>');
+        }
         fs.writeFileSync(path.join(distDir, 'index.html'), html);
       }
       for (const dir of ['icons']) {
@@ -86,5 +98,5 @@ module.exports = {
       }
     }
   },
-  plugins: [tailwindcss(), viteDistCopyPlugin()]
+  plugins: [react(), tailwindcss(), viteDistCopyPlugin()]
 };

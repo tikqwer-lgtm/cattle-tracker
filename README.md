@@ -111,13 +111,15 @@ cattle-tracker/
 │   └── sync.css            # Агрегатор @import sync-экранов
 ├── js/
 │   ├── main.tsx            # ESM entry → dist/app.js
-│   ├── App.tsx             # React: порталы в legacy-экраны
-│   ├── screens/            # React-экраны (пилот: FarmSettings.tsx)
+│   ├── App.tsx             # React AppShell + реестр экранов (strangler)
+│   ├── screens/            # React-экраны (новые UI — только сюда, не IIFE part-N)
+│   ├── data/               # ESM-адаптеры сессии/хозяйства/entries (хуки для React)
 │   ├── core/               # app, menu, users — фасады + подмодули
 │   ├── api/, storage/, ui/, utils/
 │   └── features/           # sync/, action-batch/, stall-map/, … (фасад + подпапка)
 ├── scripts/
 │   ├── assemble-html.js    # Сборка index.html
+│   ├── split-iife-module.js  # @deprecated — не запускать новые сплиты
 │   └── split-server-db.js    # Разбиение server/db.js
 ├── vite.config.js
 └── tests/                  # Vitest

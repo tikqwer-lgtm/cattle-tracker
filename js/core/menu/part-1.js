@@ -210,9 +210,18 @@ function navigate(screenId, options) {
     el.classList.remove('active');
   });
 
-  const screen = document.getElementById(screenId + '-screen');
-  if (screen) {
-    screen.classList.add('active');
+  var reactSet = window.__cattleTrackerReactScreens;
+  var isReact = reactSet && typeof reactSet.has === 'function' && reactSet.has(screenId);
+  if (isReact) {
+    var rootEl = document.getElementById('root');
+    if (rootEl) rootEl.classList.add('root--react-active');
+  } else {
+    var rootOff = document.getElementById('root');
+    if (rootOff) rootOff.classList.remove('root--react-active');
+    const screen = document.getElementById(screenId + '-screen');
+    if (screen) {
+      screen.classList.add('active');
+    }
   }
 
   if (typeof updateWindowModeForScreen === 'function') {
@@ -257,10 +266,8 @@ function navigate(screenId, options) {
   if (screenId === 'submenu') {
     globalThis['__menu'].renderSubmenu();
   }
-  if (screenId === 'protocols' && typeof renderProtocolsScreen === 'function') {
-    renderProtocolsScreen('protocols-container');
-  }
-  /* farm-settings: React pilot (js/screens/FarmSettings.tsx) */
+  /* protocols: React (js/screens/ProtocolsScreen.tsx) */
+  /* farm-settings: React (js/screens/FarmSettings.tsx) */
   if (screenId === 'farm-card' && typeof window.initFarmCardPanel === 'function') {
     window.initFarmCardPanel();
   }
@@ -325,9 +332,7 @@ function navigate(screenId, options) {
   if (screenId === 'sync' && typeof renderBackupUI === 'function') {
     renderBackupUI('sync-backup-container');
   }
-  if (screenId === 'help' && typeof window.refreshHelpDevtoolsDiagnostics === 'function') {
-    window.refreshHelpDevtoolsDiagnostics();
-  }
+  /* help: React (js/screens/HelpScreen.tsx) — refresh on mount in component */
   if (screenId === 'admin' && typeof window.renderAdminScreen === 'function') {
     window.renderAdminScreen();
   }

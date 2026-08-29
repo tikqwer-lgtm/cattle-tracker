@@ -497,6 +497,16 @@ function createWindow() {
 
   const ses = mainWindow.webContents.session;
   ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] }).then(() => {
+    if (process.env.CATTLE_TRACKER_VITE_DEV === '1') {
+      const viteUrl = process.env.CATTLE_TRACKER_VITE_URL || 'http://localhost:5173';
+      mainWindow.loadURL(viteUrl).catch((err) => {
+        console.error('Vite loadURL failed:', err);
+        mainWindow.loadFile(indexPath).catch(() => {
+          mainWindow.loadURL(pathToFileURL(indexPath).href);
+        });
+      });
+      return;
+    }
     mainWindow.loadFile(indexPath).catch((err) => {
       console.error('loadFile failed:', err);
       mainWindow.loadURL(pathToFileURL(indexPath).href);

@@ -1,22 +1,12 @@
 /**
- * React root: gradual migration of legacy screens from index.html.
- * Farm settings — first React pilot (portal into #farm-settings-react-root).
+ * React root: AppShell + registry; legacy HTML screens until migrated.
  */
 import React from 'react';
-import { createPortal } from 'react-dom';
-import FarmSettings from './screens/FarmSettings';
+import { AppShell } from './screens/AppShell';
 import { useNavigateScreen } from './screens/useNavigateScreen';
+import './screens/register-screens';
 
 export default function App(): React.ReactElement {
   const screenId = useNavigateScreen();
-  const farmRoot =
-    typeof document !== 'undefined' ? document.getElementById('farm-settings-react-root') : null;
-
-  return (
-    <>
-      {screenId === 'farm-settings' && farmRoot
-        ? createPortal(<FarmSettings />, farmRoot)
-        : null}
-    </>
-  );
+  return <AppShell screenId={screenId} />;
 }
