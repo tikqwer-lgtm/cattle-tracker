@@ -89,9 +89,14 @@ import('@capacitor/app')
   .catch(() => {});
 
 import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
+import './screens/register-screens';
 import App from './App';
 
 const rootEl = document.getElementById('root');
 if (rootEl) {
-  createRoot(rootEl).render(<App />);
+  const root = createRoot(rootEl);
+  flushSync(() => {
+    root.render(<App />);
+  });
 }

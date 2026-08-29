@@ -10,8 +10,8 @@
 #root.root--react-active {
   @apply pointer-events-auto block w-full max-w-[720px] mx-auto px-4 box-border;
 }
-#root.root--react-active .screen--react {
-  @apply block;
+#root.root--react-active .screen.screen--react.active {
+  display: block !important;
 }
 
 body {

@@ -6,26 +6,39 @@ import { navigateToParent } from '../data/session';
 
 export type ScreenComponent = React.ComponentType;
 
-const registry = new Map<string, ScreenComponent>();
+type RegistryWindow = Window & {
+  __cattleTrackerScreenRegistry?: Map<string, ScreenComponent>;
+  __cattleTrackerReactScreens?: Set<string>;
+};
+
+function getRegistry(): Map<string, ScreenComponent> {
+  if (typeof window === 'undefined') return new Map();
+  const w = window as RegistryWindow;
+  if (!w.__cattleTrackerScreenRegistry) {
+    w.__cattleTrackerScreenRegistry = new Map();
+  }
+  return w.__cattleTrackerScreenRegistry;
+}
 
 export function registerScreen(screenId: string, component: ScreenComponent): void {
-  registry.set(screenId, component);
+  getRegistry().set(screenId, component);
   if (typeof window !== 'undefined') {
-    const set = (window.__cattleTrackerReactScreens = window.__cattleTrackerReactScreens || new Set());
+    const set = ((window as RegistryWindow).__cattleTrackerReactScreens =
+      (window as RegistryWindow).__cattleTrackerReactScreens || new Set());
     set.add(screenId);
   }
 }
 
 export function getRegisteredScreen(screenId: string): ScreenComponent | undefined {
-  return registry.get(screenId);
+  return getRegistry().get(screenId);
 }
 
 export function isReactScreen(screenId: string): boolean {
-  return registry.has(screenId);
+  return getRegistry().has(screenId);
 }
 
 export function listReactScreenIds(): string[] {
-  return Array.from(registry.keys());
+  return Array.from(getRegistry().keys());
 }
 
 function ScreenBackButton(): React.ReactElement {

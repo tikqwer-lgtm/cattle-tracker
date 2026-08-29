@@ -21,6 +21,22 @@ function copyDirSync(srcDir, destDir) {
   }
 }
 
+function viteDevHtmlPlugin() {
+  return {
+    name: 'vite-dev-html-entry',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        if (!ctx.server) return html;
+        return html.replace(
+          /<script src="dist\/app\.js"><\/script>/,
+          '<script type="module" src="/js/main.tsx"></script>'
+        );
+      }
+    }
+  };
+}
+
 function viteDistCopyPlugin() {
   const root = path.resolve(__dirname);
   return {
@@ -48,14 +64,6 @@ function viteDistCopyPlugin() {
         html = html.replace(/href="dist\/app\.css"/g, 'href="app.css"');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/print\.css"[^>]*>\s*/g, '');
         html = html.replace(/<link\s+rel="stylesheet"\s+href="css\/style\.css"[^>]*>\s*/g, '');
-        /* Dev module entry → production IIFE */
-        if (html.includes('type="module"') && html.includes('/js/main.tsx')) {
-          html = html.replace(/<script\s+type="module"\s+src="\/js\/main\.tsx"><\/script>\s*/g, '');
-          html = html.replace(
-            /<script>\s*\(function \(\) \{[\s\S]*?dist\/app\.js[\s\S]*?\}\)\(\);\s*<\/script>/,
-            '<script src="app.js"></script>'
-          );
-        }
         if (!html.includes('src="app.js"') && !html.includes("src='app.js'")) {
           html = html.replace('</body>', '<script src="app.js"></script>\n</body>');
         }
@@ -98,5 +106,5 @@ module.exports = {
       }
     }
   },
-  plugins: [react(), tailwindcss(), viteDistCopyPlugin()]
+  plugins: [react(), tailwindcss(), viteDevHtmlPlugin(), viteDistCopyPlugin()]
 };

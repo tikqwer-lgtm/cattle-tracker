@@ -1,0 +1,46 @@
+
+  <div id="stallMapCreateYardModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Новый двор</h2>
+      <p class="stall-map-create-yard-hint">Укажите номер или имя двора и размер сетки. Позже размер можно изменить и нажать «Сохранить сетку».</p>
+      <div class="stall-map-create-yard-fields">
+        <label class="stall-map-field"><span>Номер или имя</span><input type="text" id="stallMapCreateYardKeyInput" inputmode="text" autocomplete="off" placeholder="например 1" /></label>
+        <label class="stall-map-field"><span>Рядов</span><input type="number" id="stallMapCreateYardRowsInput" min="1" max="200" value="4" /></label>
+        <label class="stall-map-field"><span>Мест в ряду</span><input type="number" id="stallMapCreateYardColsInput" min="1" max="200" value="10" /></label>
+      </div>
+      <div class="stall-map-modal-actions">
+        <button type="button" id="stallMapCreateYardSubmit" class="action-btn">Создать</button>
+        <button type="button" id="stallMapCreateYardCancel" class="small-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stallMapCellModal" class="view-fields-modal stall-map-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner">
+      <h2 class="stall-map-modal-title">Стойломесто занято</h2>
+      <p id="stallMapCellModalBody" class="stall-map-modal-body"></p>
+      <div class="stall-map-modal-actions">
+        <button type="button" id="stallMapCellModalUnassign" class="action-btn">Снять с места</button>
+        <button type="button" id="stallMapCellModalReplace" class="small-btn">Заменить</button>
+        <button type="button" id="stallMapCellModalCancel" class="small-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stallMapAssignModal" class="view-fields-modal stall-map-modal stall-map-assign-modal-shell" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="view-fields-modal-inner stall-map-modal-inner stall-map-assign-modal-inner">
+      <h2 class="stall-map-modal-title">Назначить на место</h2>
+      <p class="stall-map-assign-hint">Введите номер или кличку и нажмите «Сохранить», либо выберите из списка.</p>
+      <div class="stall-map-assign-scroll">
+        <ul id="stallMapAssignList" class="stall-map-assign-list"></ul>
+      </div>
+      <div class="stall-map-assign-footer">
+        <div class="stall-map-assign-input-row">
+          <input type="text" id="stallMapAssignInput" class="stall-map-assign-input" placeholder="Номер или кличка" autocomplete="off" />
+          <button type="button" id="stallMapAssignSaveBtn" class="action-btn stall-map-assign-save-btn">Сохранить</button>
+        </div>
+        <datalist id="stallMapAssignDatalist"></datalist>
+        <button type="button" id="stallMapAssignModalClose" class="small-btn stall-map-assign-cancel-btn">Отмена</button>
+      </div>
+    </div>
+  </div>

@@ -8,11 +8,20 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const dest = __dirname;
 
-// Удаляем старую папку icons (если осталась от прошлой сборки), чтобы electron-builder не падал
-const iconsDir = path.join(dest, 'icons');
-if (fs.existsSync(iconsDir)) {
-  fs.rmSync(iconsDir, { recursive: true });
-  console.log('  (удалена старая electron/icons)');
+function copyDirTo(srcSubdir, destSubdir) {
+  const srcDir = path.join(root, srcSubdir);
+  const destDir = path.join(dest, destSubdir);
+  if (!fs.existsSync(srcDir)) return;
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const name of fs.readdirSync(srcDir)) {
+    const srcPath = path.join(srcDir, name);
+    const destPath = path.join(destDir, name);
+    if (fs.statSync(srcPath).isDirectory()) {
+      copyDirTo(path.join(srcSubdir, name), path.join(destSubdir, name));
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
 }
 
 const copyFile = (src, d) => {
@@ -21,27 +30,33 @@ const copyFile = (src, d) => {
   fs.copyFileSync(src, target);
 };
 
-const copyDir = (dir) => {
-  const srcDir = path.join(root, dir);
-  const destDir = path.join(dest, dir);
-  if (!fs.existsSync(srcDir)) return;
-  fs.mkdirSync(destDir, { recursive: true });
-  for (const name of fs.readdirSync(srcDir)) {
-    const srcPath = path.join(srcDir, name);
-    const destPath = path.join(destDir, name);
-    if (fs.statSync(srcPath).isDirectory()) {
-      copyDir(path.join(dir, name));
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
+const iconsDir = path.join(dest, 'icons');
+if (fs.existsSync(iconsDir)) {
+  fs.rmSync(iconsDir, { recursive: true });
+  console.log('  (удалена старая electron/icons)');
+}
+
+for (const stale of ['js', 'lib']) {
+  const staleDir = path.join(dest, stale);
+  if (fs.existsSync(staleDir)) {
+    fs.rmSync(staleDir, { recursive: true, force: true });
+    console.log('  (удалена устаревшая electron/' + stale + ')');
   }
-};
+}
+
+console.log('Копирование веб-приложения в electron/...');
+
+const { execSync } = require('child_process');
+try {
+  execSync('npm run build', { cwd: root, stdio: 'inherit' });
+} catch (e) {
+  console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
+}
 
 const files = ['index.html', 'manifest.json', 'sw.js'];
 const favicon = path.join(root, 'favicon.ico');
 if (fs.existsSync(favicon)) files.push('favicon.ico');
 
-console.log('Копирование веб-приложения в electron/...');
 for (const f of files) {
   const src = path.join(root, f);
   if (fs.existsSync(src)) {
@@ -49,7 +64,7 @@ for (const f of files) {
     console.log('  ', f);
   }
 }
-// В скопированном index.html заменить путь к бандлу на web/app.js (в asar нет dist/ из-за output: "dist")
+
 const electronIndex = path.join(dest, 'index.html');
 if (fs.existsSync(electronIndex)) {
   let html = fs.readFileSync(electronIndex, 'utf8');
@@ -58,25 +73,13 @@ if (fs.existsSync(electronIndex)) {
   fs.writeFileSync(electronIndex, html);
   console.log('  index.html: dist/app.js → web/app.js, dist/app.css → web/app.css');
 }
-// Сборка бандла в корне (dist/app.js) и копирование dist
-const { execSync } = require('child_process');
-try {
-  execSync('npm run build', { cwd: root, stdio: 'inherit' });
-} catch (e) {
-  console.warn('  Предупреждение: сборка бандла не выполнена (npm run build в корне).');
-}
-['js', 'lib'].forEach(dir => {
-  if (fs.existsSync(path.join(root, dir))) {
-    copyDir(dir);
-    console.log('  ', dir + '/');
-  }
-});
+
 const templatesSrc = path.join(root, 'assets', 'templates');
 if (fs.existsSync(templatesSrc)) {
   copyDirTo('assets/templates', 'templates');
   console.log('  templates/ (акт Word)');
 }
-// Копируем бандл в web/ (не dist/), чтобы electron-builder не конфликтовал с directories.output: "dist"
+
 const rootDist = path.join(root, 'dist');
 if (fs.existsSync(rootDist)) {
   const webDir = path.join(dest, 'web');
@@ -92,11 +95,10 @@ if (fs.existsSync(rootDist)) {
     console.log('  web/app.css (из dist/)');
   }
 }
-// Копируем icons как app-icons, чтобы electron-builder не принимал папку "icons" за иконки приложения (.ico)
+
 if (fs.existsSync(path.join(root, 'icons'))) {
   copyDirTo('icons', 'app-icons');
   console.log('  ', 'app-icons/ (из icons/)');
-  // Обновляем ссылки в скопированных файлах
   const replaceIcons = (file) => {
     const p = path.join(dest, file);
     if (fs.existsSync(p)) {
@@ -108,22 +110,6 @@ if (fs.existsSync(path.join(root, 'icons'))) {
   replaceIcons('index.html');
   replaceIcons('manifest.json');
   replaceIcons('sw.js');
-}
-
-function copyDirTo(srcSubdir, destSubdir) {
-  const srcDir = path.join(root, srcSubdir);
-  const destDir = path.join(dest, destSubdir);
-  if (!fs.existsSync(srcDir)) return;
-  fs.mkdirSync(destDir, { recursive: true });
-  for (const name of fs.readdirSync(srcDir)) {
-    const srcPath = path.join(srcDir, name);
-    const destPath = path.join(destDir, name);
-    if (fs.statSync(srcPath).isDirectory()) {
-      copyDirTo(path.join(srcSubdir, name), path.join(destSubdir, name));
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
 }
 
 console.log('Готово.');

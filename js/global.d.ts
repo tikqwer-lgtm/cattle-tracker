@@ -5,6 +5,7 @@ declare interface Window {
   entries?: unknown[];
   _currentScreenId?: string;
   __cattleTrackerReactScreens?: Set<string>;
+  __cattleTrackerScreenRegistry?: Map<string, unknown>;
   navigate?: (screenId: string, options?: { group?: string; force?: boolean }) => void;
   navigateToParent?: () => void;
   navigateBack?: () => void;

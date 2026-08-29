@@ -1,6 +1,6 @@
 {
   "name": "cattle-tracker-desktop",
-  "version": "0.7.34",
+  "version": "0.7.35",
   "description": "Desktop wrapper for Cattle Tracker",
   "main": "main.js",
   "scripts": {
@@ -27,6 +27,8 @@
       "!dist-*/**",
       "!dist-build*/**",
       "!dist-rel/**",
+      "!js/**",
+      "!lib/**",
       "!**/*.map"
     ],
     "asarUnpack": [

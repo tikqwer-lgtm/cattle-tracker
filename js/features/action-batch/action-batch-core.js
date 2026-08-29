@@ -300,6 +300,12 @@
     return r && r._batchGuardWarned ? ' action-batch-draft-row--guard-warn' : '';
   }
 
+  function clearRowBatchGuard(r) {
+    if (!r) return;
+    r._batchGuardKey = undefined;
+    r._batchGuardWarned = false;
+  }
+
   function bindNumberCollarPair(numberId, collarId) {
     var numEl = document.getElementById(numberId);
     var colEl = document.getElementById(collarId);

@@ -26,31 +26,37 @@ function initOfflineIndicator() {
         el.hidden = false;
         el.setAttribute('aria-hidden', 'false');
         window.refreshFromServer().then(function () {
-          globalThis['__app'].setOnline();
+          setOnline();
         }).catch(function () {
-          globalThis['__app'].setOnline();
+          setOnline();
         });
       } else {
-        globalThis['__app'].setOnline();
+        setOnline();
       }
     } else {
-      globalThis['__app'].setOffline();
+      setOffline();
     }
   }
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    globalThis['__app'].setOffline();
+    setOffline();
   } else {
-    globalThis['__app'].setOnline();
+    setOnline();
   }
   window.addEventListener('online', update);
-  window.addEventListener('offline', function () { globalThis['__app'].setOffline(); });
+  window.addEventListener('offline', function () { setOffline(); });
 }
 
 // Запуск приложения при загрузке
-document.addEventListener('DOMContentLoaded', function () {
+function bootApp() {
   globalThis['__app'].initApp();
   initOfflineIndicator();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
 
 // PWA: регистрация Service Worker (только для http/https; в Electron file:// не регистрируем)
 if (typeof navigator !== 'undefined' && navigator.serviceWorker) {

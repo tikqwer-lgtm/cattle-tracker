@@ -1,5 +1,7 @@
 /**
- * Assemble index.html from html/shell-start.html, html/screens/*, html/shell-end.html
+ * Assemble index.html from html/shell-start.html, html/screens/modals.html,
+ * html/screens/stall-modals.html, html/shell-end.html.
+ * Screen markup lives in html/screens/*.html and is injected by React LegacyHost.
  */
 const fs = require('fs');
 const path = require('path');
@@ -7,15 +9,8 @@ const root = path.join(__dirname, '..');
 
 const parts = [
   'html/shell-start.html',
-  'html/screens/auth.html',
-  'html/screens/menu.html',
-  'html/screens/herd-hub.html',
-  'html/screens/actions-batch.html',
-  'html/screens/add-cow.html',
-  'html/screens/view-list.html',
-  'html/screens/notifications-analytics.html',
   'html/screens/modals.html',
-  'html/screens/sync-admin.html',
+  'html/screens/stall-modals.html',
   'html/shell-end.html',
 ];
 

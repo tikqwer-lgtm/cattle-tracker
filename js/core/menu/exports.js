@@ -46,10 +46,12 @@ if (typeof window !== 'undefined') {
 }
 
 window.addEventListener('load', () => {
-  if (document.getElementById('menu-screen').classList.contains('active')) {
+  var menuEl = document.getElementById('menu-screen');
+  if (menuEl && menuEl.classList.contains('active')) {
     SM.updateObjectSwitcher();
   }
-  if (document.getElementById('herd-hub-screen') && document.getElementById('herd-hub-screen').classList.contains('active')) {
+  var hubEl = document.getElementById('herd-hub-screen');
+  if (hubEl && hubEl.classList.contains('active')) {
     SM.updateHerdStats();
   }
 });

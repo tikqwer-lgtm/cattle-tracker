@@ -559,7 +559,7 @@ function routeInitialScreenAfterSession(session) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function bootAfterDomReady() {
   initAddObjectModal();
   if (typeof window.restoreApiSession === 'function') {
     window.restoreApiSession().then(function (session) {
@@ -570,7 +570,13 @@ document.addEventListener('DOMContentLoaded', function () {
   } else {
     routeInitialScreenAfterSession(null);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootAfterDomReady);
+} else {
+  bootAfterDomReady();
+}
 
   // register functions
   NS.updateObjectSwitcher = updateObjectSwitcher;

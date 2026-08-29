@@ -201,12 +201,16 @@ function navigate(screenId, options) {
   }
 
   _currentScreenId = screenId;
+  try {
+    window._currentScreenId = screenId;
+  } catch (eNavId) {}
 
   try {
     window.dispatchEvent(new CustomEvent('cattle-tracker:navigate', { detail: { screenId: screenId } }));
   } catch (eNav) {}
 
-  document.querySelectorAll('.screen').forEach(el => {
+  document.querySelectorAll('.screen').forEach(function (el) {
+    if (el.closest && el.closest('#root')) return;
     el.classList.remove('active');
   });
 
@@ -240,7 +244,6 @@ function navigate(screenId, options) {
     setTimeout(function () {
       if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
     }, 0);
-    /* Один hide/show за вход на экран — два таймера давали двойное мигание. */
     setTimeout(function () {
       if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
       var api = typeof window !== 'undefined' && window.electronAPI;
@@ -251,7 +254,6 @@ function navigate(screenId, options) {
       }
     }, 220);
   }
-  /* Схема стойломест: WebView/Capacitor после сворачивания иногда «теряет» отрисовку ячеек — тот же мягкий repaint. */
   if (screenId === 'stall-map') {
     setTimeout(function () {
       if (typeof window.softRepaintCattleTrackerView === 'function') window.softRepaintCattleTrackerView();
@@ -263,149 +265,7 @@ function navigate(screenId, options) {
     }, 220);
   }
 
-  if (screenId === 'submenu') {
-    globalThis['__menu'].renderSubmenu();
-  }
-  /* protocols: React (js/screens/ProtocolsScreen.tsx) */
-  /* farm-settings: React (js/screens/FarmSettings.tsx) */
-  if (screenId === 'farm-card' && typeof window.initFarmCardPanel === 'function') {
-    window.initFarmCardPanel();
-  }
-  if (screenId === 'dry' && typeof initDryScreen === 'function') initDryScreen();
-  if (screenId === 'calving' && typeof initCalvingScreen === 'function') initCalvingScreen();
-  if (screenId === 'abort' && typeof initAbortScreen === 'function') initAbortScreen();
-  if (screenId === 'protocol-assign' && typeof initProtocolAssignScreen === 'function') initProtocolAssignScreen();
-  if (screenId === 'uzi' && typeof initUziScreen === 'function') initUziScreen();
-  if (screenId === 'insemination' && typeof window.initInseminationScreen === 'function') {
-    window.initInseminationScreen();
-    setTimeout(function () {
-      if (typeof window.fillAllInseminationCodeSelects === 'function') {
-        try { window.fillAllInseminationCodeSelects(); } catch (e) {}
-      }
-    }, 0);
-  }
-  if (screenId === 'view') {
-    updateViewList();
-    setTimeout(function () {
-      if (typeof refreshViewListVisible === 'function') refreshViewListVisible();
-    }, 0);
-  }
-  if (screenId === 'all-inseminations' && typeof window.renderAllInseminationsScreen === 'function') {
-    var vcAllInsem = globalThis['__viewCow'];
-    if (vcAllInsem && typeof vcAllInsem.resetAllInseminationsRenderTarget === 'function') {
-      vcAllInsem.resetAllInseminationsRenderTarget();
-    }
-    window.renderAllInseminationsScreen();
-  }
-  if (screenId === 'notifications' && typeof renderNotificationCenter === 'function') {
-    renderNotificationCenter('notification-center-container');
-  }
-  if (screenId === 'sync' && typeof window.initSyncServerBlock === 'function') {
-    window.initSyncServerBlock();
-    if (window.CATTLE_TRACKER_USE_API && typeof window.updateSyncServerStatusFromHealth === 'function') {
-      window.updateSyncServerStatusFromHealth();
-    }
-  }
-  if (screenId === 'auth') {
-    if (typeof window.bindAuthControls === 'function') window.bindAuthControls();
-    if (typeof fillAuthUsernameList === 'function') fillAuthUsernameList();
-    setTimeout(function () {
-      var authScreen = document.getElementById('auth-screen');
-      var active = document.activeElement;
-      if (typeof window.focusAuthForm === 'function' && (!authScreen || !active || !authScreen.contains(active))) {
-        window.focusAuthForm();
-      }
-    }, 0);
-  }
-  if (screenId === 'tasks' && typeof renderTasksScreen === 'function') {
-    renderTasksScreen();
-  }
-  if (screenId === 'analytics' && typeof renderAnalyticsScreen === 'function') {
-    renderAnalyticsScreen();
-  }
-  if (screenId === 'interval-analysis' && typeof renderIntervalAnalysisScreen === 'function') {
-    renderIntervalAnalysisScreen();
-  }
-  if (screenId === 'reproduction' && typeof renderReproductionScreen === 'function') {
-    renderReproductionScreen();
-  }
-  if (screenId === 'sync' && typeof renderBackupUI === 'function') {
-    renderBackupUI('sync-backup-container');
-  }
-  /* help: React (js/screens/HelpScreen.tsx) — refresh on mount in component */
-  if (screenId === 'admin' && typeof window.renderAdminScreen === 'function') {
-    window.renderAdminScreen();
-  }
-  if (screenId === 'lists' && typeof window.renderListsScreen === 'function') {
-    window.renderListsScreen();
-  }
-  if (screenId === 'list-uzi' && typeof window.renderUziListSubScreen === 'function') {
-    var uziContainer = document.getElementById('list-uzi-container');
-    if (uziContainer) window.renderUziListSubScreen(uziContainer);
-  }
-  if (screenId === 'list-insemination' && typeof window.renderInseminationListSubScreen === 'function') {
-    var insemContainer = document.getElementById('list-insemination-container');
-    if (insemContainer) window.renderInseminationListSubScreen(insemContainer);
-  }
-  if (screenId === 'list-calving' && typeof window.renderCalvingListSubScreen === 'function') {
-    var calvingContainer = document.getElementById('list-calving-container');
-    if (calvingContainer) {
-      var calvingPreset = null;
-      if (window._listsCalvingPreset) {
-        calvingPreset = window._listsCalvingPreset;
-        window._listsCalvingPreset = null;
-        window._listsCalvingView = calvingPreset;
-      } else if (window._listsCalvingView) {
-        calvingPreset = window._listsCalvingView;
-      } else if (typeof globalThis['__menu'].getMenuCalvingViewYearMonth === 'function') {
-        calvingPreset = globalThis['__menu'].getMenuCalvingViewYearMonth();
-      }
-      window.renderCalvingListSubScreen(calvingContainer, calvingPreset);
-    }
-  }
-  if (screenId === 'events' && typeof window.renderEventsScreen === 'function') {
-    window.renderEventsScreen();
-  }
-  if (screenId === 'stall-map' && typeof window.initStallMapScreen === 'function') {
-    window.initStallMapScreen();
-  }
-  if (screenId === 'stall-inventory' && typeof window.initStallInventoryScreen === 'function') {
-    window.initStallInventoryScreen();
-  }
-  if (screenId === 'add') {
-    var clearBtn = document.getElementById('clearFormButton');
-    if (clearBtn) clearBtn.style.display = window.currentEditingId ? 'none' : 'inline-block';
-    if (!window.currentEditingId) {
-      var titleEl = document.getElementById('addScreenTitle');
-      if (titleEl) titleEl.textContent = 'Добавить животное';
-      if (typeof clearForm === 'function') clearForm();
-    }
-    if (typeof window.fillAllInseminationCodeSelects === 'function') {
-      try {
-        window.fillAllInseminationCodeSelects();
-      } catch (e) {}
-    }
-    setTimeout(function () {
-      var firstField = document.getElementById('cattleId');
-      if (firstField) firstField.focus();
-    }, 0);
-  }
-
-  if (screenId === 'menu') {
-    if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
-    if (typeof globalThis['__menu'].updateVersionSwitcher === 'function') globalThis['__menu'].updateVersionSwitcher();
-    globalThis['__menu'].updateObjectSwitcher();
-    if (typeof updateAuthBar === 'function') updateAuthBar();
-    if (typeof initFirstRunHints === 'function') globalThis['__menu'].initFirstRunHints();
-    if (typeof maybeShowFirstRunHints === 'function') globalThis['__menu'].maybeShowFirstRunHints();
-    if (typeof window.checkMobileApkUpdate === 'function') window.checkMobileApkUpdate(true);
-  }
-  if (screenId === 'herd-hub') {
-    if (typeof globalThis['__menu'].updateMenuGroupVisibility === 'function') globalThis['__menu'].updateMenuGroupVisibility();
-    if (typeof initMenuCalvingForecast === 'function') globalThis['__menu'].initMenuCalvingForecast();
-    globalThis['__menu'].updateHerdStats();
-    if (typeof initMenuNotificationsLink === 'function') globalThis['__menu'].initMenuNotificationsLink();
-  }
+  /* init экранов — React LegacyHost / JSX (activateLegacyScreen), не здесь */
   if (typeof updateNotificationIndicators === 'function') updateNotificationIndicators();
 
   applyScreenHash(screenId, options);

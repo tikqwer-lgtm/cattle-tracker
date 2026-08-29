@@ -4,11 +4,14 @@ node_modules/
 # Build output (Vite)
 dist/
 
-# Electron (dependencies and build output ? too large for GitHub)
+# Electron (dependencies and build output — too large for GitHub)
 electron/node_modules/
 electron/dist/
 electron/dist-rel/
 electron/dist-build-*/
+# Устаревшая копия исходников клиента (канон — корневой js/, в сборке только web/app.js)
+electron/js/
+electron/lib/
 
 # OS
 .DS_Store

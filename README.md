@@ -97,7 +97,7 @@ cattle-tracker/
 ├── index.html              # Собран из html/shell-*.html + html/screens/*
 ├── html/
 │   ├── shell-start.html, shell-end.html
-│   └── screens/            # Разметка экранов (auth, menu, sync, modals, …)
+│   └── screens/            # Разметка экранов (Vite ?raw) + modals / stall-modals в index
 ├── manifest.json           # PWA
 ├── sw.js                   # Service Worker (офлайн, кэш)
 ├── server/                 # API (Node.js, sql.js)
@@ -111,9 +111,9 @@ cattle-tracker/
 │   └── sync.css            # Агрегатор @import sync-экранов
 ├── js/
 │   ├── main.tsx            # ESM entry → dist/app.js
-│   ├── App.tsx             # React AppShell + реестр экранов (strangler)
-│   ├── screens/            # React-экраны (новые UI — только сюда, не IIFE part-N)
-│   ├── data/               # ESM-адаптеры сессии/хозяйства/entries (хуки для React)
+│   ├── App.tsx             # React AppShell + реестр экранов
+│   ├── screens/            # React-экраны; html/screens — разметка для LegacyHost
+│   ├── data/               # ESM-адаптеры сессии/хозяйства/entries
 │   ├── core/               # app, menu, users — фасады + подмодули
 │   ├── api/, storage/, ui/, utils/
 │   └── features/           # sync/, action-batch/, stall-map/, … (фасад + подпапка)
