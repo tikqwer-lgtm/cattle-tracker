@@ -183,18 +183,34 @@ import {
     overlay.innerHTML =
       '<div class="confirm-modal app-version-suggestion-modal">' +
       '<h2 id="app-version-suggestion-title" class="app-version-actions-title">Предложения</h2>' +
-      '<p class="app-version-suggestion-hint">Опишите, что нужно изменить. Сообщение уйдёт сразу, без списка.</p>' +
-      '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Сообщение</label>' +
+      '<p class="app-version-suggestion-hint">Можно набрать несколько сообщений и отправить их все сразу. Закрытие окна список не стирает.</p>' +
+      '<ul class="app-version-suggestion-queue" aria-label="Накопленные сообщения"></ul>' +
+      '<p class="app-version-suggestion-queue-empty">Пока нет сохранённых сообщений.</p>' +
+      '<label class="app-version-suggestion-label" for="appVersionSuggestionText">Новое сообщение</label>' +
       '<textarea id="appVersionSuggestionText" class="app-version-suggestion-text" rows="5" maxlength="4000"></textarea>' +
       '<div class="confirm-modal-actions confirm-modal-actions--stack">' +
-      '<button type="button" class="btn primary app-version-suggestion-send">Отправить</button>' +
+      '<button type="button" class="btn app-version-suggestion-add">Добавить в список</button>' +
+      '<button type="button" class="btn primary app-version-suggestion-send">Отправить все</button>' +
       '<button type="button" class="small-btn app-version-suggestion-cancel">Закрыть</button>' +
       '</div></div>';
 
     var textEl = overlay.querySelector('#appVersionSuggestionText');
+    var queueEl = overlay.querySelector('.app-version-suggestion-queue');
+    var emptyEl = overlay.querySelector('.app-version-suggestion-queue-empty');
+    var btnAdd = overlay.querySelector('.app-version-suggestion-add');
     var btnSend = overlay.querySelector('.app-version-suggestion-send');
     var btnCancel = overlay.querySelector('.app-version-suggestion-cancel');
     var closed = false;
+    var drafts = loadImprovementDrafts();
+
+    function suggestionKindForCurrentUser() {
+      var u = typeof global.getCurrentUser === 'function' ? global.getCurrentUser() : null;
+      if (u && typeof global.hasCapability === 'function' && global.hasCapability('adminReleaseControls', u)) {
+        return 'improvement';
+      }
+      if (u && String(u.role || '').trim().toLowerCase() === 'admin') return 'improvement';
+      return 'suggestion';
+    }
 
     function close() {
       if (closed) return;
@@ -207,6 +223,52 @@ import {
       return textEl && textEl.value ? String(textEl.value).trim() : '';
     }
 
+    function pendingMessages() {
+      var list = drafts.map(function (d) {
+        return String(d.text || '').trim();
+      }).filter(Boolean);
+      var extra = currentText();
+      if (extra) list.push(extra);
+      return list;
+    }
+
+    function renderQueue() {
+      if (!queueEl) return;
+      queueEl.innerHTML = '';
+      for (var i = 0; i < drafts.length; i++) {
+        var item = drafts[i];
+        var li = document.createElement('li');
+        li.className = 'app-version-suggestion-queue-item';
+        li.innerHTML =
+          '<span class="app-version-suggestion-queue-text"></span>' +
+          '<button type="button" class="small-btn app-version-suggestion-queue-remove">Удалить</button>';
+        li.querySelector('.app-version-suggestion-queue-text').textContent = item.text;
+        li.querySelector('.app-version-suggestion-queue-remove').setAttribute('data-id', item.id);
+        queueEl.appendChild(li);
+      }
+      if (emptyEl) emptyEl.hidden = drafts.length > 0;
+      if (btnSend) btnSend.disabled = pendingMessages().length === 0;
+    }
+
+    function addCurrentToQueue() {
+      var message = currentText();
+      if (!message) {
+        if (typeof global.showToast === 'function') global.showToast('Введите текст', 'error');
+        return;
+      }
+      if (drafts.length >= IMPROVEMENT_DRAFTS_MAX) {
+        if (typeof global.showToast === 'function') {
+          global.showToast('Сначала отправьте накопленные сообщения', 'error');
+        }
+        return;
+      }
+      drafts.push({ id: String(Date.now()) + '-' + String(Math.random()).slice(2, 8), text: message });
+      saveImprovementDrafts(drafts);
+      if (textEl) textEl.value = '';
+      renderQueue();
+      if (textEl) textEl.focus();
+    }
+
     btnCancel.addEventListener('click', close);
     overlay.addEventListener('click', function (ev) {
       if (ev.target === overlay) close();
@@ -217,10 +279,26 @@ import {
         close();
       }
     });
+    queueEl.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('.app-version-suggestion-queue-remove') : null;
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      drafts = drafts.filter(function (d) {
+        return d.id !== id;
+      });
+      saveImprovementDrafts(drafts);
+      renderQueue();
+    });
+    btnAdd.addEventListener('click', addCurrentToQueue);
+    if (textEl) {
+      textEl.addEventListener('input', function () {
+        if (btnSend) btnSend.disabled = pendingMessages().length === 0;
+      });
+    }
 
     btnSend.addEventListener('click', function () {
-      var message = currentText();
-      if (!message) {
+      var messages = pendingMessages();
+      if (!messages.length) {
         if (typeof global.showToast === 'function') global.showToast('Введите текст', 'error');
         return;
       }
@@ -230,24 +308,57 @@ import {
         return;
       }
       btnSend.disabled = true;
-      api
-        .submitReport(message, {
-          kind: 'improvement',
-          appVersion: appVersion || ''
-        })
+      btnAdd.disabled = true;
+      var kind = suggestionKindForCurrentUser();
+      var sent = 0;
+      var chain = Promise.resolve();
+      messages.forEach(function (message, index) {
+        chain = chain.then(function () {
+          return api.submitReport(message, {
+            kind: kind,
+            appVersion: appVersion || '',
+            batchIndex: index + 1,
+            batchTotal: messages.length
+          }).then(function () {
+            sent += 1;
+          });
+        });
+      });
+      chain
         .then(function () {
           saveImprovementDrafts([]);
           close();
-          if (typeof global.showToast === 'function') global.showToast('Предложение отправлено', 'success');
+          if (typeof global.showToast === 'function') {
+            var n = messages.length;
+            var ok =
+              kind === 'suggestion'
+                ? n === 1
+                  ? 'Отправлено администратору'
+                  : 'Отправлено администратору: ' + n
+                : n === 1
+                  ? 'Предложение отправлено'
+                  : 'Отправлено сообщений: ' + n;
+            global.showToast(ok, 'success');
+          }
         })
         .catch(function (err) {
-          btnSend.disabled = false;
+          var leftover = messages.slice(sent);
+          drafts = leftover.map(function (text, i) {
+            return { id: 'left-' + i + '-' + Date.now(), text: text };
+          });
+          saveImprovementDrafts(drafts);
+          if (textEl) textEl.value = '';
+          renderQueue();
+          btnSend.disabled = pendingMessages().length === 0;
+          btnAdd.disabled = false;
           var msg = err && err.message ? String(err.message) : 'Не удалось отправить';
+          if (sent > 0) msg = 'Отправлено ' + sent + ' из ' + messages.length + '. ' + msg;
           if (typeof global.showToast === 'function') global.showToast(msg, 'error', 5000);
         });
     });
 
     document.body.appendChild(overlay);
+    renderQueue();
     if (textEl) textEl.focus();
   }
 

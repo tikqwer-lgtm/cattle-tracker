@@ -1,0 +1,38 @@
+---
+description: ПК и облачный агент работают только в main, APK после push в git.
+alwaysApply: true
+---
+
+# Одна линия разработки: `main`
+
+ПК и облако ходят **по очереди в одну ветку**. Нельзя выкладывать APK с отдельной `cursor/...` ветки, пока коммита нет в `origin/main`.
+
+## Перед работой
+
+```bash
+git fetch origin
+git checkout main
+git pull origin main
+```
+
+Версию брать из текущего `package.json` на `main` (не прыгать с устаревшей копии).
+
+## После правок клиента
+
+1. Коммит на `main` (сообщение по `commit-message.mdc`).
+2. `git push origin main`.
+3. Только после успешного push: `npm run mobile:installer` (облако) / `npm run installer` на Windows.
+4. `PATCH /api/reports/:id` `{ "status": "done" }` для обработанных заявок.
+
+Если push в `main` не удался — **не заливать APK**. Написать пользователю: сначала нужен доступ на push в `main`.
+
+## Облачный агент
+
+- Не оставлять работу только на `cursor/*` и не считать PR заменой `main`.
+- Если платформа создала feature-ветку: после коммита влить её в `main` и **push `origin/main`**, затем APK.
+- Не `push --force` в `main`.
+
+## Не делать
+
+- Собирать и грузить APK, пока `package.json` на сервере новее, чем в git.
+- Стартовать от старого `main`, если `origin/main` уже ушёл вперёд.

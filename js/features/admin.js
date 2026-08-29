@@ -648,6 +648,8 @@
           var statusBadge = '';
           var ringBlock = '';
           var payloadPreview = '';
+          var acceptBtn = '';
+          var parsedKind = '';
           var statusRu =
             r.status === 'done' ? 'сделано' : r.status === 'skipped' ? 'пропущено' : 'новое';
           statusBadge =
@@ -657,7 +659,13 @@
               var pl = typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload;
               if (pl && typeof pl === 'object') {
                 if (pl.kind) {
-                  var kindLabel = pl.kind === 'improvement' ? 'Предложение' : String(pl.kind);
+                  parsedKind = String(pl.kind);
+                  var kindLabel =
+                    pl.kind === 'improvement'
+                      ? 'Предложение'
+                      : pl.kind === 'suggestion'
+                        ? 'На проверке'
+                        : String(pl.kind);
                   kindBadge =
                     '<span class="admin-report-kind">' + escapeHtml(kindLabel) + '</span> ';
                 }
@@ -684,6 +692,12 @@
               payloadPreview = '<pre class="admin-report-payload">' + escapeHtml(r.payload) + '</pre>';
             }
           }
+          if (parsedKind === 'suggestion' && String(r.status || 'new') === 'new') {
+            acceptBtn =
+              '<button type="button" class="action-btn admin-accept-report-btn" data-report-id="' +
+              escapeHtml(r.id) +
+              '">Принять</button> ';
+          }
           html +=
             '<div class="admin-report-item" data-report-id="' +
             escapeHtml(r.id) +
@@ -700,6 +714,7 @@
             '</div>' +
             ringBlock +
             payloadPreview +
+            acceptBtn +
             '<button type="button" class="small-btn admin-delete-report-btn" data-report-id="' +
             escapeHtml(r.id) +
             '">Удалить</button>' +
@@ -707,6 +722,20 @@
         }
         html += '</div>';
         reportsEl.innerHTML = html;
+        reportsEl.querySelectorAll('.admin-accept-report-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-report-id');
+            if (!id || typeof api.acceptReportForAgent !== 'function') return;
+            btn.disabled = true;
+            api.acceptReportForAgent(id).then(function () {
+              if (typeof showToast === 'function') showToast('Отправлено агенту', 'success');
+              renderAdminScreen();
+            }).catch(function (err) {
+              btn.disabled = false;
+              if (typeof showToast === 'function') showToast(err.message || 'Ошибка', 'error', 5000);
+            });
+          });
+        });
         reportsEl.querySelectorAll('.admin-delete-report-btn').forEach(function (btn) {
           btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-report-id');

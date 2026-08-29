@@ -1,4 +1,9 @@
-import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress-text.js';
+import {
+  formatApkProgressDetail,
+  uint8ToBase64,
+  APK_STALL_MS,
+  shouldFallbackApkDownload
+} from '../../utils/apk-progress-text.js';
 
 /** Секция «Установка обновления (APK)» на синхронизации (Android + режим API). */
 (function (global) {
@@ -223,6 +228,12 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
     return String(u.role || '').trim().toLowerCase() === 'admin';
   }
 
+  function isApiLoggedInUser() {
+    if (!global.CATTLE_TRACKER_USE_API) return false;
+    if (typeof global.getCurrentUser !== 'function') return false;
+    return !!global.getCurrentUser();
+  }
+
   function openImprovementForm() {
     var ver = _mobileUpdateState.localVer || '';
     if (typeof global.showImprovementSuggestionModal === 'function') {
@@ -239,7 +250,7 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (isAppAdminUser()) {
+        if (isAppAdminUser() || isApiLoggedInUser()) {
           openImprovementForm();
           return;
         }
@@ -249,7 +260,7 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
         }
       });
     }
-    if (isAppAdminUser()) {
+    if (isAppAdminUser() || isApiLoggedInUser()) {
       btn.hidden = false;
       btn.textContent = 'Обновить';
       btn.setAttribute('aria-label', 'Предложения по улучшению');
@@ -632,6 +643,8 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
       return openApkDownloadUrl(apkUrl);
     }
     var userCanceledRef = { canceled: false };
+    var stallRef = { stalled: false };
+    var bytesSeen = { n: 0 };
     var pluginRef = apkUpdatePlugin;
     var abortCtrl = typeof AbortController === 'function' ? new AbortController() : { abort: function () {}, signal: undefined };
     var progress =
@@ -667,6 +680,21 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
             }
           })
         : null;
+    if (progress && typeof progress.update === 'function') {
+      var origUpdate = progress.update;
+      progress.update = function (loaded, total, detail) {
+        bytesSeen.n = Number(loaded) || 0;
+        return origUpdate.apply(progress, arguments);
+      };
+    }
+    var stallTimer = setTimeout(function () {
+      if (userCanceledRef.canceled || stallRef.stalled) return;
+      if (!shouldFallbackApkDownload(bytesSeen.n, APK_STALL_MS, APK_STALL_MS)) return;
+      stallRef.stalled = true;
+      try {
+        abortCtrl.abort();
+      } catch (eStall) {}
+    }, APK_STALL_MS);
 
     function startDownload(plugin) {
       if (!plugin || typeof plugin.startApkFile !== 'function') {
@@ -697,7 +725,7 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
     return (pluginRef ? Promise.resolve(pluginRef) : getApkUpdatePlugin())
       .then(startDownload)
       .then(function () {
-        if (userCanceledRef.canceled) return;
+        if (userCanceledRef.canceled || stallRef.stalled) return;
         if (progress) progress.close();
         if (typeof global.showToast === 'function') {
           global.showToast('Откройте установщик на экране', 'success', 4000);
@@ -705,6 +733,12 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
       })
       .catch(function (err) {
         if (progress) progress.close();
+        if (stallRef.stalled) {
+          if (typeof global.showToast === 'function') {
+            global.showToast('Скачивание в приложении не началось. Открываем файл в браузере…', 'info', 5000);
+          }
+          return openApkDownloadUrl(apkUrl);
+        }
         if (userCanceledRef.canceled) return;
         var msg = err && err.message ? String(err.message) : '';
         if (err && err.name === 'AbortError') msg = 'CANCELED';
@@ -740,6 +774,9 @@ import { formatApkProgressDetail, uint8ToBase64 } from '../../utils/apk-progress
           return openApkDownloadUrl(apkUrl);
         }
         return openApkDownloadUrl(apkUrl);
+      })
+      .finally(function () {
+        clearTimeout(stallTimer);
       });
   }
 

@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 const { requireAuth, requireRole } = require('../auth');
+const { kindForSubmit } = require('../lib/report-payload');
 
 const ALLOWED_ROLES = ['admin', 'inseminator', 'service'];
 
@@ -148,15 +149,18 @@ router.post('/reports', requireAuth, (req, res) => {
   if (!text) {
     return res.status(400).json({ error: 'Введите сообщение' });
   }
+  const reportPayload = payload && typeof payload === 'object' ? Object.assign({}, payload) : payload;
   const kind =
-    payload && typeof payload === 'object' && payload.kind != null ? String(payload.kind).trim() : '';
-  if (kind === 'improvement') {
-    const userRole = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Недостаточно прав' });
+    reportPayload && typeof reportPayload === 'object' && reportPayload.kind != null
+      ? String(reportPayload.kind).trim()
+      : '';
+  const userRole = db.normalizeAppRole ? db.normalizeAppRole(req.user.role) : req.user.role;
+  if (kind === 'improvement' || kind === 'suggestion') {
+    if (reportPayload && typeof reportPayload === 'object') {
+      reportPayload.kind = kindForSubmit(userRole, kind);
     }
   }
-  const payloadJson = payload != null ? JSON.stringify(payload) : null;
+  const payloadJson = reportPayload != null ? JSON.stringify(reportPayload) : null;
   const report = db.createReport(req.user.id, req.user.username, text, payloadJson);
   res.status(201).json({ ok: true, report });
 });
@@ -167,6 +171,14 @@ router.get('/reports', requireAuth, requireRole('admin'), (req, res) => {
 });
 
 router.patch('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {
+  if (req.body && req.body.accept === true) {
+    const accepted = db.acceptReportForAgent(req.params.id);
+    if (!accepted.ok) {
+      const code = accepted.error === 'Отчёт не найден' ? 404 : 400;
+      return res.status(code).json({ error: accepted.error || 'Не удалось принять' });
+    }
+    return res.json({ ok: true, report: accepted.report });
+  }
   const status = req.body && req.body.status;
   const result = db.updateReportStatus(req.params.id, status);
   if (!result.ok) {

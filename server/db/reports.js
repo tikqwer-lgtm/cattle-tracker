@@ -1,4 +1,5 @@
 const { runSql, getSql, allSql, saveDb } = require('./core');
+const { payloadAfterAccept, reportKind } = require('../lib/report-payload');
 
 const REPORT_STATUSES = ['new', 'done', 'skipped'];
 
@@ -52,6 +53,22 @@ function updateReportStatus(id, status) {
   return { ok: true, report: getReportById(id) };
 }
 
+function acceptReportForAgent(id) {
+  const report = getReportById(id);
+  if (!report) return { ok: false, error: 'Отчёт не найден' };
+  if (reportKind(report.payload) === 'improvement' && String(report.status || 'new') === 'new') {
+    return { ok: true, report: report };
+  }
+  const pl = payloadAfterAccept(report.payload);
+  runSql('UPDATE reports SET payload_json = ?, status = ? WHERE id = ?', [
+    JSON.stringify(pl),
+    'new',
+    id
+  ]);
+  saveDb();
+  return { ok: true, report: getReportById(id) };
+}
+
 function deleteReport(id) {
   const report = getReportById(id);
   if (!report) return false;
@@ -65,5 +82,6 @@ module.exports = {
   getReportById,
   getReports,
   updateReportStatus,
+  acceptReportForAgent,
   deleteReport,
 };

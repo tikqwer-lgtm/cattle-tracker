@@ -1,5 +1,6 @@
 /**
  * Список новых предложений (kind=improvement, status=new) с API.
+ * kind=suggestion агент не берёт, пока админ не нажмёт «Принять».
  * Учётные данные — как у mobile-installer.env (не коммитить).
  */
 'use strict';

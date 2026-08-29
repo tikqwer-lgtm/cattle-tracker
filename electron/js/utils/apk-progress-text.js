@@ -3,6 +3,15 @@
  * Пока байт нет — «Загрузка…»; дальше всегда видны полученные килобайты,
  * даже если сервер не прислал Content-Length.
  */
+export var APK_STALL_MS = 12000;
+
+export function shouldFallbackApkDownload(loaded, elapsedMs, stallMs) {
+  var got = Number(loaded) || 0;
+  var wait = Number(elapsedMs) || 0;
+  var limit = stallMs == null ? APK_STALL_MS : Number(stallMs);
+  return got <= 0 && wait >= limit;
+}
+
 export function formatBytes(n) {
   var v = Number(n) || 0;
   if (v < 1024) return v + ' Б';

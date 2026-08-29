@@ -548,6 +548,10 @@
     return request('GET', '/api/reports').then(function (data) { return data.reports || []; });
   }
 
+  function acceptReportForAgent(id) {
+    return request('PATCH', '/api/reports/' + encodeURIComponent(id), { accept: true });
+  }
+
   function patchReportStatus(id, status) {
     return request('PATCH', '/api/reports/' + encodeURIComponent(id), { status: status });
   }
@@ -669,6 +673,7 @@
     resolveAccessRequest: resolveAccessRequest,
     submitReport: submitReport,
     getReports: getReports,
+    acceptReportForAgent: acceptReportForAgent,
     patchReportStatus: patchReportStatus,
     deleteReport: deleteReport,
     listMobileApkFiles: listMobileApkFiles,
