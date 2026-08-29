@@ -22,6 +22,7 @@ Server runs on `http://localhost:3000`. Set `PORT` to change.
 ```powershell
 .\server\scripts\deploy.ps1
 ```
+Или `cd server && npm run deploy`. Каталоги `node_modules`, `data` и **`apk`** (боевой файл обновления для телефонов) на сервер не копируются.
 Введите пароль SSH при запросе. На сервере должны существовать каталог `/root/cattle-tracker/server` и сервис systemd `cattle-tracker-api`.
 
 **Вручную:** скопируйте содержимое папки `server/` на сервер (без `node_modules` и `data`). На сервере:

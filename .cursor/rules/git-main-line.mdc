@@ -22,7 +22,7 @@ git pull origin main
 1. Коммит на `main` (сообщение по `commit-message.mdc`).
 2. `git push origin main`.
 3. Только после успешного push: `npm run mobile:installer` (облако) / `npm run installer` на Windows.
-4. Если менялись файлы в `server/` — сразу деплой API: из каталога `server/` команда `npm run deploy` (пароль SSH в `server/deploy.env` или секрет `CATTLE_TRACKER_SSH_PASSWORD`). Не просить пользователя выкатить сервер вручную.
+4. Если менялись файлы в `server/` — сразу деплой API: из каталога `server/` команда `npm run deploy` (пароль SSH в `server/deploy.env` или секрет `CATTLE_TRACKER_SSH_PASSWORD`). Не просить пользователя выкатить сервер вручную. Каталог `server/apk` **не копировать** — там боевой APK.
 5. `PATCH /api/reports/:id` `{ "status": "done" }` для обработанных заявок.
 
 Если push в `main` не удался — **не заливать APK**. Написать пользователю: сначала нужен доступ на push в `main`.

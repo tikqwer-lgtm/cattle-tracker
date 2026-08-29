@@ -1,4 +1,4 @@
-# Деплой сервера на Timeweb: копирует файлы (без node_modules и data), на сервере npm install и перезапуск.
+# Деплой сервера на Timeweb: копирует файлы (без node_modules, data и apk), на сервере npm install и перезапуск.
 # Запуск: .\server\scripts\deploy.ps1
 # Без deploy.env — три раза запросит пароль SSH. С server/deploy.env (CATTLE_TRACKER_SSH_PASSWORD) — без запроса.
 
@@ -52,7 +52,7 @@ if (-not $SERVER_IP) {
 if (-not $USER) { $USER = "root" }
 
 $target = "${USER}@${SERVER_IP}"
-$exclude = @("node_modules", "data", "server-address.txt", "server-address.example.txt", "deploy.env", "deploy.env.example", "scripts")
+$exclude = @("node_modules", "data", "apk", "server-address.txt", "server-address.example.txt", "deploy.env", "deploy.env.example", "scripts")
 $tempDir = Join-Path $env:TEMP "cattle-deploy-$(Get-Date -Format 'yyyyMMddHHmmss')"
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 

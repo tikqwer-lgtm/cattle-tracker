@@ -1,5 +1,6 @@
 /**
  * Non-interactive deploy via ssh2 (password from server/deploy.env).
+ * Не копирует node_modules, data и apk (боевой APK для телефонов).
  * Usage: node server/scripts/deploy-node.js
  */
 const fs = require('fs');
@@ -14,6 +15,7 @@ const projectRoot = path.join(serverRoot, '..');
 const EXCLUDE = new Set([
   'node_modules',
   'data',
+  'apk',
   'server-address.txt',
   'server-address.example.txt',
   'deploy.env',
