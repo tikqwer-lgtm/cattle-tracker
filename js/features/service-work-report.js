@@ -10,6 +10,11 @@ import {
   isUziReportItem,
   formatPrintDate
 } from './service-work-report-build.js';
+import {
+  collectServiceWorkItemsFromTasks,
+  sumTaskQuantities,
+  usesServiceWorkTasksJournal
+} from './service-work-tasks.js';
 import { amountWithWords, rowAmount, sumServiceRows } from '../utils/number-to-words-ru.js';
 import {
   collectActFormData,
@@ -103,6 +108,19 @@ function collectFromForm(root) {
     uzi: !!(root.querySelector('#serviceReportTypeUzi') && root.querySelector('#serviceReportTypeUzi').checked),
     protocol: !!(root.querySelector('#serviceReportTypeProtocol') && root.querySelector('#serviceReportTypeProtocol').checked)
   };
+  if (usesServiceWorkTasksJournal()) {
+    var tasks = [];
+    if (window.__farmCardBundle && Array.isArray(window.__farmCardBundle.workTasks)) {
+      tasks = window.__farmCardBundle.workTasks;
+    } else if (window.CattleTrackerWorkTasks && window.CattleTrackerWorkTasks.readWorkTasksLocal) {
+      tasks = window.CattleTrackerWorkTasks.readWorkTasksLocal();
+    }
+    return collectServiceWorkItemsFromTasks(tasks, {
+      date: date,
+      username: getUsername(),
+      types: types
+    });
+  }
   return collectServiceWorkItems(getEntriesList(), {
     date: date,
     username: getUsername(),
@@ -190,7 +208,7 @@ function saveReport(items, date) {
   return load.then(function () {
     if (!window.__farmCardBundle) window.__farmCardBundle = { events: [] };
     if (!window.__farmCardBundle.events) window.__farmCardBundle.events = [];
-    var title = 'Отчёт ' + date + ' (' + items.length + ' гол.)';
+    var title = 'Отчёт ' + date + ' (' + sumTaskQuantities(items) + ' гол.)';
     var html = reportPrintHtml(items, date, getUsername());
     window.__farmCardBundle.events.push({
       id: newEventId(),
@@ -434,7 +452,7 @@ function openServiceWorkReportForm() {
     '<label><input type="checkbox" id="serviceReportTypeUzi" checked /> УЗИ</label>' +
     '<label><input type="checkbox" id="serviceReportTypeProtocol" checked /> Протокол</label>' +
     '</div>' +
-    '<p class="farm-settings-hint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
+    '<p class="farm-settings-hint" id="serviceReportHint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
     '<div class="view-fields-actions">' +
     '<button type="button" class="action-btn" id="serviceReportRefreshBtn">Обновить опись</button>' +
@@ -449,6 +467,11 @@ function openServiceWorkReportForm() {
   document.body.appendChild(modal);
   bindServiceActBlock(modal);
   bindServiceReportTabs(modal);
+  var hint = modal.querySelector('#serviceReportHint');
+  if (hint && usesServiceWorkTasksJournal()) {
+    hint.textContent =
+      'Опись собирается из журнала задач за дату: общее число голов и необязательные строки. Протокол в отчёте — только если указан в строке осеменения.';
+  }
 
   function refreshPreview() {
     var items = collectFromForm(modal);
@@ -456,7 +479,15 @@ function openServiceWorkReportForm() {
     if (box) box.innerHTML = itemsTableHtml(items);
     modal._items = items;
   }
-  refreshPreview();
+  var boot =
+    typeof window.ensureFarmCardLoaded === 'function'
+      ? window.ensureFarmCardLoaded()
+      : Promise.resolve();
+  boot.then(function () {
+    refreshPreview();
+  }).catch(function () {
+    refreshPreview();
+  });
   modal.querySelector('#serviceReportCloseBtn').addEventListener('click', closeReportModal);
   modal.addEventListener('click', function (ev) {
     if (ev.target === modal) closeReportModal();

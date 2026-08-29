@@ -27,6 +27,7 @@
       metricValues: [],
       bullFertility: [],
       events: [],
+      workTasks: [],
       items: [],
       goals: [],
       notes: '',
@@ -340,6 +341,11 @@
     b.events = (Array.isArray(raw.events) ? raw.events : [])
       .map(normalizeEvent)
       .filter(Boolean);
+    b.workTasks = Array.isArray(raw.workTasks) ? raw.workTasks.slice() : [];
+    if (typeof window !== 'undefined' && window.CattleTrackerWorkTasks &&
+        typeof window.CattleTrackerWorkTasks.normalizeWorkTasksList === 'function') {
+      b.workTasks = window.CattleTrackerWorkTasks.normalizeWorkTasksList(b.workTasks);
+    }
     b.items = (Array.isArray(raw.items) ? raw.items : [])
       .map(normalizeItem)
       .filter(Boolean);
@@ -504,6 +510,10 @@
         }
         window.__farmCardBundle = merged;
         writeFarmCardCache(oid, window.__farmCardBundle);
+        if (typeof window.CattleTrackerWorkTasks !== 'undefined' &&
+            typeof window.CattleTrackerWorkTasks.writeWorkTasksLocal === 'function') {
+          window.CattleTrackerWorkTasks.writeWorkTasksLocal(oid, merged.workTasks || []);
+        }
         clearFarmCardDirty();
         if (typeof window.CattleTrackerEvents !== 'undefined') {
           window.CattleTrackerEvents.emit('farm-card:updated', window.__farmCardBundle);
@@ -513,6 +523,10 @@
       });
     }
     clearFarmCardDirty();
+    if (typeof window.CattleTrackerWorkTasks !== 'undefined' &&
+        typeof window.CattleTrackerWorkTasks.writeWorkTasksLocal === 'function') {
+      window.CattleTrackerWorkTasks.writeWorkTasksLocal(oid, b.workTasks || []);
+    }
     if (typeof window.CattleTrackerEvents !== 'undefined') {
       window.CattleTrackerEvents.emit('farm-card:updated', b);
       window.CattleTrackerEvents.emit('farm-goal:changed', b.goals || []);

@@ -22,12 +22,13 @@ var MENU_GROUPS = {
   actions: {
     title: 'Действия',
     buttons: [
-      { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
+      { icon: '🐄', text: 'Ввести осеменение', onclick: "navigate('insemination')", anyCaps: ['eventsInput'] },
       { icon: '🐄', text: 'Запуск', onclick: "navigate('dry')", anyCaps: ['eventsInput'] },
       { icon: '🐄', text: 'Отел', onclick: "navigate('calving')", anyCaps: ['eventsInput'] },
       { icon: '⚠️', text: 'Аборт', onclick: "navigate('abort')", anyCaps: ['eventsInput'] },
-      { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
-      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')", anyCaps: ['eventsInput', 'serviceWorksInput'] },
+      { icon: '🩺', text: 'УЗИ', onclick: "navigate('uzi')", anyCaps: ['eventsInput'] },
+      { icon: '📋', text: 'На протокол', onclick: "navigate('protocol-assign')", anyCaps: ['eventsInput'] },
+      { icon: '✅', text: 'Список задач', onclick: "navigate('tasks')", anyCaps: ['serviceWorksInput'] },
       { icon: '📄', text: 'Сформировать отчёт', onclick: "typeof openServiceWorkReportForm === 'function' && openServiceWorkReportForm()", anyCaps: ['farmCardEventsWrite'] }
     ]
   },
@@ -96,12 +97,10 @@ function viewerForbiddenScreen(screenId) {
   if (screenId === 'add') return !window.hasCapability('eventsInput');
   if (screenId === 'stall-inventory') return !window.hasCapability('inventory');
   if (groupId === 'actions') {
-    var serviceOk = screenId === 'insemination' || screenId === 'uzi' || screenId === 'protocol-assign';
-    if (serviceOk) {
-      if (typeof window.canInputServiceWorks === 'function') return !window.canInputServiceWorks();
-      return !window.hasCapability('eventsInput') && !window.hasCapability('serviceWorksInput');
+    if (screenId === 'insemination' || screenId === 'uzi' || screenId === 'protocol-assign') {
+      return !window.hasCapability('eventsInput');
     }
-    return !window.hasCapability('eventsInput');
+    return !window.hasCapability('eventsInput') && !window.hasCapability('serviceWorksInput') && !window.hasCapability('farmCardEventsWrite');
   }
   return !window.hasCapability('cards');
 }

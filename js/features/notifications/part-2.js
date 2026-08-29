@@ -162,6 +162,12 @@ import { formatMonthLabel, shiftMonth, monthBounds, monthNavHtml } from '../../u
 
   function renderTasksList(containerEl, fromDate, toDate) {
     if (!containerEl) return;
+    if (typeof window.usesServiceWorkTasksJournal === 'function' && window.usesServiceWorkTasksJournal()) {
+      if (typeof window.renderServiceWorkTasksJournal === 'function') {
+        window.renderServiceWorkTasksJournal(containerEl, fromDate, toDate);
+        return;
+      }
+    }
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     if (containerEl._tasksYear == null) containerEl._tasksYear = today.getFullYear();

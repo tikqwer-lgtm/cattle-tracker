@@ -17,11 +17,17 @@
       listHtml += '<ul class="notification-list">';
       g.items.forEach(function (n) {
         var unreadClass = n.read === false ? ' notification-item-unread' : '';
+        var dueClass = (n.meta && n.meta.due) || n.type === 'warning' ? ' notification--due' : '';
+        if (n.meta && n.meta.kind === 'servicePregCheck' && n.meta.due) dueClass = ' notification--due';
         var cattleIdSafe = (n.cattleId || '').replace(/"/g, '&quot;');
         var cardBtn = n.cattleId
           ? '<button type="button" class="small-btn notification-view-card-btn" data-cattle-id="' + cattleIdSafe + '" aria-label="Посмотреть карточку">Посмотреть карточку</button>'
           : '';
-        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + cattleIdSafe + '">' +
+        if (n.meta && n.meta.kind === 'servicePregCheck') {
+          cardBtn =
+            '<button type="button" class="small-btn notification-open-tasks-btn" aria-label="Открыть задачи">К задачам</button>';
+        }
+        listHtml += '<li class="notification-item notification-' + (n.type || 'info') + unreadClass + dueClass + '" data-notif-id="' + (n.id || '').replace(/"/g, '&quot;') + '" data-cattle-id="' + cattleIdSafe + '">' +
           '<div class="notification-item-content">' +
             '<span class="notification-message">' + (n.message || '').replace(/</g, '&lt;') + '</span>' +
             '<span class="notification-time">' + (n.createdAt ? new Date(n.createdAt).toLocaleString('ru-RU') : '') + '</span>' +
@@ -60,7 +66,7 @@
     }
     container.querySelectorAll('.notification-item[data-notif-id]').forEach(function (item) {
       item.addEventListener('click', function (ev) {
-        if (ev.target.closest('.notification-view-card-btn')) return;
+        if (ev.target.closest('.notification-view-card-btn') || ev.target.closest('.notification-open-tasks-btn')) return;
         var id = item.getAttribute('data-notif-id');
         if (globalThis['__notif'].markNotificationRead(id)) renderNotificationCenter(containerId);
       });
@@ -74,6 +80,13 @@
           if (typeof window !== 'undefined') window._viewCowReturnTo = 'notifications';
           if (typeof viewCow === 'function') viewCow(cattleId);
         }
+      });
+    });
+    container.querySelectorAll('.notification-open-tasks-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (typeof window.navigate === 'function') window.navigate('tasks');
       });
     });
     globalThis['__notif'].updateNotificationIndicators();

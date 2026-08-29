@@ -129,6 +129,7 @@
     errors: 'Ошибки',
     data_error: 'Ошибки',
     calving_check: 'Проверить отёл',
+    servicePregCheck: 'Проверка на Ст',
     uzi1: 'УЗИ1',
     uzi2: 'УЗИ2',
     calving: 'Предстоящий отёл',
@@ -140,7 +141,7 @@
     other: 'Прочее'
   };
 
-  var GROUP_ORDER = ['errors', 'calving_check', 'uzi1', 'uzi2', 'calving', 'insemination', 'dry', 'farm_goal', 'farm_event', 'sync', 'other'];
+  var GROUP_ORDER = ['errors', 'calving_check', 'servicePregCheck', 'uzi1', 'uzi2', 'calving', 'insemination', 'dry', 'farm_goal', 'farm_event', 'sync', 'other'];
 
   var CATEGORY_LABELS = GROUP_LABELS;
 
@@ -468,6 +469,59 @@
       global.syncDataErrorNotifications(list, { notified: notified });
     }
     checkFarmCardReminders(notified, out);
+
+    try {
+      var wtBundle = typeof window !== 'undefined' ? window.__farmCardBundle : null;
+      var wtList = [];
+      if (wtBundle && Array.isArray(wtBundle.workTasks)) wtList = wtBundle.workTasks;
+      else if (typeof window !== 'undefined' && window.CattleTrackerWorkTasks &&
+               typeof window.CattleTrackerWorkTasks.readWorkTasksLocal === 'function') {
+        wtList = window.CattleTrackerWorkTasks.readWorkTasksLocal();
+      }
+      var todayIso =
+        new Date().getFullYear() +
+        '-' +
+        String(new Date().getMonth() + 1).padStart(2, '0') +
+        '-' +
+        String(new Date().getDate()).padStart(2, '0');
+      var openChecks =
+        typeof window !== 'undefined' &&
+        window.CattleTrackerWorkTasks &&
+        typeof window.CattleTrackerWorkTasks.listOpenPregChecks === 'function'
+          ? window.CattleTrackerWorkTasks.listOpenPregChecks(wtList, todayIso)
+          : [];
+      openChecks.forEach(function (t) {
+        var keyPc = 'servicePregCheck_' + (t.id || '');
+        if (notified[keyPc]) return;
+        notified[keyPc] = true;
+        var due = !!t.due;
+        var msg =
+          'Проверка на Ст: ' +
+          t.count +
+          ' гол. (осеменение ' +
+          t.workDate +
+          ', срок ' +
+          t.checkDueDate +
+          ')' +
+          (due ? ' — ожидает результата' : '');
+        var nPc = createNotification(
+          due ? 'warning' : 'info',
+          msg,
+          '',
+          {
+            kind: 'servicePregCheck',
+            category: 'servicePregCheck',
+            due: due,
+            workTaskId: t.id,
+            checkDueDate: t.checkDueDate,
+            dedupeKey: keyPc
+          },
+          { showToast: false, showSystem: false }
+        );
+        if (nPc) out.push(nPc);
+      });
+    } catch (eWt) {}
+
     return out;
   }
 

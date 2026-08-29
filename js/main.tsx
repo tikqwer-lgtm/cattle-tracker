@@ -62,6 +62,8 @@ import './features/inbox-sync.js';
 import './features/mobile-telemetry.js';
 import './features/lists.js';
 import './features/service-dashboard.js';
+import './features/service-work-tasks.js';
+import './features/service-work-tasks-ui.js';
 import './features/service-work-report.js';
 import './features/chat-data-context.js';
 import './features/chat-plan-assistant.js';

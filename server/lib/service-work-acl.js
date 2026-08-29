@@ -137,7 +137,12 @@ function applyFarmCardEventsOnly(prevProfile, body) {
   const prev = prevProfile && typeof prevProfile === 'object' ? prevProfile : {};
   const b = body && typeof body === 'object' ? body : {};
   return Object.assign({}, prev, {
-    events: Array.isArray(b.events) ? b.events : Array.isArray(prev.events) ? prev.events : []
+    events: Array.isArray(b.events) ? b.events : Array.isArray(prev.events) ? prev.events : [],
+    workTasks: Array.isArray(b.workTasks)
+      ? b.workTasks
+      : Array.isArray(prev.workTasks)
+        ? prev.workTasks
+        : []
   });
 }
 

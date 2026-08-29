@@ -67,6 +67,14 @@
   background: #fff7e6;
   border-left: 3px solid #ffb347;
 }
+.notification-item.notification--due {
+  background: #ffe8e0;
+  border-left: 4px solid #e85d04;
+  box-shadow: 0 0 0 1px rgba(232, 93, 4, 0.25);
+}
+.notification-item.notification--due .notification-message {
+  font-weight: 600;
+}
 .notification-item.notification-empty {
   color: #999;
   font-style: italic;

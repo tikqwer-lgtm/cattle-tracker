@@ -61,6 +61,7 @@ function getFarmCardBundle(objectId) {
       metricValues: [],
       bullFertility: [],
       events: [],
+      workTasks: [],
       specialists: [],
       items: [],
       goals: [],
@@ -83,6 +84,7 @@ function getFarmCardBundle(objectId) {
     metricValues: Array.isArray(p.metricValues) ? p.metricValues : [],
     bullFertility: Array.isArray(p.bullFertility) ? p.bullFertility : [],
     events: Array.isArray(p.events) ? p.events : [],
+    workTasks: Array.isArray(p.workTasks) ? p.workTasks : [],
     specialists: Array.isArray(p.specialists) ? p.specialists : [],
     items: Array.isArray(p.items) ? p.items : [],
     goals: Array.isArray(p.goals) ? p.goals : [],
@@ -119,6 +121,11 @@ function replaceFarmCardBundle(objectId, body, opts) {
     metricValues: Array.isArray(b.metricValues) ? b.metricValues : [],
     bullFertility: Array.isArray(b.bullFertility) ? b.bullFertility : [],
     events: Array.isArray(b.events) ? b.events : [],
+    workTasks: Array.isArray(b.workTasks)
+      ? b.workTasks
+      : Array.isArray(prev.workTasks)
+        ? prev.workTasks
+        : [],
     items: Array.isArray(b.items) ? b.items : [],
     goals: Array.isArray(b.goals) ? b.goals : [],
     // Метаданные Битрикс сохраняем (не затираем с клиента без нужды)

@@ -137,15 +137,18 @@ describe('service-work-acl', () => {
     const prev = {
       addresses: [{ id: 'a1' }],
       events: [],
+      workTasks: [{ id: 'wt0', type: 'insemination', workDate: '2026-01-01', count: 1 }],
       notes: 'keep'
     };
     const next = acl.applyFarmCardEventsOnly(prev, {
       addresses: [],
       notes: 'hack',
-      events: [{ id: 'ev1', title: 'Визит' }]
+      events: [{ id: 'ev1', title: 'Визит' }],
+      workTasks: [{ id: 'wt1', type: 'uzi', workDate: '2026-01-02', count: 3 }]
     });
     expect(next.addresses).toEqual([{ id: 'a1' }]);
     expect(next.notes).toBe('keep');
     expect(next.events).toEqual([{ id: 'ev1', title: 'Визит' }]);
+    expect(next.workTasks).toEqual([{ id: 'wt1', type: 'uzi', workDate: '2026-01-02', count: 3 }]);
   });
 });

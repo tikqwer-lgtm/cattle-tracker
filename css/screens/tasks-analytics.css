@@ -81,6 +81,51 @@
   font-style: italic;
 }
 
+.swt-journal .swt-item-main {
+  font-size: 0.95em;
+}
+.swt-journal .swt-item-sub {
+  margin-top: 4px;
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+}
+.swt-form {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.swt-form-title {
+  margin: 0;
+  font-size: 1.05em;
+}
+.swt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+}
+.swt-field input,
+.swt-field select {
+  min-height: var(--field-min-height, 42px);
+  padding: var(--field-padding-y, 0.5rem) var(--field-padding-x, 0.65rem);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+.swt-animals-table input,
+.swt-animals-table select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .analytics-controls {
   display: flex;
   align-items: center;
