@@ -22,6 +22,8 @@
   var draftRowWarnClass = AB.draftRowWarnClass;
   var clearRowBatchGuard = AB.clearRowBatchGuard;
   var escapeHtml = AB.escapeHtml;
+  var bindNumberCollarPair = AB.bindNumberCollarPair;
+  var applyDraftCollar = AB.applyDraftCollar;
 
   var insemDraft = [];
 
@@ -101,11 +103,20 @@
 
   function addInsemFromForm() {
     var addIn = document.getElementById('inseminationBatchAddInput');
+    var colIn = document.getElementById('inseminationBatchCollarInput');
     var attIn = document.getElementById('inseminationAttemptInput');
+    var collar = colIn && colIn.value ? String(colIn.value).trim() : '';
     var cattleId = addIn && addIn.value ? String(addIn.value).trim() : '';
+    if (window.CollarLookup && typeof window.CollarLookup.resolveCattleIdFromNumberOrCollar === 'function') {
+      cattleId = window.CollarLookup.resolveCattleIdFromNumberOrCollar(cattleId, collar);
+    }
     if (!cattleId) {
-      toast('Укажите номер', 'error');
+      toast('Укажите номер или ошейник из базы', 'error');
       return;
+    }
+    if (!collar) {
+      var known = findEntry(cattleId);
+      if (known && known.collar) collar = String(known.collar).trim();
     }
     if (insemDraft.some(function (x) { return x.cattleId === cattleId; })) {
       toast('Уже в списке', 'error');
@@ -136,12 +147,14 @@
       insemDraft.push({
         id: uid(),
         cattleId: cattleId,
+        collar: collar,
         attemptNumber: att,
         bull: bull,
         _batchGuardKey: batchGuardKey(insemDate || '', ''),
         _batchGuardWarned: hadWarnings
       });
       if (addIn) addIn.value = '';
+      if (colIn) colIn.value = '';
       if (attIn) attIn.value = '';
       renderInsemDraft();
       refocusActiveActionBatchNumberInput();
@@ -222,6 +235,7 @@
                 inseminator: inseminator,
                 code: code
               });
+              if (typeof applyDraftCollar === 'function') applyDraftCollar(entry, r.collar);
             }
           });
         });
@@ -250,6 +264,9 @@
     bindOnce(document.getElementById('inseminationBatchAddBtn'), 'click', addInsemFromForm);
     bindOnce(addIn, 'input', syncAttemptFromNumber);
     bindOnce(addIn, 'change', syncAttemptFromNumber);
+    if (typeof bindNumberCollarPair === 'function') {
+      bindNumberCollarPair('inseminationBatchAddInput', 'inseminationBatchCollarInput');
+    }
     bindOnce(addIn, 'keydown', function (e) {
       if (e.key !== 'Enter') return;
       if (e.isComposing || e.keyCode === 229) return;
@@ -257,6 +274,12 @@
       addInsemFromForm();
     });
     bindOnce(document.getElementById('inseminationAttemptInput'), 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      addInsemFromForm();
+    });
+    bindOnce(document.getElementById('inseminationBatchCollarInput'), 'keydown', function (e) {
       if (e.key !== 'Enter') return;
       if (e.isComposing || e.keyCode === 229) return;
       e.preventDefault();
@@ -275,6 +298,9 @@
     if (window._prefillCattleId) {
       var aPre = document.getElementById('inseminationBatchAddInput');
       if (aPre) aPre.value = window._prefillCattleId;
+      var colPre = document.getElementById('inseminationBatchCollarInput');
+      var foundPre = findEntry(window._prefillCattleId);
+      if (colPre && foundPre) colPre.value = foundPre.collar || '';
       delete window._prefillCattleId;
     }
     syncAttemptFromNumber();

@@ -11,6 +11,7 @@
   var COW_FIELDS = [
     { key: 'cattleId', label: 'Корова', sortable: true, render: function (e) { return e ? safeStr(e.cattleId) : ''; } },
     { key: 'nickname', label: 'Кличка', sortable: true, render: function (e) { return e ? safeStr(e.nickname) : ''; } },
+    { key: 'collar', label: 'Ошейник', sortable: true, render: function (e) { return e ? safeStr(e.collar) : ''; } },
     { key: 'group', label: 'Группа', sortable: true, render: function (e) { return e ? safeStr(e.group) : ''; } },
     { key: 'birthDate', label: 'Дата рождения', sortable: true, render: function (e) { return e && typeof formatDate === 'function' ? formatDate(e.birthDate) : ''; } },
     { key: 'lactation', label: 'Лактация', sortable: true, render: function (e) { return e && ((e.lactation !== undefined && e.lactation !== null && e.lactation !== '') || e.lactation === 0) ? String(e.lactation) : ''; } },

@@ -5,7 +5,7 @@ var VIEW_LIST_FIELD_TEMPLATES_KEY = 'cattleTracker_viewList_fieldTemplates';
 
 /** Поля, которые можно редактировать прямо в списке (остальные только просмотр) */
 var VIEW_LIST_EDITABLE_KEYS = {
-  cattleId: 'text', nickname: 'text', group: 'text', birthDate: 'date', lactation: 'number',
+  cattleId: 'text', nickname: 'text', collar: 'text', group: 'text', birthDate: 'date', lactation: 'number',
   calvingDate: 'date', inseminationDate: 'date', attemptNumber: 'number', bull: 'text',
   inseminator: 'text', code: 'text', status: 'select', exitDate: 'date', dryStartDate: 'date',
   protocolName: 'text', protocolStartDate: 'date', note: 'text'
@@ -30,6 +30,7 @@ function viewListEscapeHtml(text) {
 var VIEW_LIST_FIELDS_DEFAULT = [
   { key: 'cattleId', label: 'Корова', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.cattleId); } },
   { key: 'nickname', label: 'Кличка', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.nickname); } },
+  { key: 'collar', label: 'Ошейник', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.collar); } },
   { key: 'group', label: 'Группа', sortable: true, render: function (entry) { return viewListEscapeHtml(entry.group || ''); } },
   { key: 'lactation', label: 'Лактация', sortable: true, render: function (entry) { return (entry.lactation !== undefined && entry.lactation !== null && entry.lactation !== '') || entry.lactation === 0 ? String(entry.lactation) : '—'; } },
   { key: 'inseminationDate', label: 'Дата осеменения', sortable: true, render: function (entry) { return formatDate(entry.inseminationDate) || '—'; } },

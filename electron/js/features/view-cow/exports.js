@@ -12,5 +12,7 @@ if (typeof window !== 'undefined') {
   window.viewCowBack = SM.viewCowBack;
   window.toggleViewCowInseminationHistory = SM.toggleViewCowInseminationHistory;
   window.openViewCowActionHistory = SM.openViewCowActionHistory;
+  window.deleteActionHistoryItem = SM.deleteActionHistoryItem;
+  window.deleteInseminationHistoryItem = SM.deleteInseminationHistoryItem;
 }
 export {};

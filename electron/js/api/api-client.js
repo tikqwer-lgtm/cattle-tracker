@@ -552,6 +552,10 @@
     return request('PATCH', '/api/reports/' + encodeURIComponent(id), { accept: true });
   }
 
+  function returnReportForRevision(id) {
+    return request('PATCH', '/api/reports/' + encodeURIComponent(id), { revision: true });
+  }
+
   function patchReportStatus(id, status) {
     return request('PATCH', '/api/reports/' + encodeURIComponent(id), { status: status });
   }
@@ -674,6 +678,7 @@
     submitReport: submitReport,
     getReports: getReports,
     acceptReportForAgent: acceptReportForAgent,
+    returnReportForRevision: returnReportForRevision,
     patchReportStatus: patchReportStatus,
     deleteReport: deleteReport,
     listMobileApkFiles: listMobileApkFiles,

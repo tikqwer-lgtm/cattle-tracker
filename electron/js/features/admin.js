@@ -649,7 +649,9 @@
           var ringBlock = '';
           var payloadPreview = '';
           var acceptBtn = '';
+          var revisionBtn = '';
           var parsedKind = '';
+          var revisionRequested = false;
           var statusRu =
             r.status === 'done' ? 'сделано' : r.status === 'skipped' ? 'пропущено' : 'новое';
           statusBadge =
@@ -658,6 +660,12 @@
             try {
               var pl = typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload;
               if (pl && typeof pl === 'object') {
+                if (pl.revisionRequested) {
+                  revisionRequested = true;
+                  statusRu = 'на доработке';
+                  statusBadge =
+                    '<span class="admin-report-status">' + escapeHtml(statusRu) + '</span> ';
+                }
                 if (pl.kind) {
                   parsedKind = String(pl.kind);
                   var kindLabel =
@@ -692,11 +700,15 @@
               payloadPreview = '<pre class="admin-report-payload">' + escapeHtml(r.payload) + '</pre>';
             }
           }
-          if (parsedKind === 'suggestion' && String(r.status || 'new') === 'new') {
+          if (parsedKind === 'suggestion' && String(r.status || 'new') === 'new' && !revisionRequested) {
             acceptBtn =
               '<button type="button" class="action-btn admin-accept-report-btn" data-report-id="' +
               escapeHtml(r.id) +
               '">Принять</button> ';
+            revisionBtn =
+              '<button type="button" class="action-btn admin-revision-report-btn" data-report-id="' +
+              escapeHtml(r.id) +
+              '">На доработку</button> ';
           }
           html +=
             '<div class="admin-report-item" data-report-id="' +
@@ -715,6 +727,7 @@
             ringBlock +
             payloadPreview +
             acceptBtn +
+            revisionBtn +
             '<button type="button" class="small-btn admin-delete-report-btn" data-report-id="' +
             escapeHtml(r.id) +
             '">Удалить</button>' +
@@ -729,6 +742,20 @@
             btn.disabled = true;
             api.acceptReportForAgent(id).then(function () {
               if (typeof showToast === 'function') showToast('Отправлено агенту', 'success');
+              renderAdminScreen();
+            }).catch(function (err) {
+              btn.disabled = false;
+              if (typeof showToast === 'function') showToast(err.message || 'Ошибка', 'error', 5000);
+            });
+          });
+        });
+        reportsEl.querySelectorAll('.admin-revision-report-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-report-id');
+            if (!id || typeof api.returnReportForRevision !== 'function') return;
+            btn.disabled = true;
+            api.returnReportForRevision(id).then(function () {
+              if (typeof showToast === 'function') showToast('Отправлено автору на доработку', 'success');
               renderAdminScreen();
             }).catch(function (err) {
               btn.disabled = false;

@@ -250,6 +250,59 @@
     processChatQueue();
   }
 
+  var contextMenuSelectedText = '';
+
+  function captureSelectedText(target) {
+    var sel = '';
+    try {
+      sel = String(window.getSelection && window.getSelection() ? window.getSelection().toString() : '');
+    } catch (e) {
+      sel = '';
+    }
+    if (sel && sel.trim()) return sel;
+    if (!target || !target.closest) return '';
+    var block = target.closest('.admin-report-message, .admin-report-payload, pre, [data-copy-text]');
+    if (block) return String(block.textContent || '');
+    return '';
+  }
+
+  function copyTextToClipboard(text) {
+    var value = String(text || '');
+    if (global.navigator && global.navigator.clipboard && typeof global.navigator.clipboard.writeText === 'function') {
+      return global.navigator.clipboard.writeText(value);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+      document.body.removeChild(ta);
+    });
+  }
+
+  function contextMenuCopySelection() {
+    hideContextMenu();
+    var text = contextMenuSelectedText || captureSelectedText(document.activeElement);
+    if (!String(text || '').trim()) {
+      if (typeof global.showToast === 'function') global.showToast('Сначала выделите текст', 'info');
+      return;
+    }
+    copyTextToClipboard(text).then(function () {
+      if (typeof global.showToast === 'function') global.showToast('Скопировано', 'success');
+    }).catch(function () {
+      if (typeof global.showToast === 'function') global.showToast('Не удалось скопировать', 'error');
+    });
+  }
+
   function contextMenuOpenConsultant() {
     hideContextMenu();
     openChatConsultant();
@@ -281,6 +334,7 @@
       if (target && (target.closest('input') || target.closest('textarea') || target.closest('#chat-consultant-panel') || target.closest('#chat-context-menu'))) {
         return;
       }
+      contextMenuSelectedText = captureSelectedText(target);
       e.preventDefault();
       showContextMenu(e.clientX, e.clientY);
     });
@@ -307,6 +361,7 @@
   global.closeChatConsultant = closeChatConsultant;
   global.sendChatMessage = sendChatMessage;
   global.contextMenuOpenConsultant = contextMenuOpenConsultant;
+  global.contextMenuCopySelection = contextMenuCopySelection;
   global.chatConsultantPushProactive = function (content) {
     pushAssistantMessage(content, { proactive: true });
   };

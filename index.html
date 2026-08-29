@@ -119,7 +119,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.32" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.33" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -474,6 +474,8 @@
       <div class="action-batch-add-block">
         <label for="inseminationBatchAddInput">Номер</label>
         <input type="text" id="inseminationBatchAddInput" placeholder="Номер коровы" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <label for="inseminationBatchCollarInput">Ошейник</label>
+        <input type="text" id="inseminationBatchCollarInput" placeholder="Ошейник" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         <label for="inseminationAttemptInput">Попытка осеменения</label>
         <input type="number" id="inseminationAttemptInput" min="1" inputmode="numeric" autocomplete="off" />
         <button type="button" id="inseminationBatchAddBtn" class="action-btn">Добавить</button>
@@ -597,11 +599,13 @@
         <input type="text" id="uziSpecialistInput" list="datalist-farm-technicians" placeholder="Логин или ФИО" autocomplete="off" />
       </div>
       <div class="action-batch-add-block">
-        <label for="uziBatchAddInput">Добавить по номеру</label>
+        <label for="uziBatchAddInput">Добавить по номеру или ошейнику</label>
         <div class="autocomplete">
           <input type="text" id="uziBatchAddInput" placeholder="Номер коровы" />
           <ul id="uziBatchAddList" class="autocomplete-list"></ul>
         </div>
+        <label for="uziBatchCollarInput">Ошейник</label>
+        <input type="text" id="uziBatchCollarInput" placeholder="Ошейник" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         <p class="action-batch-add-hint">После выбора коровы укажите результат УЗИ. Если номера нет в стаде, животное добавится вместе с событием.</p>
       </div>
       <div id="uziBatchDraftTable" class="action-batch-draft-table"></div>
@@ -623,6 +627,8 @@
           <input type="text" id="cattleId" required />
           <label for="nickname">Кличка</label>
           <input type="text" id="nickname" />
+          <label for="collar">Ошейник</label>
+          <input type="text" id="collar" autocomplete="off" />
           <label for="group">Группа</label>
           <input type="text" id="group" placeholder="Место размещения" />
           <label for="birthDate">Дата рождения</label>
@@ -1244,6 +1250,7 @@
     </div>
   </div>
   <div id="chat-context-menu" class="chat-context-menu" hidden aria-hidden="true">
+    <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuCopySelection === 'function' && contextMenuCopySelection()">Копировать</button>
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 

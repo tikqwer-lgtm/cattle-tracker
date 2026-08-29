@@ -14,6 +14,8 @@ declare global {
 window.initPinchZoom = initPinchZoom;
 import './utils/constants.js';
 import './utils/utils.js';
+import './utils/collar-lookup.js';
+import './utils/insemination-history.js';
 import './utils/xlsx-global.js';
 import './core/events.js';
 import './api/api-client.js';
