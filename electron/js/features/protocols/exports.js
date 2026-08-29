@@ -7,6 +7,11 @@ if (typeof window !== 'undefined') {
   window.ensureProtocolsLoaded = SM.ensureProtocolsLoaded;
   window.invalidateProtocolsForObjectSwitch = SM.invalidateProtocolsForObjectSwitch;
   window.getProtocols = SM.getProtocols;
+  window.getProtocolById = SM.getProtocolById;
+  window.addProtocol = SM.addProtocol;
+  window.updateProtocol = SM.updateProtocol;
+  window.deleteProtocol = SM.deleteProtocol;
+  window.notifyInseminationCodeSelects = SM.notifyInseminationCodeSelects;
   window.fillAllInseminationCodeSelects = SM.fillAllInseminationCodeSelects;
   window.openQuickProtocolModal = SM.openQuickProtocolModal;
   if (document.readyState === 'loading') {

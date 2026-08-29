@@ -1,8 +1,12 @@
 /**
  * Журнал диагностики открытия/закрытия DevTools (Electron) — экран «Справка».
+ * API на window работает без DOM; textarea синхронизируется, если есть в React-экране.
  */
 (function () {
   'use strict';
+
+  var entries = [];
+  var lastVisibilitySnapMs = 0;
 
   function safeJson(x) {
     try {
@@ -40,59 +44,61 @@
     }
   }
 
+  function getText() {
+    return entries.map(formatEntry).filter(Boolean).join('\n');
+  }
+
+  function syncTextarea() {
+    var ta = document.getElementById('help-diagnostics-log');
+    if (!ta) return;
+    ta.value = getText();
+    ta.scrollTop = ta.scrollHeight;
+  }
+
+  function pushLocalSnapshot(api, label) {
+    var snap = collectRendererSnapshot(label);
+    entries.push({
+      ts: new Date().toISOString(),
+      source: 'renderer',
+      message: 'снимок ' + label,
+      extra: snap
+    });
+    syncTextarea();
+    try {
+      if (api && typeof api.sendDevtoolsDiagnosticsSnapshot === 'function') {
+        api.sendDevtoolsDiagnosticsSnapshot('renderer:' + label, snap);
+      }
+    } catch (e) {}
+  }
+
+  function scheduleResidualSnapshots(api) {
+    [0, 50, 100, 300, 800].forEach(function (ms) {
+      setTimeout(function () {
+        pushLocalSnapshot(api, '+' + ms + ' мс после devtools-closed (остаточное состояние)');
+      }, ms);
+    });
+  }
+
   function setup() {
     var api = typeof window !== 'undefined' && window.electronAPI;
-    if (!api || typeof api.getDevtoolsDiagnosticsHistory !== 'function') return;
 
-    var entries = [];
-    var ta = document.getElementById('help-diagnostics-log');
-    var copyBtn = document.getElementById('help-diagnostics-copy-btn');
-    var clearBtn = document.getElementById('help-diagnostics-clear-btn');
-    var refreshBtn = document.getElementById('help-diagnostics-refresh-btn');
-    if (!ta) return;
+    window.getHelpDevtoolsDiagnosticsText = function () {
+      return getText();
+    };
 
-    var lastVisibilitySnapMs = 0;
-
-    function rebuildText() {
-      ta.value = entries.map(formatEntry).filter(Boolean).join('\n');
-      ta.scrollTop = ta.scrollHeight;
-    }
-
-    function pushLocalSnapshot(label) {
-      var snap = collectRendererSnapshot(label);
-      entries.push({
-        ts: new Date().toISOString(),
-        source: 'renderer',
-        message: 'снимок ' + label,
-        extra: snap
-      });
-      rebuildText();
-      try {
-        if (typeof api.sendDevtoolsDiagnosticsSnapshot === 'function') {
-          api.sendDevtoolsDiagnosticsSnapshot('renderer:' + label, snap);
-        }
-      } catch (e) {}
-    }
-
-    function scheduleResidualSnapshots() {
-      [0, 50, 100, 300, 800].forEach(function (ms) {
-        setTimeout(function () {
-          pushLocalSnapshot('+' + ms + ' мс после devtools-closed (остаточное состояние)');
-        }, ms);
-      });
-    }
-
-    api.onDevtoolsDiagnosticsEntry(function (entry) {
-      if (!entry || !entry.ts) return;
-      entries.push(entry);
-      if (entries.length > 1500) entries.splice(0, entries.length - 1500);
-      if (entry.message === 'devtools-closed') {
-        scheduleResidualSnapshots();
+    window.clearHelpDevtoolsDiagnostics = function () {
+      if (api && typeof api.clearDevtoolsDiagnosticsLog === 'function') {
+        api.clearDevtoolsDiagnosticsLog();
       }
-      rebuildText();
-    });
+      entries.length = 0;
+      syncTextarea();
+    };
 
-    function refreshFromMain() {
+    window.refreshHelpDevtoolsDiagnostics = function () {
+      if (!api || typeof api.getDevtoolsDiagnosticsHistory !== 'function') {
+        syncTextarea();
+        return Promise.resolve();
+      }
       return api.getDevtoolsDiagnosticsHistory().then(function (h) {
         entries.length = 0;
         if (Array.isArray(h)) {
@@ -100,50 +106,24 @@
             entries.push(x);
           });
         }
-        pushLocalSnapshot('экран «Справка»: синхронизация с main');
-        rebuildText();
-      }).catch(function () {});
-    }
-
-    window.refreshHelpDevtoolsDiagnostics = function () {
-      return refreshFromMain();
+        pushLocalSnapshot(api, 'экран «Справка»: синхронизация с main');
+        syncTextarea();
+      }).catch(function () {
+        syncTextarea();
+      });
     };
 
-    if (copyBtn) {
-      copyBtn.addEventListener('click', function () {
-        var text = ta.value || '';
-        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () {
-            if (typeof showToast === 'function') showToast('Журнал скопирован в буфер', 'info');
-          }).catch(function () {
-            ta.select();
-            try {
-              document.execCommand('copy');
-            } catch (e) {}
-          });
-        } else {
-          ta.select();
-          try {
-            document.execCommand('copy');
-          } catch (e2) {}
-        }
-      });
-    }
+    if (!api || typeof api.getDevtoolsDiagnosticsHistory !== 'function') return;
 
-    if (clearBtn) {
-      clearBtn.addEventListener('click', function () {
-        if (typeof api.clearDevtoolsDiagnosticsLog === 'function') {
-          api.clearDevtoolsDiagnosticsLog();
+    if (typeof api.onDevtoolsDiagnosticsEntry === 'function') {
+      api.onDevtoolsDiagnosticsEntry(function (entry) {
+        if (!entry || !entry.ts) return;
+        entries.push(entry);
+        if (entries.length > 1500) entries.splice(0, entries.length - 1500);
+        if (entry.message === 'devtools-closed') {
+          scheduleResidualSnapshots(api);
         }
-        entries.length = 0;
-        rebuildText();
-        if (typeof showToast === 'function') showToast('Журнал очищен', 'info');
-      });
-    }
-
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function () {
-        refreshFromMain();
+        syncTextarea();
       });
     }
 

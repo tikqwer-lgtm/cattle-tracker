@@ -119,7 +119,7 @@
       <span class="menu-branding-text">Молочная компания «Генетика»</span>
     </div>
     <p id="menu-user-session" class="menu-user-session" hidden></p>
-    <p id="app-version" class="app-version" data-default-version="0.7.33" aria-label="Версия приложения"></p>
+    <p id="app-version" class="app-version" data-default-version="0.7.34" aria-label="Версия приложения"></p>
     <div id="menu-version-switcher" class="menu-version-switcher" hidden>
       <span class="menu-version-switcher-label">Версия:</span>
       <div class="menu-version-switcher-btns" role="group" aria-label="Переключение версии">
@@ -432,14 +432,7 @@
     </div>
   </div>
 
-  <!-- Настройки хозяйства (React pilot: js/screens/FarmSettings.tsx) -->
-  <div id="farm-settings-screen" class="screen">
-    <h1>Настройки хозяйства</h1>
-    <div id="farm-settings-react-root"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Настройки хозяйства: React (js/screens/FarmSettings.tsx) -->
 
   <!-- Карточка хозяйства -->
   <div id="farm-card-screen" class="screen">
@@ -1088,32 +1081,7 @@
     </div>
   </div>
 
-  <div id="protocols-screen" class="screen">
-    <h1>Протоколы синхронизации</h1>
-    <div id="protocols-container"></div>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
-
-  <!-- Справка: диагностика консоли (Electron) -->
-  <div id="help-screen" class="screen">
-    <h1>Справка</h1>
-    <p class="help-diagnostics-intro">
-      Журнал событий основного процесса и страницы при открытии и закрытии консоли разработчика.
-      Нужен для поиска остаточных эффектов после закрытия DevTools. При зависании ввода в десктопе используйте кнопку «Обновить» в шапке.
-    </p>
-    <div class="help-diagnostics-toolbar">
-      <button type="button" class="action-btn" id="help-diagnostics-copy-btn">Копировать журнал</button>
-      <button type="button" class="small-btn" id="help-diagnostics-refresh-btn">Обновить из приложения</button>
-      <button type="button" class="small-btn" id="help-diagnostics-clear-btn">Очистить</button>
-    </div>
-    <label class="help-diagnostics-label" for="help-diagnostics-log">Текст журнала</label>
-    <textarea id="help-diagnostics-log" class="help-diagnostics-log" readonly rows="18" spellcheck="false" aria-label="Журнал диагностики консоли"></textarea>
-    <div class="screen-actions">
-      <button type="button" onclick="typeof window.navigateToParent === 'function' && window.navigateToParent()" class="back-button">Назад</button>
-    </div>
-  </div>
+  <!-- Протоколы / Справка: React (js/screens/ProtocolsScreen.tsx, HelpScreen.tsx) -->
 
   <!-- Экран синхронизации -->
   <div id="sync-screen" class="screen">
@@ -1254,7 +1222,25 @@
     <button type="button" class="chat-context-menu-item" onclick="typeof contextMenuOpenConsultant === 'function' && contextMenuOpenConsultant()">Вызвать консультанта</button>
   </div>
 
-  <script src="web/app.js"></script>
+  <!--
+    Dev (npm run dev): Vite отдаёт этот HTML и подхватывает module entry → HMR.
+    Production: viteDistCopyPlugin в dist/index.html подменяет на <script src="app.js">.
+    Electron/file:// без Vite: fallback ниже подключает dist/app.js.
+  -->
+  <script type="module" src="/js/main.tsx"></script>
+  <script>
+  (function () {
+    try {
+      var port = String((typeof location !== 'undefined' && location.port) || '');
+      if (port === '5173' || port === '5174') return;
+      var existing = document.querySelector('script[src="web/app.js"], script[src="app.js"], script[src="web/app.js"]');
+      if (existing) return;
+      var s = document.createElement('script');
+      s.src = 'dist/app.js';
+      document.body.appendChild(s);
+    } catch (e) {}
+  })();
+  </script>
   <script>
   (function() {
     function setPrintHeaderDate() {
