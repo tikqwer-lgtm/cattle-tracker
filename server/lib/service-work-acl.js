@@ -15,6 +15,7 @@ const SERVICE_PATCH_KEYS = [
   'bull',
   'inseminator',
   'code',
+  'collar',
   'inseminationHistory',
   'uziHistory',
   'protocol',
@@ -36,6 +37,7 @@ function blankServiceEntry(cattleId) {
   return {
     cattleId: String(cattleId || ''),
     nickname: '',
+    collar: '',
     group: '',
     birthDate: '',
     lactation: '',

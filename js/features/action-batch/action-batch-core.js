@@ -300,12 +300,43 @@
     return r && r._batchGuardWarned ? ' action-batch-draft-row--guard-warn' : '';
   }
 
-  function clearRowBatchGuard(r) {
-    if (!r) return;
-    delete r._batchGuardKey;
-    delete r._batchGuardWarned;
-    delete r._calvingIntentAtAdd;
-    delete r._protocolModeAtAdd;
+  function bindNumberCollarPair(numberId, collarId) {
+    var numEl = document.getElementById(numberId);
+    var colEl = document.getElementById(collarId);
+    if (!numEl || !colEl) return;
+    function fromNumber() {
+      var CL = window.CollarLookup;
+      if (!CL) return;
+      var e = CL.findEntryByCattleId(numEl.value);
+      if (e) colEl.value = e.collar || '';
+    }
+    function fromCollar() {
+      var CL = window.CollarLookup;
+      if (!CL) return;
+      var e = CL.findEntryByCollar(colEl.value);
+      if (e) numEl.value = e.cattleId || '';
+    }
+    bindOnce(numEl, 'input', fromNumber);
+    bindOnce(numEl, 'change', fromNumber);
+    bindOnce(numEl, 'blur', fromNumber);
+    bindOnce(colEl, 'input', fromCollar);
+    bindOnce(colEl, 'change', fromCollar);
+    bindOnce(colEl, 'blur', fromCollar);
+    bindOnce(colEl, 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229) return;
+      fromCollar();
+    });
+  }
+
+  function applyDraftCollar(entry, collar) {
+    if (!entry) return;
+    var CL = window.CollarLookup;
+    if (CL && typeof CL.applyCollarToHerd === 'function') {
+      CL.applyCollarToHerd(entry, collar);
+    } else {
+      entry.collar = String(collar || '').trim();
+    }
   }
   window.__actionBatch = {
     getEntries: getEntries,
@@ -330,7 +361,9 @@
     escapeHtml: escapeHtml,
     batchGuardKey: batchGuardKey,
     draftRowWarnClass: draftRowWarnClass,
-    clearRowBatchGuard: clearRowBatchGuard
+    clearRowBatchGuard: clearRowBatchGuard,
+    bindNumberCollarPair: bindNumberCollarPair,
+    applyDraftCollar: applyDraftCollar
   };
 })();
 

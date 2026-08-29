@@ -166,7 +166,7 @@ function runImportWithMapping(rows, columnMapping, headers, progress) {
   var newCount = 0, updateCount = 0, errors = [];
   var createdEntries = [];
   var updatedEntries = [];
-  var profileKeys = ['nickname', 'group', 'birthDate', 'lactation', 'calvingDate', 'status', 'exitDate', 'dryStartDate', 'note', 'protocolName', 'protocolStartDate', 'inseminator', 'code'];
+  var profileKeys = ['nickname', 'collar', 'group', 'birthDate', 'lactation', 'calvingDate', 'status', 'exitDate', 'dryStartDate', 'note', 'protocolName', 'protocolStartDate', 'inseminator', 'code'];
 
   function processOneCattle(cattleId) {
     var group = byCattleId[cattleId];

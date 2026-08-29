@@ -28,6 +28,8 @@
   var batchGuardKey = AB.batchGuardKey;
   var draftRowWarnClass = AB.draftRowWarnClass;
   var clearRowBatchGuard = AB.clearRowBatchGuard;
+  var bindNumberCollarPair = AB.bindNumberCollarPair;
+  var applyDraftCollar = AB.applyDraftCollar;
 
   // ——— УЗИ ———
   var uziDraft = [];
@@ -164,7 +166,22 @@
     });
   }
 
-  function promptUziResultThenAdd(cattleId) {
+  function promptUziResultThenAdd(cattleId, collarVal) {
+    var collar = String(collarVal == null ? '' : collarVal).trim();
+    var colIn = document.getElementById('uziBatchCollarInput');
+    if (!collar && colIn) collar = String(colIn.value || '').trim();
+    if (window.CollarLookup && typeof window.CollarLookup.resolveCattleIdFromNumberOrCollar === 'function') {
+      cattleId = window.CollarLookup.resolveCattleIdFromNumberOrCollar(cattleId, collar);
+    }
+    cattleId = String(cattleId || '').trim();
+    if (!cattleId) {
+      toast('Укажите номер или ошейник из базы', 'error');
+      return;
+    }
+    if (!collar) {
+      var knownUzi = getEntries().find(function (e) { return String(e.cattleId || '').trim() === cattleId; });
+      if (knownUzi && knownUzi.collar) collar = String(knownUzi.collar).trim();
+    }
     if (uziDraft.some(function (x) { return x.cattleId === cattleId; })) {
       toast('Эта корова уже в списке', 'error');
       return;
@@ -190,6 +207,7 @@
         uziDraft.push({
           id: uid(),
           cattleId: cattleId,
+          collar: collar,
           result: result,
           daysFromInsemination: days != null ? days : null,
           _batchGuardKey: batchGuardKey(uziDate, ''),
@@ -197,6 +215,7 @@
         });
         var addIn = document.getElementById('uziBatchAddInput');
         if (addIn) addIn.value = '';
+        if (colIn) colIn.value = '';
         renderUziDraft();
         refocusActiveActionBatchNumberInput();
       }
@@ -283,6 +302,7 @@
               specialist: specialist,
               daysFromInsemination: r.daysFromInsemination
             });
+            if (typeof applyDraftCollar === 'function') applyDraftCollar(entry, r.collar);
           }
         });
       });
@@ -313,12 +333,27 @@
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
     if (typeof window.setupCattleAutocompleteFor === 'function') {
       window.setupCattleAutocompleteFor('uziBatchAddInput', 'uziBatchAddList', function (cid) {
-        promptUziResultThenAdd(cid);
+        var col = document.getElementById('uziBatchCollarInput');
+        promptUziResultThenAdd(cid, col ? col.value : '');
       });
     }
+    if (typeof bindNumberCollarPair === 'function') {
+      bindNumberCollarPair('uziBatchAddInput', 'uziBatchCollarInput');
+    }
+    var colEl = document.getElementById('uziBatchCollarInput');
+    bindOnce(colEl, 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      var num = document.getElementById('uziBatchAddInput');
+      promptUziResultThenAdd(num ? num.value : '', colEl.value);
+    });
     if (window._prefillCattleId) {
       var a = document.getElementById('uziBatchAddInput');
       if (a) a.value = window._prefillCattleId;
+      var colP = document.getElementById('uziBatchCollarInput');
+      var foundP = getEntries().find(function (e) { return String(e.cattleId || '').trim() === String(window._prefillCattleId); });
+      if (colP && foundP) colP.value = foundP.collar || '';
       delete window._prefillCattleId;
     }
     bindOnce(document.getElementById('uziBatchSaveBtn'), 'click', saveUziBatch);

@@ -233,6 +233,8 @@ function fillFormFromCowEntry(entry) {
   if (typeof window.fillAllInseminationCodeSelects === 'function') window.fillAllInseminationCodeSelects();
   document.getElementById('cattleId').value = entry.cattleId || '';
   document.getElementById('nickname').value = entry.nickname || '';
+  var collarEl = document.getElementById('collar');
+  if (collarEl) collarEl.value = entry.collar || '';
   document.getElementById('group').value = entry.group || '';
   document.getElementById('birthDate').value = entry.birthDate || '';
   document.getElementById('lactation').value = entry.lactation !== undefined && entry.lactation !== '' ? entry.lactation : '';
@@ -264,6 +266,11 @@ function fillFormFromCowEntry(entry) {
 function fillCowEntryFromForm(entry) {
   entry.cattleId = document.getElementById('cattleId').value.trim();
   entry.nickname = document.getElementById('nickname').value || '';
+  var collarForm = document.getElementById('collar');
+  entry.collar = collarForm && collarForm.value ? String(collarForm.value).trim() : (entry.collar || '');
+  if (window.CollarLookup && typeof window.CollarLookup.applyCollarToHerd === 'function') {
+    window.CollarLookup.applyCollarToHerd(entry, entry.collar);
+  }
   entry.group = document.getElementById('group').value || '';
   entry.birthDate = document.getElementById('birthDate').value || '';
   var lactationVal = document.getElementById('lactation').value.trim();
@@ -398,6 +405,9 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
         break;
       }
     }
+    if (!exact && window.CollarLookup && typeof window.CollarLookup.findEntryByCollar === 'function') {
+      exact = window.CollarLookup.findEntryByCollar(v, source);
+    }
     if (exact) {
       e.preventDefault();
       pickEntry(exact);
@@ -406,6 +416,9 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     var lv = v.toLowerCase();
     var matching = source
       .filter(function (ent) {
+        if (window.CollarLookup && typeof window.CollarLookup.entryMatchesNumberOrCollar === 'function') {
+          return window.CollarLookup.entryMatchesNumberOrCollar(ent, v);
+        }
         return (
           (ent.cattleId && ent.cattleId.toLowerCase().indexOf(lv) !== -1) ||
           (ent.nickname && ent.nickname.toLowerCase().indexOf(lv) !== -1)
@@ -430,13 +443,19 @@ function setupCattleAutocompleteFor(inputId, listId, onPick) {
     var source = getEntries();
     var matching = filter
       ? source.filter(function (e) {
+          if (window.CollarLookup && typeof window.CollarLookup.entryMatchesNumberOrCollar === 'function') {
+            return window.CollarLookup.entryMatchesNumberOrCollar(e, filter);
+          }
           return (e.cattleId && e.cattleId.toLowerCase().indexOf(filter) !== -1) ||
             (e.nickname && e.nickname.toLowerCase().indexOf(filter) !== -1);
         }).slice(0, 10)
       : source.slice(0, 10);
     matching.forEach(function (entry) {
       var li = document.createElement('li');
-      li.textContent = entry.cattleId + (entry.nickname ? ' (' + entry.nickname + ')' : '');
+      li.textContent =
+        entry.cattleId +
+        (entry.collar ? ' · ош. ' + entry.collar : '') +
+        (entry.nickname ? ' (' + entry.nickname + ')' : '');
       li.dataset.value = entry.cattleId;
       li.setAttribute('role', 'option');
       li.tabIndex = 0;

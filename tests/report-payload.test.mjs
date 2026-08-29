@@ -6,6 +6,7 @@ const {
   kindForSubmit,
   reportKind,
   payloadAfterAccept,
+  payloadAfterRevision,
   isPendingSuggestion
 } = require('../server/lib/report-payload.js');
 
@@ -26,6 +27,13 @@ describe('accept payload', () => {
     expect(next.kind).toBe('improvement');
     expect(next.appVersion).toBe('0.7.31');
     expect(next.acceptedAt).toMatch(/T/);
+  });
+
+  it('на доработку оставляет suggestion и ставит revisionRequested', () => {
+    const next = payloadAfterRevision({ kind: 'suggestion', appVersion: '0.7.32' });
+    expect(next.kind).toBe('suggestion');
+    expect(next.revisionRequested).toBe(true);
+    expect(next.revisionAt).toMatch(/T/);
   });
 
   it('новое suggestion ждёт принятия', () => {

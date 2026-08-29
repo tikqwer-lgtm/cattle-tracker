@@ -10,7 +10,7 @@ beforeAll(() => {
 
 describe('searchEntries', () => {
   const list = [
-    { cattleId: '101', nickname: 'Зорька', status: 'Охота', bull: 'Бык1', code: 'Охота', note: '', inseminator: 'Иванов', group: 'Группа А' },
+    { cattleId: '101', nickname: 'Зорька', collar: 'A12', status: 'Охота', bull: 'Бык1', code: 'Охота', note: '', inseminator: 'Иванов', group: 'Группа А' },
     { cattleId: '102', nickname: 'Роза', status: 'Стельная', bull: 'Бык2', code: '', note: 'прим', inseminator: '', group: 'Б' }
   ];
 
@@ -27,6 +27,11 @@ describe('searchEntries', () => {
   it('фильтрует по кличке', () => {
     expect(searchEntries('Зорька', list)).toHaveLength(1);
     expect(searchEntries('Роза', list)[0].nickname).toBe('Роза');
+  });
+
+  it('фильтрует по ошейнику', () => {
+    expect(searchEntries('A12', list)).toHaveLength(1);
+    expect(searchEntries('A12', list)[0].cattleId).toBe('101');
   });
 
   it('фильтрует по статусу', () => {

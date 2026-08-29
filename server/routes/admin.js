@@ -179,6 +179,14 @@ router.patch('/reports/:id', requireAuth, requireRole('admin'), (req, res) => {
     }
     return res.json({ ok: true, report: accepted.report });
   }
+  if (req.body && req.body.revision === true) {
+    const returned = db.returnReportForRevision(req.params.id);
+    if (!returned.ok) {
+      const code = returned.error === 'Отчёт не найден' ? 404 : 400;
+      return res.status(code).json({ error: returned.error || 'Не удалось отправить' });
+    }
+    return res.json({ ok: true, report: returned.report });
+  }
   const status = req.body && req.body.status;
   const result = db.updateReportStatus(req.params.id, status);
   if (!result.ok) {

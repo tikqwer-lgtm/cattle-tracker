@@ -55,6 +55,7 @@
     return list.filter(function (entry) {
       var cattleId = (entry.cattleId || '').toLowerCase();
       var nickname = (entry.nickname || '').toLowerCase();
+      var collar = (entry.collar || '').toLowerCase();
       var status = (entry.status || '').toLowerCase();
       var bull = (entry.bull || '').toLowerCase();
       var code = (entry.code || '').toLowerCase();
@@ -64,6 +65,7 @@
       var group = (entry.group || '').toLowerCase();
       return cattleId.indexOf(q) !== -1 ||
              nickname.indexOf(q) !== -1 ||
+             collar.indexOf(q) !== -1 ||
              group.indexOf(q) !== -1 ||
              status.indexOf(q) !== -1 ||
              bull.indexOf(q) !== -1 ||

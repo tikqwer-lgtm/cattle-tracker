@@ -41,6 +41,13 @@ function payloadAfterAccept(raw) {
   return pl;
 }
 
+function payloadAfterRevision(raw) {
+  var pl = Object.assign({}, parseReportPayload(raw));
+  pl.revisionRequested = true;
+  pl.revisionAt = new Date().toISOString();
+  return pl;
+}
+
 function isPendingSuggestion(raw, status) {
   return reportKind(raw) === 'suggestion' && String(status || 'new') === 'new';
 }
@@ -51,5 +58,6 @@ module.exports = {
   isAdminRole,
   kindForSubmit,
   payloadAfterAccept,
+  payloadAfterRevision,
   isPendingSuggestion
 };

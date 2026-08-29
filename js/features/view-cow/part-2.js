@@ -162,14 +162,38 @@ function deleteActionHistoryItem(cattleId, index) {
   var entry = entries.find(function (e) { return e.cattleId === cattleId; });
   if (!entry || !entry.actionHistory || index < 0 || index >= entry.actionHistory.length) return;
   entry.actionHistory.splice(index, 1);
-  if (typeof saveLocally === 'function') saveLocally();
-  if (typeof window.CATTLE_TRACKER_USE_API !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
-    window.updateEntryViaApi(cattleId, entry).then(function () {
-      renderViewCowActionHistoryModal(cattleId);
-    }).catch(function () { renderViewCowActionHistoryModal(cattleId); });
-  } else {
+  persistCowEntry(entry, cattleId, function () {
     renderViewCowActionHistoryModal(cattleId);
+  });
+}
+
+function persistCowEntry(entry, cattleId, done) {
+  if (typeof saveLocally === 'function') saveLocally();
+  var after = typeof done === 'function' ? done : function () {};
+  if (typeof window.CATTLE_TRACKER_USE_API !== 'undefined' && window.CATTLE_TRACKER_USE_API && typeof window.updateEntryViaApi === 'function') {
+    window.updateEntryViaApi(cattleId, entry).then(after).catch(after);
+  } else {
+    after();
   }
+}
+
+function deleteInseminationHistoryItem(cattleId, src, srcIndex) {
+  var entry = entries.find(function (e) { return e.cattleId === cattleId; });
+  if (!entry) return;
+  var go = function () {
+    var fn = typeof window.removeInseminationFromEntry === 'function' ? window.removeInseminationFromEntry : null;
+    if (!fn || !fn(entry, src, srcIndex)) return;
+    persistCowEntry(entry, cattleId, function () {
+      if (typeof window.viewCow === 'function') window.viewCow(cattleId);
+      var hist = document.getElementById('viewCowInseminationHistory');
+      if (hist) hist.style.display = '';
+    });
+  };
+  if (typeof showConfirmModal === 'function') {
+    showConfirmModal('Удалить это осеменение из карточки?').then(function (ok) { if (ok) go(); });
+    return;
+  }
+  if (confirm('Удалить это осеменение из карточки?')) go();
 }
 
 /**
@@ -263,6 +287,7 @@ function compareAllInseminationsRow(a, b, key, dir) {
   NS.closeViewCowActionHistoryModal = closeViewCowActionHistoryModal;
   NS.renderViewCowActionHistoryModal = renderViewCowActionHistoryModal;
   NS.deleteActionHistoryItem = deleteActionHistoryItem;
+  NS.deleteInseminationHistoryItem = deleteInseminationHistoryItem;
   NS.getAllInseminationsFlat = getAllInseminationsFlat;
   NS.compareAllInseminationsRow = compareAllInseminationsRow;
   NS.setAllInseminationsRenderTarget = setAllInseminationsRenderTarget;

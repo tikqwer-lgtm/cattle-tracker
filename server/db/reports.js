@@ -1,5 +1,6 @@
 const { runSql, getSql, allSql, saveDb } = require('./core');
-const { payloadAfterAccept, reportKind } = require('../lib/report-payload');
+const { payloadAfterAccept, payloadAfterRevision, reportKind } = require('../lib/report-payload');
+const { addInbox } = require('./user-objects');
 
 const REPORT_STATUSES = ['new', 'done', 'skipped'];
 
@@ -69,6 +70,26 @@ function acceptReportForAgent(id) {
   return { ok: true, report: getReportById(id) };
 }
 
+function returnReportForRevision(id) {
+  const report = getReportById(id);
+  if (!report) return { ok: false, error: 'Отчёт не найден' };
+  const pl = payloadAfterRevision(report.payload);
+  runSql('UPDATE reports SET payload_json = ?, status = ? WHERE id = ?', [
+    JSON.stringify(pl),
+    'skipped',
+    id
+  ]);
+  saveDb();
+  if (report.userId) {
+    addInbox(report.userId, 'report_revision', {
+      message: report.message || '',
+      reportId: id
+    });
+    saveDb();
+  }
+  return { ok: true, report: getReportById(id) };
+}
+
 function deleteReport(id) {
   const report = getReportById(id);
   if (!report) return false;
@@ -83,5 +104,6 @@ module.exports = {
   getReports,
   updateReportStatus,
   acceptReportForAgent,
+  returnReportForRevision,
   deleteReport,
 };

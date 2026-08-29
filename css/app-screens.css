@@ -99,6 +99,11 @@
 .admin-reports-list { display: flex; flex-direction: column; gap: 1rem; }
 .admin-report-item { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; background: #fafafa; }
 .admin-report-meta { font-size: 0.85rem; color: var(--text-muted, #666); margin-bottom: 0.25rem; }
+.admin-report-message,
+.admin-report-payload {
+  -webkit-user-select: text;
+  user-select: text;
+}
 .admin-report-message { white-space: pre-wrap; word-break: break-word; margin-bottom: 0.5rem; }
 .admin-report-payload { font-size: 0.75rem; max-height: 8rem; overflow: auto; background: #eee; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
 .admin-report-kind {

@@ -430,7 +430,7 @@ function confirmAction(message) {
  */
 function clearForm() {
   const fields = [
-    'cattleId', 'nickname', 'group', 'birthDate', 'lactation', 'calvingDate',
+    'cattleId', 'nickname', 'collar', 'group', 'birthDate', 'lactation', 'calvingDate',
     'inseminationDate', 'attemptNumber', 'bull', 'inseminator', 'code',
     'status', 'protocolName', 'protocolStartDate', 'exitDate',
     'dryStartDate', 'vwp', 'note', 'stallYard', 'stallRow', 'stallPlace'

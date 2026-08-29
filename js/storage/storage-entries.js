@@ -266,6 +266,7 @@ function getDefaultCowEntry() {
   return {
     cattleId: '',
     nickname: '',
+    collar: '',
     group: '',
     birthDate: '',
     lactation: '',

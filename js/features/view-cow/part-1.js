@@ -168,14 +168,24 @@ function getInseminationLactation(insemDate, calvingDate, entryLactation) {
 function getInseminationListForEntry(entry) {
   var list = [];
   if (entry.inseminationHistory && entry.inseminationHistory.length > 0) {
-    list = entry.inseminationHistory.slice();
+    list = entry.inseminationHistory.map(function (h, idx) {
+      var row = {};
+      if (h && typeof h === 'object') {
+        Object.keys(h).forEach(function (k) { row[k] = h[k]; });
+      }
+      row._src = 'history';
+      row._srcIndex = idx;
+      return row;
+    });
   } else if (entry.inseminationDate) {
     list = [{
       date: entry.inseminationDate,
       attemptNumber: entry.attemptNumber ?? 1,
       bull: entry.bull || '',
       inseminator: entry.inseminator || '',
-      code: entry.code || ''
+      code: entry.code || '',
+      _src: 'field',
+      _srcIndex: 0
     }];
   }
   var hist = entry.actionHistory || [];
@@ -202,7 +212,9 @@ function getInseminationListForEntry(entry) {
       attemptNumber: item.attemptNumber !== undefined && item.attemptNumber !== null ? item.attemptNumber : '',
       bull: item.bull || '',
       inseminator: item.inseminator || '',
-      code: item.code || ''
+      code: item.code || '',
+      _src: 'action',
+      _srcIndex: hi
     });
   }
   list.sort(function (a, b) {
@@ -268,20 +280,33 @@ function viewCow(cattleId) {
   var daysInLact = getDaysInLactation(entry);
   var daysInLactStr = (daysInLact === null || daysInLact === undefined) ? '—' : String(daysInLact);
 
-  var insemList = getInseminationListForEntry(entry);
-  var historyRows = insemList.map(function (row) {
-    return (
-      '<tr><td>' + (formatDate(row.date) || '—') + '</td><td>' + escapeHtmlCard(row.attemptNumber) + '</td><td>' + escapeHtmlCard(row.bull) + '</td><td>' + escapeHtmlCard(row.inseminator) + '</td><td>' + (row.daysFromPrevious !== undefined ? escapeHtmlCard(row.daysFromPrevious) : '—') + '</td><td>' + escapeHtmlCard(row.code) + '</td></tr>'
-    );
-  }).join('');
-  var historyTableHtml = insemList.length > 0
-    ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Техник ИО</th><th>Дней от предыдущего</th><th>Код</th></tr></thead><tbody>' + historyRows + '</tbody></table>'
-    : '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
-
   var rawId = (entry.cattleId || '');
   var safeCattleId = rawId.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   var canHerdMutate = typeof canEdit !== 'function' || canEdit();
   var canServiceWorks = typeof canInputServiceWorks === 'function' ? canInputServiceWorks() : canHerdMutate;
+  var canDeleteInsem = canHerdMutate || canServiceWorks;
+
+  var insemList = getInseminationListForEntry(entry);
+  var historyRows = insemList.map(function (row) {
+    var delCell = '';
+    if (canDeleteInsem && row._src) {
+      delCell =
+        '<td><button type="button" class="small-btn cow-insem-delete" data-cattle-id="' +
+        escapeHtmlCard(rawId) +
+        '" data-insem-src="' +
+        escapeHtmlCard(row._src) +
+        '" data-insem-index="' +
+        String(row._srcIndex) +
+        '" title="Удалить осеменение">🗑️</button></td>';
+    }
+    return (
+      '<tr><td>' + (formatDate(row.date) || '—') + '</td><td>' + escapeHtmlCard(row.attemptNumber) + '</td><td>' + escapeHtmlCard(row.bull) + '</td><td>' + escapeHtmlCard(row.inseminator) + '</td><td>' + (row.daysFromPrevious !== undefined ? escapeHtmlCard(row.daysFromPrevious) : '—') + '</td><td>' + escapeHtmlCard(row.code) + '</td>' + delCell + '</tr>'
+    );
+  }).join('');
+  var delTh = canDeleteInsem ? '<th></th>' : '';
+  var historyTableHtml = insemList.length > 0
+    ? '<table class="cow-insemination-table"><thead><tr><th>Дата осеменения</th><th>Попытка</th><th>Бык</th><th>Техник ИО</th><th>Дней от предыдущего</th><th>Код</th>' + delTh + '</tr></thead><tbody>' + historyRows + '</tbody></table>'
+    : '<p class="cow-insemination-empty">Нет данных об осеменениях.</p>';
   var actionRow = '';
   if (canHerdMutate) {
     actionRow +=
@@ -304,6 +329,7 @@ function viewCow(cattleId) {
     '<h2>Карточка животного №' + escapeHtmlCard(entry.cattleId) + '</h2>' +
     '<div class="cow-details-grid">' +
     '<div><strong>Кличка:</strong> ' + escapeHtmlCard(entry.nickname) + '</div>' +
+    '<div><strong>Ошейник:</strong> ' + escapeHtmlCard(entry.collar) + '</div>' +
     '<div><strong>Группа:</strong> ' + escapeHtmlCard(entry.group || '') + '</div>' +
     '<div><strong>Дата рождения:</strong> ' + (formatDate(entry.birthDate) || '—') + '</div>' +
     '<div><strong>Лактация:</strong> ' + escapeHtmlCard(entry.lactation) + '</div>' +
@@ -323,7 +349,7 @@ function viewCow(cattleId) {
     '<div><strong>Начало протокола:</strong> ' + (formatDate((entry.protocol && entry.protocol.startDate) || entry.protocolStartDate) || '—') + '</div>' +
     '<div><strong>Примечание:</strong> ' + escapeHtmlCard(entry.note) + '</div>' +
     '<div><strong>Стойломесто:</strong> ' + formatStallLine(entry) + '</div>' +
-    (canMutate
+    (canHerdMutate
       ? '<div class="cow-stall-edit"><strong>Изменить стойломесто</strong>' +
         '<div class="cow-stall-edit-grid">' +
         '<label>Двор<input type="text" id="viewCowStallYard" inputmode="numeric" autocomplete="off" /></label>' +
@@ -340,7 +366,7 @@ function viewCow(cattleId) {
     '<div class="cow-card-actions">' + actionRow + '</div>' +
     '</div>';
 
-  if (canMutate) {
+  if (canHerdMutate) {
     var yIn = document.getElementById('viewCowStallYard');
     var rIn = document.getElementById('viewCowStallRow');
     var pIn = document.getElementById('viewCowStallPlace');
@@ -355,6 +381,18 @@ function viewCow(cattleId) {
       });
     }
   }
+  card.querySelectorAll('.cow-insem-delete').forEach(function (btn) {
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var id = btn.getAttribute('data-cattle-id');
+      var src = btn.getAttribute('data-insem-src');
+      var idx = btn.getAttribute('data-insem-index');
+      if (typeof window.deleteInseminationHistoryItem === 'function') {
+        window.deleteInseminationHistoryItem(id, src, idx);
+      }
+    });
+  });
 }
 
 

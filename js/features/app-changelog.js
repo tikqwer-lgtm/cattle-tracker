@@ -169,6 +169,15 @@ import {
     }
   }
 
+  function prependImprovementDraft(text) {
+    var message = String(text || '').trim();
+    if (!message) return;
+    var drafts = loadImprovementDrafts();
+    drafts.unshift({ id: 'rev-' + Date.now() + '-' + String(Math.random()).slice(2, 8), text: message });
+    if (drafts.length > IMPROVEMENT_DRAFTS_MAX) drafts = drafts.slice(0, IMPROVEMENT_DRAFTS_MAX);
+    saveImprovementDrafts(drafts);
+  }
+
   function getImprovementDraftCount() {
     return loadImprovementDrafts().length;
   }
@@ -437,6 +446,7 @@ import {
   global.showAppVersionActionsModal = showAppVersionActionsModal;
   global.showImprovementSuggestionModal = showImprovementSuggestionModal;
   global.getImprovementDraftCount = getImprovementDraftCount;
+  global.prependImprovementDraft = prependImprovementDraft;
 })(typeof window !== 'undefined' ? window : this);
 
 export {};
