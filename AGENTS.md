@@ -11,8 +11,9 @@
 3. После правок: коммит → `git push origin main`. Не оставлять результат только на `cursor/*` и не останавливаться на PR.
 4. Если push в `main` не удался — **не** выкладывать APK, сообщить пользователю.
 5. После успешного push из корня: `npm run mobile:installer` (не пропускать из‑за «нет SDK» — SDK ставится образом `.cursor/Dockerfile`).
-6. Windows-установщик (`npm run installer`) в Linux **не собирать**.
-7. После успешной загрузки APK: `PATCH /api/reports/:id` `{ "status": "done" }`.
-8. Сеть: исходящий HTTP на API (`31.130.155.149:3000`) и git push на origin должны быть разрешены.
+6. Если менялся каталог `server/` — деплой API: `cd server && npm run deploy` (секрет `CATTLE_TRACKER_SSH_PASSWORD`). Не оставлять это пользователю.
+7. Windows-установщик (`npm run installer`) в Linux **не собирать**.
+8. После успешной загрузки APK: `PATCH /api/reports/:id` `{ "status": "done" }`.
+9. Сеть: исходящий HTTP на API (`31.130.155.149:3000`), SSH на тот же хост и git push на origin должны быть разрешены.
 
 Заявки: `npm run ideas:pull` (только `kind=improvement`, `status=new` — после «Принять» у администратора).
