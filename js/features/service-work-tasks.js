@@ -306,6 +306,47 @@ export function collectServiceWorkItemsFromTasks(tasks, opts) {
   return out;
 }
 
+export function parseCattleIdsFromPaste(text) {
+  var seen = {};
+  var out = [];
+  String(text || '')
+    .split(/[\s,;]+/)
+    .forEach(function (part) {
+      var id = String(part || '').trim();
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      out.push(id);
+    });
+  return out;
+}
+
+export function isServiceWorkFormDirty(form, defaults) {
+  form = form || {};
+  defaults = defaults || {};
+  var defType = defaults.type || 'insemination';
+  if (String(form.type || 'insemination') !== defType) return true;
+  if (String(form.workDate || '') !== String(defaults.workDate || '')) return true;
+  var count = parseInt(form.count, 10);
+  var defCount = parseInt(defaults.count, 10);
+  if (isNaN(defCount)) defCount = 1;
+  if (isNaN(count)) count = 1;
+  if (count !== defCount) return true;
+  if (String(form.note || '').trim()) return true;
+  if (String(form.paste || '').trim()) return true;
+  var animals = form.animals || [];
+  var i;
+  for (i = 0; i < animals.length; i++) {
+    var a = animals[i] || {};
+    if (String(a.cattleId || '').trim()) return true;
+    if (String(a.result || '').trim()) return true;
+    if (String(a.bull || '').trim()) return true;
+    if (a.attempt != null && String(a.attempt).trim() !== '') return true;
+    if (String(a.protocol || '').trim()) return true;
+    if (String(a.remark || '').trim()) return true;
+  }
+  return false;
+}
+
 export function sumTaskQuantities(items) {
   var n = 0;
   (items || []).forEach(function (it) {

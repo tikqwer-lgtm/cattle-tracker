@@ -8,7 +8,9 @@ import {
   normalizeWorkTasksList,
   appendWorkTaskToBundle,
   checkDueDateFromWork,
-  dateKey
+  dateKey,
+  parseCattleIdsFromPaste,
+  isServiceWorkFormDirty
 } from './service-work-tasks.js';
 
 function escapeHtml(s) {
@@ -183,6 +185,11 @@ function formHtml(defaults) {
     escapeHtml(defaults.note || '') +
     '" /></label>' +
     '<p class="farm-settings-hint">Опись животных необязательна. Можно указать только общее число.</p>' +
+    '<label class="swt-field">Вставить номера' +
+    '<textarea id="swtPasteIds" rows="3" placeholder="35 4283, 4639"></textarea></label>' +
+    '<div class="list-actions list-actions-inline">' +
+    '<button type="button" class="small-btn" id="swtApplyPaste">Добавить номера в опись</button>' +
+    '</div>' +
     '<div class="swt-animals-wrap">' +
     '<div class="list-actions list-actions-inline">' +
     '<button type="button" class="small-btn" id="swtAddRow">Добавить строку описи</button>' +
@@ -228,6 +235,18 @@ function readAnimalsFromForm(root, type) {
   return rows;
 }
 
+function readWorkFormSnapshot(containerEl, defaults) {
+  defaults = defaults || {};
+  return {
+    type: (containerEl.querySelector('#swtType') || {}).value || defaults.type || 'insemination',
+    workDate: dateKey((containerEl.querySelector('#swtDate') || {}).value) || defaults.workDate || '',
+    count: parseInt((containerEl.querySelector('#swtCount') || {}).value, 10) || 1,
+    note: String((containerEl.querySelector('#swtNote') || {}).value || ''),
+    paste: String((containerEl.querySelector('#swtPasteIds') || {}).value || ''),
+    animals: readAnimalsFromForm(containerEl, (containerEl.querySelector('#swtType') || {}).value || 'insemination')
+  };
+}
+
 function bindForm(containerEl, onDone) {
   var form = containerEl.querySelector('#swtForm');
   if (!form) return;
@@ -260,6 +279,35 @@ function bindForm(containerEl, onDone) {
         var n = body.querySelectorAll('.swt-animal-row').length;
         if (n > parseInt(countEl.value, 10) || !countEl.value) countEl.value = String(n);
       }
+    });
+  }
+
+  var applyPaste = containerEl.querySelector('#swtApplyPaste');
+  if (applyPaste) {
+    applyPaste.addEventListener('click', function () {
+      var type = (containerEl.querySelector('#swtType') || {}).value || 'insemination';
+      var body = containerEl.querySelector('#swtAnimalsBody');
+      var pasteEl = containerEl.querySelector('#swtPasteIds');
+      if (!body) return;
+      var ids = parseCattleIdsFromPaste(pasteEl && pasteEl.value);
+      if (!ids.length) {
+        if (typeof showToast === 'function') showToast('Вставьте номера через пробел, запятую или с новой строки', 'error');
+        return;
+      }
+      var existing = {};
+      body.querySelectorAll('.swt-animal-row [data-f="cattleId"]').forEach(function (inp) {
+        var v = String(inp.value || '').trim();
+        if (v) existing[v] = true;
+      });
+      ids.forEach(function (id) {
+        if (existing[id]) return;
+        existing[id] = true;
+        body.insertAdjacentHTML('beforeend', animalRowHtml(type, { cattleId: id }));
+      });
+      var countEl = containerEl.querySelector('#swtCount');
+      var n = body.querySelectorAll('.swt-animal-row').length;
+      if (countEl && n) countEl.value = String(n);
+      if (pasteEl) pasteEl.value = '';
     });
   }
 
@@ -441,14 +489,36 @@ export function renderServiceWorkTasksJournal(containerEl, fromDate, toDate) {
       addWork.addEventListener('click', function () {
         var host = containerEl.querySelector('#swtFormHost');
         if (!host) return;
-        host.innerHTML = formHtml({ workDate: todayIso(), type: 'insemination', count: 1 });
-        bindForm(containerEl, function (ok) {
-          if (ok) {
-            var b = monthBounds(containerEl._tasksYear, containerEl._tasksMonth);
-            renderServiceWorkTasksJournal(containerEl, b.from, b.to);
-          } else {
-            host.innerHTML = '';
-          }
+        var defaults = { workDate: todayIso(), type: 'insemination', count: 1 };
+        function openBlank() {
+          host.innerHTML = formHtml(defaults);
+          bindForm(containerEl, function (ok) {
+            if (ok) {
+              var b = monthBounds(containerEl._tasksYear, containerEl._tasksMonth);
+              renderServiceWorkTasksJournal(containerEl, b.from, b.to);
+            } else {
+              host.innerHTML = '';
+            }
+          });
+        }
+        if (!host.querySelector('#swtForm')) {
+          openBlank();
+          return;
+        }
+        var snap = readWorkFormSnapshot(containerEl, defaults);
+        if (!isServiceWorkFormDirty(snap, defaults)) {
+          openBlank();
+          return;
+        }
+        var ask =
+          typeof showConfirmModal === 'function'
+            ? showConfirmModal(
+                'Введённые данные работы будут стёрты. Начать новую работу?\n\nНесохранённые номера и поля пропадут.',
+                { confirmText: 'Продолжить', cancelText: 'Отмена' }
+              )
+            : Promise.resolve(window.confirm('Введённые данные работы будут стёрты. Начать новую работу?'));
+        ask.then(function (ok) {
+          if (ok) openBlank();
         });
       });
     }

@@ -8,7 +8,7 @@
   @apply pointer-events-auto;
 }
 #root.root--react-active {
-  @apply pointer-events-auto block w-full max-w-[720px] mx-auto px-4 box-border;
+  @apply pointer-events-auto block w-full max-w-none mx-auto px-4 box-border;
 }
 #root.root--react-active .screen.screen--react.active {
   display: block !important;
@@ -237,7 +237,7 @@ body {
 }
 
 .container {
-  @apply mx-auto max-w-[800px] p-5;
+  @apply mx-auto max-w-none w-full p-5 box-border;
 }
 
 .screen {

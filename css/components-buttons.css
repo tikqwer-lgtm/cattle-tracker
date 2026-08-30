@@ -15,13 +15,15 @@
   grid-auto-rows: 1fr;
   gap: 14px;
   margin-top: 16px;
-  max-width: 520px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 100%;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  align-items: stretch;
 }
 
 #menu-screen .action-buttons--main-hub {
-  max-width: 520px;
+  max-width: 100%;
 }
 
 @media (min-width: 560px) {
@@ -31,7 +33,7 @@
   }
   #menu-screen .action-buttons--main-hub {
     grid-template-columns: 1fr 1fr;
-    max-width: 520px;
+    max-width: 100%;
   }
 }
 
@@ -46,7 +48,8 @@
 #herd-hub-screen .menu-section {
   border-bottom: none;
   padding-bottom: 0;
-  min-height: 0;
+  min-height: 108px;
+  height: 100%;
   display: flex;
 }
 
@@ -54,8 +57,9 @@
 #herd-hub-screen .menu-section .action-btn.menu-group-btn {
   position: relative;
   width: 100%;
-  min-height: 88px;
+  min-height: 108px;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;

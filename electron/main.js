@@ -412,17 +412,12 @@ function createAppMenu() {
 function createWindow() {
   const primary = screen.getPrimaryDisplay();
   const work = primary.workArea;
-  const state = loadWindowState();
-  const width = state ? state.width : Math.min(900, work.width);
-  const height = state ? state.height : Math.min(700, work.height);
-  const x = state ? state.x : work.x + Math.max(0, Math.floor((work.width - width) / 2));
-  const y = state ? state.y : work.y + Math.max(0, Math.floor((work.height - height) / 2));
 
   mainWindow = new BrowserWindow({
-    x: x,
-    y: y,
-    width: width,
-    height: height,
+    x: work.x,
+    y: work.y,
+    width: work.width,
+    height: work.height,
     minWidth: 400,
     minHeight: 400,
     webPreferences: {
@@ -493,6 +488,8 @@ function createWindow() {
   ipcMain.on('set-window-mode', (_event, _mode) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.setMaximumSize(16384, 16384);
+    const display = screen.getDisplayMatching(mainWindow.getBounds());
+    mainWindow.setBounds(display.workArea);
   });
 
   const ses = mainWindow.webContents.session;

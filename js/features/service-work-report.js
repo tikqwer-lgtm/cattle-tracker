@@ -8,7 +8,14 @@ import {
   uziPrintDocumentHtml,
   uziPrintTableHtml,
   isUziReportItem,
-  formatPrintDate
+  formatPrintDate,
+  applyGroupFromHerd,
+  isMokshaFarmName,
+  mokshaUziAoa,
+  mokshaUziMerges,
+  mokshaUziFilename,
+  mokshaUziPreviewHtml,
+  DEFAULT_MOKSHA_SIGNERS
 } from './service-work-report-build.js';
 import {
   collectServiceWorkItemsFromTasks,
@@ -25,6 +32,7 @@ import {
   prefetchActTemplate,
   getCachedActTemplateBytes
 } from './service-act-docx.js';
+import { loadActFio, saveActFio } from './service-act-fio.js';
 
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -64,14 +72,69 @@ function getFarmName() {
   return '';
 }
 
-function itemsTableHtml(items) {
+function getObjectId() {
+  return typeof getCurrentObjectId === 'function' ? String(getCurrentObjectId() || '').trim() : '';
+}
+
+function isMokshaTemplate(root) {
+  var sel = root && root.querySelector('#serviceReportTemplate');
+  if (sel && sel.value) return sel.value === 'moksha';
+  return isMokshaFarmName(getFarmName());
+}
+
+function readMokshaSigners(root) {
+  var saved = loadActFio(typeof localStorage !== 'undefined' ? localStorage : null, getObjectId());
+  return {
+    left: ((root && root.querySelector('#serviceMokshaSignerLeft')) || {}).value || saved.mokshaLeft || DEFAULT_MOKSHA_SIGNERS.left,
+    right1: ((root && root.querySelector('#serviceMokshaSignerRight1')) || {}).value || saved.mokshaRight1 || DEFAULT_MOKSHA_SIGNERS.right1,
+    right2: ((root && root.querySelector('#serviceMokshaSignerRight2')) || {}).value || saved.mokshaRight2 || DEFAULT_MOKSHA_SIGNERS.right2
+  };
+}
+
+function persistFioFromForm(root) {
+  if (!root) return;
+  var data = {
+    executorFio: ((root.querySelector('#serviceActExecutorFio') || {}).value || ''),
+    customerOrg: ((root.querySelector('#serviceActCustomerOrg') || {}).value || ''),
+    customerFio: ((root.querySelector('#serviceActCustomerFio') || {}).value || ''),
+    mokshaLeft: ((root.querySelector('#serviceMokshaSignerLeft') || {}).value || ''),
+    mokshaRight1: ((root.querySelector('#serviceMokshaSignerRight1') || {}).value || ''),
+    mokshaRight2: ((root.querySelector('#serviceMokshaSignerRight2') || {}).value || '')
+  };
+  saveActFio(typeof localStorage !== 'undefined' ? localStorage : null, getObjectId(), data);
+}
+
+function applySavedFioToForm(root) {
+  var saved = loadActFio(typeof localStorage !== 'undefined' ? localStorage : null, getObjectId());
+  function setVal(id, value) {
+    var el = root.querySelector('#' + id);
+    if (el) el.value = value || '';
+  }
+  setVal('serviceActExecutorFio', saved.executorFio);
+  setVal('serviceActCustomerOrg', saved.customerOrg);
+  setVal('serviceActCustomerFio', saved.customerFio);
+  setVal('serviceMokshaSignerLeft', saved.mokshaLeft);
+  setVal('serviceMokshaSignerRight1', saved.mokshaRight1);
+  setVal('serviceMokshaSignerRight2', saved.mokshaRight2);
+}
+
+function itemsTableHtml(items, opts) {
+  opts = opts || {};
   if (!items || !items.length) return '<p class="list-empty">Нет работ за эту дату</p>';
   var uzi = items.filter(isUziReportItem);
   var other = items.filter(function (it) { return !isUziReportItem(it); });
   var html = '';
   if (uzi.length) {
-    html += '<p class="farm-settings-hint">УЗИ — формат для печати (МТФ и результат)</p>';
-    html += '<div class="service-report-table-wrap">' + uziPrintTableHtml(uzi, getFarmName()) + '</div>';
+    if (opts.moksha) {
+      html += mokshaUziPreviewHtml({
+        items: uzi,
+        farmName: getFarmName(),
+        signers: opts.signers || readMokshaSigners(opts.root)
+      });
+    } else {
+      html += '<p class="farm-settings-hint">УЗИ — формат для печати (МТФ и результат)</p>';
+      html += '<div class="service-report-table-wrap">' + uziPrintTableHtml(uzi, getFarmName()) + '</div>';
+    }
   }
   if (other.length) {
     var rows = other
@@ -103,11 +166,15 @@ function itemsTableHtml(items) {
 function collectFromForm(root) {
   var dateEl = root.querySelector('#serviceReportDate');
   var date = (dateEl && dateEl.value) || todayIso();
-  var types = {
-    insemination: !!(root.querySelector('#serviceReportTypeInsem') && root.querySelector('#serviceReportTypeInsem').checked),
-    uzi: !!(root.querySelector('#serviceReportTypeUzi') && root.querySelector('#serviceReportTypeUzi').checked),
-    protocol: !!(root.querySelector('#serviceReportTypeProtocol') && root.querySelector('#serviceReportTypeProtocol').checked)
-  };
+  var moksha = isMokshaTemplate(root);
+  var types = moksha
+    ? { insemination: false, uzi: true, protocol: false }
+    : {
+      insemination: !!(root.querySelector('#serviceReportTypeInsem') && root.querySelector('#serviceReportTypeInsem').checked),
+      uzi: !!(root.querySelector('#serviceReportTypeUzi') && root.querySelector('#serviceReportTypeUzi').checked),
+      protocol: !!(root.querySelector('#serviceReportTypeProtocol') && root.querySelector('#serviceReportTypeProtocol').checked)
+    };
+  var items;
   if (usesServiceWorkTasksJournal()) {
     var tasks = [];
     if (window.__farmCardBundle && Array.isArray(window.__farmCardBundle.workTasks)) {
@@ -115,17 +182,19 @@ function collectFromForm(root) {
     } else if (window.CattleTrackerWorkTasks && window.CattleTrackerWorkTasks.readWorkTasksLocal) {
       tasks = window.CattleTrackerWorkTasks.readWorkTasksLocal();
     }
-    return collectServiceWorkItemsFromTasks(tasks, {
+    items = collectServiceWorkItemsFromTasks(tasks, {
+      date: date,
+      username: getUsername(),
+      types: types
+    });
+  } else {
+    items = collectServiceWorkItems(getEntriesList(), {
       date: date,
       username: getUsername(),
       types: types
     });
   }
-  return collectServiceWorkItems(getEntriesList(), {
-    date: date,
-    username: getUsername(),
-    types: types
-  });
+  return applyGroupFromHerd(items, getEntriesList(), getFarmName());
 }
 
 function htmlToDataUrl(html) {
@@ -170,7 +239,49 @@ function reportPrintHtml(items, date, username) {
   );
 }
 
-function downloadReportFile(items, date) {
+function downloadMokshaExcel(items, date, signers) {
+  var XLSX = typeof window !== 'undefined' ? window.XLSX : null;
+  if (!XLSX || !XLSX.utils) {
+    if (typeof showToast === 'function') showToast('Библиотека Excel не загружена', 'error');
+    return;
+  }
+  var farm = getFarmName() || 'Мокша';
+  var aoa = mokshaUziAoa(items, { farmName: farm, date: date, signers: signers });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = mokshaUziMerges();
+  ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Лист1');
+  var filename = mokshaUziFilename(date, farm);
+  if (typeof XLSX.writeFile === 'function') {
+    XLSX.writeFile(wb, filename);
+    if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+    return;
+  }
+  var binary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+  var buf = new ArrayBuffer(binary.length);
+  var view = new Uint8Array(buf);
+  var i;
+  for (i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i) & 0xff;
+  var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  if (typeof window.downloadBlob === 'function') {
+    window.downloadBlob(blob, filename, null, 'УЗИ');
+    return;
+  }
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+}
+
+function downloadReportFile(items, date, opts) {
+  opts = opts || {};
+  if (opts.moksha) {
+    downloadMokshaExcel(items, date, opts.signers || {});
+    return;
+  }
   var html = reportPrintHtml(items, date, getUsername());
   var farm = getFarmName();
   var dPrint = formatPrintDate(date) || date || todayIso();
@@ -328,6 +439,7 @@ function currentActDate(root) {
 }
 
 function actFileFromForm(root) {
+  persistFioFromForm(root);
   var data = collectActFormData(root, currentActDate(root));
   if (!data.rows.length) {
     if (typeof showToast === 'function') showToast('Добавьте хотя бы одну услугу в акт', 'error');
@@ -373,6 +485,7 @@ function bindServiceActBlock(modal) {
   modal.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t && t.getAttribute && t.getAttribute('data-act-field')) refreshActTotal(modal);
+    if (t && t.classList && t.classList.contains('service-act-fio')) persistFioFromForm(modal);
   });
   var dl = modal.querySelector('#serviceActDownloadBtn');
   if (dl) {
@@ -442,15 +555,25 @@ function openServiceWorkReportForm() {
     '<button type="button" class="small-btn" id="serviceReportCloseBtn">Закрыть</button></div>' +
     '<div class="view-fields-modal-body">' +
     '<label>Дата работы <input type="date" id="serviceReportDate" value="' + escapeHtml(date) + '" /></label>' +
+    '<label>Шаблон описи <select id="serviceReportTemplate">' +
+    '<option value="default">Обычный</option>' +
+    '<option value="moksha"' + (isMokshaFarmName(getFarmName()) ? ' selected' : '') + '>Мокша</option>' +
+    '</select></label>' +
     '<div class="service-report-tabs" role="tablist" aria-label="Разделы отчёта">' +
     '<button type="button" class="service-report-tab active" data-report-tab="opis" role="tab" aria-selected="true">Опись</button>' +
     '<button type="button" class="service-report-tab" data-report-tab="act" role="tab" aria-selected="false">Акт</button>' +
     '</div>' +
     '<div class="service-report-tab-panel" data-report-panel="opis" role="tabpanel">' +
-    '<div class="service-report-types">' +
+    '<div class="service-report-types" id="serviceReportTypes">' +
     '<label><input type="checkbox" id="serviceReportTypeInsem" checked /> Осеменение</label>' +
     '<label><input type="checkbox" id="serviceReportTypeUzi" checked /> УЗИ</label>' +
     '<label><input type="checkbox" id="serviceReportTypeProtocol" checked /> Протокол</label>' +
+    '</div>' +
+    '<div class="service-moksha-signers" id="serviceMokshaSigners" hidden>' +
+    '<p class="farm-settings-hint">Подписи внизу файла. Сохраняются для следующих описей и актов.</p>' +
+    '<label>Слева <input type="text" id="serviceMokshaSignerLeft" class="service-act-fio" autocomplete="name" /></label>' +
+    '<label>Справа (1) <input type="text" id="serviceMokshaSignerRight1" class="service-act-fio" autocomplete="name" /></label>' +
+    '<label>Справа (2) <input type="text" id="serviceMokshaSignerRight2" class="service-act-fio" autocomplete="name" /></label>' +
     '</div>' +
     '<p class="farm-settings-hint" id="serviceReportHint">Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».</p>' +
     '<div id="serviceReportPreview" class="service-report-preview"></div>' +
@@ -467,16 +590,36 @@ function openServiceWorkReportForm() {
   document.body.appendChild(modal);
   bindServiceActBlock(modal);
   bindServiceReportTabs(modal);
-  var hint = modal.querySelector('#serviceReportHint');
-  if (hint && usesServiceWorkTasksJournal()) {
-    hint.textContent =
-      'Опись собирается из журнала задач за дату: общее число голов и необязательные строки. Протокол в отчёте — только если указан в строке осеменения.';
+  applySavedFioToForm(modal);
+
+  function syncTemplateUi() {
+    var moksha = isMokshaTemplate(modal);
+    var typesEl = modal.querySelector('#serviceReportTypes');
+    var signersEl = modal.querySelector('#serviceMokshaSigners');
+    var hintEl = modal.querySelector('#serviceReportHint');
+    var printBtn = modal.querySelector('#serviceReportPrintBtn');
+    if (typesEl) typesEl.hidden = moksha;
+    if (signersEl) signersEl.hidden = !moksha;
+    if (hintEl) {
+      hintEl.textContent = moksha
+        ? 'Шаблон «Мокша»: Excel без колонки результата, группировка по МТФ, подписи внизу. МТФ — группа животного.'
+        : usesServiceWorkTasksJournal()
+          ? 'Опись собирается из журнала задач за дату: общее число голов и необязательные строки. Протокол в отчёте — только если указан в строке осеменения.'
+          : 'Для печати УЗИ: МТФ — группа животного, если пусто — название хозяйства. «Не стельная» в бланке пишется как «Яловая».';
+    }
+    if (printBtn) printBtn.textContent = moksha ? 'Скачать Excel' : 'На печать';
   }
 
   function refreshPreview() {
     var items = collectFromForm(modal);
     var box = modal.querySelector('#serviceReportPreview');
-    if (box) box.innerHTML = itemsTableHtml(items);
+    if (box) {
+      box.innerHTML = itemsTableHtml(items, {
+        moksha: isMokshaTemplate(modal),
+        signers: readMokshaSigners(modal),
+        root: modal
+      });
+    }
     modal._items = items;
   }
   var boot =
@@ -484,17 +627,28 @@ function openServiceWorkReportForm() {
       ? window.ensureFarmCardLoaded()
       : Promise.resolve();
   boot.then(function () {
+    syncTemplateUi();
     refreshPreview();
   }).catch(function () {
+    syncTemplateUi();
     refreshPreview();
   });
   modal.querySelector('#serviceReportCloseBtn').addEventListener('click', closeReportModal);
   modal.addEventListener('click', function (ev) {
     if (ev.target === modal) closeReportModal();
   });
-  ['serviceReportDate', 'serviceReportTypeInsem', 'serviceReportTypeUzi', 'serviceReportTypeProtocol'].forEach(function (id) {
+  ['serviceReportDate', 'serviceReportTypeInsem', 'serviceReportTypeUzi', 'serviceReportTypeProtocol', 'serviceReportTemplate'].forEach(function (id) {
     var el = modal.querySelector('#' + id);
-    if (el) el.addEventListener('change', refreshPreview);
+    if (el) {
+      el.addEventListener('change', function () {
+        if (id === 'serviceReportTemplate') syncTemplateUi();
+        refreshPreview();
+      });
+    }
+  });
+  ['serviceMokshaSignerLeft', 'serviceMokshaSignerRight1', 'serviceMokshaSignerRight2'].forEach(function (id) {
+    var el = modal.querySelector('#' + id);
+    if (el) el.addEventListener('input', function () { persistFioFromForm(modal); refreshPreview(); });
   });
   modal.querySelector('#serviceReportRefreshBtn').addEventListener('click', refreshPreview);
   modal.querySelector('#serviceReportPrintBtn').addEventListener('click', function () {
@@ -505,7 +659,11 @@ function openServiceWorkReportForm() {
       if (typeof showToast === 'function') showToast('Нет работ за эту дату', 'error');
       return;
     }
-    downloadReportFile(items, d);
+    persistFioFromForm(modal);
+    downloadReportFile(items, d, {
+      moksha: isMokshaTemplate(modal),
+      signers: readMokshaSigners(modal)
+    });
   });
   modal.querySelector('#serviceReportSaveBtn').addEventListener('click', function () {
     var dateEl = modal.querySelector('#serviceReportDate');

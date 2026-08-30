@@ -317,6 +317,169 @@ function uziPrintTableHtml(items, farmName) {
   );
 }
 
+var DEFAULT_MOKSHA_SIGNERS = {
+  left: 'Бушаев А.В.',
+  right1: 'Матвеев П.Н.',
+  right2: 'Филиппова М.В.'
+};
+
+function isMokshaFarmName(name) {
+  return /мокша/i.test(String(name || ''));
+}
+
+function mokshaMtfOf(it, farmName) {
+  var g = String((it && it.group) || '').trim();
+  if (g) return g;
+  return String(farmName || '').trim();
+}
+
+function applyGroupFromHerd(items, entries, farmName) {
+  var map = {};
+  (entries || []).forEach(function (e) {
+    if (!e || e.cattleId == null || e.cattleId === '') return;
+    map[String(e.cattleId)] = String(e.group || '').trim();
+  });
+  var farm = String(farmName || '').trim();
+  return (items || []).map(function (it) {
+    var next = Object.assign({}, it);
+    var g = String(next.group || '').trim();
+    if (!g && next.cattleId) g = map[String(next.cattleId)] || '';
+    if (!g) g = farm;
+    next.group = g;
+    return next;
+  });
+}
+
+function sortMokshaUziItems(items, farmName) {
+  return (items || []).slice().sort(function (a, b) {
+    var ma = mokshaMtfOf(a, farmName);
+    var mb = mokshaMtfOf(b, farmName);
+    var c = ma.localeCompare(mb, 'ru');
+    if (c !== 0) return c;
+    return String(a.cattleId || '').localeCompare(String(b.cattleId || ''), 'ru', { numeric: true });
+  });
+}
+
+function formatPrintDateShort(raw) {
+  var printed = formatPrintDate(raw);
+  var m = printed.match(/^(\d{2})\.(\d{2})\.\d{2}(\d{2})$/);
+  if (m) return m[1] + '.' + m[2] + '.' + m[3];
+  return printed;
+}
+
+function mokshaUziFilename(date, farmName) {
+  var farm = String(farmName || '').trim() || 'Мокша';
+  var d = formatPrintDateShort(date) || formatPrintDate(date) || 'опись';
+  return 'УЗИ ' + farm + ' ' + d + '.xlsx';
+}
+
+/**
+ * Двумерный массив листа «Мокша»: заголовок, колонки, строки УЗИ, подписи.
+ */
+function mokshaUziAoa(items, opts) {
+  opts = opts || {};
+  var farm = String(opts.farmName || '').trim();
+  var signers = opts.signers || {};
+  var left = String(signers.left != null ? signers.left : DEFAULT_MOKSHA_SIGNERS.left).trim();
+  var right1 = String(signers.right1 != null ? signers.right1 : DEFAULT_MOKSHA_SIGNERS.right1).trim();
+  var right2 = String(signers.right2 != null ? signers.right2 : DEFAULT_MOKSHA_SIGNERS.right2).trim();
+  var rows = sortMokshaUziItems(
+    (items || []).filter(function (it) {
+      return isUziReportItem(it) && String(it.cattleId || '').trim();
+    }),
+    farm
+  );
+  var aoa = [
+    ['Список животных с указанием МТФ и номера животных', '', '', ''],
+    ['', '', '', ''],
+    ['№ п/п', '№', 'МТФ', 'Дата узи']
+  ];
+  rows.forEach(function (it, idx) {
+    aoa.push([
+      idx + 1,
+      String(it.cattleId || '').trim(),
+      mokshaMtfOf(it, farm),
+      formatPrintDate(it.workDate || opts.date)
+    ]);
+  });
+  aoa.push(['', '', '', '']);
+  aoa.push(['', '', '', '']);
+  aoa.push([left, '', '', right1]);
+  if (right2) aoa.push(['', '', '', right2]);
+  aoa.push(['', '', '', '']);
+  aoa.push(['', '', '', '']);
+  aoa.push(['Подпись', '', '', 'Подпись']);
+  return aoa;
+}
+
+function mokshaUziMerges() {
+  return [{ s: { r: 0, c: 0 }, e: { r: 1, c: 3 } }];
+}
+
+function mokshaUziTableHtml(items, farmName) {
+  var farm = String(farmName || '').trim();
+  var rows = sortMokshaUziItems(
+    (items || []).filter(function (it) {
+      return isUziReportItem(it) && String(it.cattleId || '').trim();
+    }),
+    farm
+  );
+  if (!rows.length) return '';
+  var body = rows
+    .map(function (it, idx) {
+      return (
+        '<tr>' +
+        '<td class="n">' +
+        (idx + 1) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(it.cattleId) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(mokshaMtfOf(it, farm)) +
+        '</td>' +
+        '<td>' +
+        escapePrintHtml(formatPrintDate(it.workDate)) +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+  return (
+    '<table class="uzi-print-table moksha-uzi-table">' +
+    '<thead><tr>' +
+    '<th>№ п/п</th><th>№</th><th>МТФ</th><th>Дата узи</th>' +
+    '</tr></thead><tbody>' +
+    body +
+    '</tbody></table>'
+  );
+}
+
+function mokshaUziPreviewHtml(opts) {
+  opts = opts || {};
+  var farmName = opts.farmName || '';
+  var signers = opts.signers || {};
+  var left = String(signers.left != null ? signers.left : DEFAULT_MOKSHA_SIGNERS.left).trim();
+  var right1 = String(signers.right1 != null ? signers.right1 : DEFAULT_MOKSHA_SIGNERS.right1).trim();
+  var right2 = String(signers.right2 != null ? signers.right2 : DEFAULT_MOKSHA_SIGNERS.right2).trim();
+  var table = mokshaUziTableHtml(opts.items || [], farmName);
+  if (!table) return '<p class="list-empty">Нет строк УЗИ с номерами животных</p>';
+  return (
+    '<div class="moksha-uzi-preview">' +
+    '<p class="moksha-uzi-title">Список животных с указанием МТФ и номера животных</p>' +
+    table +
+    '<div class="moksha-uzi-signers">' +
+    '<div class="moksha-uzi-signer"><div>' +
+    escapePrintHtml(left) +
+    '</div><div class="moksha-uzi-sign-label">Подпись</div></div>' +
+    '<div class="moksha-uzi-signer"><div>' +
+    escapePrintHtml(right1) +
+    (right2 ? '<br>' + escapePrintHtml(right2) : '') +
+    '</div><div class="moksha-uzi-sign-label">Подпись</div></div>' +
+    '</div></div>'
+  );
+}
+
 function uziPrintDocumentHtml(opts) {
   opts = opts || {};
   var date = opts.date || '';
@@ -358,7 +521,16 @@ export {
   dateKey,
   formatUziPrintResult,
   formatPrintDate,
+  formatPrintDateShort,
   isUziReportItem,
+  isMokshaFarmName,
+  applyGroupFromHerd,
+  mokshaUziAoa,
+  mokshaUziMerges,
+  mokshaUziFilename,
+  mokshaUziTableHtml,
+  mokshaUziPreviewHtml,
+  DEFAULT_MOKSHA_SIGNERS,
   uziPrintTableHtml,
   uziPrintDocumentHtml
 };

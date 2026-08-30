@@ -665,8 +665,48 @@
 }
 
 .service-report-modal {
-  max-width: 860px;
-  width: 94%;
+  max-width: 96vw;
+  width: 96%;
+}
+.view-fields-modal-content.service-report-modal {
+  width: min(96vw, 1400px);
+  max-width: 96vw;
+  max-height: 92vh;
+}
+.moksha-uzi-title {
+  text-align: center;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.moksha-uzi-signers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+}
+.moksha-uzi-signer {
+  text-align: center;
+}
+.moksha-uzi-sign-label {
+  margin-top: 24px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+.service-moksha-signers {
+  display: grid;
+  gap: 8px;
+  margin: 0.75rem 0;
+}
+.service-moksha-signers label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#swtPasteIds {
+  width: 100%;
+  min-height: 4.5rem;
+  box-sizing: border-box;
+  font: inherit;
 }
 .uzi-print-table {
   width: 100%;
