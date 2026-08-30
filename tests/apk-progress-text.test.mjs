@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   formatApkProgressDetail,
   uint8ToBase64,
-  shouldFallbackApkDownload
+  shouldFallbackApkDownload,
+  shouldFallbackApkStall
 } from '../js/utils/apk-progress-text.js';
 
 describe('formatApkProgressDetail', () => {
@@ -29,5 +30,13 @@ describe('shouldFallbackApkDownload', () => {
     expect(shouldFallbackApkDownload(0, 12000)).toBe(true);
     expect(shouldFallbackApkDownload(1024, 12000)).toBe(false);
     expect(shouldFallbackApkDownload(0, 3000)).toBe(false);
+  });
+});
+
+describe('shouldFallbackApkStall', () => {
+  it('falls back when progress stopped longer than stall', () => {
+    expect(shouldFallbackApkStall(1000, 1000, 13000, 12000)).toBe(true);
+    expect(shouldFallbackApkStall(1000, 1000, 5000, 12000)).toBe(false);
+    expect(shouldFallbackApkStall(0, 0, 20000, 12000)).toBe(false);
   });
 });

@@ -12,6 +12,18 @@ export function shouldFallbackApkDownload(loaded, elapsedMs, stallMs) {
   return got <= 0 && wait >= limit;
 }
 
+/**
+ * Нет прироста байт дольше stallMs (после старта или после последней порции).
+ * Нужен, когда AbortController не отменяет зависший запрос в WebView.
+ */
+export function shouldFallbackApkStall(loaded, lastProgressAtMs, nowMs, stallMs) {
+  var limit = stallMs == null ? APK_STALL_MS : Number(stallMs);
+  var last = Number(lastProgressAtMs) || 0;
+  var now = Number(nowMs) || 0;
+  if (!last || now - last < limit) return false;
+  return true;
+}
+
 export function formatBytes(n) {
   var v = Number(n) || 0;
   if (v < 1024) return v + ' Б';

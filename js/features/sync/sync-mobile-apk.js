@@ -2,7 +2,8 @@ import {
   formatApkProgressDetail,
   uint8ToBase64,
   APK_STALL_MS,
-  shouldFallbackApkDownload
+  shouldFallbackApkDownload,
+  shouldFallbackApkStall
 } from '../../utils/apk-progress-text.js';
 
 /** Секция «Установка обновления (APK)» на синхронизации (Android + режим API). */
@@ -504,7 +505,8 @@ import {
       });
   }
 
-  var APK_CHUNK_BYTES = 256 * 1024;
+  /** Меньше 256 КБ: крупные base64 через Capacitor bridge на Android часто подвисают. */
+  var APK_CHUNK_BYTES = 64 * 1024;
   var apkUpdatePlugin = null;
   var apkUpdatePluginPromise = null;
 
@@ -548,15 +550,6 @@ import {
     getApkUpdatePlugin();
   }
 
-  function concatUint8(a, b) {
-    if (!a || !a.length) return b;
-    if (!b || !b.length) return a;
-    var out = new Uint8Array(a.length + b.length);
-    out.set(a, 0);
-    out.set(b, a.length);
-    return out;
-  }
-
   function throwIfCanceled(userCanceled) {
     if (userCanceled) {
       var err = new Error('CANCELED');
@@ -565,73 +558,99 @@ import {
     }
   }
 
-  function pipeApkToPlugin(plugin, apkUrl, progress, abortCtrl, userCanceledRef) {
-    var loaded = 0;
-    function report(total) {
-      if (progress) progress.update(loaded, total, formatApkProgressDetail(loaded, total));
-    }
-    function flushChunk(buf) {
-      throwIfCanceled(userCanceledRef.canceled);
-      return plugin.appendApkChunk({ data: uint8ToBase64(buf) });
-    }
-    function writeAll(u8, total) {
-      var offset = 0;
-      function next() {
-        throwIfCanceled(userCanceledRef.canceled);
-        if (offset >= u8.length) return Promise.resolve();
-        var end = Math.min(offset + APK_CHUNK_BYTES, u8.length);
-        var piece = u8.subarray(offset, end);
-        offset = end;
-        loaded = offset;
-        report(total);
-        return flushChunk(piece).then(next);
-      }
-      return next();
-    }
-    return fetch(apkUrl, { cache: 'no-store', signal: abortCtrl.signal }).then(function (res) {
-      throwIfCanceled(userCanceledRef.canceled);
-      if (!res.ok) throw new Error('Сервер вернул код ' + res.status);
-      var total = Number(res.headers.get('content-length')) || 0;
-      report(total);
-      if (!res.body || typeof res.body.getReader !== 'function') {
-        return res.arrayBuffer().then(function (buf) {
-          var u8 = new Uint8Array(buf);
-          loaded = 0;
-          return writeAll(u8, u8.length);
-        });
-      }
-      var reader = res.body.getReader();
-      var pending = new Uint8Array(0);
-      function readNext() {
-        throwIfCanceled(userCanceledRef.canceled);
-        return reader.read().then(function (step) {
-          if (step.done) {
-            if (pending.length) {
-              report(total);
-              return flushChunk(pending);
-            }
-            return undefined;
+  /**
+   * XHR с onprogress надёжнее fetch+stream в Android WebView:
+   * байты сразу идут в UI, abort реально останавливает запрос.
+   */
+  function downloadApkBytesViaXhr(apkUrl, expectedSize, onProgress, abortCtrl) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      var settled = false;
+      function finish(fn, arg) {
+        if (settled) return;
+        settled = true;
+        try {
+          if (abortCtrl && abortCtrl.signal) {
+            abortCtrl.signal.removeEventListener('abort', onAbort);
           }
-          pending = concatUint8(pending, step.value);
-          loaded += step.value.length;
-          report(total);
-          var writes = Promise.resolve();
-          while (pending.length >= APK_CHUNK_BYTES) {
-            (function (chunk) {
-              writes = writes.then(function () {
-                return flushChunk(chunk);
-              });
-            })(new Uint8Array(pending.subarray(0, APK_CHUNK_BYTES)));
-            pending = pending.subarray(APK_CHUNK_BYTES);
-          }
-          return writes.then(readNext);
-        });
+        } catch (eRm) {}
+        fn(arg);
       }
-      return readNext();
+      function onAbort() {
+        try {
+          xhr.abort();
+        } catch (eAb) {}
+        var err = new Error('CANCELED');
+        err.name = 'AbortError';
+        finish(reject, err);
+      }
+      xhr.open('GET', apkUrl, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.setRequestHeader('Cache-Control', 'no-store');
+      xhr.onprogress = function (ev) {
+        var loaded = Number(ev.loaded) || 0;
+        var total =
+          ev.lengthComputable && ev.total
+            ? Number(ev.total)
+            : Number(expectedSize) || 0;
+        if (typeof onProgress === 'function') onProgress(loaded, total);
+      };
+      xhr.onload = function () {
+        if (xhr.status < 200 || xhr.status >= 300) {
+          finish(reject, new Error('Сервер вернул код ' + xhr.status));
+          return;
+        }
+        var buf = xhr.response;
+        if (!buf) {
+          finish(reject, new Error('Пустой ответ сервера'));
+          return;
+        }
+        var u8 = new Uint8Array(buf);
+        if (typeof onProgress === 'function') {
+          onProgress(u8.length, Number(expectedSize) || u8.length);
+        }
+        finish(resolve, u8);
+      };
+      xhr.onerror = function () {
+        finish(reject, new Error('Сеть недоступна'));
+      };
+      xhr.onabort = function () {
+        var err = new Error('CANCELED');
+        err.name = 'AbortError';
+        finish(reject, err);
+      };
+      if (abortCtrl && abortCtrl.signal) {
+        if (abortCtrl.signal.aborted) {
+          onAbort();
+          return;
+        }
+        abortCtrl.signal.addEventListener('abort', onAbort);
+      }
+      xhr.send();
     });
   }
 
-  function downloadApkViaNative(apkUrl) {
+  function writeApkBytesToPlugin(plugin, u8, progress, userCanceledRef, onBytes) {
+    var total = u8.length;
+    var offset = 0;
+    function report(loaded) {
+      if (typeof onBytes === 'function') onBytes(loaded, total);
+      if (progress) progress.update(loaded, total, formatApkProgressDetail(loaded, total));
+    }
+    function next() {
+      throwIfCanceled(userCanceledRef.canceled);
+      if (offset >= u8.length) return Promise.resolve();
+      var end = Math.min(offset + APK_CHUNK_BYTES, u8.length);
+      var piece = u8.subarray(offset, end);
+      offset = end;
+      report(offset);
+      return plugin.appendApkChunk({ data: uint8ToBase64(piece) }).then(next);
+    }
+    report(0);
+    return next();
+  }
+
+  function downloadApkViaNative(apkUrl, expectedSize) {
     var C = global.Capacitor;
     var isAndroidNative =
       C &&
@@ -645,8 +664,12 @@ import {
     var userCanceledRef = { canceled: false };
     var stallRef = { stalled: false };
     var bytesSeen = { n: 0 };
+    var lastProgressAt = { t: Date.now() };
     var pluginRef = apkUpdatePlugin;
-    var abortCtrl = typeof AbortController === 'function' ? new AbortController() : { abort: function () {}, signal: undefined };
+    var abortCtrl =
+      typeof AbortController === 'function'
+        ? new AbortController()
+        : { abort: function () {}, signal: undefined };
     var progress =
       typeof global.showProgressOverlay === 'function'
         ? global.showProgressOverlay({
@@ -680,21 +703,51 @@ import {
             }
           })
         : null;
-    if (progress && typeof progress.update === 'function') {
-      var origUpdate = progress.update;
-      progress.update = function (loaded, total, detail) {
-        bytesSeen.n = Number(loaded) || 0;
-        return origUpdate.apply(progress, arguments);
-      };
+
+    function noteProgress(loaded, total) {
+      var n = Number(loaded) || 0;
+      if (n > bytesSeen.n) {
+        bytesSeen.n = n;
+        lastProgressAt.t = Date.now();
+      }
+      if (progress) {
+        progress.update(n, Number(total) || 0, formatApkProgressDetail(n, total));
+      }
     }
-    var stallTimer = setTimeout(function () {
+
+    function triggerStallFallback() {
       if (userCanceledRef.canceled || stallRef.stalled) return;
-      if (!shouldFallbackApkDownload(bytesSeen.n, APK_STALL_MS, APK_STALL_MS)) return;
       stallRef.stalled = true;
+      userCanceledRef.canceled = true;
       try {
         abortCtrl.abort();
       } catch (eStall) {}
-    }, APK_STALL_MS);
+      if (pluginRef && typeof pluginRef.cancelDownload === 'function') {
+        try {
+          pluginRef.cancelDownload();
+        } catch (eCancel) {}
+      }
+      if (progress) {
+        progress.close();
+        progress = null;
+      }
+      if (typeof global.showToast === 'function') {
+        global.showToast('Скачивание в приложении зависло. Открываем файл в браузере…', 'info', 5000);
+      }
+      openApkDownloadUrl(apkUrl);
+    }
+
+    var stallWatch = setInterval(function () {
+      if (userCanceledRef.canceled || stallRef.stalled) return;
+      var now = Date.now();
+      if (shouldFallbackApkDownload(bytesSeen.n, now - lastProgressAt.t, APK_STALL_MS)) {
+        triggerStallFallback();
+        return;
+      }
+      if (shouldFallbackApkStall(bytesSeen.n, lastProgressAt.t, now, APK_STALL_MS * 2)) {
+        triggerStallFallback();
+      }
+    }, 1000);
 
     function startDownload(plugin) {
       if (!plugin || typeof plugin.startApkFile !== 'function') {
@@ -702,14 +755,19 @@ import {
       }
       pluginRef = plugin;
       throwIfCanceled(userCanceledRef.canceled);
-      if (progress) progress.update(0, 0, 'Загрузка…');
+      noteProgress(0, Number(expectedSize) || 0);
       return plugin
         .startApkFile()
         .then(function () {
-          return pipeApkToPlugin(plugin, apkUrl, progress, abortCtrl, userCanceledRef);
+          throwIfCanceled(userCanceledRef.canceled || stallRef.stalled);
+          return downloadApkBytesViaXhr(apkUrl, expectedSize, noteProgress, abortCtrl);
+        })
+        .then(function (u8) {
+          throwIfCanceled(userCanceledRef.canceled || stallRef.stalled);
+          return writeApkBytesToPlugin(plugin, u8, progress, userCanceledRef, noteProgress);
         })
         .then(function () {
-          throwIfCanceled(userCanceledRef.canceled);
+          throwIfCanceled(userCanceledRef.canceled || stallRef.stalled);
           return plugin.finishApkFile();
         })
         .then(function () {
@@ -717,7 +775,7 @@ import {
             progress.close();
             progress = null;
           }
-          throwIfCanceled(userCanceledRef.canceled);
+          throwIfCanceled(userCanceledRef.canceled || stallRef.stalled);
           return plugin.installDownloadedApk();
         });
     }
@@ -732,12 +790,10 @@ import {
         }
       })
       .catch(function (err) {
-        if (progress) progress.close();
-        if (stallRef.stalled) {
-          if (typeof global.showToast === 'function') {
-            global.showToast('Скачивание в приложении не началось. Открываем файл в браузере…', 'info', 5000);
-          }
-          return openApkDownloadUrl(apkUrl);
+        if (stallRef.stalled) return;
+        if (progress) {
+          progress.close();
+          progress = null;
         }
         if (userCanceledRef.canceled) return;
         var msg = err && err.message ? String(err.message) : '';
@@ -776,7 +832,7 @@ import {
         return openApkDownloadUrl(apkUrl);
       })
       .finally(function () {
-        clearTimeout(stallTimer);
+        clearInterval(stallWatch);
       });
   }
 
@@ -795,15 +851,18 @@ import {
         if (!data || !data.available) {
           throw new Error('На сервере нет файла обновления');
         }
-        return base + (data.downloadPath || '/api/mobile/app.apk');
+        return {
+          url: base + (data.downloadPath || '/api/mobile/app.apk'),
+          size: Number(data.size) || 0
+        };
       });
     });
   }
 
   function downloadApkFromServer() {
     resolveApkDownloadUrl()
-      .then(function (apkUrl) {
-        return downloadApkViaNative(apkUrl);
+      .then(function (info) {
+        return downloadApkViaNative(info.url, info.size);
       })
       .catch(function (err) {
         var msg = err && err.message ? err.message : 'Не удалось проверить обновление';
@@ -820,8 +879,8 @@ import {
       global.showToast('Открываем загрузку APK…', 'info', 3000);
     }
     resolveApkDownloadUrl()
-      .then(function (apkUrl) {
-        return openApkDownloadUrl(apkUrl);
+      .then(function (info) {
+        return openApkDownloadUrl(info.url);
       })
       .catch(function (err) {
         var msg = err && err.message ? err.message : 'Не удалось скачать APK';
